@@ -1,0 +1,115 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Berkeley Software/Kepler
+From 2009.igem.org
+Home
+Project
+Team
+Notebooks
+Downloads
+Miscellaneous
+Eugene
+Spectacles
+Kepler
+Data Model
+Automated Assembly and Kepler Integration
+Introduction
+Kepler - Wise Astronomer and Workflow Wizard (Courtesy of Christine Tsin )
+Two of the key requirements for introducing automation into the biological design process are reproducibility of specific protocols and formally capturing these protocols. Often these are very complicated, take considerable time to develop and “debug”, and are lab/equipment specific. A highly modular, expressive, and extensible framework to capture and design these workflows would be useful. Our project integrated the Kepler workflow design environment with the existing Clotho platform, in order to formally capture a number of specific design protocols related to composite part assembly.
+Kepler is a multi-university design effort focusing on scientific workflows, and is used by a wide variety of projects in different fields. This work is done in conjunction with one of our sponsors, the Center for Hybrid & Embedded Software Systems (CHESS) . We are improving protocol automation and also creating material for a larger audience as well.
+There are two main components to our discussion: The first, on this page, discusses the way in which we can go from a composite device, to an assembly graph (an object representing its efficient assembly), and finally to commands for a liquid handling robot. The second discussion involves more information about the way we converted this process into a Kepler workflow and provides an overview of the Kepler design software. We hope these pages provide all the information you need to understand this project and we would love to answer any questions you have either via email or at the jamboree!
+Automated Assembly "Big Picture"
+Our Design Flow Integrating Both Clotho and Kepler
+Preliminaries
+Our "big picture" design flow has been implemented for the 2ab assembly protocol that is used in J.Christopher Anderson's lab . In addition we have been working on alternative, non-binary, one-pot assembly protocols (e.g. Golden Gate), parallel sequencing, and parts packaging with the Joint BioEnergy Institute . The latest projects were started in August and we are continuing to develop them.
+Initially, the assembly automation workflow had been constructed as a plug-in in Clotho Classic (last year's iGEM project), but its conversion to Kepler's workflow allowed for more user-choices and pre-defined settings explained in more detail here .
+Running Example for Automated Assembly
+As we are going through steps in the workflow, we will be using a "running example" to provide a consistent frame of reference. We will show the construction of a family of reporters which consists of four devices:
+Reporter #1 - BBa_I13521
+Reporter #2 - BBa_I763007
+Reporter #3 - BBa_J5526
+Reporter #4 - BBa_J3901
+Zooming In
+1. Start Clotho
+Starting Clotho (Main GUI)
+2. Start Kepler
+Starting Kepler (Blank Kepler Design Palette)
+3. Specify Devices to Assemble
+This process is performed with Clotho's Algorithm Manager , a tool constructed by Berkeley_Software iGEM team 2008.
+Clotho Algorithm Manager Importing Our Running Example
+Reporter #1. View in Spectacles.
+Reporter #2. View in Spectacles.
+Reporter #3. View in Spectacles.
+Reporter #4.View in Spectacles.
+Devices are specified in a string format where basic parts are separated by dots (.) to represent the overall goal part (e.g. A.B.C.D). Each goal part (desired device) is entered on a separate line. This can be done either manually, or imported from a file, or imported directly from Spectacles .
+In our example we can assume that parts were designed in Spectacles and imported into Clotho's Algorithm Manager.
+In the Clotho's Algorithm Manager, the designs imported are converted into an efficient assembly graph which is exported into the Kepler's workflow as Assembly Info. Our example assembly graph can be represented visually as:
+Assembly Graph Example for Reporter Family Construction.
+4. Launch Tool to Connect Clotho & Kepler
+Clotho Remote Method Invocation (RMI) Tool to Connect Clotho to Kepler
+This tool provides the means to import an assembly graph as an assembly information (Assembly Info) object into the Kepler environment. Further explanation about the Clotho-Kepler connection can be found on the tutorial page : Clotho-Kepler Connection.
+5. Launch Kepler Assembly Automation Assignment Workflow
+The steps to begin this process are: load the automation workflow file into Kepler, choose the stage number (where you wish to begin in the assembly graph), then click the "Run" icon.
+Automation Workflow in Kepler
+Further technical explanation about the workflow can be found on the tutorial page: Assembly Workflow .
+6. Process Info According to the Stage Number
+In this step we process assembly information(Assembly Info) according to stage number, reading the Assembly Graph in arrays of parts united with the same stage index. That process results in a stage sorted assembly graph:
+Processed Assembly Graph for our Running Example
+From this step, the modified assembly information is sent to step 8 and basic parts (parts in the 1st row without a stage number) are sent to step 7 .
+7. Choose to Supply Additional Info Location
+In this step, basic parts (parts in the 1st row without a stage number) are displayed with their assigned vectors, and the user is asked to choose an option that works the best for him/her. Since the algorithm that generates the assembly graph initially assumes parts sharing, only 6 possible combination-choices for vector option in which to put basic parts are available.
+A designer can choose:
+The flow that was assigned by algorithm and follow further with parts (do pre-selected Kepler option which avoids display of this dialog);
+His/her own vector selection out of 6 available choices which were constructed by computer and proceed with his/her flow;
+To supply a file with the available parts (which are not yet in database) and let the program make a choice for him/her;
+The option which requires minimum amount of transfers of basic part from one vector into another based on what is available in the database. This part is still under implementation.
+8. Process Info According to User's Choice
+In this step, the assembly information that was modified in step 6 , is modified according to user choice in step 7 updating and locking vectors in which parts will reside through out the device construction project.
+9. Select Stage Number
+This step allows the user to select a stage number from available stages. If the user selects a stage number out of range, the program will not proceed, keep asking the user for stage number input.
+In the plug-in for "Clotho Classic", stage selection is a user's dialog, in Kepler this is a number shown in the workflow. Further explanation about Kepler User Options .
+10. Single Stage Processing
+Selection of stage in step 9 leads to picking parts from arrays (which were constructed during step 6 and modified during step 8 ) that are required for construction of composite parts in this stage as well as composite parts themselves. It is illustrated in a less confusing way (hopefully) in the following picture:
+Basic Parts and Composite Parts, Constructed out of Basic Parts, in Stage 1 of Our Running Example.
+In this step the main processing and file construction occurs. All files have a stage number appended to the end of their name thus they are not overwritten when the new stage is executed.
+Once the parts required for this stage are picked, they are sorted depending on whether they are lefty, righty, or represent the final device (refer to 2ab protocol for more explanations) and depending on the type of vector that the parts are in. It becomes important for arrangement of the final parts of each stage for further user processing. Then plates are created:
+Stock plate - plate with minipreps
+BigStock plate - enzyme plate with antibiotics, digestion mix, ligation mix and buffer
+Dilution plate - plate with diluted minipreps
+RxnPlate - plate with 2 diluted mini-preps mixed together, where digestion mix, and then ligase mix are added
+Platting plates - the plates where resultant parts are plated with antibiotics
+More about the created files:
+By default all newly-created files are stored in the projects folder in the same folder where Clotho lives
+DilutionFile(stage#).csv - contains commands for the robot to transfer minipreps for dilution (it is assumed that buffer pippetting is done by multi-channel); (file with similar name dilution4Jenn(stage#) contains user-friendly version of the above file for ease of checking the correctness of the produced instructions).
+ReationFile(stage#).csv - contains commands for robot; built according to user 2ab protocol inquiry;(file reaction4Jenn(stage#).csv is a user-friendly version for the correctness check).
+Platting(stage#).csv - contains instructions for robot about antibiotic transfer for selection process; based on that, reactants will be transferred one to one from the reaction plate by multi-channel pipette.
+UserInstructions(stage#) - file contains instructions about what the user has to have in plates, what decks the user has to put plates on, and what will be the outcome of following those instructions.
+Then assignment of wells proceeds. Parts used for construction are assigned to stock plate(s) and then to dilution plate, and then their final products are assigned to reaction plate depending on the sorted order. Then the volume check is performed and if a single part is used repeatedly, its quantity is reduced to one well or to the necessary number of wells in the dilution procedure (to achieve the necessary volume of diluted miniprep prior to reaction). Also at this stage a user can specify the stock plates that he wants the program to use. The assignment of wells in stock plates and their path to dilution plate will be modified. Going further, the dilution plate is assumed to be pre-filled with dilution buffer using a multi-pipetteman on robot. Once well assignment is completed, each plate in dilution step is assigned to an available deck on the robot, these assignments are recorded into the text file with user instructions, and a .csv file with cherry-picking commands for robot is produced. Then the robot decks are freed from the plates that participated in dilution and available decks are assigned to plates that participate in reaction procedure. Another .csv reaction file with commands for robot is constructed. The addition of the digestion mix and ligation mix is also recorded as cherry-picking commands for robot in that file. After this step, the deck assignment is recorded into the user instructions file, together with the amount of buffer required for dilution, amount of digestion and ligation mixes required for reaction to occur. After that the assignments of wells, where the composite parts for this stage will reside, are also recorded.
+Robot decks are freed one more time. Another array of plates for platting the resultants with antibiotics (selection of successful parts) is created. Resultant parts are assigned to the platting plates. The plates are assigned to available decks on the robot and another .csv file with commands for robot to perform plating with antibiotics is created.
+Information about decks and final parts location is recorded into the file with user instructions. The program notifies the user that it has completed stage that was requested.
+The most important part on the theory behind this step in workflow is illustrated in the animation below:
+This flash demo provides an animation example of how the various plates are created using our described workflow
+11. Robot
+Once the workflow is completed, the user can organize produced .csv Files to input to the robot, as well as open the human instruction file for a certain stage and prepare the plates and their layout according to instructions.
+Robot receives .csv Files, follows the commands in them, and produces plates with composite parts and devices for the user.
+More on Automation Assembly Assignment Workflow
+The file with constants can be used to modify the maximum volume that the user wants for a single well in his/her plate to hold in dilution, reaction plates, transfer volumes, etc.
+The user can generate files for robot starting from any stage at any time as long as he has the initial parts from which he started; or he can generate files for all stages of the ongoing project in a default folder and then rename that folder to prevent files from being overwritten and start working on another assembly project;
+Assigning plates by rows or by columns can be changed by physically going inside of the plugin and setting fillThePlateByRow parameter when the plate is initialized (or changing that default parameter in the constructor of the PlateClass class);
+The size of the plates is adjustable and can be anything specified as maxR (maximum number of rows) and maxC (maximum number of columns) when the plate is initialized; in the workflow currently 8X12 and 2X12 plates are used.
+Retrieved from " http://2009.igem.org/Team:Berkeley_Software/Kepler "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

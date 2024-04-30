@@ -1,0 +1,303 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Cadets2Vets_js_lightbox skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Cadets2Vets/js/lightbox</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/******************************************************************************************************
+</P><PRE>*                                             SPIME START 
+******************************************************************************************************/
+</PRE><P>var LightBox = {};
+</P><P>/******************************************************************************************************
+</P><PRE>*                                               MAIN
+*                                  called from body onLoad func    
+******************************************************************************************************/
+</PRE><P>LightBox.initLinks = function(holder){
+	//Only in viewer mode
+	if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+		var links;
+		if (holder){
+			links = holder.find(&quot;a[data-link-type='LIGHTBOX']&quot;);
+		}else{
+			links = $(&quot;a[data-link-type='LIGHTBOX']&quot;);
+		}
+		links.each(function(){
+			var currentLink = $(this);
+			currentLink.removeAttr(&quot;href&quot;);
+			currentLink.removeAttr(&quot;target&quot;);
+			currentLink.addClass(&quot;clickable&quot;);
+			currentLink.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+				e.stopPropagation();
+				LightBox.itemClick($(this).closest(&quot;.item-content&quot;));
+				return false;
+			});
+		});
+</P><P>		var registerLinks ;
+		if (holder){
+			registerLinks = holder.find(&quot;a[href^='register://'] , a[href^='registers://']&quot;);
+		}else{
+			registerLinks = $(&quot;a[href^='register://'], a[href^='registers://']&quot;);
+		}
+		if (registerLinks.length &gt; 0){
+			if (typeof XPRSTranslator == &quot;undefined&quot;){
+				$(&quot;&lt;script/&gt;&quot;).attr(&quot;src&quot;, XPRSHelper.getServerPath() + &quot;/translation_js&quot;).appendTo(&quot;head&quot;);
+				$(&quot;&lt;script/&gt;&quot;).attr(&quot;src&quot;, XPRSHelper.getServerPath() + &quot;/js/lib/jquery.cookie.min.js&quot;).appendTo(&quot;head&quot;);
+				var loginWrapper = $(&quot;&lt;div/&gt;&quot;).attr(&quot;id&quot;,&quot;lightbox-menus-holder&quot;).css({&quot;height&quot;:&quot;100%&quot;,&quot;width&quot;: &quot;100%&quot;,&quot;position&quot;:&quot;fixed&quot;,&quot;top&quot;: &quot;0px&quot;,&quot;left&quot;: &quot;0px&quot;,&quot;display&quot;: &quot;table&quot;,&quot;background-color&quot;: &quot;rgba(0,0,0,0.1)&quot;,&quot;z-index&quot;:&quot;99999999&quot;}).hide();
+				$(&quot;body&quot;).append(loginWrapper);
+				loginWrapper.load(XPRSHelper.getServerPath() +  &quot;/login?form_only=true&quot;)
+			}
+		}
+		registerLinks.each(function(){
+			var currentLink = $(this);
+			currentLink.attr(&quot;data-href&quot;,currentLink.attr(&quot;href&quot;).replace(&quot;register://&quot;,&quot;http://&quot;).replace(&quot;registers://&quot;,&quot;https://&quot;));
+			currentLink.removeAttr(&quot;href&quot;);
+			currentLink.removeAttr(&quot;target&quot;);
+			currentLink.addClass(&quot;clickable&quot;);
+			currentLink.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+				e.stopPropagation();
+				XPRSHelper.invokeLogin(function(){
+					location.href = currentLink.attr(&quot;data-href&quot;);
+				  },&quot;register&quot;);
+				return false;
+			});
+		});
+</P><P>	}
+};
+</P><P>
+LightBox.itemClick = function(currentItem){
+	var imageSrc = currentItem.attr(&quot;data-bgimg&quot;);
+	var videoSrc = &quot;&quot;;
+	var videoFrame = currentItem.find(&quot;.video-frame&quot;);
+	if (videoFrame.length &gt; 0){
+		//var videoFrame = currentItem.find(&quot;.video-frame&quot;);
+		if (videoFrame.length &gt; 0){
+			videoSrc = videoFrame.attr(&quot;src&quot;);
+		}
+	}
+	if (imageSrc == &quot;&quot;){
+		//no image
+		return;
+	}
+</P><P>	var title = currentItem.find(&quot;.preview-title&quot;);
+	var subtitle = currentItem.find(&quot;.preview-subtitle&quot;);
+</P><P>	var currentHolder = currentItem.closest(&quot;.item-box&quot;);
+	var itemSiblings = currentHolder.siblings(&quot;.sub.item-box&quot;);
+	if (itemSiblings.length &gt; 0){
+		itemSiblings = itemSiblings.add(currentHolder);
+	}
+	var lightboxWrapper = $(&quot;.light-box-wrapper&quot;);
+	var closeBtn = lightboxWrapper.find(&quot;.close-lightbox-btn&quot;);
+	closeBtn.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+		e.stopPropagation();
+		//remove the video before closing
+		$(&quot;.light-box-wrapper&quot;).find(&quot;iframe&quot;).remove();
+		$(&quot;.light-box-wrapper&quot;).hide();
+	});
+	var stripe = currentHolder.closest(&quot;.master.item-box&quot;);
+	var downloadBtn = lightboxWrapper.find(&quot;.download-gallery-btn&quot;);
+	if (stripe.find(&quot;.container&quot;).attr(&quot;data-allow-download&quot;) == &quot;true&quot;){
+		downloadBtn.show();
+		downloadBtn.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+			e.stopPropagation();
+			location.href = XPRSHelper.getServerPath() + &quot;/download_gallery?vbid=&quot; + stripe.attr(&quot;id&quot;);
+		});
+	}else{
+		downloadBtn.hide();
+	}
+</P><P>	//Close lightbox when clicking outside the image
+	lightboxWrapper.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+			e.stopPropagation();
+			//remove the video before closing
+			$(&quot;.light-box-wrapper&quot;).find(&quot;iframe&quot;).remove();
+			$(&quot;.light-box-wrapper&quot;).hide();
+	});
+</P><P>	
+	var lightboxImageHolder = lightboxWrapper.find(&quot;.light-box-image-holder&quot;);
+	var lightboxImage = lightboxImageHolder.find(&quot;.light-box-image&quot;);
+</P><P>	//Catch the click (do not close when clicking on the image
+	lightboxImage.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+		e.stopPropagation();
+	});
+</P><P>	var textWrapper = lightboxWrapper.find(&quot;.lightbox-text-wrapper&quot;);
+	var textHolder = textWrapper.find(&quot;.lightbox-text-holder&quot;);
+	var titleHolder = textWrapper.find(&quot;.lightbox-title&quot;).text(title.text());
+	var subtitleHolder = textWrapper.find(&quot;.lightbox-subtitle&quot;).text(subtitle.text());
+	var imageOrigHeight = currentItem.attr(&quot;data-orig-thumb-height&quot;);
+	var imageOrigWidth = currentItem.attr(&quot;data-orig-thumb-width&quot;);
+	var newWidth = parseInt(imageOrigWidth);
+	if (isNaN(newWidth)){
+		newWidth = 1600;
+	}else{
+		newWidth = Math.min(parseInt(imageOrigWidth),1600)
+	}
+	var imageId = currentItem.attr(&quot;data-vbid&quot;);
+	lightboxImage.find(&quot;iframe&quot;).remove();
+	if (videoSrc != &quot;&quot;){
+		lightboxImage.attr(&quot;data-videosrc&quot;,videoSrc);
+		var videoIframe = $(&quot;&lt;iframe /&gt;&quot;).css({&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;,&quot;border&quot;:&quot;none&quot;}).attr(&quot;src&quot;,videoSrc);
+		lightboxImage.append(videoIframe);
+		lightboxImage.css(&quot;background-image&quot;,&quot;&quot;);
+	}else{
+		if(!currentHolder.closest(&quot;.master.item-box&quot;).is(&quot;.showing-feed&quot;)){
+			lightboxImage.css(&quot;background-image&quot;,&quot;url('&quot;+ imageSrc + &quot;=s&quot; + newWidth +&quot;')&quot;);
+		}else{
+			lightboxImage.css(&quot;background-image&quot;,&quot;url('&quot;+ imageSrc + &quot;')&quot;);
+		}
+		lightboxImage.attr(&quot;data-orig-thumb-height&quot;,imageOrigHeight);
+		lightboxImage.attr(&quot;data-orig-thumb-width&quot;,imageOrigWidth);
+	}
+</P><P>	//lightboxImage.attr(&quot;data-orig-thumb-height&quot;,imageOrigHeight);
+	//lightboxImage.attr(&quot;data-orig-thumb-width&quot;,imageOrigWidth);
+</P><P>	lightboxImage.attr(&quot;data-vbid&quot;,imageId);
+	//titleHolder.css({&quot;color&quot;:title.css(&quot;color&quot;),&quot;text-shadow&quot;:title.css(&quot;text-shadow&quot;),&quot;font-family&quot;:title.css(&quot;font-family&quot;)});
+	//subtitleHolder.css({&quot;color&quot;:subtitle.css(&quot;color&quot;),&quot;text-shadow&quot;:subtitle.css(&quot;text-shadow&quot;),&quot;font-family&quot;:subtitle.css(&quot;font-family&quot;)});
+	titleHolder.css({&quot;font-family&quot;:title.css(&quot;font-family&quot;),&quot;text-align&quot;:title.css(&quot;text-align&quot;)});
+	if (title.css(&quot;text-align&quot;) == &quot;center&quot;){
+		titleHolder.css({&quot;margin-left&quot;:&quot;auto&quot;,&quot;margin-right&quot;:&quot;auto&quot;});
+	}else if (title.css(&quot;text-align&quot;) == &quot;right&quot;){
+		titleHolder.css({&quot;margin-left&quot;:&quot;auto&quot;,&quot;margin-right&quot;:&quot;&quot;});
+	}else{
+		titleHolder.css({&quot;margin-left&quot;:&quot;&quot;,&quot;margin-right&quot;:&quot;&quot;});
+	}
+	subtitleHolder.css({&quot;font-family&quot;:subtitle.css(&quot;font-family&quot;),&quot;text-align&quot;:subtitle.css(&quot;text-align&quot;)});
+	if (subtitle.css(&quot;text-align&quot;) == &quot;center&quot;){
+		subtitle.css({&quot;margin-left&quot;:&quot;auto&quot;,&quot;margin-right&quot;:&quot;auto&quot;});
+	}else if (subtitle.css(&quot;text-align&quot;) == &quot;right&quot;){
+		subtitle.css({&quot;margin-left&quot;:&quot;auto&quot;,&quot;margin-right&quot;:&quot;&quot;});
+	}else{
+		subtitle.css({&quot;margin-left&quot;:&quot;&quot;,&quot;margin-right&quot;:&quot;&quot;});
+	}
+	lightboxWrapper.show();
+	setTimeout(function(){
+		XPRSHelper.onCssTransitionFinish(lightboxImage,function(){
+			textHolder.css(&quot;opacity&quot;,&quot;1&quot;);
+			closeBtn.css(&quot;opacity&quot;,&quot;1&quot;);
+			LightBox.arrange();
+		});
+</P><P>	},0);
+	LightBox.addPagination(textHolder,lightboxWrapper,itemSiblings);
+};
+</P><P>LightBox.arrange = function(){
+	var lightboxWrapper = $(&quot;.light-box-wrapper&quot;);
+	if (lightboxWrapper.is(&quot;:visible&quot;)){
+		var lightboxImageHolder = lightboxWrapper.find(&quot;.light-box-image-holder&quot;);
+		var lightboxImage = lightboxImageHolder.find(&quot;.light-box-image&quot;);
+		var lightboxTextWrapper = lightboxWrapper.find(&quot;.lightbox-text-wrapper&quot;);
+		var deviceWidth = $(&quot;.main-page&quot;).width();
+		var deviceHeight = Math.min($(window).height(),$(&quot;.main-page&quot;).height());//$(&quot;.main-page&quot;).height() - lightboxTextWrapper.height();
+</P><P>		var borderWidth = deviceWidth* 0.1;
+		var borderHeight = deviceHeight* 0.2;
+		var imageOrigHeight = lightboxImage.attr(&quot;data-orig-thumb-height&quot;);
+		var imageOrigWidth = lightboxImage.attr(&quot;data-orig-thumb-width&quot;);
+		lightboxImage.css({&quot;width&quot;:deviceWidth - borderWidth,&quot;height&quot;:deviceHeight - borderHeight,&quot;max-width&quot;:imageOrigWidth + &quot;px&quot;,&quot;max-height&quot;:imageOrigHeight+ &quot;px&quot;});
+	}
+};
+</P><P>LightBox.addPagination = function(paginatorHolder,wrapper,items){
+	var paginator = wrapper.find(&quot;#paginator&quot;);
+	paginator.empty();
+	var lightboxWrapper = $(&quot;.light-box-wrapper&quot;);
+	var lightboxImageHolder = lightboxWrapper.find(&quot;.light-box-image-holder&quot;);
+	var lightboxImage = lightboxImageHolder.find(&quot;.light-box-image&quot;);
+	items.each(function(){
+		var currentHolder = $(this);
+		var currentItem = currentHolder.find(&quot;.item-content&quot;);
+</P><P>		var videoSrc = &quot;&quot;;
+		var videoFrame = currentItem.find(&quot;.video-frame&quot;);
+		if (videoFrame.length &gt; 0){
+			//var videoFrame = currentItem.find(&quot;.video-frame&quot;);
+			if (videoFrame.length &gt; 0){
+				videoSrc = videoFrame.attr(&quot;src&quot;);
+			}else{
+				return;
+			}
+		}
+		var imageOrigHeight = currentItem.attr(&quot;data-orig-thumb-height&quot;);
+		var imageOrigWidth = currentItem.attr(&quot;data-orig-thumb-width&quot;);
+		var newWidth = parseInt(imageOrigWidth);
+		if (isNaN(parseInt(newWidth))){
+			newWidth = 1600;
+		}else{
+			newWidth = Math.min(parseInt(imageOrigWidth),1600)
+		}
+		var imageSrc = currentItem.attr(&quot;data-bgimg&quot;);
+</P><P>		if (imageSrc == &quot;&quot;){
+			return;
+		}else if(!currentHolder.closest(&quot;.master.item-box&quot;).is(&quot;.showing-feed&quot;)){
+			imageSrc += &quot;=s&quot; + newWidth;
+		}
+		var imageId = currentItem.attr(&quot;data-vbid&quot;);
+		var title = currentItem.find(&quot;.preview-title&quot;).text();
+		var subtitle = currentItem.find(&quot;.preview-subtitle&quot;).text();
+		var pageNavigator = $(&quot;&lt;div /&gt;&quot;).addClass(&quot;page-navigator&quot;);
+		if (videoSrc != &quot;&quot;){
+			pageNavigator.attr(&quot;data-videosrc&quot;,videoSrc);
+		}else{
+			pageNavigator.attr(&quot;data-bgimg&quot;,imageSrc);
+			pageNavigator.attr(&quot;data-orig-thumb-height&quot;,imageOrigHeight);
+			pageNavigator.attr(&quot;data-orig-thumb-width&quot;,imageOrigWidth);
+		}
+		pageNavigator.attr(&quot;data-title&quot;,title);
+		pageNavigator.attr(&quot;data-subtitle&quot;,subtitle);
+		pageNavigator.attr(&quot;data-vbid&quot;,imageId);
+</P><P>		
+		pageNavigator.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(){
+			var currentPaginator = $(this);
+			lightboxImage.find(&quot;iframe&quot;).remove();
+			if (currentPaginator.attr(&quot;data-videosrc&quot;)){
+				var videoIframe = $(&quot;&lt;iframe /&gt;&quot;).css({&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;,&quot;border&quot;:&quot;none&quot;}).attr(&quot;src&quot;,currentPaginator.attr(&quot;data-videosrc&quot;));
+				lightboxImage.append(videoIframe);
+				lightboxImage.css(&quot;background-image&quot;,&quot;&quot;);
+			}else{
+				lightboxImage.css(&quot;background-image&quot;,&quot;url('&quot;+ currentPaginator.attr(&quot;data-bgimg&quot;) +&quot;')&quot;);
+				lightboxImage.attr(&quot;data-orig-thumb-height&quot;,imageOrigHeight);
+				lightboxImage.attr(&quot;data-orig-thumb-width&quot;,imageOrigWidth);
+			}
+</P><P>			
+			lightboxImage.attr(&quot;data-vbid&quot;,imageId);
+			wrapper.find(&quot;.lightbox-title&quot;).text(currentPaginator.attr(&quot;data-title&quot;));
+			wrapper.find(&quot;.lightbox-subtitle&quot;).text(currentPaginator.attr(&quot;data-subtitle&quot;));
+			setTimeout(function(){
+				LightBox.arrange();
+			},0);
+		});
+		paginator.append(pageNavigator);
+	});
+</P><P>	if (items.length &gt; 1){
+		lightboxWrapper.find(&quot;.lightbox-arrow&quot;).show();
+		lightboxWrapper.find(&quot;.lightbox-arrow&quot;).unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+			e.stopPropagation();
+			lightboxImage.find(&quot;iframe&quot;).remove();
+			var currentShownId = lightboxImage.attr(&quot;data-vbid&quot;);
+			var relevantPaginationHolder = paginator.find(&quot;.page-navigator[data-vbid='&quot;+ currentShownId +&quot;']&quot;);
+			var currentPaginator = relevantPaginationHolder.next();
+			if ($(this).hasClass(&quot;lightbox-left&quot;)){
+				currentPaginator = relevantPaginationHolder.prev();
+			}
+			if (currentPaginator.length == 0){
+				currentPaginator = relevantPaginationHolder.siblings().first(); 
+				if ($(this).hasClass(&quot;lightbox-left&quot;)){
+					currentPaginator = relevantPaginationHolder.siblings().last(); 
+				}
+			}
+			if (currentPaginator.attr(&quot;data-videosrc&quot;)){
+				var videoIframe = $(&quot;&lt;iframe /&gt;&quot;).css({&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;,&quot;border&quot;:&quot;none&quot;}).attr(&quot;src&quot;,currentPaginator.attr(&quot;data-videosrc&quot;));
+				lightboxImage.append(videoIframe);
+				lightboxImage.css(&quot;background-image&quot;,&quot;&quot;);
+			}else{
+				lightboxImage.css(&quot;background-image&quot;,&quot;url('&quot;+ currentPaginator.attr(&quot;data-bgimg&quot;) +&quot;')&quot;);
+				lightboxImage.attr(&quot;data-orig-thumb-height&quot;,currentPaginator.attr(&quot;data-orig-thumb-height&quot;));
+				lightboxImage.attr(&quot;data-orig-thumb-width&quot;,currentPaginator.attr(&quot;data-orig-thumb-width&quot;));
+			}
+			lightboxImage.attr(&quot;data-vbid&quot;,currentPaginator.attr(&quot;data-vbid&quot;));
+			wrapper.find(&quot;.lightbox-title&quot;).text(currentPaginator.attr(&quot;data-title&quot;));
+			wrapper.find(&quot;.lightbox-subtitle&quot;).text(currentPaginator.attr(&quot;data-subtitle&quot;));
+			setTimeout(function(){
+				LightBox.arrange();
+			},0);
+</P><P>		});
+	}else{
+		lightboxWrapper.find(&quot;.lightbox-arrow&quot;).hide();
+	}
+};
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

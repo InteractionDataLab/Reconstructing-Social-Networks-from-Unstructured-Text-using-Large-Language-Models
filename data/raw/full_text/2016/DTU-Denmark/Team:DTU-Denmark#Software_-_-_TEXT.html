@@ -1,0 +1,156 @@
+Team:DTU-Denmark/Software
+New HTML template for the wiki
+☰
+⇦
+Jump to
+Project
+Wetlab
+Compute
+Team
+Outreach
+Description
+Proof of Concept
+Achievements
+Notebook
+Safety
+Parts
+Substrate
+Products
+Molecular Toolbox
+Interlab
+Codon Optimization
+Microfermenter
+Modeling
+Team Members
+Team Building
+Attributions
+Collaborations
+Practices
+Integrated Practices
+Biosensor
+Bootstrap Example
+CODON OPTIMIZATION SOFTWARE
+The time for implementation of sophisticated computational approaches into biology has finally come. The DTU Biobuilders team was well aware of this fact and therefore took a leap forward by developing TaiCO, a unique specialized yet user-friendly codon optimization tool based on species specific tAI calculation.
+"There are two ways of constructing a software design. One way is to make it so simple that there are obviously no deficiencies. And the other way is to make it so complicated that there are no obvious deficiencies."
+C.A.R. Hoare
+Overview
+"There are two ways of constructing a software design. One way is to make it so simple that there are obviously no deficiencies. And the other way is to make it so complicated that there are no obvious deficiencies."
+C.A.R. Hoare
+The increased use of non-conventional organisms for conventional purposes increases the need for codon optimization of coding sequences that are used for heterologous protein production. Codon optimization is typically performed by replacing each codon with the most frequently used synonymous from the host genome. The assumption that the most frequent synonymous codon is also the most efficiently translated codon is not necessarily true when it is considered that a typical or average transcript is not one that is likely to have a higher than average translation efficiency. Highly translated transcripts often contain “reserved” codons that are not the most common. Instead, these transcripts contain codons that best match the tRNA pools in the cell. These tRNA pools can be estimated by the number of tRNA genes that have an anticodon  which corresponds to a given codon. This approach is known as the tRNA Adaptation Index (tAI) 1 when used to assess the translation efficiency of a coding sequence.
+From Blackboard Calculations to Software
+TaiCO (tAI Codon Optimaztion tool) constitutes a unique computational tool for answering  the common biological question: What coding DNA sequence will result in maximum protein expression? The DTU Biobuilders' proposal for solving this task is a stand-alone application that is based completely on species specific tAI calculation and is bundled with a simplistic Graphic User Interface (GUI) compatible with many platforms. We hope that this software will contribute to faster and easier to production of biotechnological results and become a high-end optimizing method with its unique theory implementation.
+The TaiCO Interface
+×
+The TaiCO Interface
+Theory
+As mentioned, the central issue in codon optimization is to determine which codons are most efficiently translated for each amino acid. The quantity needed for this task is called 'translatability' and is denoted \(W_i\) for the \(i\)'th codon.
+To accomplish this, we have chosen to use a tRNA Adaptation Index-based method (tAI). The fundamental assumption behind this method is that highly expressed proteins have their genes encoded with a set of codons that is overall more susceptible to tRNA-binding and translation compared to proteins that are not highly expressed. Hence, this optimization method estimates the codon preferences in such a way that the correlation between protein level and tAI is maximized.
+The formulas for calculating individual \(W_i\)'s were stated by dosReis 1 . All 64 \(W_i\)'s can be calculated in one matrix multiplication, by letting \(G\) be the 4\(\times\)16 matrix consisting of the tGCN's (in TaiCO referred to as 'gcn') and letting \(S\) be the 4\( \times\)4 matrix containing the (1 \(-s_{ij}\)) values. Hence,
+$$W = SG$$
+The computed \(W_i\)'s are then normalized by putting \(w_i = W_i/W_{\text{max}}\), and those normalized translatabilities, \(w_i\) do then form the basis for codon selection. Higher \(w_i\)-values are simply selected over lower values.
+The \(G\) Matrix
+\(G\) consists of 64 tGCN values, which are the gene copy number of tRNA's recognizing specific codons. Normally, available gcn-files list the tGCN's in terms of the reversed anticodon corresponding to the recognized codon, hence, the tricodons in the raw gcn-files are reversed and have their bases replaced by the complementary ones. For instance, in S. cerevisiae the gcn of tRNA's recognizing TTC (encoding glutamic acid) is 10, so in the raw file, this information is presented as the reversed anticodon, GAA, being equal to 10 instead. When converted into their encoding form, the tGCN's are put into the \(G\) matrix such that each column has the first two position fixed and each row has a fixed third position:
+AAA
+ACA
+AGA
+ATA
+CAA
+CCA
+CGA
+CTA
+GAA
+GCA
+GGA
+GTA
+TAA
+TCA
+TGA
+TTA
+AAC
+ACC
+AGC
+ATC
+CAC
+CCC
+CGC
+CTC
+GAC
+GCC
+GGC
+GTC
+TAC
+TCC
+TGC
+TTC
+AAG
+ACG
+AGG
+ATG
+CAG
+CCG
+CGG
+CTG
+GAG
+GCG
+GGG
+GTG
+TAG
+TCG
+TGG
+TTG
+AAT
+ACT
+AGT
+ATT
+CAT
+CCT
+CGT
+CTT
+GAT
+GCT
+GGT
+GTT
+TAT
+TCT
+TGT
+TTT
+The \(S\) Matrix
+While \(G\) is precisely known, \(S\) needs to be optimized. In dosReis 2004, the optimized \(s_{ij}\)-values for S. cerevisiae are published, yielding the \(S\)-matrix,       $$           S =           \begin{pmatrix}               1 & 0 & 0 & 0.0001 \\               0 & 1 & 0 & 0.72 \\               0.32 & 0 & 1 & 0 \\               0 & 0.59 & 0 & 1           \end{pmatrix}       $$       where both rows and columns are ordered as A,C,G,T. Thus, the \(W_i\)'s computed from the \(SG\) multiplication are each influenced by two tGCN's. As an example, calculating the translatability of CCG will be equal to the dot product of the third row of \(S\) (because the third position is a G), and the sixth row of \(G\) (because the first two positions are CC):       $$           W_{CCG} = 0.32 \cdot \text{tGCN}_{CCA} + 1 \cdot \text{tGCN}_{CCG}       $$       clearly taking the wobbling potential of G to A in the third position into account.
+TaiCO Features
+Our proposal for reliable and fast computational production of optimized DNA sequences comes under the name TaiCO. The need for a specialized software tool for optimization of Y. lipolytica DNA sequences became evident when the product subgroup of DTU Biobuilders started to design constructs for protein expression. TaiCO allowed the rapid analysis of the coding sequences of interest and due to the final simplistic architecture and low resources demands it was decided to extend its capabilities for every organism with tGCN files available.
+Software Overview
+TaiCO is implemented in Python3 , a high-level programming languages with a built-in library for GUI development called tkinter. The algorithm was structured in an easily modifiable layout, due to its static philosophy with the exclusive usage of only built-in libraries and modules in addition to the already known and commonly used "Pythonic" data structures (e.g dictionaries,lists). This software comes with the Open Software license GPL v3.
+For a more descriptive view on how the algorithm was implemented, links for the available versions are provided in a further section.
+Input Files and Result
+The first input file requested from TaiCO is a GCN table in simple text format. Although the software comes bundled with 7 GCN files from model organisms, other GCN tables can be uploaded. The second input file that the user has to provide is a list with a single or even multiple protein sequences in FASTA format. The final input file that the user can provide is the powerful capability of parsing a simple text file including the sequences of the restriction sites that have to be absent from the optimized DNA resulting sequences. The output of the analysis is a file saved in a FASTA format that contains all the optimized DNA sequences.
+Optimization - 3 Steps away from your lab (tutorial)
+Step 1: Double click on executable named "TaiCO"
+×
+Step 1: Double click on executable named "TaiCO"
+Step 2: Click on search file and select the file from your system (repeat for all "Search file" options)
+×
+Step 2: Click on search file and select the file from your system (repeat for all "Search file" options)
+Step 3: Click "Start analysis" button and wait until the successful message is poped-up
+×
+Step 3: Click "Start analysis" button and wait until the successful message is poped-up
+Core Algorithmic Approach, Runtime and Distribution
+The completed script was “converted” into an executable file along with all included modules using the PyInstaller 2 software. This allowed us to make TaiCO available for almost all Unix-based and Windows platforms. Due to the nature of the supporting PyInstaller software the user has only one mandatory computational task in order to be able to run the software, which is to download the preferred zipped version. The application runtime remains under 5 sec (system dependent) due to the computationally efficient production of optimized sequences codon by codon according to the corresponding maximum \(w_i\) value. In the case of restriction site elimination the selection of codons is performed along with the sequence production and less optimized codons are therefore incorporated. After the downloading procedure is done, the careful reading of the two README files in the relevant folder is strongly recommended. The system compatible version of TaiCO can be downloaded by clicking one of the following links:
+Windows: Click here to download Windows version
+Unix: Click here to download Unix version
+Mac OS X: There is no specific bundle for MacOS, both links from above can be used and after python3 installation the original source code can be ran with the following command : python3 TaiCO.py
+For further information regarding terms of use and how to use TaiCO properly you are strongly advised to inspect the README.txt file or contact the author by email: vrantos@hotmail.gr
+References
+dos Reis, Mario, Renos Savva, and Lorenz Wernisch. "Solving the riddle of codon usage preferences: a test for translational selection." Nucleic acids research 32.17 (2004): 5036-5044.
+PyInstaller Official Page
+Overview
+Theory
+TaiCO features
+References
+FIND US AT:
+DTU BIOBUILDERS
+DENMARK
+DTU - SØLTOFTS PLADS, BYGN. 221/002
+2800 KGS. LYNGBY
+E-mail:
+dtu-biobuilders-2016@googlegroups.com
+MAIN SPONSORS:

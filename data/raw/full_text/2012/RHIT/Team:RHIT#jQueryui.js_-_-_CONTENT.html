@@ -1,0 +1,585 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_RHIT_jQueryui_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:RHIT/jQueryui.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:RHIT/jQueryui.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:RHIT/jQueryui.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:RHIT/jQueryui.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:RHIT/jQueryui.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:RHIT/jQueryui.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>/*!
+</P><PRE>* jQuery UI Slider 1.8.22
+*
+* Copyright 2012, AUTHORS.txt (<A href="http://jqueryui.com/about" class="external free" rel="nofollow">http://jqueryui.com/about</A>)
+* Dual licensed under the MIT or GPL Version 2 licenses.
+* <A href="http://jquery.org/license" class="external free" rel="nofollow">http://jquery.org/license</A>
+*
+* <A href="http://docs.jquery.com/UI/Slider" class="external free" rel="nofollow">http://docs.jquery.com/UI/Slider</A>
+*
+* Depends:
+*	jquery.ui.core.js
+*	jquery.ui.mouse.js
+*	jquery.ui.widget.js
+*/
+</PRE><P>(function( $, undefined ) {
+</P><P>// number of pages in a slider
+// (how many times can you page up/down to go through the whole range)
+var numPages = 5;
+</P><P>$.widget( &quot;ui.slider&quot;, $.ui.mouse, {
+</P><P>	widgetEventPrefix: &quot;slide&quot;,
+</P><P>	options: {
+		animate: false,
+		distance: 0,
+		max: 100,
+		min: 0,
+		orientation: &quot;horizontal&quot;,
+		range: false,
+		step: 1,
+		value: 0,
+		values: null
+	},
+</P><P>	_create: function() {
+		var self = this,
+			o = this.options,
+			existingHandles = this.element.find( &quot;.ui-slider-handle&quot; ).addClass( &quot;ui-state-default ui-corner-all&quot; ),
+			handle = &quot;&lt;a class='ui-slider-handle ui-state-default ui-corner-all' href='#'&gt;&lt;/a&gt;&quot;,
+			handleCount = ( o.values &amp;&amp; o.values.length ) || 1,
+			handles = [];
+</P><P>		this._keySliding = false;
+		this._mouseSliding = false;
+		this._animateOff = true;
+		this._handleIndex = null;
+		this._detectOrientation();
+		this._mouseInit();
+</P><P>		this.element
+			.addClass( &quot;ui-slider&quot; +
+				&quot; ui-slider-&quot; + this.orientation +
+				&quot; ui-widget&quot; +
+				&quot; ui-widget-content&quot; +
+				&quot; ui-corner-all&quot; +
+				( o.disabled ? &quot; ui-slider-disabled ui-disabled&quot; : &quot;&quot; ) );
+</P><P>		this.range = $([]);
+</P><P>		if ( o.range ) {
+			if ( o.range === true ) {
+				if ( !o.values ) {
+					o.values = [ this._valueMin(), this._valueMin() ];
+				}
+				if ( o.values.length &amp;&amp; o.values.length !== 2 ) {
+					o.values = [ o.values[0], o.values[0] ];
+				}
+			}
+</P>
+			this.range = $( &quot;&quot; )
+<P>				.appendTo( this.element )
+				.addClass( &quot;ui-slider-range&quot; +
+				// note: this isn't the most fittingly semantic framework class for this element,
+				// but worked best visually with a variety of themes
+				&quot; ui-widget-header&quot; + 
+				( ( o.range === &quot;min&quot; || o.range === &quot;max&quot; ) ? &quot; ui-slider-range-&quot; + o.range : &quot;&quot; ) );
+		}
+</P><P>		for ( var i = existingHandles.length; i &lt; handleCount; i += 1 ) {
+			handles.push( handle );
+		}
+</P><P>		this.handles = existingHandles.add( $( handles.join( &quot;&quot; ) ).appendTo( self.element ) );
+</P><P>		this.handle = this.handles.eq( 0 );
+</P><P>		this.handles.add( this.range ).filter( &quot;a&quot; )
+			.click(function( event ) {
+				event.preventDefault();
+			})
+			.hover(function() {
+				if ( !o.disabled ) {
+					$( this ).addClass( &quot;ui-state-hover&quot; );
+				}
+			}, function() {
+				$( this ).removeClass( &quot;ui-state-hover&quot; );
+			})
+			.focus(function() {
+				if ( !o.disabled ) {
+					$( &quot;.ui-slider .ui-state-focus&quot; ).removeClass( &quot;ui-state-focus&quot; );
+					$( this ).addClass( &quot;ui-state-focus&quot; );
+				} else {
+					$( this ).blur();
+				}
+			})
+			.blur(function() {
+				$( this ).removeClass( &quot;ui-state-focus&quot; );
+			});
+</P><P>		this.handles.each(function( i ) {
+			$( this ).data( &quot;index.ui-slider-handle&quot;, i );
+		});
+</P><P>		this.handles
+			.keydown(function( event ) {
+				var index = $( this ).data( &quot;index.ui-slider-handle&quot; ),
+					allowed,
+					curVal,
+					newVal,
+					step;
+</P><P>				if ( self.options.disabled ) {
+					return;
+				}
+</P><P>				switch ( event.keyCode ) {
+					case $.ui.keyCode.HOME:
+					case $.ui.keyCode.END:
+					case $.ui.keyCode.PAGE_UP:
+					case $.ui.keyCode.PAGE_DOWN:
+					case $.ui.keyCode.UP:
+					case $.ui.keyCode.RIGHT:
+					case $.ui.keyCode.DOWN:
+					case $.ui.keyCode.LEFT:
+						event.preventDefault();
+						if ( !self._keySliding ) {
+							self._keySliding = true;
+							$( this ).addClass( &quot;ui-state-active&quot; );
+							allowed = self._start( event, index );
+							if ( allowed === false ) {
+								return;
+							}
+						}
+						break;
+				}
+</P><P>				step = self.options.step;
+				if ( self.options.values &amp;&amp; self.options.values.length ) {
+					curVal = newVal = self.values( index );
+				} else {
+					curVal = newVal = self.value();
+				}
+</P><P>				switch ( event.keyCode ) {
+					case $.ui.keyCode.HOME:
+						newVal = self._valueMin();
+						break;
+					case $.ui.keyCode.END:
+						newVal = self._valueMax();
+						break;
+					case $.ui.keyCode.PAGE_UP:
+						newVal = self._trimAlignValue( curVal + ( (self._valueMax() - self._valueMin()) / numPages ) );
+						break;
+					case $.ui.keyCode.PAGE_DOWN:
+						newVal = self._trimAlignValue( curVal - ( (self._valueMax() - self._valueMin()) / numPages ) );
+						break;
+					case $.ui.keyCode.UP:
+					case $.ui.keyCode.RIGHT:
+						if ( curVal === self._valueMax() ) {
+							return;
+						}
+						newVal = self._trimAlignValue( curVal + step );
+						break;
+					case $.ui.keyCode.DOWN:
+					case $.ui.keyCode.LEFT:
+						if ( curVal === self._valueMin() ) {
+							return;
+						}
+						newVal = self._trimAlignValue( curVal - step );
+						break;
+				}
+</P><P>				self._slide( event, index, newVal );
+			})
+			.keyup(function( event ) {
+				var index = $( this ).data( &quot;index.ui-slider-handle&quot; );
+</P><P>				if ( self._keySliding ) {
+					self._keySliding = false;
+					self._stop( event, index );
+					self._change( event, index );
+					$( this ).removeClass( &quot;ui-state-active&quot; );
+				}
+</P><P>			});
+</P><P>		this._refreshValue();
+</P><P>		this._animateOff = false;
+	},
+</P><P>	destroy: function() {
+		this.handles.remove();
+		this.range.remove();
+</P><P>		this.element
+			.removeClass( &quot;ui-slider&quot; +
+				&quot; ui-slider-horizontal&quot; +
+				&quot; ui-slider-vertical&quot; +
+				&quot; ui-slider-disabled&quot; +
+				&quot; ui-widget&quot; +
+				&quot; ui-widget-content&quot; +
+				&quot; ui-corner-all&quot; )
+			.removeData( &quot;slider&quot; )
+			.unbind( &quot;.slider&quot; );
+</P><P>		this._mouseDestroy();
+</P><P>		return this;
+	},
+</P><P>	_mouseCapture: function( event ) {
+		var o = this.options,
+			position,
+			normValue,
+			distance,
+			closestHandle,
+			self,
+			index,
+			allowed,
+			offset,
+			mouseOverHandle;
+</P><P>		if ( o.disabled ) {
+			return false;
+		}
+</P><P>		this.elementSize = {
+			width: this.element.outerWidth(),
+			height: this.element.outerHeight()
+		};
+		this.elementOffset = this.element.offset();
+</P><P>		position = { x: event.pageX, y: event.pageY };
+		normValue = this._normValueFromMouse( position );
+		distance = this._valueMax() - this._valueMin() + 1;
+		self = this;
+		this.handles.each(function( i ) {
+			var thisDistance = Math.abs( normValue - self.values(i) );
+			if ( distance &gt; thisDistance ) {
+				distance = thisDistance;
+				closestHandle = $( this );
+				index = i;
+			}
+		});
+</P><P>		// workaround for bug #3736 (if both handles of a range are at 0,
+		// the first is always used as the one with least distance,
+		// and moving it is obviously prevented by preventing negative ranges)
+		if( o.range === true &amp;&amp; this.values(1) === o.min ) {
+			index += 1;
+			closestHandle = $( this.handles[index] );
+		}
+</P><P>		allowed = this._start( event, index );
+		if ( allowed === false ) {
+			return false;
+		}
+		this._mouseSliding = true;
+</P><P>		self._handleIndex = index;
+</P><P>		closestHandle
+			.addClass( &quot;ui-state-active&quot; )
+			.focus();
+</P><P>		offset = closestHandle.offset();
+		mouseOverHandle = !$( event.target ).parents().andSelf().is( &quot;.ui-slider-handle&quot; );
+		this._clickOffset = mouseOverHandle ? { left: 0, top: 0 } : {
+			left: event.pageX - offset.left - ( closestHandle.width() / 2 ),
+			top: event.pageY - offset.top -
+				( closestHandle.height() / 2 ) -
+				( parseInt( closestHandle.css(&quot;borderTopWidth&quot;), 10 ) || 0 ) -
+				( parseInt( closestHandle.css(&quot;borderBottomWidth&quot;), 10 ) || 0) +
+				( parseInt( closestHandle.css(&quot;marginTop&quot;), 10 ) || 0)
+		};
+</P><P>		if ( !this.handles.hasClass( &quot;ui-state-hover&quot; ) ) {
+			this._slide( event, index, normValue );
+		}
+		this._animateOff = true;
+		return true;
+	},
+</P><P>	_mouseStart: function( event ) {
+		return true;
+	},
+</P><P>	_mouseDrag: function( event ) {
+		var position = { x: event.pageX, y: event.pageY },
+			normValue = this._normValueFromMouse( position );
+</P><P>		this._slide( event, this._handleIndex, normValue );
+</P><P>		return false;
+	},
+</P><P>	_mouseStop: function( event ) {
+		this.handles.removeClass( &quot;ui-state-active&quot; );
+		this._mouseSliding = false;
+</P><P>		this._stop( event, this._handleIndex );
+		this._change( event, this._handleIndex );
+</P><P>		this._handleIndex = null;
+		this._clickOffset = null;
+		this._animateOff = false;
+</P><P>		return false;
+	},
+</P><P>	_detectOrientation: function() {
+		this.orientation = ( this.options.orientation === &quot;vertical&quot; ) ? &quot;vertical&quot; : &quot;horizontal&quot;;
+	},
+</P><P>	_normValueFromMouse: function( position ) {
+		var pixelTotal,
+			pixelMouse,
+			percentMouse,
+			valueTotal,
+			valueMouse;
+</P><P>		if ( this.orientation === &quot;horizontal&quot; ) {
+			pixelTotal = this.elementSize.width;
+			pixelMouse = position.x - this.elementOffset.left - ( this._clickOffset ? this._clickOffset.left : 0 );
+		} else {
+			pixelTotal = this.elementSize.height;
+			pixelMouse = position.y - this.elementOffset.top - ( this._clickOffset ? this._clickOffset.top : 0 );
+		}
+</P><P>		percentMouse = ( pixelMouse / pixelTotal );
+		if ( percentMouse &gt; 1 ) {
+			percentMouse = 1;
+		}
+		if ( percentMouse &lt; 0 ) {
+			percentMouse = 0;
+		}
+		if ( this.orientation === &quot;vertical&quot; ) {
+			percentMouse = 1 - percentMouse;
+		}
+</P><P>		valueTotal = this._valueMax() - this._valueMin();
+		valueMouse = this._valueMin() + percentMouse * valueTotal;
+</P><P>		return this._trimAlignValue( valueMouse );
+	},
+</P><P>	_start: function( event, index ) {
+		var uiHash = {
+			handle: this.handles[ index ],
+			value: this.value()
+		};
+		if ( this.options.values &amp;&amp; this.options.values.length ) {
+			uiHash.value = this.values( index );
+			uiHash.values = this.values();
+		}
+		return this._trigger( &quot;start&quot;, event, uiHash );
+	},
+</P><P>	_slide: function( event, index, newVal ) {
+		var otherVal,
+			newValues,
+			allowed;
+</P><P>		if ( this.options.values &amp;&amp; this.options.values.length ) {
+			otherVal = this.values( index ? 0 : 1 );
+</P><P>			if ( ( this.options.values.length === 2 &amp;&amp; this.options.range === true ) &amp;&amp; 
+					( ( index === 0 &amp;&amp; newVal &gt; otherVal) || ( index === 1 &amp;&amp; newVal &lt; otherVal ) )
+				) {
+				newVal = otherVal;
+			}
+</P><P>			if ( newVal !== this.values( index ) ) {
+				newValues = this.values();
+				newValues[ index ] = newVal;
+				// A slide can be canceled by returning false from the slide callback
+				allowed = this._trigger( &quot;slide&quot;, event, {
+					handle: this.handles[ index ],
+					value: newVal,
+					values: newValues
+				} );
+				otherVal = this.values( index ? 0 : 1 );
+				if ( allowed !== false ) {
+					this.values( index, newVal, true );
+				}
+			}
+		} else {
+			if ( newVal !== this.value() ) {
+				// A slide can be canceled by returning false from the slide callback
+				allowed = this._trigger( &quot;slide&quot;, event, {
+					handle: this.handles[ index ],
+					value: newVal
+				} );
+				if ( allowed !== false ) {
+					this.value( newVal );
+				}
+			}
+		}
+	},
+</P><P>	_stop: function( event, index ) {
+		var uiHash = {
+			handle: this.handles[ index ],
+			value: this.value()
+		};
+		if ( this.options.values &amp;&amp; this.options.values.length ) {
+			uiHash.value = this.values( index );
+			uiHash.values = this.values();
+		}
+</P><P>		this._trigger( &quot;stop&quot;, event, uiHash );
+	},
+</P><P>	_change: function( event, index ) {
+		if ( !this._keySliding &amp;&amp; !this._mouseSliding ) {
+			var uiHash = {
+				handle: this.handles[ index ],
+				value: this.value()
+			};
+			if ( this.options.values &amp;&amp; this.options.values.length ) {
+				uiHash.value = this.values( index );
+				uiHash.values = this.values();
+			}
+</P><P>			this._trigger( &quot;change&quot;, event, uiHash );
+		}
+	},
+</P><P>	value: function( newValue ) {
+		if ( arguments.length ) {
+			this.options.value = this._trimAlignValue( newValue );
+			this._refreshValue();
+			this._change( null, 0 );
+			return;
+		}
+</P><P>		return this._value();
+	},
+</P><P>	values: function( index, newValue ) {
+		var vals,
+			newValues,
+			i;
+</P><P>		if ( arguments.length &gt; 1 ) {
+			this.options.values[ index ] = this._trimAlignValue( newValue );
+			this._refreshValue();
+			this._change( null, index );
+			return;
+		}
+</P><P>		if ( arguments.length ) {
+			if ( $.isArray( arguments[ 0 ] ) ) {
+				vals = this.options.values;
+				newValues = arguments[ 0 ];
+				for ( i = 0; i &lt; vals.length; i += 1 ) {
+					vals[ i ] = this._trimAlignValue( newValues[ i ] );
+					this._change( null, i );
+				}
+				this._refreshValue();
+			} else {
+				if ( this.options.values &amp;&amp; this.options.values.length ) {
+					return this._values( index );
+				} else {
+					return this.value();
+				}
+			}
+		} else {
+			return this._values();
+		}
+	},
+</P><P>	_setOption: function( key, value ) {
+		var i,
+			valsLength = 0;
+</P><P>		if ( $.isArray( this.options.values ) ) {
+			valsLength = this.options.values.length;
+		}
+</P><P>		$.Widget.prototype._setOption.apply( this, arguments );
+</P><P>		switch ( key ) {
+			case &quot;disabled&quot;:
+				if ( value ) {
+					this.handles.filter( &quot;.ui-state-focus&quot; ).blur();
+					this.handles.removeClass( &quot;ui-state-hover&quot; );
+					this.handles.propAttr( &quot;disabled&quot;, true );
+					this.element.addClass( &quot;ui-disabled&quot; );
+				} else {
+					this.handles.propAttr( &quot;disabled&quot;, false );
+					this.element.removeClass( &quot;ui-disabled&quot; );
+				}
+				break;
+			case &quot;orientation&quot;:
+				this._detectOrientation();
+				this.element
+					.removeClass( &quot;ui-slider-horizontal ui-slider-vertical&quot; )
+					.addClass( &quot;ui-slider-&quot; + this.orientation );
+				this._refreshValue();
+				break;
+			case &quot;value&quot;:
+				this._animateOff = true;
+				this._refreshValue();
+				this._change( null, 0 );
+				this._animateOff = false;
+				break;
+			case &quot;values&quot;:
+				this._animateOff = true;
+				this._refreshValue();
+				for ( i = 0; i &lt; valsLength; i += 1 ) {
+					this._change( null, i );
+				}
+				this._animateOff = false;
+				break;
+		}
+	},
+</P><P>	//internal value getter
+	// _value() returns value trimmed by min and max, aligned by step
+	_value: function() {
+		var val = this.options.value;
+		val = this._trimAlignValue( val );
+</P><P>		return val;
+	},
+</P><P>	//internal values getter
+	// _values() returns array of values trimmed by min and max, aligned by step
+	// _values( index ) returns single value trimmed by min and max, aligned by step
+	_values: function( index ) {
+		var val,
+			vals,
+			i;
+</P><P>		if ( arguments.length ) {
+			val = this.options.values[ index ];
+			val = this._trimAlignValue( val );
+</P><P>			return val;
+		} else {
+			// .slice() creates a copy of the array
+			// this copy gets trimmed by min and max and then returned
+			vals = this.options.values.slice();
+			for ( i = 0; i &lt; vals.length; i+= 1) {
+				vals[ i ] = this._trimAlignValue( vals[ i ] );
+			}
+</P><P>			return vals;
+		}
+	},
+</P><P>	// returns the step-aligned value that val is closest to, between (inclusive) min and max
+	_trimAlignValue: function( val ) {
+		if ( val &lt;= this._valueMin() ) {
+			return this._valueMin();
+		}
+		if ( val &gt;= this._valueMax() ) {
+			return this._valueMax();
+		}
+		var step = ( this.options.step &gt; 0 ) ? this.options.step : 1,
+			valModStep = (val - this._valueMin()) % step,
+			alignValue = val - valModStep;
+</P><P>		if ( Math.abs(valModStep) * 2 &gt;= step ) {
+			alignValue += ( valModStep &gt; 0 ) ? step : ( -step );
+		}
+</P><P>		// Since JavaScript has problems with large floats, round
+		// the final value to 5 digits after the decimal point (see #4124)
+		return parseFloat( alignValue.toFixed(5) );
+	},
+</P><P>	_valueMin: function() {
+		return this.options.min;
+	},
+</P><P>	_valueMax: function() {
+		return this.options.max;
+	},
+</P><P>	_refreshValue: function() {
+		var oRange = this.options.range,
+			o = this.options,
+			self = this,
+			animate = ( !this._animateOff ) ? o.animate : false,
+			valPercent,
+			_set = {},
+			lastValPercent,
+			value,
+			valueMin,
+			valueMax;
+</P><P>		if ( this.options.values &amp;&amp; this.options.values.length ) {
+			this.handles.each(function( i, j ) {
+				valPercent = ( self.values(i) - self._valueMin() ) / ( self._valueMax() - self._valueMin() ) * 100;
+				_set[ self.orientation === &quot;horizontal&quot; ? &quot;left&quot; : &quot;bottom&quot; ] = valPercent + &quot;%&quot;;
+				$( this ).stop( 1, 1 )[ animate ? &quot;animate&quot; : &quot;css&quot; ]( _set, o.animate );
+				if ( self.options.range === true ) {
+					if ( self.orientation === &quot;horizontal&quot; ) {
+						if ( i === 0 ) {
+							self.range.stop( 1, 1 )[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { left: valPercent + &quot;%&quot; }, o.animate );
+						}
+						if ( i === 1 ) {
+							self.range[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { width: ( valPercent - lastValPercent ) + &quot;%&quot; }, { queue: false, duration: o.animate } );
+						}
+					} else {
+						if ( i === 0 ) {
+							self.range.stop( 1, 1 )[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { bottom: ( valPercent ) + &quot;%&quot; }, o.animate );
+						}
+						if ( i === 1 ) {
+							self.range[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { height: ( valPercent - lastValPercent ) + &quot;%&quot; }, { queue: false, duration: o.animate } );
+						}
+					}
+				}
+				lastValPercent = valPercent;
+			});
+		} else {
+			value = this.value();
+			valueMin = this._valueMin();
+			valueMax = this._valueMax();
+			valPercent = ( valueMax !== valueMin ) ?
+					( value - valueMin ) / ( valueMax - valueMin ) * 100 :
+					0;
+			_set[ self.orientation === &quot;horizontal&quot; ? &quot;left&quot; : &quot;bottom&quot; ] = valPercent + &quot;%&quot;;
+			this.handle.stop( 1, 1 )[ animate ? &quot;animate&quot; : &quot;css&quot; ]( _set, o.animate );
+</P><P>			if ( oRange === &quot;min&quot; &amp;&amp; this.orientation === &quot;horizontal&quot; ) {
+				this.range.stop( 1, 1 )[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { width: valPercent + &quot;%&quot; }, o.animate );
+			}
+			if ( oRange === &quot;max&quot; &amp;&amp; this.orientation === &quot;horizontal&quot; ) {
+				this.range[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { width: ( 100 - valPercent ) + &quot;%&quot; }, { queue: false, duration: o.animate } );
+			}
+			if ( oRange === &quot;min&quot; &amp;&amp; this.orientation === &quot;vertical&quot; ) {
+				this.range.stop( 1, 1 )[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { height: valPercent + &quot;%&quot; }, o.animate );
+			}
+			if ( oRange === &quot;max&quot; &amp;&amp; this.orientation === &quot;vertical&quot; ) {
+				this.range[ animate ? &quot;animate&quot; : &quot;css&quot; ]( { height: ( 100 - valPercent ) + &quot;%&quot; }, { queue: false, duration: o.animate } );
+			}
+		}
+	}
+</P><P>});
+</P><P>$.extend( $.ui.slider, {
+	version: &quot;1.8.22&quot;
+});
+</P><P>}(jQuery));
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:RHIT/jQueryui.js">http://2012.igem.org/Team:RHIT/jQueryui.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:RHIT/jQueryui.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:RHIT/jQueryui.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:RHIT/jQueryui.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:RHIT/jQueryui.js&amp;oldid=57503" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

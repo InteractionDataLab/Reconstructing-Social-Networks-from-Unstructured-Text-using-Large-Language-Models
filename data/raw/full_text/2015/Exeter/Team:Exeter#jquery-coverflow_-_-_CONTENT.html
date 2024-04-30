@@ -1,0 +1,275 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Exeter_jquery-coverflow skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Exeter/jquery-coverflow</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*jslint devel: true, bitwise: true, regexp: true, browser: true, confusion: true, unparam: true, eqeq: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
+/*globals jQuery */
+</P><P>/*!
+</P><PRE>* Coverflow
+*
+* Copyright (c) 2013 Martijn W. van der Lee
+* Licensed under the MIT.
+*/
+</PRE><P>/* Lightweight and flexible coverflow effect using CSS3 transforms.
+</P><PRE>* For modern browsers with some amount of graceful degradation.
+* Optional support for jQuery.interpolate() plugin.
+* Optional support for .reflect() plugins.
+*
+* Requires jQuery 1.7+ and jQueryUI 1.9+.
+* Recommended jQuery 1.8+ and jQueryUI 1.9+.
+*/
+</PRE><DL><DT>(function($, undefined) {</DT></DL><P>	&quot;use strict&quot;;
+</P><P>	var sign	= function(number) {
+					return number &lt; 0 ? -1 : 1;
+				},
+		scl		= function(number, fromMin, fromMax, toMin, toMax) {
+					return ((number - fromMin) * (toMax - toMin) / (fromMax - fromMin)) + toMin;
+				};
+</P><P>	$.widget(&quot;vanderlee.coverflow&quot;, {
+		options: {
+			animateComplete:	undefined,
+			animateStep:		undefined,
+			density:			1,
+			duration:			'normal',
+			easing:				undefined,
+			index:				0,
+			innerAngle:			-75,
+			innerCss:			undefined,
+			innerOffset:		100 / 3,
+			innerScale:			0.75,
+			outerAngle:			-30,
+			outerCss:			undefined,
+			outerScale:			0.25,
+			selectedCss:		undefined,
+			visible:			'density',		// 'density', 'all', NNN (exact)
+			width:				undefined,
+</P><P>			change:				undefined,		// Whenever index is changed
+			confirm:			undefined,		// Whenever clicking on the current item
+			select:				undefined		// Whenever index is set (also on init)
+		},
+</P><P>		_create: function() {
+			var that = this;
+</P><P>			// Internal event prefix
+			that.widgetEventPrefix	= 'vanderlee-coverflow';
+</P><P>			that.hovering			= false;
+			that.pagesize			= 1;
+			that.currentIndex		= that.options.index;
+</P><P>			// Fix height
+			that.element.height(that._getCovers().first().height());
+</P><P>			// Hide all covers and set position to absolute
+			that._getCovers().hide().css('position', 'absolute');
+</P><P>			// Enable click-jump
+			that.element.on('click', '&gt; *', function() {
+				var index = that._getCovers().index(this);
+				if (index === that.currentIndex) {
+					that._callback('confirm');
+				} else {
+					that._setIndex(index, true);
+				}
+			});
+</P><P>			// Refresh on resize
+			$(window).resize(function() {
+				that.refresh();
+			});
+</P><P>			// Mousewheel
+			that.element.on('mousewheel', function(event, delta) {
+				event.preventDefault();
+				that._setIndex(that.options.index - delta, true);
+			});
+</P><P>			// Swipe
+			if ($.isFunction(that.element.swipe)) {
+				that.element.swipe({
+					swipe: function(event, direction, distance, duration, fingerCount) {
+						var count = Math.round((direction === 'left' ? 1 : -1) * 1.25 * that.pagesize * distance / that.element.width());
+						that._setIndex(that.options.index + count, true);
+					}
+				});
+			}
+</P><P>			// Keyboard
+			that.element.hover(
+				function() { that.hovering = true; }
+			,	function() { that.hovering = false; }
+			);
+</P><P>			$(window).on('keydown', function(event) {
+				if (that.hovering) {
+					switch (event.which) {
+						case 36:	// home
+							event.preventDefault();
+							that._setIndex(0, true);
+							break;
+</P><P>						case 35:	// end
+							event.preventDefault();
+							that._setIndex(that._getCovers().length - 1, true);
+							break;
+</P><P>						case 38:	// up
+						case 37:	// left
+							event.preventDefault();
+							that._setIndex(that.options.index - 1, true);
+							break;
+</P><P>						case 40:	// down
+						case 39:	// right
+							event.preventDefault();
+							that._setIndex(that.options.index + 1, true);
+							break;
+</P><P>						case 33:	// page up (towards home)
+							event.preventDefault();
+							that._setIndex(that.options.index - that.pagesize, true);
+							break;
+</P><P>						case 34:	// page down (towards end)
+							event.preventDefault();
+							that._setIndex(that.options.index + that.pagesize, true);
+							break;
+					}
+				}
+			});
+</P><P>			// Initialize
+			that._setIndex(that.options.index, false, true);
+			that.refresh();
+</P><P>			return that;
+		},
+</P><P>		/**
+		 * Returns the currently selected cover
+		 * @returns {jQuery} jQuery object
+		 */
+		cover: function() {
+			return $(this._getCovers()[this.options.index]);
+		},
+</P><P>		/**
+		 *
+		 * @returns {unresolved}
+		 */
+		_getCovers: function() {
+			return $('&gt; *', this.element);
+		},
+</P><P>		_setIndex: function(index, animate, initial) {
+			var covers = this._getCovers();
+</P><P>			index = Math.max(0, Math.min(index, covers.length - 1));
+</P><P>			if (index !== this.options.index) {
+				this.refresh();		// pre-correct for reflection/mods
+</P><P>				if (animate === true) {
+					this.currentIndex	= this.options.index;
+					this.options.index	= Math.round(index);
+</P><P>					var that		= this,
+						duration	= typeof that.options.duration === &quot;number&quot;
+									? that.options.duration
+									: jQuery.fx.speeds[that.options.duration] || jQuery.fx.speeds._default,
+						timeout		= null,
+						step		= that.options.index &gt; that.currentIndex ? 1 : -1,
+						doStep		= function() {
+										var steps	= Math.abs(that.options.index - that.currentIndex),
+											time	= duration / Math.max(1, steps) * 0.5;
+										if (that.options.index !== that.currentIndex) {
+											that.currentIndex += step;
+											that.refresh.call(that, time, that.currentIndex);
+											timeout = setTimeout(doStep, time);
+										}
+										that._callback('change');
+										that._callback('select');
+									};
+					if (timeout) {
+						clearTimeout(timeout);
+					}
+					if (that.currentIndex !== this.options.index) {
+						doStep();
+					}
+				} else {
+					this.currentIndex = this.options.index = Math.round(index);
+					this.refresh(this.options.duration);
+					this._callback('change');
+					this._callback('select');
+				}
+			} else if (initial === true) {
+				this.refresh();
+				this._callback('select');
+			}
+		},
+</P><P>		_callback: function(callback) {
+			this._trigger(callback, null, this._getCovers().get(this.currentIndex), this.currentIndex);
+		},
+</P><P>		index: function(index) {
+			if (index === undefined) {
+				return this.options.index;
+			}
+			this._setIndex(index, true);
+		},
+</P><P>		refresh: function(duration, index) {
+			var that		= this,
+				target		= index || that.options.index,
+				count		= that._getCovers().length,
+				parentWidth	= that.element.innerWidth(),
+				coverWidth	= that.options.width || that._getCovers().first().outerWidth(),
+				visible		= that.options.visible === 'density'	? Math.round(parentWidth * that.options.density / coverWidth)
+							: $.isNumeric(that.options.visible)		? that.options.visible
+							: count,
+				parentLeft	= that.element.position().left - ((1 - that.options.outerScale) * coverWidth * 0.5),
+				space		= (parentWidth - (that.options.outerScale * coverWidth)) * 0.5;
+</P><P>			duration		= duration || 0;
+</P><P>			that.pagesize	= visible;
+</P><P>			that._getCovers().removeClass('current').each(function(index, cover) {
+				var position	= index - target,
+					offset		= position / visible,
+					isVisible	= Math.abs(offset) &lt;= 1,
+					sin			= isVisible ? Math.sin(offset * Math.PI * 0.5)
+								: sign(offset),
+					cos			= isVisible ? Math.cos(offset * Math.PI * 0.5)
+								: 0,
+					isMiddle	= position === 0,
+					zIndex		= count - Math.abs(position),
+					left		= parentLeft + space + (isMiddle ? 0 : sign(sin) * scl(Math.abs(sin), 0, 1, that.options.innerOffset * that.options.density, space)),
+					scale		= !isVisible? 0
+								: isMiddle	? 1
+								: scl(Math.abs(cos), 1, 0, that.options.innerScale, that.options.outerScale),
+					angle		= isMiddle	? 0
+								: sign(sin) * scl(Math.abs(sin), 0, 1, that.options.innerAngle, that.options.outerAngle),
+					state		= {},
+					css			= isMiddle ? that.options.selectedCss || {}
+								: ( $.interpolate &amp;&amp; that.options.outerCss &amp;&amp; !$.isEmptyObject(that.options.outerCss) ? (
+									isVisible ? $.interpolate(that.options.innerCss || {}, that.options.outerCss, Math.abs(sin))
+											  : that.options.outerCss
+									) : {}
+								),
+					transform;
+</P><P>				if (isVisible) {
+					$(cover).show();
+				}
+</P><P>				$(cover).stop().css({
+					'z-index':	zIndex
+				}).animate($.extend(css, {
+					'left':		left,
+					'_sin':		sin,
+					'_cos':		cos,
+					'_scale':	scale,
+					'_angle':	angle	// must be last!
+				}), {
+					'easing':	that.options.easing,
+					'duration': duration,
+					'step':		function(now, fx) {
+						// Store state
+						state[fx.prop] = now;
+</P><P>						// On last of the states, change all at once
+						if (fx.prop === '_angle') {
+							transform = 'scale(' + state._scale + ',' + state._scale + ') perspective('+(parentWidth * 0.5)+'px) rotateY(' + state._angle + 'deg)';
+							$(this).css({
+								'-webkit-transform':	transform,
+								'-ms-transform':		transform,
+								'transform':			transform
+							});
+</P><P>							// Optional callback
+							that._trigger('animateStep', cover, [cover, offset, isVisible, isMiddle, state._sin, state._cos]);
+						}
+					},
+					'complete':		function() {
+						$(this)[isMiddle ? 'addClass' : 'removeClass']('current');
+						$(this)[isVisible ? 'show' : 'hide']();
+</P><P>						// Optional callback
+						that._trigger('animateComplete', cover, [cover, offset, isVisible, isMiddle, sin, cos]);
+					}
+				});
+			});
+		}
+	});
+}(jQuery));
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

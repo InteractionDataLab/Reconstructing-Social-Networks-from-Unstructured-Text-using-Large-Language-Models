@@ -1,0 +1,443 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Leiden_scripts_kast_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Leiden/scripts/kast js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>$( 'body' ).ready(function(){
+</P><PRE> var classes = [
+   {
+     number : 1,
+     plant : 'aardappel',
+     width : '325',
+   },{
+     number : 2,
+     plant : 'tomaat',
+     width : '275',
+   },{
+     number : 3,
+     plant : 'rucola',
+     width : '250',
+   },{
+     number : 4,
+     plant : 'radijs',
+     width : '225',
+   }
+ ];
+ window.classes = classes;
+</PRE><PRE> var kast = {
+   images : {},
+</PRE><PRE>   load_images : function(){
+     tags = ['background','links','plank','rechts','plankrechts','logo','social_facebook','social_twitter','social_linkedin'];
+     for (var tag_index in tags) {
+       tag = tags[ tag_index ];
+       window.kast.images[ tag ] = $( &quot;#&quot; + tag );
+     }
+   },
+</PRE><PRE>   load : function(){
+     window.kast.load_images();
+</PRE><PRE>   },
+</PRE><PRE>   dimensions : {
+     widths : {
+       rand_kast    : 100,
+       einde_plank  : 120,
+       front_rand_kast : 40,
+       plank_width_full : 2500,
+       plant_left_offset : 100
+     },
+     heights : {
+       plank_height : 270,
+       kast_top_offset : 450,
+     },
+     kast : {
+</PRE><PRE>     }
+   },
+</PRE><PRE>   init : function( target_selector, donors, classes ){
+     window.kast.target_selector = target_selector;
+     window.kast.target = $( target_selector );
+</PRE>
+      window.kast.kast = $(&quot;<DIV>&quot;);
+<PRE>     window.kast.kast.appendTo( window.kast.target );
+</PRE><PRE>     window.kast.load();
+     window.kast.donors = donors;
+     window.kast.group_donors();
+     window.kast.classes = classes;
+</PRE><PRE>     window.kast.compute_kast_dimensions();
+     window.kast.firstDraw = true;
+     window.kast.draw();
+     window.kast.firstDraw = false;
+</PRE><PRE>     $( window ).resize(function(){
+      window.kast.compute_kast_dimensions();
+      window.kast.draw();
+     });
+   },
+</PRE><PRE>   draw : function(){
+     window.kast.kast.empty();
+</PRE><PRE>     window.kast.kast_draw_background();
+     window.kast.kast_draw_logo();
+     window.kast.kast_draw_header();
+     window.kast.kast_draw_social_media();
+</PRE><PRE>     window.kast.kast_draw_sides();
+</PRE><PRE>     window.kast.kast_draw_planks();
+     window.kast.kast_draw_plants();
+   },
+</PRE><PRE>   group_donors : function( ){
+     classes = [[],[],[],[]];
+</PRE><PRE>     for (var donor_index in window.kast.donors) {
+       var donor = window.kast.donors[ donor_index ];
+       classes[ donor.class - 1 ].push( donor );
+     }
+</PRE><PRE>     window.kast.donor_classes = classes;
+   },
+</PRE><PRE>   kast_group_num_donors : function( groupIndex ){
+     return window.kast.donor_classes[ groupIndex ].length;
+   },
+</PRE><PRE>   kast_group_num_donors_per_plank : function( groupIndex ){
+     var cl = window.kast.classes[ groupIndex ];
+     var width = cl.width / 2 + 50;
+</PRE><PRE>     var num_per_row = Math.floor( plank_width / width );
+     return Math.max( num_per_row, 1);
+   },
+</PRE><PRE>   kast_group_num_planks : function( groupIndex ){
+     return Math.ceil( window.kast.kast_group_num_donors( groupIndex ) / window.kast.kast_group_num_donors_per_plank( groupIndex ) );
+   },
+</PRE><PRE>   kast_plank_group : function( plankIndex ){
+     var planksHad = 0;
+     var classIndex = 0;
+     for( var cI = 0; cI &lt; window.kast.donor_classes.length; cI++ ){
+       var gNP = window.kast.kast_group_num_planks( cI );
+       planksHad += gNP;
+       if( planksHad &gt; plankIndex ){
+         classIndex = cI;
+         break;
+       }
+     }
+     return classIndex;
+   },
+</PRE><PRE>   kast_plank_height : function( plankIndex ){
+     var group = window.kast.kast_plank_group( plankIndex );
+     if( plankIndex &lt; 0 ){
+       return window.kast.dimensions.heights.kast_top_offset;
+     }
+</PRE><PRE>     var donorClass = window.kast.classes[ group ];
+     var current_plank_height = donorClass.width * 181 / 200 + 60;
+</PRE><PRE>     return current_plank_height + window.kast.kast_plank_height( plankIndex - 1 );
+   },
+</PRE><PRE>   kast_group_donor_position : function( groupIndex, donorIndexInGroup ){
+     // On what plank should this be placed?
+     var plankIndex = 0;
+     var plankIndexGroupStart = 0;
+     for( var gI = 0; gI &lt; groupIndex; gI++ ){
+       plankIndex += window.kast.kast_group_num_planks( gI );
+     }
+</PRE><PRE>     plankIndexGroupStart = plankIndex;
+</PRE><PRE>     plankIndex += Math.floor( donorIndexInGroup / window.kast.kast_group_num_donors_per_plank( groupIndex ) );
+</PRE><PRE>     var donor = window.kast.donor_classes[ groupIndex ][ donorIndexInGroup ];
+     var image = window.kast.kast_plant_image( donor, donorIndexInGroup );
+</PRE><PRE>     var group = window.kast.classes[ groupIndex ];
+     var width = group.width;
+     var height = (200/181) * width;
+</PRE><PRE>     var y = window.kast.kast_plank_height( plankIndex ) * 1 - height / 1.25 + 50;
+</PRE><PRE>     var mx = ( window.kast.dimensions.kast.width + 125 - window.kast.dimensions.widths.einde_plank ) / 2;
+</PRE><PRE>     var npg = window.kast.kast_group_num_donors( groupIndex );
+     var np = window.kast.kast_group_num_donors_per_plank( groupIndex );
+</PRE><PRE>     var nplanks = Math.ceil( npg / np );
+</PRE><PRE>     if( ( plankIndex - plankIndexGroupStart ) == nplanks - 1 ){
+       np = npg - (nplanks - 1) * np;
+     }
+</PRE><PRE>     var mi = ( np - 1 ) / 2;
+     var i = donorIndexInGroup % np;
+</PRE><PRE>     var ipd = ( window.kast.dimensions.kast.width - 2 * window.kast.dimensions.widths.einde_plank ) / np;
+</PRE><PRE>     var x = mx - 0.5 * width + ( mi - i ) * ipd;
+</PRE><PRE>     return {
+       x : x,
+       y : y
+     }
+   },
+</PRE><PRE>   kast_draw_header : function(){
+</PRE>
+      var header = $(&quot;<H1><SPAN class="mw-headline" id=".22.29.3B.0A.0A_header.html.28.22Backers.27_garden.22.29.3B.0A.0A_header.css.28.27position.27.2C.27absolute.27.29.3B.0A_header.css.28.27top.27.2C180.29.3B.0A.0A_header.css.28.27left.27.2C_0.29.3B.0A_header.css.28.27width.27.2C_.27100.25.27.29.3B.0A_header.css.28.27text-align.27.2C.27center.27.29.3B.0A.0A_header.css.28.27font-weight.27.2C.27bold.27.29.0A_header.css.28.27text-align.27.2C_.27center.27.29.3B.0A_header.css.28.27font-style.27.2C.27italic.27.29.3B.0A.0A_header.css.28.27font-family.27.2C.27Georgia.27.29.3B.0A_header.css.28.27opacity.27.2C0.8.29.3B.0A_header.css.28.27color.27.2C.27.23382400.27.29.3B.0A_header.css.28.27text-shadow.27.2C.270px_-1px_.23241700.27.29.3B.0A.0A_window.kast.kast.append.28_header_.29.3B.0A.0A_var_thanks_.3D_.24.28.22.22.29.3B.0A.0A_thanks.html.28.22iGEM_Leiden_2016_expresses_her_gratitude_to_the_generous_backers_of_the_.3Ca_style.3D.27color:_.23382400.3B.27_href.3D.27http:.2F.2Fwww.steunleiden.nl.2Fprojecten.2Feen-tuintje-op-mars.3Flocale.3Den.27.3Ecrowdfunding_campaign.3C.2Fa.3E_.5C.22A_Garden_On_Mars.5C.22._The_project_would_not_have_been_possible_without_them._.22.29.3B.0A.0A_thanks.css.28.27position.27.2C.27absolute.27.29.3B.0A.0A_var_mx_.3D_.28_window.kast.dimensions.kast.width_.2B_125_-_window.kast.dimensions.widths.einde_plank_.29_.2F_2.3B.0A_var_w_.3D_window.kast.dimensions.kast.width_-_2_.2A_window.kast.dimensions.widths.einde_plank.3B.0A.0A_thanks.css.28.27margin-left.27.2C_-w.2F2.29.3B.0A_thanks.css.28.27width.27.2C_w.29.3B.0A_thanks.css.28.27left.27.2C_mx.29.3B.0A_thanks.css.28.27bottom.27.2C_window.kast.kast.height.28.29_-_200.29.3B.0A.0A_thanks.css.28.27text-align.27.2C_.27center.27.29.3B.0A_thanks.css.28.27font-size.27.2C_16.29.3B.0A.0A_thanks.css.28.27font-family.27.2C.27Georgia.27.29.3B.0A_thanks.css.28.27opacity.27.2C0.8.29.3B.0A_thanks.css.28.27text-shadow.27.2C_.271px_1px_.23C4A772.27.29.3B.0A_thanks.css.28.27color.27.2C.27black.27.29.3B.0A.0A_window.kast.kast.append.28_thanks_.29.3B.0A_.7D.2C.0A.0A_kast_draw_logo_:_function.28.29.7B.0A_var_logoImg_.3D_window.kast.images.5B.27logo.27.5D.3B.0A.0A_.2F.2F_Add_the_logo_image_to_the_screen.0A_var_img_.3D_.24.28.22.3Cimg.3E.22.29.3B.0A_img.attr.28.27src.27.2C_logoImg.attr.28.27src.27.29.29.3B.0A_img.css.28.27top.27.2C_260.29.3B.0A.0A_var_width_.3D_window.kast.dimensions.kast.width.3B.0A_width_.3D_width_-_window.kast.dimensions.widths.einde_plank_-_36.3B.0A_var_middle_.3D_width_.2F_2_-_75.3B.0A.0A_img.css.28.27left.27.2C_middle_.2B_.27px.27.29.3B.0A_img.css.28.27position.27.2C_.27absolute.27.29.3B.0A_img.css.28.27width.27.2C.27300px.27.29.3B.0A.0A_window.kast.kast.append.28_img_.29.3B.0A_.7D.2C.0A.0A_kast_draw_plank_:_function.28_height_.29.7B.0A_.2F.2F_var_plank_wrapper_.3D_.24.28.22.22.29.3B.0A_.2F.2F_plank_wrapper.css.28_.27width.27.2C_window.kast.dimensions.kast.width_-_2_.2A_.2B_.22px.22_.29.3B.0A_.2F.2F_plank_wrapper.css.28_.27position.27.2C_.27absolute.27_.29.3B.0A_.2F.2F_plank_wrapper.css.28_.27top.27.2C_height_.2B_.27px.27_.29.3B.0A_.2F.2F_plank_wrapper.css.28_.27left.27.2C_window.kast.dimensions.widths.front_rand_kast_.2B_.27px.27_.29.3B.0A_.2F.2F_plank_wrapper.css.28_.27height.27.2C_window.kast.dimensions.heights.plank_height_.29.3B.0A.0A_var_plank_.3D_.24.28.22.22.29.3B.0A.0A_var_width_.3D_window.kast.dimensions.kast.width.3B.0A_width_.3D_width_-_window.kast.dimensions.widths.einde_plank_-_36.3B.0A_plank.css.28_.27width.27.2C_width_.2B_.22px.22_.29.3B.0A_plank.css.28_.27background-image.27.2C.27url.28.22.27.2B_window.kast.images.5B.27plank.27.5D.attr.28.27src.27.29_.2B.27.22.29.27.29.3B.0A_plank.css.28_.27position.27.2C_.27absolute.27_.29.3B.0A_plank.css.28_.27top.27.2C_height_.2B_.27px.27_.29.3B.0A_plank.css.28_.27left.27.2C_window.kast.dimensions.widths.front_rand_kast_.2B_.27px.27_.29.3B.0A_plank.css.28_.27height.27.2C_window.kast.dimensions.heights.plank_height_.29.3B.0A_plank.css.28_.27background-size.27.2C_.28_window.kast.dimensions.widths.plank_width_full.29.2B_.22px.22_.2B_.22_.22_.2B_window.kast.dimensions.heights.plank_height_.2B_.22px.22_.29.3B.0A_plank.css.28_.27background-repeat.27.2C_.27no-repeat.27_.29.3B.0A.0A_var_plank_right_.3D_.24.28.22.22.29.3B.0A.0A_plank_right.css.28_.27width.27.2C_window.kast.dimensions.widths.einde_plank_.2B_.22px.22_.29.3B.0A_plank_right.css.28_.27overflow.27.2C_.27hidden.27_.29.3B.0A_plank_right.css.28_.27background-image.27.2C_.27url.28.22.27.2B_window.kast.images.5B.27plankrechts.27.5D.attr.28.27src.27.29_.2B.27.22.29.27_.29.3B.0A_plank_right.css.28_.27position.27.2C_.27absolute.27_.29.3B.0A_plank_right.css.28_.27top.27.2C_height_.2B_.27px.27_.29.3B.0A_plank_right.css.28_.27left.27.2C_.28_window.kast.dimensions.widths.front_rand_kast_.2B_window.kast.dimensions.kast.width_-_window.kast.dimensions.widths.einde_plank_-_70.29_.2B_.22px.22.29.3B.0A_plank_right.css.28_.27height.27.2C_window.kast.dimensions.heights.plank_height_.2B_.22px.22_.29.3B.0A_plank_right.css.28_.27background-repeat.27.2C_.27no-repeat.27.29.3B.0A_plank_right.css.28_.27background-size.27.2C_window.kast.dimensions.widths.einde_plank_.2B_.22px_.22_.2B_window.kast.dimensions.heights.plank_height_.2B_.22px.22_.29.3B.0A.0A_window.kast.kast.append.28_plank_.29.3B.0A_window.kast.kast.append.28_plank_right_.29.3B.0A_.7D.2C.0A.0A_kast_draw_planks_:_function.28.29.7B.0A_.2F.2F_For_each_group_of_donors.2C_draw_enough_planks_so_that_every_donor_class_will_fit..0A.0A_var_numClasses_.3D_window.kast.donor_classes.length.3B.0A_var_drawnPlanks_.3D_0.3B.0A_for.28_var_classIndex_.3D_0.3B_classIndex_.3C_numClasses.3B_classIndex.2B.2B_.29.7B.0A_.2F.2F_Draw_each_plank_in_this_class.0A_var_numPlanks_.3D_window.kast.kast_group_num_planks.28_classIndex_.29.3B.0A.0A_for.28_var_plankIndex_.3D_0.3B_plankIndex_.3C_numPlanks.3B_plankIndex.2B.2B_.29.7B.0A_var_height_.3D_window.kast.kast_plank_height.28_plankIndex_.2B_drawnPlanks_.29.3B.0A.0A_.2F.2F_Draw_a_plank_at_this_height.0A_window.kast.kast_draw_plank.28_height_.29.3B.0A_.7D.0A.0A_drawnPlanks_.2B.3D_numPlanks.3B.0A_.7D.0A_.7D.2C.0A.0A_kast_draw_background_:_function.28.29.7B.0A_window.kast.kast.css.28.27background-image.27.2C.27url.28.22.27.2B_window.kast.images.5B.27background.27.5D.attr.28.27src.27.29_.2B.27.22.29.27.29.3B.0A_.7D.2C.0A.0A_kast_draw_sides_:_function.28.29.7B.0A_var_side_left_.3D_.24.28.22.22.29.3B.0A.0A_side_left.css.28_.27width.27.2C_window.kast.dimensions.widths.rand_kast_.2B_.27px.27_.29.3B.0A_side_left.css.28_.27background-image.27.2C_.27url.28.22.27_.2B_window.kast.images.5B.27links.27.5D.attr.28.27src.27.29_.2B_.27.22.29.27.29.3B.0A_side_left.css.28_.27background-position.27_.2C_.270_-200.27_.29.3B.0A_side_left.css.28_.27height.27.2C_window.kast.dimensions.kast.height_.2B_.27px.27_.29.3B.0A_side_left.css.28_.27background-size.27.2C_window.kast.dimensions.widths.rand_kast_.2B_.27px_4028px.27_.29.3B.0A_side_left.css.28_.27background-repeat.27.2C_.27repeat-y.27.29.3B.0A_side_left.css.28_.27position.27.2C_.27relative.27_.29.3B.0A_side_left.css.28_.27margin.27.2C_0_.29.3B.0A_side_left.css.28_.27padding.27.2C_0_.29.3B.0A_side_left.css.28_.27top.27.2C_0_.29.3B.0A_side_left.css.28_.27left.27.2C_0_.29.3B.0A.0A_side_left.appendTo.28_window.kast.kast_.29.3B.0A.0A_var_side_right_.3D_.24.28.22.22.29.3B.0A_side_right.css.28_.27width.27.2C_window.kast.dimensions.widths.rand_kast_.2B_.27px.27_.29.3B.0A_side_right.css.28_.27background-image.27.2C_.27url.28.22.27_.2B_window.kast.images.5B.27rechts.27.5D.attr.28.27src.27.29_.2B_.27.22.29.27.29.3B.0A_side_right.css.28_.27background-position.27_.2C_.270_-200.27_.29.3B.0A_side_right.css.28_.27height.27.2C_window.kast.dimensions.kast.height_.2B_.27px.27_.29.3B.0A_side_right.css.28_.27background-size.27.2C_window.kast.dimensions.widths.rand_kast_.2B_.27px_4028px.27_.29.3B.0A_side_right.css.28_.27background-repeat.27.2C_.27repeat-y.27.29.3B.0A_side_right.css.28_.27position.27.2C_.27absolute.27_.29.3B.0A_side_right.css.28_.27margin.27.2C_0_.29.3B.0A_side_right.css.28_.27padding.27.2C_0_.29.3B.0A_side_right.css.28_.27top.27.2C_0_.29.3B.0A_side_right.css.28_.27right.27.2C_0_.29.3B.0A.0A_window.kast.kast.append.28_side_right_.29.3B.0A_.7D.2C.0A.0A_kast_plant_image_:_function.28_donor.2C_donorIndex_.29.7B.0A_var_classIndex_.3D_donor.class_-_1.3B.0A_var_imageType_.3D_window.kast.classes.5B_classIndex_.5D.plant.3B.0A_var_images_.3D_.24.28_.22.23.22_.2B_imageType_.2B_.22_img.22.29.3B.0A_var_index_.3D_Math.floor.28_.28Math.sin.28_donorIndex_.2A_1234.736263472634E3.29_.2B_1.29_.2F_2_.2A_images.length.29.3B.0A_var_image_.3D_.24.28_images.5B_index_.5D_.29.3B.0A_return_image.3B.0A_.7D.2C.0A.0A_kast_draw_plant_:_function.28_donor.2C_donorIndex_.29.7B.0A_var_classIndex_.3D_donor.class_-_1.3B.0A.0A_.2F.2F_Find_the_plant_image.0A_var_image_.3D_window.kast.kast_plant_image.28_donor.2C_donorIndex_.29.3B.0A.0A_var_width_.3D_window.kast.classes.5B_classIndex_.5D.width.3B.0A_var_height_.3D_.28181.2F200.29_.2A_width.3B.0A.0A_.2F.2F_Create_the_plant_image.0A_var_img_.3D_.24.28.22.3Cimg.3E.22.29.3B.0A_img.attr.28.27src.27.2C_image.attr.28.27src.27.29_.29.3B.0A_img.css.28.27position.27.2C.27absolute.27.29.3B.0A_img.css.28.27width.27.2C_width_.2B_.27px.27.29.3B.0A_img.css.28.27height.27.2C_height_.2B_.27px.27.29.3B.0A.0A_var_position_.3D_window.kast.kast_group_donor_position.28_classIndex.2C_donorIndex_.29.3B.0A.0A_img.css.28.27left.27.2C_position.x_.2B_.27px.27.29.3B.0A_img.css.28.27top.27.2C_position.y_.2B_.27px.27.29.3B.0A.0A_window.kast.kast.append.28_img_.29.3B.0A.0A_var_name_.3D_.24.28.22.22.29.3B.0A_name.css.28.27position.27.2C.27absolute.27.29.3B.0A_name.css.28.27left.27.2C_position.x_.2B_.27px.27.29.3B.0A.0A_var_labelTop_.3D_.28position.y_.2B_height_.2B_15.29.3B.0A_name.css.28.27top.27.2C_labelTop_.2B_.27px.27.29.3B.0A_name.css.28.27width.27.2C_width_.2B_.27px.27.29.3B.0A_name.css.28.27font-weight.27.2C.27bold.27.29.0A_name.css.28.27text-align.27.2C_.27center.27.29.3B.0A_name.css.28.27font-style.27.2C.27italic.27.29.3B.0A.0A_.2F.2F_name.css.28.27text-shadow.27.2C.270px_1px_black.27.29.3B.0A_name.css.28.27font-family.27.2C.27Georgia.27.29.3B.0A.0A_name.html.28_donor.name_.29.3B.0A.0A_window.kast.kast.append.28_name_.29.3B.0A_.7D.2C.0A.0A_kast_draw_plants_:_function.28.29.7B.0A_for.28_var_classIndex_.3D_0.3B_classIndex_.3C_window.kast.classes.length.3B_classIndex.2B.2B_.29.7B.0A_for.28_var_donorIndex_.3D_0.3B_donorIndex_.3C_window.kast.donor_classes.5BclassIndex.5D.length.3B_donorIndex.2B.2B_.29.7B.0A_var_donor_.3D_window.kast.donor_classes.5BclassIndex.5D.5BdonorIndex.5D.3B.0A.0A_.2F.2F_Draw_it.21.0A_window.kast.kast_draw_plant.28_donor.2C_donorIndex_.29.3B.0A_.7D.0A_.7D.0A_.7D.2C.0A.0A_kast_draw_social_media_:_function.28.29.7B.0A_if.28_window.kast.kast.width.28.29_.3C_820_.29.7B.0A_return.3B.0A_.7D.0A.0A_var_img_fb_source_.3D_window.kast.images.5B.27social_facebook.27.5D.3B.0A_var_img_tw_source_.3D_window.kast.images.5B.27social_twitter.27.5D.3B.0A_var_img_li_source_.3D_window.kast.images.5B.27social_linkedin.27.5D.3B.0A.0A_var_img_fb_.3D_.24.28_.22.3Cimg.3E.22_.29.3B.0A_var_img_tw_.3D_.24.28_.22.3Cimg.3E.22_.29.3B.0A_var_img_li_.3D_.24.28_.22.3Cimg.3E.22_.29.3B.0A.0A_img_fb.attr.28_.27src.27.2C_img_fb_source.attr.28.27src.27.29_.29.3B.0A_img_tw.attr.28_.27src.27.2C_img_tw_source.attr.28.27src.27.29_.29.3B.0A_img_li.attr.28_.27src.27.2C_img_li_source.attr.28.27src.27.29_.29.3B.0A.0A_var_parent_.3D_window.kast.kast.3B.0A.0A_var_container_.3D_.24.28_.22.22_.29.3B.0A_container.appendTo.28_parent_.29.3B.0A.0A_container.css.28.27position.27.2C.27absolute.27.29.3B.0A_container.css.28.27top.27.2C_200.29.3B.0A_container.css.28.27left.27.2C_110.29.3B.0A_container.css.28.27width.27.2C_70.29.3B.0A_container.css.28.27height.27.2C_200.29.3B.0A_container.attr.28.27id.27.2C.27social-media-container.27.29.3B.0A.0A_img_fb.css.28.27padding.27.2C_.275px.27.29.3B.0A_img_tw.css.28.27padding.27.2C_.275px.27.29.3B.0A_img_li.css.28.27padding.27.2C_.275px.27.29.3B.0A.0A_img_fb.attr.28.27width.27.2C_70.29.3B.0A_img_tw.attr.28.27width.27.2C_70.29.3B.0A_img_li.attr.28.27width.27.2C_70.29.3B.0A.0A_container.append.28_img_fb_.29.3B.0A_container.append.28_img_tw_.29.3B.0A_container.append.28_img_li_.29.3B.0A.0A_img_fb.click.28function.28.29.7B.0A_url_.3D_.22http:.2F.2Fwww.steunleiden.nl.2Fprojecten.2Feen-tuintje-op-mars.3Flocale.3Den.22.3B.0A_window.open.28.27https:.2F.2Fwww.facebook.com.2Fsharer.2Fsharer.php.3Fu.3D.27.2Burl.2C.27facebook-share-dialog.27.2C.22width.3D626.2Cheight.3D436.22.29.0A_.7D.29.3B.0A.0A_img_tw.click.28function.28.29.7B.0A_text_.3D_.22Check_out_the_iGEM_Leiden_2016_crowdfunding_project_.27A_Garden_On_Mars.27.21_http:.2F.2Fwww.steunleiden.nl.2Fprojecten.2Feen-tuintje-op-mars.3Flocale.3Den.22.3B.0A.0A_url_.3D_.22http:.2F.2Ftwitter.com.2Fshare.3Ftext.3D.22_.2B_encodeURIComponent.28text.29.3B.0A.0A_var_width_.3D_575.2C.0A_height_.3D_400.2C.0A_left_.3D_.28.24.28window.29.width.28.29_-_width.29_.2F_2.2C.0A_top_.3D_.28.24.28window.29.height.28.29_-_height.29_.2F_2.2C.0A_opts_.3D_.27status.3D1.27_.2B.0A_.27.2Cwidth.3D.27_.2B_width_.2B.0A_.27.2Cheight.3D.27_.2B_height_.2B.0A_.27.2Ctop.3D.27_.2B_top_.2B.0A_.27.2Cleft.3D.27_.2B_left.3B.0A_window.open.28url.2C_.27twitter.27.2C_opts.29.3B.0A_.7D.29.3B.0A.0A_img_li.click.28function.28.29.7B.0A_var_articleUrl_.3D_.22http:.2F.2Fwww.steunleiden.nl.2Fprojecten.2Feen-tuintje-op-mars.3Flocale.3Den.22.3B.0A_var_articleTitle_.3D_.22A_Garden_On_Mars_.28Crowdfunding_Project.29.22.3B.0A_var_articleSummary_.3D_.22iGEM_Leiden_2016_is_building_a_garden_on_Mars._We_need_your_help_to_fund_our_expedition._Money_raised_will_be_used_to_fund_our_research_into_making_such_a_garden_possible._Go_to_our_crowdfunding_page_to_donate_to_our_cause.21.22.3B.0A_var_articleSource_.3D_.22https:.2F.2F2016.igem.org.2FTeam:Leiden.22.3B.0A_var_url_.3D_.27https:.2F.2Fwww.linkedin.com.2FshareArticle.3Fmini.3Dtrue.26url.3D.27_.2B_articleUrl_.2B_.27.26title.3D_.27_.2B_articleTitle_.2B_.27.26summary.3D_.27_.2B_articleSummary_.2B_.27.26source.3D.27_.2B_articleSource.3B.0A.0A_window.open.28_url.2C.27facebook-share-dialog.27.2C.22width.3D626.2Cheight.3D436.22.29.0A.0A_.7D.29.3B.0A_.7D.2C.0A.0A_.2F.2A.0A_Compute_the_kast_size_from_the_donors_array_and_the_target_width..0A_.2A.2F.0A_compute_kast_dimensions_:_function.28.29.7B.0A_.2F.2F_Compute_the_kast_width_from_the_target_width.0A_target_width_.3D_window.kast.target.width.28.29.3B.0A.0A_plank_width_.3D_target_width_-_2_.2A_.28window.kast.dimensions.widths.rand_kast_.2B_window.kast.dimensions.widths.einde_plank.29.3B.0A.0A_.2F.2F_Compute_the_kast_height..0A_var_kast_height_.3D_window.kast.dimensions.heights.kast_top_offset_.2A_2.3B.0A_for.28_var_class_index_.3D_0.3B_class_index_.3C.3D_3.3B_class_index.2B.2B_.29.7B.0A_var_num_per_row_.3D_window.kast.kast_group_num_donors_per_plank.28_class_index_.29.3B.0A_var_num_rows_.3D_Math.ceil.28_window.kast.donor_classes.5B_class_index_.5D.length_.2F_num_per_row_.29.3B.0A.0A_var_cl_.3D_window.kast.classes.5B_class_index_.5D.3B.0A_var_width_.3D_cl.width.3B.0A_var_height_.3D_width_.2A_181_.2F_200_.2B_60.3B.0A.0A_kast_height_.2B.3D_num_rows_.2A_height.3B.0A_.7D.0A.0A_.2F.2F_Set_the_target_height_and_width.0A_window.kast.kast.css.28_.27height.27.2C_kast_height_.29.3B.0A_window.kast.kast.css.28_.27width.27.2C_target_width_.29.3B.0A_window.kast.kast.css.28_.27margin.27.2C_0_.29.3B.0A_window.kast.kast.css.28_.27position.27.2C_.27relative.27_.29.3B.0A_window.kast.kast.css.28_.27padding.27.2C_0_.29.3B.0A.0A_window.kast.dimensions.kast.width_.3D_target_width.3B.0A_window.kast.dimensions.kast.height_.3D_kast_height.3B.0A_.7D.2C.0A.0A_.7D.3B.0A.0A_window.kast_.3D_kast.3B.0A.7D.29.3B">&quot;);
+
+      header.html(&quot;Backers' garden&quot;);
+
+      header.css('position','absolute');
+      header.css('top',180);
+
+      header.css('left', 0);
+      header.css('width', '100%');
+      header.css('text-align','center');
+
+      header.css('font-weight','bold')
+      header.css('text-align', 'center');
+      header.css('font-style','italic');
+
+      header.css('font-family','Georgia');
+      header.css('opacity',0.8);
+      header.css('color','#382400');
+      header.css('text-shadow','0px -1px #241700');
+
+      window.kast.kast.append( header );
+
+      var thanks = $(&quot;<P>&quot;);
+
+      thanks.html(&quot;iGEM Leiden 2016 expresses her gratitude to the generous backers of the &lt;a style='color: #382400;' href='<A rel="nofollow" class="external free" href="http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en'">http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en'</A>&gt;crowdfunding campaign&lt;/a&gt; \&quot;A Garden On Mars\&quot;.  The project would not have been possible without them. &quot;);
+
+      thanks.css('position','absolute');
+
+      var mx = ( window.kast.dimensions.kast.width + 125 - window.kast.dimensions.widths.einde_plank ) / 2;
+      var w  = window.kast.dimensions.kast.width - 2 * window.kast.dimensions.widths.einde_plank;
+
+      thanks.css('margin-left', -w/2);
+      thanks.css('width', w);
+      thanks.css('left', mx);
+      thanks.css('bottom', window.kast.kast.height() - 200);
+
+      thanks.css('text-align', 'center');
+      thanks.css('font-size', 16);
+
+      thanks.css('font-family','Georgia');
+      thanks.css('opacity',0.8);
+      thanks.css('text-shadow', '1px 1px #C4A772');
+      thanks.css('color','black');
+
+      window.kast.kast.append( thanks );
+    },
+
+    kast_draw_logo : function(){
+      var logoImg = window.kast.images['logo'];
+
+      // Add the logo image to the screen
+      var img = $(&quot;&lt;img&gt;&quot;);
+      img.attr('src', logoImg.attr('src'));
+      img.css('top', 260);
+
+      var width = window.kast.dimensions.kast.width;
+      width = width - window.kast.dimensions.widths.einde_plank - 36;
+      var middle = width / 2 - 75;
+
+      img.css('left', middle + 'px');
+      img.css('position', 'absolute');
+      img.css('width','300px');
+
+      window.kast.kast.append( img );
+    },
+
+    kast_draw_plank : function( height ){
+      // var plank_wrapper = $(&quot;</P><DIV>&quot;);
+<PRE>     // plank_wrapper.css( 'width', window.kast.dimensions.kast.width - 2 *  + &quot;px&quot; );
+     // plank_wrapper.css( 'position', 'absolute' );
+     // plank_wrapper.css( 'top', height + 'px' );
+     // plank_wrapper.css( 'left', window.kast.dimensions.widths.front_rand_kast + 'px' );
+     // plank_wrapper.css( 'height', window.kast.dimensions.heights.plank_height );
+</PRE>
+      var plank = $(&quot;<DIV>&quot;);
+<PRE>     var width = window.kast.dimensions.kast.width;
+     width = width - window.kast.dimensions.widths.einde_plank - 36;
+     plank.css( 'width', width + &quot;px&quot; );
+     plank.css( 'background-image','url(&quot;'+ window.kast.images['plank'].attr('src') +'&quot;)');
+     plank.css( 'position', 'absolute' );
+     plank.css( 'top', height + 'px' );
+     plank.css( 'left', window.kast.dimensions.widths.front_rand_kast + 'px' );
+     plank.css( 'height', window.kast.dimensions.heights.plank_height );
+     plank.css( 'background-size', ( window.kast.dimensions.widths.plank_width_full)+ &quot;px&quot; + &quot; &quot; +  window.kast.dimensions.heights.plank_height + &quot;px&quot; );
+     plank.css( 'background-repeat', 'no-repeat' );
+</PRE>
+      var plank_right = $(&quot;<DIV>&quot;);
+<PRE>     plank_right.css( 'width', window.kast.dimensions.widths.einde_plank + &quot;px&quot; );
+     plank_right.css( 'overflow', 'hidden' );
+     plank_right.css( 'background-image', 'url(&quot;'+ window.kast.images['plankrechts'].attr('src') +'&quot;)' );
+     plank_right.css( 'position', 'absolute' );
+     plank_right.css( 'top', height + 'px' );
+     plank_right.css( 'left', ( window.kast.dimensions.widths.front_rand_kast + window.kast.dimensions.kast.width - window.kast.dimensions.widths.einde_plank - 70) + &quot;px&quot;);
+     plank_right.css( 'height', window.kast.dimensions.heights.plank_height + &quot;px&quot; );
+     plank_right.css( 'background-repeat', 'no-repeat');
+     plank_right.css( 'background-size', window.kast.dimensions.widths.einde_plank + &quot;px &quot; + window.kast.dimensions.heights.plank_height + &quot;px&quot; );
+</PRE><PRE>     window.kast.kast.append( plank );
+     window.kast.kast.append( plank_right );
+   },
+</PRE><PRE>   kast_draw_planks : function(){
+     // For each group of donors, draw enough planks so that every donor class will fit.
+</PRE><PRE>     var numClasses = window.kast.donor_classes.length;
+     var drawnPlanks = 0;
+     for( var classIndex = 0; classIndex &lt; numClasses; classIndex++ ){
+       // Draw each plank in this class
+       var numPlanks = window.kast.kast_group_num_planks( classIndex );
+</PRE><PRE>       for( var plankIndex = 0; plankIndex &lt; numPlanks; plankIndex++ ){
+         var height = window.kast.kast_plank_height( plankIndex + drawnPlanks  );
+</PRE><PRE>         // Draw a plank at this height
+         window.kast.kast_draw_plank( height );
+       }
+</PRE><PRE>       drawnPlanks += numPlanks;
+     }
+   },
+</PRE><PRE>   kast_draw_background : function(){
+     window.kast.kast.css('background-image','url(&quot;'+ window.kast.images['background'].attr('src') +'&quot;)');
+   },
+</PRE><PRE>   kast_draw_sides : function(){
+</PRE>
+      var side_left = $(&quot;<DIV>&quot;);
+<PRE>     side_left.css( 'width', window.kast.dimensions.widths.rand_kast + 'px' );
+     side_left.css( 'background-image', 'url(&quot;' + window.kast.images['links'].attr('src') + '&quot;)');
+     side_left.css( 'background-position' , '0 -200' );
+     side_left.css( 'height', window.kast.dimensions.kast.height + 'px' );
+     side_left.css( 'background-size', window.kast.dimensions.widths.rand_kast + 'px 4028px' );
+     side_left.css( 'background-repeat', 'repeat-y');
+     side_left.css( 'position', 'relative' );
+     side_left.css( 'margin', 0 );
+     side_left.css( 'padding', 0 );
+     side_left.css( 'top', 0 );
+     side_left.css( 'left', 0 );
+</PRE><PRE>     side_left.appendTo( window.kast.kast );
+</PRE>
+      var side_right = $(&quot;<DIV>&quot;);
+<PRE>     side_right.css( 'width', window.kast.dimensions.widths.rand_kast + 'px' );
+     side_right.css( 'background-image', 'url(&quot;' + window.kast.images['rechts'].attr('src') + '&quot;)');
+     side_right.css( 'background-position' , '0 -200' );
+     side_right.css( 'height', window.kast.dimensions.kast.height + 'px' );
+     side_right.css( 'background-size', window.kast.dimensions.widths.rand_kast + 'px 4028px' );
+     side_right.css( 'background-repeat', 'repeat-y');
+     side_right.css( 'position', 'absolute' );
+     side_right.css( 'margin', 0 );
+     side_right.css( 'padding', 0 );
+     side_right.css( 'top', 0 );
+     side_right.css( 'right', 0 );
+</PRE><PRE>     window.kast.kast.append( side_right );
+   },
+</PRE><PRE>   kast_plant_image : function( donor, donorIndex ){
+     var classIndex = donor.class - 1;
+     var imageType = window.kast.classes[ classIndex ].plant;
+     var images = $( &quot;#&quot; + imageType + &quot; img&quot;);
+     var index  = Math.floor( (Math.sin( donorIndex * 1234.736263472634E3) + 1) / 2 * images.length);
+     var image = $( images[ index ] );
+     return image;
+   },
+</PRE><PRE>   kast_draw_plant : function( donor, donorIndex ){
+     var classIndex = donor.class - 1;
+</PRE><PRE>     // Find the plant image
+     var image = window.kast.kast_plant_image( donor, donorIndex );
+</PRE><PRE>     var width = window.kast.classes[ classIndex ].width;
+     var height = (181/200) * width;
+</PRE><PRE>     // Create the plant image
+     var img = $(&quot;&lt;img&gt;&quot;);
+     img.attr('src', image.attr('src') );
+     img.css('position','absolute');
+     img.css('width', width + 'px');
+     img.css('height', height + 'px');
+</PRE><PRE>     var position = window.kast.kast_group_donor_position( classIndex, donorIndex );
+</PRE><PRE>     img.css('left', position.x + 'px');
+     img.css('top', position.y + 'px');
+</PRE><PRE>     window.kast.kast.append( img );
+</PRE>
+      var name = $(&quot;<DIV>&quot;);
+<PRE>     name.css('position','absolute');
+     name.css('left', position.x + 'px');
+</PRE><PRE>     var labelTop = (position.y +  height + 15);
+     name.css('top', labelTop + 'px');
+     name.css('width', width + 'px');
+     name.css('font-weight','bold')
+     name.css('text-align', 'center');
+     name.css('font-style','italic');
+</PRE><PRE>     // name.css('text-shadow','0px 1px black');
+     name.css('font-family','Georgia');
+</PRE><PRE>     name.html( donor.name );
+</PRE><PRE>     window.kast.kast.append( name );
+   },
+</PRE><PRE>   kast_draw_plants : function(){
+     for( var classIndex = 0; classIndex &lt; window.kast.classes.length; classIndex++ ){
+       for( var donorIndex = 0; donorIndex &lt; window.kast.donor_classes[classIndex].length; donorIndex++ ){
+         var donor = window.kast.donor_classes[classIndex][donorIndex];
+</PRE><PRE>         // Draw it!
+         window.kast.kast_draw_plant( donor, donorIndex );
+       }
+     }
+   },
+</PRE><PRE>   kast_draw_social_media : function(){
+     if( window.kast.kast.width() &lt; 820 ){
+       return;
+     }
+</PRE><PRE>     var img_fb_source = window.kast.images['social_facebook'];
+     var img_tw_source = window.kast.images['social_twitter'];
+     var img_li_source = window.kast.images['social_linkedin'];
+</PRE><PRE>     var img_fb = $( &quot;&lt;img&gt;&quot; );
+     var img_tw = $( &quot;&lt;img&gt;&quot; );
+     var img_li = $( &quot;&lt;img&gt;&quot; );
+</PRE><PRE>     img_fb.attr( 'src', img_fb_source.attr('src') );
+     img_tw.attr( 'src', img_tw_source.attr('src') );
+     img_li.attr( 'src', img_li_source.attr('src') );
+</PRE><PRE>     var parent = window.kast.kast;
+</PRE>
+      var container = $( &quot;<DIV>&quot; );
+<PRE>     container.appendTo( parent );
+</PRE><PRE>     container.css('position','absolute');
+     container.css('top', 200);
+     container.css('left', 110);
+     container.css('width', 70);
+     container.css('height', 200);
+     container.attr('id','social-media-container');
+</PRE><PRE>     img_fb.css('padding', '5px');
+     img_tw.css('padding', '5px');
+     img_li.css('padding', '5px');
+</PRE><PRE>     img_fb.attr('width', 70);
+     img_tw.attr('width', 70);
+     img_li.attr('width', 70);
+</PRE><PRE>     container.append( img_fb );
+     container.append( img_tw );
+     container.append( img_li );
+</PRE><PRE>     img_fb.click(function(){
+       url = &quot;<A rel="nofollow" class="external free" href="http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en">http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en</A>&quot;;
+       window.open('<A rel="nofollow" class="external free" href="https://www.facebook.com/sharer/sharer.php?u='+url,'facebook-share-dialog'">https://www.facebook.com/sharer/sharer.php?u='+url,'facebook-share-dialog'</A>,&quot;width=626,height=436&quot;)
+     });
+</PRE><PRE>     img_tw.click(function(){
+       text = &quot;Check out the iGEM Leiden 2016 crowdfunding project 'A Garden On Mars'! <A rel="nofollow" class="external free" href="http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en">http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en</A>&quot;;
+</PRE><PRE>       url = &quot;<A rel="nofollow" class="external free" href="http://twitter.com/share?text=">http://twitter.com/share?text=</A>&quot; + encodeURIComponent(text);
+</PRE><PRE>       var width  = 575,
+       height = 400,
+       left   = ($(window).width()  - width)  / 2,
+       top    = ($(window).height() - height) / 2,
+       opts   = 'status=1' +
+               ',width='  + width  +
+               ',height=' + height +
+               ',top='    + top    +
+               ',left='   + left;
+       window.open(url, 'twitter', opts);
+     });
+</PRE><PRE>     img_li.click(function(){
+       var articleUrl = &quot;<A rel="nofollow" class="external free" href="http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en">http://www.steunleiden.nl/projecten/een-tuintje-op-mars?locale=en</A>&quot;;
+       var articleTitle = &quot;A Garden On Mars (Crowdfunding Project)&quot;;
+       var articleSummary = &quot;iGEM Leiden 2016 is building a garden on Mars. We need your help to fund our expedition. Money raised will be used to fund our research into making such a garden possible. Go to our crowdfunding page to donate to our cause!&quot;;
+       var articleSource = &quot;<A rel="nofollow" class="external free" href="https://2016.igem.org/Team:Leiden">https://2016.igem.org/Team:Leiden</A>&quot;;
+       var url = '<A rel="nofollow" class="external free" href="https://www.linkedin.com/shareArticle?mini=true&amp;url='">https://www.linkedin.com/shareArticle?mini=true&amp;url='</A> + articleUrl + '&amp;title= ' + articleTitle + '&amp;summary= ' + articleSummary + '&amp;source=' + articleSource;
+</PRE><PRE>       window.open( url,'facebook-share-dialog',&quot;width=626,height=436&quot;)
+</PRE><PRE>     });
+   },
+</PRE><PRE>   /*
+     Compute the kast size from the donors array and the target width.
+   */
+   compute_kast_dimensions : function(){
+     // Compute the kast width from the target width
+     target_width = window.kast.target.width();
+</PRE><PRE>     plank_width = target_width - 2 * (window.kast.dimensions.widths.rand_kast + window.kast.dimensions.widths.einde_plank);
+</PRE><PRE>     // Compute the kast height.
+     var kast_height = window.kast.dimensions.heights.kast_top_offset * 2;
+     for( var class_index = 0; class_index &lt;= 3; class_index++ ){
+       var num_per_row = window.kast.kast_group_num_donors_per_plank( class_index );
+       var num_rows = Math.ceil( window.kast.donor_classes[ class_index ].length / num_per_row );
+</PRE><PRE>       var cl = window.kast.classes[ class_index ];
+       var width = cl.width;
+       var height = width * 181 / 200 + 60;
+</PRE><PRE>       kast_height += num_rows * height;
+     }
+</PRE><PRE>     // Set the target height and width
+     window.kast.kast.css( 'height', kast_height );
+     window.kast.kast.css( 'width',  target_width );
+     window.kast.kast.css( 'margin', 0 );
+     window.kast.kast.css( 'position', 'relative' );
+     window.kast.kast.css( 'padding', 0 );
+</PRE><PRE>     window.kast.dimensions.kast.width = target_width;
+     window.kast.dimensions.kast.height = kast_height;
+   },
+</PRE><PRE> };
+</PRE><PRE> window.kast = kast;
+</PRE>
+});</DIV></DIV></DIV></DIV></DIV></DIV></DIV></SPAN></H1></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

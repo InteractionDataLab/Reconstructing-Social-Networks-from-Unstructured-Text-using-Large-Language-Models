@@ -1,0 +1,448 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Freiburg_software_Code_SynBioWaveRobotServlet_java"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu"><UL><LI class="selected"><A href="/Team:Freiburg_software/Code/SynBioWaveRobotServlet.java">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Freiburg_software/Code/SynBioWaveRobotServlet.java&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Freiburg_software/Code/SynBioWaveRobotServlet.java&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Freiburg_software/Code/SynBioWaveRobotServlet.java&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Freiburg_software/Code/SynBioWaveRobotServlet.java" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Freiburg software/Code/SynBioWaveRobotServlet.java</H1><DIV id="bodyContent"><H3 id="siteSub">From 2009.igem.org</H3><DIV id="custom-header"><DIV id="tabs"><UL><LI><A class="home_active" href="https://2009.igem.org/Team:Freiburg_software"><SPAN>Home</SPAN></A></LI><LI><A class="team_active" href="https://2009.igem.org/Team:Freiburg_software/Team"><SPAN>The Team</SPAN></A></LI><LI><A class="project_active" href="https://2009.igem.org/Team:Freiburg_software/Project"><SPAN>The Project</SPAN></A></LI><LI><A class="code_active" href="https://2009.igem.org/Team:Freiburg_software/Code"><SPAN>The Code</SPAN></A></LI><LI><A class="guide_active" href="https://2009.igem.org/Team:Freiburg_software/UserGuide"><SPAN>User Guide</SPAN></A></LI><LI><A class="notebook_active" href="https://2009.igem.org/Team:Freiburg_software/Notebook"><SPAN>Notebook</SPAN></A></LI><LI><A class="miscellaneous_active" href="https://2009.igem.org/Team:Freiburg_software/Miscellaneous"><SPAN>Miscellaneous</SPAN></A></LI></UL></DIV></DIV><H2><SPAN class="mw-headline" id="SynBioWaveRobotServlet">SynBioWaveRobotServlet</SPAN></H2><PRE>
+/*
+*    Copyright: synbiowave
+*     
+*    License: GPL
+*     
+*    Authors: Jörg Wassolesk &amp; Paul Staab
+*     
+*    Version: 0.1 
+*    
+*    DESCRIPTION:
+*    	This is the main class of the main SynBioWave-Robot. 
+*/
+
+
+package org.synbiowave;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import org.biojavax.bio.db.HashRichSequenceDB;
+import org.biojavax.bio.db.RichSequenceDB;
+import org.synbiowave.biobrick.BioBrickManager;
+import org.synbiowave.biojava.Util;
+import org.synbiowave.database.DatastoreManager;
+import org.synbiowave.database.Sequence;
+import org.synbiowave.menu.MenuItem;
+import org.synbiowave.sequence.SequenceView;
+import org.synbiowave.servlet.AbstractSbwRobotServlet;
+
+import com.google.wave.api.Annotation;
+import com.google.wave.api.Blip;
+import com.google.wave.api.Element;
+import com.google.wave.api.ElementType;
+import com.google.wave.api.Event;
+import com.google.wave.api.EventType;
+import com.google.wave.api.Gadget;
+import com.google.wave.api.GadgetView;
+import com.google.wave.api.Image;
+import com.google.wave.api.Range;
+import com.google.wave.api.RobotMessageBundle;
+import com.google.wave.api.TextView;
+import com.google.wave.api.Wavelet;
+
+//@SuppressWarnings(&quot;serial&quot;)
+public class SynBioWaveRobotServlet extends AbstractSbwRobotServlet  
+{	
+	private static final long serialVersionUID = 9128671957338019728L;
+	private TreeSet&lt;String&gt; biobrickIDs=null;
+	private String bValue=&quot;&quot;; 
+
+	//------------------------------------------------------------------------
+	//General Part
+	//------------------------------------------------------------------------
+	@Override
+	public String myName() {
+		return &quot;synbiowave@appspot.com&quot;;
+	}
+
+	@Override
+	public void createMenu(MenuItem menu) {
+		
+		MenuItem fileMenu = new MenuItem(&quot;menu&quot;,&quot;File&quot;,this.generateKey());
+		menu.appendSubItem(fileMenu);
+			
+			MenuItem fileimportMenu = new MenuItem(&quot;menu&quot;,&quot;Import&quot;,this.generateKey());
+			fileMenu.appendSubItem(fileimportMenu);
+
+				MenuItem uploadformbutton = new MenuItem(&quot;button&quot;, &quot;File&quot;, this.generateKey());
+				fileimportMenu.appendSubItem(uploadformbutton);
+					
+						MenuItem uploadForm = new MenuItem(&quot;form&quot;,&quot;Upload&quot;,this.generateKey());
+						uploadformbutton.appendSubItem(uploadForm);
+							
+							MenuItem upload = new MenuItem(&quot;upload&quot;,&quot;upload&quot;,this.generateKey());
+							upload.setOption(&quot;target&quot;, &quot;https://&quot; + this.myName().replace(&quot;@&quot;, &quot;.&quot;) + &quot;/_wave/robot/jsonrpc&quot;);
+							upload.setOption(&quot;enctype&quot;, &quot;multipart/form-data&quot;);
+							uploadForm.appendSubItem(upload);
+				
+				MenuItem importBioBrick = new MenuItem(&quot;button&quot;, &quot;BioBrick part&quot;, this.generateKey());
+				fileimportMenu.appendSubItem(importBioBrick);
+				
+				MenuItem importDatastore = new MenuItem(&quot;button&quot;, &quot;Datastore sequence&quot;, this.generateKey());
+				fileimportMenu.appendSubItem(importDatastore);
+
+			MenuItem fileexportMenu = new MenuItem(&quot;menu&quot;,&quot;Export&quot;,this.generateKey());
+			fileMenu.appendSubItem(fileexportMenu);				
+			
+			
+				MenuItem downloadFilebutton = new MenuItem(&quot;button&quot;,&quot;File&quot;,this.generateKey());
+				fileexportMenu.appendSubItem(downloadFilebutton);
+					
+					MenuItem downloadForm = new MenuItem(&quot;form&quot;,&quot;Download&quot;,&quot;noreload&quot;);
+					downloadFilebutton.appendSubItem(downloadForm);
+					
+						MenuItem download = new MenuItem(&quot;download&quot;,&quot;Blub&quot;,&quot;Download&quot;);
+						downloadForm.appendSubItem(download);
+						download.setOption(&quot;target&quot;, &quot;https://&quot; + this.myName().replace(&quot;@&quot;, &quot;.&quot;) + &quot;/_wave/robot/jsonrpc&quot;);
+					
+						downloadForm.createSubItem(&quot;radio&quot;, &quot;fasta&quot;, this.generateKey()).setOption(&quot;group&quot;, &quot;format&quot;);
+						downloadForm.createSubItem(&quot;radio&quot;, &quot;gb&quot;, this.generateKey()).setOption(&quot;group&quot;, &quot;format&quot;);
+					
+		MenuItem sequenceMenu = new MenuItem(&quot;menu&quot;,&quot;Sequence&quot;,this.generateKey());
+		menu.appendSubItem(sequenceMenu);
+			
+			sequenceMenu.createSubItem(&quot;button&quot;,&quot;Circular View&quot;, this.generateKey());
+		
+		
+		MenuItem helpMenu = new MenuItem(&quot;menu&quot;,&quot;Help&quot;,this.generateKey());
+		menu.appendSubItem(helpMenu);
+			
+			helpMenu.createSubItem(&quot;checkbox&quot;, &quot;debug&quot;, this.generateKey());
+
+	}
+	
+	
+	//------------------------------------------------------------------------
+	//Menu-Part
+	//------------------------------------------------------------------------
+	private final String gadgetURL = &quot;http://synbiowave.svn.sourceforge.net/viewvc/synbiowave/trunk/menuGadget/menuGadget.xml&quot;;
+	private String uiMenuJson = &quot;{}&quot;;
+
+	private void appendMenuGadgetIfNeccessary(Blip blip)
+	{
+		GadgetView gv = blip.getDocument().getGadgetView();
+		boolean hasmenu = false;
+		for ( Gadget gadget : gv.getGadgets() )
+		{
+			if ( gadget.getField(&quot;url&quot;).contentEquals(this.gadgetURL) )
+			{
+				hasmenu = true;
+			}
+		}
+		if ( ! hasmenu )
+		{
+			Gadget menuGadged = new Gadget(this.gadgetURL);					  
+			menuGadged.setField(&quot;ui.structure&quot;, this.uiMenuJson );
+			blip.getDocument().insert(0, &quot;SynBioWave \n&quot;);
+			blip.getDocument().insertElement(12, menuGadged);
+		}
+	}
+	
+	private void generateMenuData(Wavelet wavelet) throws Exception
+	{
+		MenuItem menu = new MenuItem(&quot;ui&quot;,&quot;ui&quot;, this.generateKey());
+		Map&lt;String,String&gt; data = wavelet.getDataDocuments();
+		for ( String key : data.keySet() )
+		{
+			if ( key.contains(&quot;ui.menu.&quot;) )
+			{ 
+				menu.importMenu( new MenuItem( data.get(key) ) );
+			}
+		}
+		this.uiMenuJson = menu.writeJson();
+		wavelet.setDataDocument(&quot;ui.completemenu&quot;, this.uiMenuJson);
+	}
+	
+	private void updateMenusIfNeccessary(Wavelet wavelet) throws Exception
+	{
+		if (wavelet.getDataDocument(&quot;menu.update&quot;).contains(&quot;1&quot;))
+		{
+			this.generateMenuData(wavelet);
+			for ( Blip blip : new RecChildBlipListBuilder(wavelet.getRootBlip()).getRecChildList() )
+			{
+				//blip.getDocument().append(&quot;trying to update this blip\n&quot;);
+				GadgetView gv = blip.getDocument().getGadgetView();
+				for ( Gadget gadget : gv.getGadgets() )
+				{
+					if ( gadget.getField(&quot;url&quot;).contentEquals(this.gadgetURL) )
+					{
+						Gadget menuGadget = new Gadget(this.gadgetURL);
+						menuGadget.setField(&quot;ui.structure&quot;, this.uiMenuJson );
+						gv.replace(gadget, menuGadget);
+					}
+				}
+				wavelet.setDataDocument(&quot;menu.update&quot;, &quot;0&quot;);
+			}
+		}	
+	}
+	
+	
+	//------------------------------------------------------------------------
+	//Basic functions
+	//------------------------------------------------------------------------
+	private void appendCircView(Event event) throws Exception {
+		Sequence sequence=DatastoreManager.getByID(new Sequence(),super.currentSequence);
+		URL url=new URL(&quot;http://samserver.homedns.org:8080/Rebase/RebaseServlet&quot;);
+		URLConnection conn=url.openConnection();
+		conn.setDoOutput(true);
+		org.biojava.bio.seq.Sequence s= Util.convertToRichSequence(sequence);
+		RichSequenceDB rsdb=new HashRichSequenceDB();
+		rsdb.addSequence(s);
+		Util.write(conn.getOutputStream(),rsdb.getRichSequenceIterator(),&quot;genbank&quot;);
+		BufferedReader br=new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		String name=br.readLine();
+		event.getWavelet().appendBlip().getDocument().appendElement(new Image(&quot;http://samserver.homedns.org/&quot;+name,500,500,name));
+		br.close();}
+	
+	private void importBioBrick(Event event) throws Exception
+	{
+		biobrickIDs=BioBrickManager.readBioBrickIDs();
+		Element bbInput=new Element(ElementType.INPUT);
+		bbInput.setProperty(&quot;name&quot;,&quot;bbInput&quot;);
+		bbInput.setProperty(&quot;defaultValue&quot;,&quot;&quot;);
+		Element bbButton=new Element(ElementType.BUTTON);
+		bbButton.setProperty(&quot;name&quot;,&quot;bbButton&quot;);
+		bbButton.setProperty(&quot;value&quot;,&quot;Import&quot;);
+		TextView rtv=event.getWavelet().getRootBlip().getDocument();
+		rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),&quot;\nPlease insert parts name:\n&quot;);
+		rtv.insertElement(rtv.getText().indexOf(&quot;Active Sequence:&quot;),bbInput);
+		rtv.insertElement(rtv.getText().indexOf(&quot;Active Sequence:&quot;),bbButton);
+		rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),&quot;\n&quot;);
+		int maxElements=4;
+		Iterator&lt;String&gt; tailSetIterator=biobrickIDs.iterator();
+		while(tailSetIterator.hasNext()&amp;&amp;maxElements&gt;0){rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),tailSetIterator.next()+&quot;\n&quot;);maxElements--;}
+		rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),&quot;...\n&quot;);
+	}
+	
+	private void importDatastore(Event event) throws Exception
+	{
+		Element dbInput=new Element(ElementType.INPUT);
+		dbInput.setProperty(&quot;name&quot;,&quot;dbInput&quot;);
+		dbInput.setProperty(&quot;defaultValue&quot;,&quot;&quot;);
+		Element dbButton=new Element(ElementType.BUTTON);
+		dbButton.setProperty(&quot;name&quot;,&quot;dbButton&quot;);
+		dbButton.setProperty(&quot;value&quot;,&quot;Import&quot;);
+		TextView rtv=event.getWavelet().getRootBlip().getDocument();
+		rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),&quot;Please insert sequence name:\n&quot;);
+		rtv.insertElement(rtv.getText().indexOf(&quot;Active Sequence:&quot;),dbInput);
+		rtv.insertElement(rtv.getText().indexOf(&quot;Active Sequence:&quot;),dbButton);
+		rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),&quot;\n&quot;);
+		int maxElements=4;
+		Iterator&lt;Sequence&gt; tailSetIterator=DatastoreManager.getAll(new Sequence()).iterator();
+		while(tailSetIterator.hasNext()&amp;&amp;maxElements&gt;0){rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),tailSetIterator.next().getName()+&quot;\n&quot;);maxElements--;}
+		rtv.insert(rtv.getText().indexOf(&quot;Active Sequence:&quot;),&quot;...\n&quot;);
+	}
+	
+	//------------------------------------------------------------------------
+	//Events
+	//------------------------------------------------------------------------
+	@Override
+	public void processSbwEvents(RobotMessageBundle bundle) {
+        for(Event event:bundle.getEvents()){	
+        	try{
+	    		Blip blip=event.getBlip();
+				TextView tv=blip.getDocument();
+			
+				if(event.getType()==EventType.WAVELET_SELF_ADDED){
+					try{
+						this.generateMenuData(event.getWavelet());
+						event.getWavelet().setDataDocument(&quot;menu.update&quot;,&quot;0&quot;);
+						this.appendMenuGadgetIfNeccessary(event.getBlip());
+						event.getWavelet().getRootBlip().getDocument().append(&quot;Active Sequence: none &quot;);}
+					catch(Exception e){event.getBlip().getDocument().append(&quot;Error generating menu:&quot;+e.toString());}}
+	    		
+				else if(event.getType()==EventType.FORM_BUTTON_CLICKED){
+					if(event.getButtonName().contains(&quot;bbButton&quot;)){
+						String value = getInputValue(tv);
+						tv.delete(new Range(tv.getText().indexOf(&quot;\nPlease insert parts name:\n&quot;),tv.getText().indexOf(&quot;Active Sequence:&quot;)));
+						String id=biobrickIDs.ceiling(value);
+						if(id!=null){
+							try{
+								String s=BioBrickManager.readBioBrickSequence(id);
+								List&lt;Map&lt;String,String&gt;&gt; features=BioBrickManager.readBioBrickFeatures(id);
+								Sequence sequence=new Sequence(&quot;biobrick&quot;,event.getTimestamp(),event.getWavelet().getWaveId(),event.getWavelet().getWaveletId(),event.getBlip().getBlipId(),s,SequenceView.isSequence(s));
+								sequence.setName(id);
+								for(Map&lt;String,String&gt; feature:features){
+									if(feature.get(&quot;END&quot;).equals(&quot;0&quot;)){sequence.addAnnotation(new Annotation(feature.get(&quot;TYPE_CATEGORY&quot;),feature.get(&quot;TYPE&quot;),new Range(Integer.parseInt(feature.get(&quot;START&quot;)),s.length())));}	
+									else{sequence.addAnnotation(new Annotation(feature.get(&quot;TYPE_CATEGORY&quot;),feature.get(&quot;TYPE&quot;),new Range(Integer.parseInt(feature.get(&quot;START&quot;)),Integer.parseInt(feature.get(&quot;END&quot;)))));}}
+								super.currentSequence=DatastoreManager.store(sequence).getId();
+								String gadgetView=SequenceView.getHTMLView(sequence.getSequence(),sequence.getType());
+								Gadget seqView=new Gadget(&quot;http://samnode.de/SequenceView.xml&quot;);
+								seqView.setField(&quot;names&quot;,&quot;(br /)(br /)(br /)&quot;+sequence.getName()+&quot;(br /)(br /)&quot;);
+								seqView.setField(&quot;sequences&quot;,gadgetView);
+								event.getWavelet().appendBlip().getDocument().getGadgetView().append(seqView);}
+							catch(Exception exc){tv.replace(&quot;Error receiving biobrick data:&quot;+exc.toString());}}
+						else{tv.append(&quot;BioBrick part not found, please choose other part ...&quot;);}}
+					
+					else if(event.getButtonName().contains(&quot;dbButton&quot;)){
+						String value = getInputValue(tv);
+						tv.delete(new Range(tv.getText().indexOf(&quot;\nPlease insert parts name:\n&quot;),tv.getText().indexOf(&quot;Active Sequence:&quot;)));
+						try{
+							Sequence sequence=DatastoreManager.getGreaterThanKeyValue(new Sequence(),&quot;name&quot;,value).get(0);
+							super.currentSequence=sequence.getId();
+							if(!sequence.getWaveletID().get(0).equals(event.getWavelet().getWaveletId())){
+								String gadgetView=SequenceView.getHTMLView(sequence.getSequence(),sequence.getType());
+								Gadget seqView=new Gadget(&quot;http://samnode.de/SequenceView.xml&quot;);
+								seqView.setField(&quot;names&quot;,&quot;(br /)(br /)(br /)&quot;+sequence.getName()+&quot;(br /)(br /)&quot;);
+								seqView.setField(&quot;sequences&quot;,gadgetView);
+								event.getWavelet().appendBlip().getDocument().getGadgetView().append(seqView);}}
+						catch(Exception exc){tv.replace(&quot;Error receiving sequence:&quot;+exc.toString());}}}
+		
+				else if(event.getType()==EventType.BLIP_SUBMITTED){
+					
+					if(event.getBlip().getDocument().getText().contains(&quot;#save&quot;)){
+						event.getBlip().getDocument().getGadgetView().append(new Gadget(&quot;http://samnode.de/downgadget.xml&quot;));}
+					
+					else if(event.getBlip().getDocument().getText().contains(&quot;#cgView&quot;)){
+						try{ appendCircView(event); }
+						catch(Exception e1){event.getBlip().getDocument().append(&quot;Error displaying circular view:&quot;+e1.toString());}}
+					
+					else if(event.getBlip().getDocument().getText().contains(&quot;#biobrick&quot;)){
+						try{ this.importBioBrick(event); }
+						catch(Exception exc){event.getBlip().getDocument().append(exc.toString());}}
+					
+					else if(event.getBlip().getDocument().getText().contains(&quot;#msa&quot;)){
+						ArrayList&lt;String&gt; sequences=new ArrayList&lt;String&gt;();
+						sequences.add(&quot;tcgcgcgatcgcgatcgcatagcatacgcatcatcatctcatcatgcgacgcattatacgacgatagactacgacgactacgcgacgacatagcgcagcgagcatagcagcagcatagcagcagcagctacgactacgactacgactcatctcagc&quot;);
+						sequences.add(&quot;jdhfksjfhskjfhkfjshfuheuhfksuehfksjhsjzegfjhseifhkjcshegzfesfkjgfjhbesjhrvfjehfksuegfshvfbshegvhfgvsejhfsjhvsehfbjhesvfhsebfhsbfhsejhekfjbvehsvbjhesfvbjshevsehvhsvehvsejhsejhbsejfhbsjhefvbesjfbjeshvsehbfjsehfbsejfhbsejhvsehevbj&quot;);
+						sequences.add(&quot;ugcugcugacugauguacguagcgagcagucguagcugaucguagucgaugcgacgaugcuagcuagcuagcuagcuagcuagcgagcuagcuagcugaugcuagcuag&quot;);
+						sequences.add(&quot;tacgagctacgactagcatcagcgagcggacatcgacgatcgactacgatcagctac&quot;);
+						String gadgetView=SequenceView.getHTMLView(sequences);
+						Gadget seqView=new Gadget(&quot;http://samnode.de/SequenceView.xml&quot;);
+						seqView.setField(&quot;names&quot;,&quot;(br /)(br /)seq1(br /)seq2(br /)seq3(br /)seq4(br /)(br /)&quot;);
+						seqView.setField(&quot;sequences&quot;,gadgetView);
+						event.getWavelet().appendBlip().getDocument().getGadgetView().append(seqView);}
+					
+					else if(event.getBlip().getDocument().getText().contains(&quot;#datastore&quot;)){
+						try{ this.importDatastore(event); }
+						catch(Exception exc){event.getBlip().getDocument().append(exc.toString());}}}
+				
+				else if(event.getType()==EventType.DOCUMENT_CHANGED){
+					
+					try{this.updateMenusIfNeccessary(event.getWavelet());} 
+					catch(Exception e){event.getBlip().getDocument().append(&quot;Error updating  menu:&quot;+e.toString());}
+					
+					if(!tv.getAnnotations(&quot;style/backgroundColor&quot;).isEmpty()){
+						Range range=tv.getAnnotations(&quot;style/backgroundColor&quot;).get(0).getRange();
+						tv.deleteAnnotations(&quot;style/backgroundColor&quot;);
+						String sequence=tv.getText().substring(range.getStart(),range.getEnd());
+						try{
+							Sequence nSequence=new Sequence(event.getModifiedBy(),event.getTimestamp(),event.getWavelet().getWaveId(),event.getWavelet().getWaveId(),event.getBlip().getBlipId(),sequence,SequenceView.isSequence(sequence));
+							nSequence.setName(event.getModifiedBy()+&quot;(&quot;+new Date(event.getTimestamp()).toString()+&quot;)&quot;);
+							super.currentSequence=DatastoreManager.store(nSequence).getId();}
+						catch(Exception e){event.getBlip().getDocument().append(&quot;Error storing sequence:&quot;+e.toString());}
+						super.replaceWithSimpleView(event,range,tv.getText().substring(range.getStart(),range.getEnd()));}
+					
+					String type=null;
+					String value=null;
+					int start=0;
+					List&lt;Element&gt; elements=tv.getElements();
+					Map&lt;String,String&gt; properties=null;
+					for(Element element:elements){
+						properties=element.getProperties();
+						if(properties.containsKey(&quot;name&quot;)){
+							if(properties.get(&quot;name&quot;).equals(&quot;bbInput&quot;)||properties.get(&quot;name&quot;).equals(&quot;dbInput&quot;)){
+								type=properties.get(&quot;name&quot;);
+								value=properties.get(&quot;value&quot;).trim();}
+							else if(properties.get(&quot;name&quot;).equals(&quot;bbButton&quot;)||properties.get(&quot;name&quot;).equals(&quot;dbButton&quot;)){
+								start=tv.getPosition(element)+2;}}}
+					
+					if(!value.equals(this.bValue)){
+						this.bValue=value;
+						if(type!=null){
+							String preview=&quot;&quot;;
+							int maxElements=4;
+							if(type.equals(&quot;bbInput&quot;)){
+								Iterator&lt;String&gt; tailSetIterator=biobrickIDs.tailSet(value).iterator();
+								while(tailSetIterator.hasNext()&amp;&amp;maxElements&gt;0){preview+=tailSetIterator.next()+&quot;\n&quot;;maxElements--;}}
+							if(type.equals(&quot;dbInput&quot;)){
+								Iterator&lt;Sequence&gt; tailSetIterator=DatastoreManager.getGreaterThanKeyValue(new Sequence(),&quot;name&quot;,value).iterator();
+								while(tailSetIterator.hasNext()&amp;&amp;maxElements&gt;0){preview+=tailSetIterator.next()+&quot;\n&quot;;maxElements--;}}
+							preview+=&quot;...\n&quot;;
+							tv.replace(new Range(start,tv.getText().indexOf(&quot;Active Sequence:&quot;)),preview);}}}}
+						catch(Exception e){}}}//event.getBlip().getDocument().append(&quot;Error prossesing events:&quot;+e.toString());}}}
+
+	private String getInputValue(TextView tv) {
+		String value=null;
+		List&lt;Element&gt; elements=tv.getElements();
+		Map&lt;String,String&gt; properties=null;
+		for(Element element:elements){
+			properties=element.getProperties();
+			if(properties.containsKey(&quot;name&quot;)){
+				if(properties.get(&quot;name&quot;).contains(&quot;Input&quot;)){
+					value=properties.get(&quot;value&quot;).trim();}}}
+		return value;
+	}
+			
+	@Override
+	public void processSbwMenuEvents(String buttonLabel,LinkedHashMap&lt;String,String&gt; formValues,Event event){	
+		if(buttonLabel.contains(&quot;upload&quot;)){
+			try{
+				while(super.currentSequence==null||DatastoreManager.getByID(new Sequence(),super.currentSequence)==null){}
+				Sequence sequence=DatastoreManager.getByID(new Sequence(),super.currentSequence);
+				String gadgetView=SequenceView.getHTMLView(sequence.getSequence(),sequence.getType());
+				Gadget seqView=new Gadget(&quot;http://samnode.de/SequenceView.xml&quot;);
+				seqView.setField(&quot;names&quot;,&quot;(br /)(br /)(br /)&quot;+sequence.getName()+&quot;(br /)(br /)&quot;);
+				seqView.setField(&quot;sequences&quot;,gadgetView);
+				event.getWavelet().appendBlip().getDocument().getGadgetView().append(seqView);}
+			catch(Exception exc){event.getWavelet().appendBlip().getDocument().append(&quot;Error on upload:&quot;+exc.toString());}}
+		
+		else if (buttonLabel.contains(&quot;Circular View&quot;))
+		{
+			try
+			{ 
+				this.appendCircView(event); 
+			}
+			catch(Exception exc)
+			{
+				event.getBlip().getDocument().append(&quot;Error displaying circular view:&quot;+exc.toString());
+			}
+		}
+		
+		else if (buttonLabel.contains(&quot;BioBrick&quot;))
+		{
+			try
+			{ 
+				this.importBioBrick(event);
+			}
+			catch(Exception exc)
+			{
+				event.getBlip().getDocument().append(&quot;BioBrick-Error: &quot; + exc.toString());
+			}
+		}
+		
+		else if (buttonLabel.contains(&quot;Datastore&quot;))
+		{
+			try
+			{ 
+				this.importDatastore(event);
+			}
+			catch(Exception exc)
+			{
+				event.getBlip().getDocument().append(&quot;Datastore-Error: &quot; + exc.toString());
+			}
+		}
+	}
+}
+ 
+</PRE><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2009.igem.org/Team:Freiburg_software/Code/SynBioWaveRobotServlet.java">http://2009.igem.org/Team:Freiburg_software/Code/SynBioWaveRobotServlet.java</A>&quot;</DIV></DIV></DIV><DIV id="footer-box"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Freiburg_software/Code/SynBioWaveRobotServlet.java" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Freiburg_software/Code/SynBioWaveRobotServlet.java" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Freiburg_software/Code/SynBioWaveRobotServlet.java&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Freiburg_software/Code/SynBioWaveRobotServlet.java&amp;oldid=145217" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2009.igem.org:Privacy_policy" title="2009.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2009.igem.org:General_disclaimer" title="2009.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

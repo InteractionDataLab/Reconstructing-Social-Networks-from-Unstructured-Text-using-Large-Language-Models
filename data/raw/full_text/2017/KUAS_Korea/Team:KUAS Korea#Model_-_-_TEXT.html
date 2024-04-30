@@ -1,0 +1,231 @@
+Team:KUAS Korea/Model
+KUAS Korea
+TEAM
+Team
+Attributions★
+Collaborations★
+Official Team Profile
+PROJECT
+Description
+Design
+Parts
+Model★
+Acheivement
+WET LAB
+Experiments
+Results
+Contribution★
+Safety
+NOTEBOOK
+HUMAN PRACTICES
+Overview
+Human Practices★
+Integrated Practices★
+Public Engagement
+Model
+1. Objectives of Modelling
+As mentioned in the US Presidential Commission for the Study of Bioethical Issues (PCSBI)’s report, modelling is a powerful tool for scientists to predict the behavior of a biological system before it is actually built. [1] Our team designed a simulation model of Enzymatic Microbial Fuel Cell (EMFC) using MATLAB SIMULINK software by integrating series of Michaelis-Menten kinetics and Butler-Volmer equation. Using the model, we will find out the electric characteristic of the developed fuel cell.
+Result of our team’s EMFC modelling is not just limited to this year’s IGEM competition. By changing the variable used in our modelling, SIMULINK block developed by our team can be applied to any EFC, MFC, or EMFC modelling by simply changing the variables in model. Not only for our team’s experiment, this model will function as a valuable tool for other synthetic biologist’s research and engineering purposes.
+2. Identification of Agarose Metabolism in EMFC
+In the model, a recalcitrant agarose polymer is degraded by E.coli’s surface displayed enzymes as following [4]
+.  \[Agarose\xrightarrow{\beta-Agarose(Aga50D)}Neoagarobiase(NAB)\] \[Neoagarobise\xrightarrow{NAB hyydrolase} D - galactose + 3,6-anhydro-l-galactose(AHG)\] \[AHG\xrightarrow{AHG dehydrogenase(sdeAHGD)}  3,6-anhydrogalactonate(AHGA)+NADH\]
+Completion of three consecutive reactions above results in stoichiometric production of 1 mol of D-galactose and NADH each per 1 mol of agarose. NADH is oxidized by free diaphorase enzyme existing in EMFC solution, and D-galactose will be used for microbes to produce current. As mentioned in the experiment section, S. oneidensis MR-1 cannot metabolize galactose due to its absence of UDP-glucose-hexose-1-phosphate uridylyltransferase. So E. coli producing surface expressed enzymes can be employed as a formate producer to feed MR-1 strain. The fermentation process is as following. [5]
+\[D-gal\xrightarrow{galM}\alpha-D-gal\xrightarrow{galK}\alpha-D-Gal-1P \xrightarrow{galT}\alpha-D-glc-1P\xrightarrow{pgm} G6P\] \[G6P\xrightarrow{Glycolytic Pathway}2Pyr\] \[Pyr\xrightarrow{Pyruvate-Formate Lyase}Formate\]
+MR-1 uptakes produced formate from E. coli, and uses it for the extracellular electron transfer as following [3].
+\[formate\xrightarrow{formate dehydrogenase} CO_{2}+2e^{-}+2H^{+}\]
+3. Model assumptions
+EMFC contains no other nutrients besides agarose for E.coli and MR-1 to be metabolized, so their growth will be minimized. Therefore, bacterial growth was not put into consideration during modelling.
+Mediator (Methylene blue) will receive and transfer electron in 100% efficiency.
+1 mol of formate metabolized by MR-1 will result in 2 mol of electron transfer to anode, and every formate produced by E. coli will be used by MR-1 for the EET [3].
+EMFC will be in anaerobic condition and aerobic metabolism such as TCA cycle will not occur.
+Initial rate of metabolism will be 0 in absence of substance that the enzyme will metabolize.
+Unit of variables is as following.
+Time: second, Concentration of chemicals: mM, Current: A, Current density: A/m^2
+Overpotential of EMFC was calculated by subtracting actual voltage output from theoretical maximum voltage of EMFC.
+Every NADH produced will be immediately oxidized, since diaphorase’s speed of NADH oxidation is extremely high compared to the production of NADH
+Only enzymes cleaved by TEV protease and released into EMFC fluid are used for agarose degradation.
+4. Development of Equation
+A) Step 1: Agarose degradation produces D-galactose and NADH, fuel for E.coli‘s fermentation and diaphorase
+Set of Michaelis-Menten equation were incorporated to model the process of agarose degradation in EMFC (eq.1) (Fig.2). By degradation, D-galactose and NADH is produced, which will be used by E.coli to produce formate via fermentation and diaphorase to produce electron. The metabolic conversion rate of substance X can be expressed as Eq.1.
+\[\frac{d[X]}{dt}=V_{max} \frac{[X]}{[X]+K_m} \] Eq.1 Michaelis-Menten Kinetics
+Figure 1
+Simulink block representing Michaelis-Menten kinetics
+Starting from initial concentration of X (C0, Red), concentration of X is divided into 2 parts, one added with Km (Green) and another being used as its original inputs (Blue). Going through Divide block creates  ([X])/([X]+K_m ) of Michaelis-Menten kinetics (Yellow) and it is multiplied by Vmax (Vm) of enzyme (Orange), creating metabolic rate of X’’. Since the unit of metabolic rate is expressed as amount of substance consumed per unit of time, integrating the metabolism rate from t=0 to current time indicates the amount of substrate consumed from initiated reaction (Purple). Every reaction in the modelling procedure gives equal amount of product to the substrate consumed, so amount of consumed substrate (Purple) is used as resulting product from the reaction. Amount of substrate consumed (Purple) is subtracted from initial concentration (C0) and go again into the simulation loop (Red), continuing the reaction.
+Simulation loop of enzyme reaction in EMFC is shown in Fig. 3. Identical loops are placed in a row to represent 3 steps in enzymatic reaction. Variables are differentiated for each enzyme.  Products of previous reaction are used as substrate of reaction following after.
+Figure 2
+Simulink block of enzymatic reaction in EMFC
+B) Step 2: E.coli produces formate, and MR-1 produces electricity using produced formate
+Using galactose produced from step 1 of reaction, E.coli proceeds in fermentation to produce formate. MR-1 will uptake produced formate for its extracellular electron transfer. [2] Since microbial fermentation is not a single enzyme reaction, we assumed enzyme with the slowest metabolism rate will act as rate determining step (RDS), overruling speed of whole reaction.
+Fermentation of galactose involves 5 key enzymes, galM (galactose mutarotase), galK (galactokinase), galT (galactose-1-phosphate uridylyltransferase), pgm (phosphoglucomutase), and pyruvate-formate lyase. Using BRENDA enzyme database, Specific Activity (SA)/Km was calculated to represent the enzyme’s relative rate of metabolism. We assumed that the enzyme with higher the SA/Km value proceed in faster reaction. SA/Km of each enzyme is represented below, which shows that galactose kinase (galK) is the RDS enzyme of galactose fermentation.
+Table 1
+Specific activity(SA), Km value of enzyme used in galactose fermentation
+Enzyme
+SA(µmol/min/mg)
+Km(mM)
+SA/Km
+galM
+28083.7
+4
+7020.93
+galK
+23.5
+2.09
+11.2
+galT
+209~238
+0.3
+696~793
+Pgm*
+100
+0.005
+20000
+Pyr-For lyase
+60
+2.37
+25.31
+Value obtained from BRENDA® Enzyme Database
+E.coli’s enzyme property was used
+* From Joshi et.al [13]
+Using Vmax and Km value of galK, kinetics of microbial fuel cell (MFC) was modelled. In contrast to the galactose fermentation, electron production from formate was assumed to be single enzyme reaction (Formate Dehydrogenase, FDH) and Vmax, Km value of FDH was used. After the input of the variables, blocks modelling microbial reaction were connected with enzymatic reaction.
+Electron Production by Diaphorase, and total current calculation
+After completing the simulation above, we obtain number of electron produced as mol/L. Number of electron produced by diaphorase was calculated as below.
+\[N=vc\]
+N: total mol of electron produced per secon
+v: mol of NADH oxidized per second per mol of diaphorase
+c: number of diaphorase in solution (mol)
+Number of electron produced by both MR-1 and diaphorase was added and was used as total number of electron produced by EMFC. However, not 100% of electron moves to anode to produce actual current, so charge transfer coefficient was calculated using Butler Volmer equation.
+Butlef Volmer equation of electron with large overpotential (over 100mV at 25℃) is as following.
+\[j=j_{0} e^{\alpha n F \eta / RT}  \; \; \; \; \; \; \; \;   j = current \; density(A/m^{2})\]
+Equation above can be changed as linear form, called Tafel equation, and by calculating the slope of graph, we obtain charge transfer coefficient α.
+\[\eta = -\frac{RT}{\alpha n F}ln\, j_{0}+ \frac{RT}{\alpha n F}ln\, j\]
+1C is defined as charge of 6.24×1018 electron. So if N mM of electron is produced per second, current can be calculated as following. V is the volume of EMFC anode compartment.
+\[I= \frac{V\times N\times 10^{-3} \times N_{A}}{6.24\times 10^{18} }\]
+Actual current output was calculated by multiplying the calculated charge transfer coefficient α. Since V is 0.05L, final current output is as following.
+\[I_{anode}=\alpha \frac{V\times N \times 10^{-3} \times N_{A}}{6.24 \times 10^{18} }= 4.82\times\alpha\times N\]
+Applying the calculation above, final form of simulation block is as following. Developed model’s Smiulink file is attached on the Wiki page, freely accessible to everybody.
+Figure 3
+Final form of modelled EMFC’s Simulink block
+File Download
+Calculation of charge transfer coefficient α
+In EMFC, agarose is degraded to produce NADH and formate. Both compounds are oxidized individually and produces electrons. Since ferricyanide was used as cathode’s electron acceptor, combining the anodic half reaction and cathodic half reaction creates the total potential of EMFC.
+\[formate \rightarrow CO_{2} + 2H^{+} + 2e^{-}E^{0}=-0.420V \;[7]\] \[NADH \rightarrow NAD^{+} + e^{-} E^{0} = -0.320V \: [8]\] \[Fe\left ( CN \right )_{3-}^{6} + e^{-} \rightarrow Fe\left ( CN \right )_{4-}^{6}E^{0}=+0.361V \; [9]\]
+Subtracting cathodic potential from anodic potential, we acquire maximum theoretical voltage of our EMFC, 1.101V. Plotting overpotential in x axis and log value of current density j in the y axis, charge transfer coefficient of 0.05 was obtained.
+5. Variables used in Modelling
+Variable
+Value
+Unit
+Reference
+Km of agarase
+4.2
+mM
+[3]
+Km of NAB hydrolase
+3.5
+mM
+[8]
+Km of AHG dehydrogenase
+1.2202
+mM
+[9]
+Km of galactose kinase
+2.09
+mM
+BRENDA Database
+Km of formate dehydrogenase
+15
+mM
+[10]
+kcat of agarase
+25.06
+/s
+[3]
+kcat of NAB hydrolase
+12.99
+/s
+[8]
+Vmax of AHG dehydrogenase
+18.34
+/s
+[8]
+kcat of galactose kinase
+23.5
+/s
+BRENDA Database
+kcat of formate dehydrogenase
+3.7
+/s
+BRENDA Database
+No. of NADH oxidized by diaphorase per second
+24.675
+mol of NADH/  s • mol of diaphorase
+[11]
+Charge transfer coefficient
+0.05
+Unitless
+Calculated
+Maximum voltage of EMFC
+1.101
+V
+Calculated
+Ideal gas constant
+8.314
+J/mol.K
+Faraday constant
+96485
+C/mol
+Avogadro number
+6.02
+/mol
+6. General Overview of EMFC Current Production
+Figure 4
+Current density of EMFC
+Figure 5
+Substrate Concentration of EMFC (Yellow: Agarose, Blue: NAB, Green: Formate, Red: NADH)
+Figures above shows change in EMFC current density production and change in the concentration of substrates. As time passed, current density increased according to time, and was stabilized after around 200 second after activation at current density of 0.06 A/m^2. This result was consistent with change in substrate concentration since agarose was depleted in similar moment as well. As time passed, NADH’s concentration increased and decreased after reaching its peak around 40 second. Similarly, current density curve meets inflection point at similar time. This will be due to the decrease of electron provision from NADH dehydrogenation. Concentration of formate increased much slowly compared to other substrates, since formate production requires fermentation by E.coli.
+7. Effect of substrate concentration on EMFC current production
+Initial parameters of EMFC model was set as below.
+Concentration of enzyme
+0.01mM
+No. of microbe in EMFC
+100,000
+Initial agarose concentration
+10mM
+Simulation was repeated by varying agarose concentration from 10mM to 40 mM in 5 mM interval. Maximum production of current density and time took for EMFC to reach maximum current production were measured. Since agarose in EMFC is depleted before the cell reaches maximum current production, time for agarose depletion was also measured as well. Results are as below.
+Figure 6
+Maximum current density of EMFC according to initial agarose concentration (mM)
+As agarose concentration increased, current production also increased. (Fig.6) Similarly, time for agarose to be depleted and for the current density to reach its maximum was also increased in linear form.(Fig.7)
+Figure 7
+Maximum current density of EMFC according to initial agarose concentration (mM)
+8. Discussion
+Mathematical modeling is a powerful tool for biologists to predict how the designed system will work during the experiment. Our team designed a model to predict how the current density production of EMFC is varied along with changing substrate concentration over time. Current production was stabilized approximately 200 seconds after activation at 0.125mM of initial agarose concentration. The change in current production of EMFC was consistent with the experiment, showing stabilization after certain amount of time. Also, stabilized value of current density was 0.06 A/m^2, which was highly similar to the stabilized current density in actual EMFC which was around 0.05 A/m^2. However, model’s time until stabilization was extremely fast compared to actual time to stabilization in experiment, t ≒ 5 hour.
+The difference between modelling output and experimental result might be originated from oversimplification of the model. We simplified the reactions of EMFC into 5 reactions. Uncounted enzymes and reactions can directly affect the rate of metabolism and by specifying the reaction into various steps and applying the kinetics of each reaction, gap between the model and actual EMFC data will be reduced. Also, formate from galactose fermentation in E. coli relies secretion through E.coli’s membrane and transport across MR-1’s membrane. This causes delayed foodstuff transfer between two organisms and therefore causes delay in stabilized current production. Time for formate fermentation wasn’t considered in model also, which will increase the stabilization time. Model reflecting the exact formate transfer will give much more accurate result.
+References
+Presidential Commission for the Study of Bioethical Issues (2010)
+New directions: the ethics of synthetic biology and emerging technologies.
+Available: http://bioethics.gov/sites/default/files/PCSBI-Synthetic-Biology-Report-12.16.10.pdf
+Accessed October 2016.
+Luo, Shuai, et al. "13C pathway analysis for the role of formate in electricity generation by Shewanella oneidensis MR-1 using lactate in microbial fuel cells." Scientific reports 6 (2016).
+Kim, Hee Taek, et al. "Overexpression and molecular characterization of Aga50D from Saccharophagus degradans 2-40: an exo-type β-agarase producing neoagarobiose." Applied microbiology and biotechnology 86.1 (2010): 227-234.
+KEGG database, http://www.genome.jp/kegg/
+Meshulam-Simon, Galit, et al. "Hydrogen metabolism in Shewanella oneidensis MR-1." Applied and environmental microbiology 73.4 (2007): 1153-1165.
+Thauer, Rudolf K., Kurt Jungermann, and Karl Decker. "Energy conservation in chemotrophic anaerobic bacteria." Bacteriological reviews 41.1 (1977): 100.
+Logan, Bruce E., et al. "Microbial fuel cells: methodology and technology." Environmental science & technology 40.17 (2006): 5181-5192.
+Sae Young, Lee., et al. “Cloning, purification and characterization of a novel a-neoagarobiose hydrolase from Saccharophagus degradans 2-40. (Korea University, 2009)
+Choi, In-Geol, et al. "Novel 3, 6-anhydro-l-galactose dehydrogenase acting on 3, 6-anhydro-l-galactose, and production of 3, 6-anhydrogalactonic acid by using the enzyme." U.S. Patent Application No. 13/980,211.
+MESENTSEV, Alexander V., et al. "Effect of pH on kinetic parameters of NAD+-dependent formate dehydrogenase." Biochemical Journal 321.2 (1997): 475-480.
+BERGSMA, Jack, Maarten DONGEN, and Wil N. KONINGS. "Purification and characterization of NADH dehydrogenase from Bacillus subtilis." European Journal of Biochemistry 128.1 (1982): 151-157.
+Joshi, Jayant G., and Philip Handler. "Phosphoglucomutase I. Purification and properties of phosphoglucomutase from Escherichia coli." Journal of Biological Chemistry 239.9 (1964): 2741-2751. [pgm citation]
+Joshi, Jayant G., and Philip Handler. "Phosphoglucomutase I. Purification and properties of phosphoglucomutase from Escherichia coli." Journal of Biological Chemistry 239.9 (1964): 2741-2751.
+Objectives of Modeling
+Identification of Agarose Metabolism in EMFC
+Model assumptions
+Development of Equation
+Modeling of Enzymatic Reaction in EMFC
+Modeling of Microbial Reaction in EMFC
+Electron production by Diaphorase, and total current calculation
+Calculation of charge transfer coefficient α
+Variables used in Modelling
+General Overview of EMFC Current Production
+Effect of substrate concentration on EMFC current production
+Discussion
+References

@@ -1,0 +1,423 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_St_Andrews_NivooSlider_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:St_Andrews/NivooSlider.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:St_Andrews/NivooSlider.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:St_Andrews/NivooSlider.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:St_Andrews/NivooSlider.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:St_Andrews/NivooSlider.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:St Andrews/NivooSlider.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2010.igem.org</H3><P>/*
+---
+</P><P>script: NivooSlider.js
+</P><P>description: A nice image slider for MooTools.
+</P><P>license: MIT-style license
+</P><P>authors:
+- Johannes Fischer
+</P><P>requires:
+- core/1.2.4: '*'
+</P><P>provides:
+- NivooSlider
+</P><P>...
+</P><PRE>*/
+</PRE><P>var NivooSlider = new Class({
+</P><PRE>   Implements: [Events,Options],
+</PRE><PRE>   caption: null,
+</PRE><P>	children: null,
+</P><PRE>   containerSize: 0,
+</PRE><P>	count: 0,
+</P><PRE>   currentSlide: 0,
+   currentImage: <I>,</I>
+   effects: {
+</PRE><P>		horizontal: ['fade', 'fold', 'sliceLeftUp', 'sliceLeftDown' , 'sliceLeftRightDown', 'sliceLeftRightUp', 'sliceRightDown', 'sliceRightUp'],
+		vertical: ['fade','fold','sliceDownLeft','sliceDownRight','sliceUpDownLeft','sliceUpDownRight','sliceUpLeft','sliceUpRight']
+	},
+	hover: false,
+	interval: null,
+</P><PRE>   paused: false,
+   running: false,
+   totalSlides: 0,
+</PRE><PRE>   options: {
+       animSpeed: 500,
+       autoPlay: true,
+       effect:'sliceDown',
+</PRE><P>		interval: 3000,
+		orientation: 'vertical',
+		pauseOnHover: true,
+		slices: 15,
+</P><P>		// not implemented yet
+</P><PRE>       directionNav: true,
+       directionNavHide: true,
+       controlNav: true
+</PRE><PRE>       //onStart: $empty(),
+       //onFinish: $empty()
+   },
+   
+   initialize: function(container, options)
+   {
+       this.container = $(container);
+       this.setOptions(options);
+       
+       this.initSlider();
+       this.createSlices();
+       if(this.options.autoPlay)
+       {
+           this.play();
+       }
+   },
+   
+   /**
+    * Getter
+    */
+   
+</PRE><P>	getImages: function()
+	{
+		return this.container.getElements('img');	
+	},
+</P><PRE>   getSlices: function()
+   {
+       return this.container.getElements('.nivoo-slice');    
+   },
+   
+</PRE><P>	/**
+	 * Setter
+	 */
+</P><P>	setBackgroundImage: function()
+	{
+		this.container.setStyle('background-image','url('+this.currentImage.get('src') +')');	
+	},
+</P><P>	setCaptionText: function(text)
+	{
+		this.caption.set('text', text);
+	},
+</P><P>	/**
+	 * Create
+	 */
+</P><PRE>   initSlider: function()
+   {
+</PRE><P>		this.container.addClass('nivooSlider');
+</P><PRE>       this.containerSize = this.container.getSize();
+       
+       // Find our slider children
+       this.children = this.getImages();
+</PRE><PRE>       this.totalSlides = this.children.length;
+</PRE><PRE>       this.children.setStyle('display','none');
+</PRE><PRE>       this.currentImage = this.children[0];
+</PRE><P>		// init LinkHolder
+		this.createLinkHolder();
+</P><PRE>       // Set first background
+</PRE><P>		this.container.setStyle('background-image', 'url('+this.currentImage.get('src')+')');
+</P><P>		this.createCaption();
+</P><P>		this.showCaption();
+</P><P>		// attach pauseOnHover		
+		if(this.options.pauseOnHover &amp;&amp; this.options.autoPlay)
+		{
+			this.container.addEvents({
+				'mouseenter': this.pause.bindWithEvent(this),
+				'mouseleave': this.play.bindWithEvent(this)
+			});
+		}
+</P><PRE>   },
+</PRE><P>	createCaption: function()
+	{
+		this.caption = new Element('p', {
+			'class': 'nivoo-caption',
+			styles: {
+				opacity: 0
+			}
+		}).inject(this.container);
+</P><P>		this.caption.store('fxInstance', new Fx.Morph(this.caption, {
+			duration: 200,
+			wait: false
+		}));
+		this.caption.store('height', this.caption.getHeight());
+	},
+</P><P>	createLinkHolder: function()
+	{
+		this.linkHolder = new Element('a', {
+			'class': 'nivoo-link',
+			href: '#'
+		}).inject(this.container);
+	},
+</P><PRE>   createSlices: function()
+   {
+</PRE><P>		var sliceSize = {
+			x: (this.container.getWidth()/this.options.slices).round(),
+			y: (this.container.getHeight()/this.options.slices).round()
+		};
+</P><PRE>       this.options.slices.each(function(i){
+</PRE><PRE>           var slice = new Element('div', {
+               'class': 'nivoo-slice'
+           }).inject(this.container);
+</PRE><P>			var position = {
+				left: this.options.orientation == 'vertical' ? sliceSize.x*i : 0,
+				top: this.options.orientation == 'horizontal' ? sliceSize.y*i : 0
+			};
+</P><P>			// set size &amp; position
+			if(this.options.orientation == 'horizontal')
+			{
+				slice.setStyles({
+					height: i == this.options.slices-1 ? this.container.getHeight()-(sliceSize.y*i) : sliceSize.y,
+</P><PRE>                   top: position.top,
+                   width: '100%'
+               });
+</PRE><P>			}
+			// if vertical
+			else
+			{
+				slice.setStyles({
+					left: position.left,
+</P><PRE>                   width: i == this.options.slices-1 ? this.container.getWidth()-(sliceSize.x*i) : sliceSize.x
+               });
+</PRE><P>			}
+</P><PRE>           slice.store('fxInstance', new Fx.Morph(slice, {
+               duration: this.options.animSpeed
+           })).store('position', position);
+       }, this);
+   },
+   
+</PRE><P>	/**
+	 * Caption
+	 */
+</P><P>	hideCaption:function()
+	{
+		var fx = this.caption.retrieve('fxInstance');
+</P><P>		fx.start({
+			bottom: this.caption.retrieve('height') * -1,
+			opacity: 0	
+		});
+	},
+</P><P>	showCaption: function()
+	{
+		var title = this.currentImage.get('title');
+</P><P>		if(!title){
+			return;
+		}
+</P><P>		this.setCaptionText(title);
+</P><P>		var fx = this.caption.retrieve('fxInstance');
+		fx.start({
+			bottom: 0,
+			opacity: 1	
+		});
+	},
+</P><P>	/**
+	 * Slide / Animations
+	 */
+</P><P>	play: function()
+	{
+		this.interval = this.slide.periodical(this.options.interval, this);
+	},
+</P><P>	pause: function()
+	{
+		$clear(this.interval);
+	},
+</P><PRE>   slide: function()
+   {
+</PRE><P>		if(this.running)
+		{
+			return;
+		}
+</P><PRE>       // Set current background before change
+       this.setBackgroundImage();
+</PRE><PRE>       this.currentSlide++;
+       if(this.currentSlide == this.totalSlides) this.currentSlide = 0;
+       if(this.currentSlide &lt; 0) this.currentSlide = (this.totalSlides - 1);
+</PRE><PRE>       // Set currentImage
+       this.currentImage = this.children[this.currentSlide];
+</PRE><PRE>       //Set active link
+</PRE><P>		var imageParent = this.currentImage.getParent();
+</P><PRE>       if(imageParent.get('tag') == 'a')
+</PRE><P>		{
+			this.linkHolder.setStyle('display', 'block').set('href', imageParent.get('href'));
+		}
+		else
+		{
+			this.linkHolder.setStyle('display', 'none');
+		}
+</P><PRE>       // Process caption		
+</PRE><P>		this.hideCaption();
+		this.showCaption();
+</P><PRE>       var slices = this.getSlices();
+</PRE><P>		var timeBuff = 0;
+</P><P>		//Set new slice backgrounds
+		var orientation = this.options.orientation;
+</P><PRE>       slices.each(function(slice, i){
+</PRE><P>			var position =  slice.retrieve('position');
+</P><PRE>           slice.setStyles({
+               background: 'url('+this.currentImage.get('src')+') no-repeat -'+ position.left +'px '+ position.top*-1 +'px',
+               opacity: 0
+           });
+</PRE><P>			var property = orientation == 'horizontal' ? 'width' : 'height';
+</P><P>			slice.setStyle(property, 0);
+</P><PRE>       }, this);
+   
+</PRE><P>		// fire onStart function
+</P><PRE>       this.start();
+</PRE><PRE>       // Run effects
+       this.running = true;
+</PRE><P>		var effect = this.options.effect;
+</P><P>		if(effect == 'random')
+</P><PRE>       {
+           effect = this.effects[orientation].getRandom();
+       }
+</PRE><P>		// vertical effects
+</P><PRE>       if(['sliceDownRight', 'sliceDownLeft'].contains(effect))
+       {
+           if(effect == 'sliceDownLeft')
+           {
+               slices = slices.reverse();
+           }
+</PRE><PRE>           slices.each(function(slice, i){
+               slice.setStyle('top', 0);
+</PRE><PRE>               this.animate.delay(100 + timeBuff, this, [slice, 'height', this.containerSize.y]);
+</PRE><PRE>               timeBuff+= 50;
+           }, this);
+       }
+       else if(['sliceUpRight', 'sliceUpLeft'].contains(effect))
+       {
+           if(effect == 'sliceUpLeft')
+           {
+               slices = slices.reverse();
+           }
+</PRE><PRE>           slices.each(function(slice, i){
+               var fx = slice.retrieve('fxInstance');
+               
+               slice.setStyle('bottom', 0);
+</PRE><PRE>               this.animate.delay(100 + timeBuff, this, [slice, 'height', this.containerSize.y]);
+</PRE><PRE>               timeBuff+= 50;
+           }, this);
+       }
+       else if(['sliceUpDownRight', 'sliceUpDownLeft'].contains(effect))
+       {
+           if(effect == 'sliceUpDownLeft')
+           {
+               slices = slices.reverse();
+           }
+</PRE><PRE>           slices.each(function(slice, i){
+               if(i%2 == 0)
+               {
+                   slice.setStyle('top', 0);
+               }
+               else
+               {
+                   slice.setStyle('bottom', 0);
+               }
+</PRE><PRE>               this.animate.delay(100 + timeBuff, this, [slice, 'height', this.containerSize.y]);
+</PRE><PRE>               timeBuff+= 50;
+           }, this);
+       }
+</PRE><P>		// horizontal effects		
+		else if(['sliceLeftUp', 'sliceLeftDown' , 'sliceRightDown', 'sliceRightUp'].contains(effect))
+		{
+			if(effect == 'sliceLeftUp' || effect == 'sliceRightUp')
+</P><PRE>           {
+               slices = slices.reverse();
+           }
+</PRE><P>			if(effect == 'sliceRightDown' || effect == 'sliceRightUp')
+			{
+				slices.setStyle('right', 0);
+			}
+			else
+			{
+				slices.setStyle('left', 0);
+			}
+</P><PRE>           slices.each(function(slice, i){    
+               this.animate.delay(100 + timeBuff, this, [slice, 'width', this.containerSize.x]);
+</PRE><PRE>               timeBuff+= 50;
+           }, this);
+</PRE><P>		}
+		else if(['sliceLeftRightDown', 'sliceLeftRightUp'].contains(effect))
+</P><PRE>       {
+           if(effect == 'sliceLeftRightUp')
+           {
+               slices = slices.reverse();
+           }
+</PRE><PRE>           slices.each(function(slice, i){
+               if(i%2 == 0)
+               {
+                   slice.setStyle('left', 0);
+               }
+               else
+               {
+                   slice.setStyle('right', 0);
+               }
+</PRE><PRE>               this.animate.delay(100 + timeBuff, this, [slice, 'width', this.containerSize.x]);
+</PRE><PRE>               timeBuff+= 50;
+           }, this);
+       }
+</PRE><P>		// horizontal or vertical		
+</P><PRE>       else if(effect == 'fold')
+       {
+           slices.each(function(slice, i){
+</PRE><P>				if(orientation == 'horizontal')
+				{
+					var property = 'height';
+					var to = slice.getHeight();
+</P><P>					slice.setStyles({
+						height: 0,
+						width: this.containerSize.x
+					});
+				}
+				else
+				{
+					var property = 'width';
+					var to = slice.getWidth();
+</P><P>					slice.setStyles({
+						height: this.containerSize.y,
+						top: 0,
+						width: 0
+					});
+				}
+</P><P>				this.animate.delay(100 + timeBuff, this, [slice, property, to]);				
+</P><PRE>               timeBuff+= 50;
+           }, this);
+       }
+       else  // if(effect == 'fade')
+       {
+           slices.each(function(slice, i){
+</PRE><P>				if(orientation == 'horizontal')
+				{
+					slice.setStyle('width', this.containerSize.x);
+				}
+				else
+				{
+					slice.setStyle('height', this.containerSize.y);
+				}
+</P><PRE>               this.animate.delay(100, this, [slice]);
+           }, this);
+       }
+   },
+   
+   animate: function(slice, property, to)
+   {
+</PRE><P>		this.count++;
+</P><PRE>       var fx = slice.retrieve('fxInstance');
+</PRE><PRE>       var styles = {
+           opacity: 1    
+       };
+</PRE><P>		styles[property] = to;
+</P><PRE>       fx.start(styles).chain(function(){
+</PRE><P>			if(this.count == this.options.slices)
+			{
+				this.running = false;
+</P><P>				// fire onFinish function
+				this.finish();
+</P><P>				this.count = 0;
+			}
+		}.bind(this));		
+</P><PRE>   },
+   
+   /**
+    * Events
+    */
+   
+   finish: function()
+   {
+       this.fireEvent('finish');
+   },
+</PRE><PRE>   start: function()
+   {
+       this.fireEvent('start');
+   }
+</PRE><P>});
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2010.igem.org/Team:St_Andrews/NivooSlider.js">http://2010.igem.org/Team:St_Andrews/NivooSlider.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:St_Andrews/NivooSlider.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:St_Andrews/NivooSlider.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:St_Andrews/NivooSlider.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:St_Andrews/NivooSlider.js&amp;oldid=25216" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2010.igem.org:Privacy_policy" title="2010.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2010.igem.org:General_disclaimer" title="2010.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

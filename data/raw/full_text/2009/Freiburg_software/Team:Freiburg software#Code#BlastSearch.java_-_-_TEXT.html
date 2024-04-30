@@ -1,0 +1,29 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Freiburg software/Code/BlastSearch.java
+From 2009.igem.org
+Home
+The Team
+The Project
+The Code
+User Guide
+Notebook
+Miscellaneous
+BlastSearch
+/* *    Copyright: synbiowave *      *    License: GPL *      *    Authors: Paul Staab *      *    Version: 0.1  *     *    DESCRIPTION: *     This class helps handles blastsearches */   package blastRobot;  import java.io.BufferedReader;  public class BlastSearch  {  //Variables  private SymbolList sequence;  private String database="";  private String program="";  private String rid="";  private String numberOfResults="10";  private List results = new ArrayList();      //Constructors    public BlastSearch()    {             }        public BlastSearch(SymbolList sequence) throws Exception    {        this.sequence = sequence;     }        public BlastSearch(SymbolList sequence, String database, String program) throws Exception    {        this.sequence = sequence;         this.database = database;        this.program = program;    }            //Getters and Setters  public SymbolList getSequence() {   return sequence;  }   public void setSequence(SymbolList sequence) {   this.sequence = sequence;  }   public String getDatabase() {   return database;  }   public void setDatabase(String database) {   this.database = database;  }   public String getProgram() {   return program;  }   public void setProgram(String program) {   this.program = program;  }   public String getRID() {   return rid;  }   public void setRID(String rid) {   this.rid = rid;  }        //Methods    public void search() throws Exception    {          //manual create a blast-query...     //Should be done as POST, as URLs are limited to 255 chars afaik.      URL searchurl = new URL("" + "http://www.ncbi.nlm.nih.gov/blast/Blast.cgi" + "?CMD=Put" + "&DATABASE=" + this.database + "&PROGRAM=" + this.program + "&HITLIST_SIZE=" + this.numberOfResults + "&QUERY=" + this.sequence.seqString() );          //Query it     BufferedReader reader = new BufferedReader     (       new InputStreamReader( searchurl.openStream(), "UTF-8" )      );          //Receive the RID     String line = "";     while ((line = reader.readLine()) != null)     {      //BAD method to get the RID of the Request;      if ( line.contains("Request ID") ) this.rid += line.substring(70, 81);     }     reader.close();     }        public void parseResult() throws Exception    {      URL searchurl = new URL("" + "http://www.ncbi.nlm.nih.gov/blast/Blast.cgi" + "?CMD=Get" + "&FORMAT_TYPE=XML" + "&RID=" + this.rid );       //do the parsing, the biojava-cookbook for documentation         BlastXMLParserFacade blast = new BlastXMLParserFacade();         SeqSimilarityAdapter adapter = new SeqSimilarityAdapter();         blast.setContentHandler(adapter);                 SearchContentHandler builder = new BlastLikeSearchBuilder(results, new DummySequenceDB("queries"), new DummySequenceDBInstallation() );         adapter.setSearchContentHandler(builder);         blast.parse( new InputSource( searchurl.openStream() ) );    }             public String waveOutput() throws Exception    {     String waveOutput = "\nBlast-Search\n";                  for (Iterator i = results.iterator(); i.hasNext(); )          {          SeqSimilaritySearchResult result = (SeqSimilaritySearchResult)i.next();          Annotation anno = result.getAnnotation();              for (Iterator j = anno.keys().iterator(); j.hasNext(); )           {           Object key = j.next();           Object property = anno.getProperty(key);           waveOutput += (key+" : "+property) + "\n";          }          waveOutput += ("Hits: \n");              //list the hits           for (Iterator k = result.getHits().iterator(); k.hasNext(); )           {           SeqSimilaritySearchHit hit = (SeqSimilaritySearchHit)k.next();           waveOutput += ("\t match: "+ hit.getSubjectID() );           waveOutput += ("\t\t\t"+ hit.getEValue() ) + "\n";          }         }             return waveOutput;     } }
+Retrieved from " http://2009.igem.org/Team:Freiburg_software/Code/BlastSearch.java "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

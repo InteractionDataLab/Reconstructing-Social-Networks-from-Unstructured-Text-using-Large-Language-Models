@@ -1,0 +1,197 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Edinburgh/Cellulases (Kappa model)
+From 2011.igem.org
+outline
+in silico
+in the lab
+in society
+postscript
+abstract
+safety
+cell surface display
+phage display
+achievements
+modelling
+cellulases (C)
+cellulases (Kappa)
+cellulases (MATLAB)
+model comparison
+genetic instability
+efficiency
+artificial selection
+phage replication
+data overview
+experiments
+parts
+BioSandwich
+lab notebook
+conclusions
+the team
+attributions
+our sponsors
+human practices
+biorefinery design
+biorefinery appendices
+life cycle analysis
+interviews: overview
+interviews
+interview analysis
+collaboration
+wiki watch
+Hover over words in bold italics to see explanation.
+Cellulases (Kappa model)
+Contents
+1 Kappa
+2 Structure of the model
+3 Non-synergistic model
+3.1 Dependency of model on kinetic rates
+4 Synergistic model
+5 Download the Kappa model
+6 Spatial Kappa
+7 Manipulating the initial mixture
+8 Additional cellulose
+9 Multiple runs
+10 Download the Spatial Kappa model
+11 With thanks to
+12 References
+Kappa
+Kappa is a stochastic, agent-based language for simulating interactions in (mostly) biological systems. There are a few implementations available -  we used KaSim developed by Jean Krivine and available for free from here . It has been used by several iGEM teams before, most notably by Team Edinburgh 2010 , who used it to develop a model awarded the Best Model Prize.
+A model in Kappa would be represented in terms of agents and rules. Agents could be thought of as 'idealised proteins' (Danos et al., 2008), or other entities (like cells). They can have multiple sites, which can bind to one another; and states of different values. For example, an agent called Glucose in our system is defined as:
+%agent: Glucose(end1, end4, belongs~cellulose~cellobiose~nothing~complex)
+That means that a molecule of glucose has two sites: end 1, end 4 (meaning 1' and 4' carbons) and one state: belongs (which is only really used for the purpose of counting different substances).
+Reactions define the interactions between the agents. The left side of the reaction defines the preconditions of reaction, and the right side represents what happens to the substrates. A reaction can create or delete bonds between chemicals, create or delete agents, and change states of agents. A reaction also happens at a certain rate. For example, cutting cellulose in the middle of the chain by Endoglucanase can be represented as the following rule:
+Endoglucanase(activeSite), Glucose(end1?, end4!1, belongs~cellulose), Glucose(end1!1, end4!2, belongs~cellulose), Glucose(end1!2, end4!3, belongs~cellulose), Glucose(end1!3, end4?, belongs~cellulose) -> Endoglucanase(activeSite),                                 Glucose(end1?, end4!1, belongs~cellulose),                                 Glucose(end1!1, end4, belongs~cellulose),                                 Glucose(end1, end4!3, belongs~cellulose),                                 Glucose(end1!3, end4?, belongs~cellulose)                                 @ 'γ_Endo_forward'
+This means that an agent called Endoglucanase with a free active site (i.e. not bound to an inhibiting molecule) needs to be present with a chain of at least 4 glucoses, and as a result one of the bonds within cellulose chain is cut. This happens at a rate 'γ_Endo_forward', which is a defined constant.
+The Kappa simulator uses 'biological time', which roughly corresponds to actual 'wall clock time'. The state of the system is evolved by choosing a reaction to happen and a corresponding time step to take. These are selected in a stochastic way, based on the following factors:
+The kinetic rates of reactions contribute towards the 'activity' of every reaction rule. More active rules get higher probability of firing next.
+The time step is also dependent on activity of rules.
+For the purposes of model development and testing, we initialised the simulator with the same seed, thus making the behaviour of the system predictable. See below for more information on testing the stochastic behaviour of the system.
+Structure of the model
+We thought that an elegant model would represent cellulose as a long fibre of glucoses linked together:
+Cellulose represented as long fibres of glucose
+However, manually inputting that would be a considerable effort. Instead, we made a Kappa system which would build cellulose for us, and then, using Kappa syntax, took a snapshot of the model. Two variants were created, one with long (10,000 glucoses) fibres of cellulose and another one with short (1,000 glucoses) fibres.
+Then, Endoglucanase would cut Cellulose somewhere in the middle:
+Endoglucanase digests cellulose chains
+Also, Exoglucanase would cut Cellulose at end-points:
+Exoglucanase digests cellulose chains
+Fontes and Gilbert (2010) have suggested that Exoglucanase is inhibited by its end product - Cellobiose, so we modelled that interaction as well.
+Finally, β-glucosidase would cut dimers (i.e. Cellobiose):
+β-glucosidase digests cellobiose
+We also modelled end-product inhibition of β-glucosidase by glucose.
+Non-synergistic model
+We developed our first, non-synergistic model in Kappa, based on the idea of the system as seen above. We carried out a series of experiments in order to fit parameters to our model. The aim was to generate graphs which are qualitatively similar to those in Kadam, Rydholm & McMillan (2004). We have automatically generated about 800 different sets of variables to manually tune the kinetic rates of reactions and relative concentrations of enzymes.
+After an overnight series of experiments using a computing server in the School of Informatics , we came up with a set of values for parameters of our model. We would stick to these values of parameters across all our Kappa models.
+Dependency of model on kinetic rates
+During the above-mentioned experimental phase, we found that the model dynamics are hugely affected by varying the reactions' kinetic rates. The following graphs present the effect of varying single kinetic rates, with all others being equal. We tested combinations of all the reaction rates, but these are omitted from the graphs for clarity.
+The effect of manipulating reaction rates on cellulose degradation rate.
+Left column represents the kinetic rate of parameter in question at 1·10- 8 (less reactivity),
+right column :1·10- 2 (more reactivity)
+The activity of the three enzymes influences the behaviour of the system in slightly different ways.
+β-glucosidase influences how quickly cellobiose is degraded into glucose
+endoglucanase influences the level of partial degradation of cellulose
+exoglucanase influences the amount cellobiose available to β-glucosidase.
+The effect of β-glucosidase and exoglucanase activity is as expected and logically following from how the reactions are defined. higher activity of these enzymes causes faster cellulose degradation.
+High activity of endoglucanase was found to place a (temporary) limit on production of glucose.
+The effect of manipulating inhibition rates on cellulose degradation rate.
+Left column represents the inhibition rate of parameter in question at 1·10- 8 (weaker inhibition),
+right column :1·10- 2 (stronger inhibition)
+Increase in all the inihibition rates causes a decline in cellulose degradation. β-glucosidase inhibition has the most influence on the time taken to fully degrade cellulose, because the enzyme inhibited is the one producing the end product of the reaction chain.
+Synergistic model
+Since Kappa models can be easily extended (by adding new agents, or reaction rules), we tried to make a synergistic model based on the non-synergistic model.
+We introduced new agents: an E. coli cell and several copies of INP, to be linked together as shown below:
+A diagram of the synergistic (yet non-spatial) model.
+However, that did not act as we predicted. The following graph presents both models.
+A graph showing the output of both synergy and non-synergy models. Dotted lines indicate the non-synergistic model
+The graph above shows that for the same set of parameters, there is virtually no difference between the two systems. The existing difference is due to the slight difference in concentration and number of agents in the system, which reflects the introduction of agents for INP.
+The lack of any major difference is because Kappa does not have the notion of proximity, i.e. the simulator has no way of distinguishing between the products of enzymes produced just a second ago and the ones floating far away in the solution:
+A diagram showing two cellobiose molecules, one close to the enzymes, and one far away in the solution. However, Kappa simulator does not distinguish between them.
+Download the Kappa model
+You can download the ready model as a .zip file (instructions in README file):
+Spatial Kappa
+Spatial Kappa is an extension to Kappa made by our last year's team ( Team Edinburgh 2010 ) and currently maintained by Donal Stewart. It seems like the extra functionality of compartments added by Spatial Kappa would help develop a model of synergistic action.
+Our model could work in the following way:
+In the synergistic system, the enzymes are all in one compartment. The products and substrates would be allowed to diffuse across compartments, while the enzymes would not.
+The non-synergistic system would be very similar, but the enzymes could diffuse across compartments.
+The resulting system should show that enzymes being in close proximity degrade cellulose faster.
+Because of the design choice we made at the beginning - representing cellulose as a chain of glucoses - we encountered a problem while setting up diffusion rules. It is trivial to set up diffusion rules for enzymes (just one rule per enzyme), but for the diffusion of cellulose, we would need to set up a separate rule for every possible length of cellulose chain - in our case that would amount to 1000 rules. While it is possible to automatically generate the rules (e.g. using Python), this would slow the model down, meaning it would become intractable.
+Therefore we tried a different representation of cellulose, where the agent Cellulose has a length n,
+n ∈ {1..10}
+(representing a chain of cellulose of length 2n+1 glucoses).Then,
+Endoglucanase would take a chain of length n, and produce two chains of length n-1 (or two cellobioses from a chain of length 1);
+Exoglucanase would take a chain of length n, and produce n-1 chains of decreasing length, connected to each other, plus an extra chain of length n = 1, plus a particle of Cellobiose, thus conserving the amount of glucose:
+2n+1 = 2n + 2n-1 + … + 23 + 22 + 2 + 2
+Endoglucanase could then split chains made in Exoglucanase reaction;
+β-glucosidase would split Cellobiose into two glucoses;
+β-glucosidase is inhibited by its end-product, glucose;
+Exoglucanase is inhibited by cellobiose.
+A diagram of the spatial model.
+Compartments are represented by squares, the arrows indicate diffusion of relevant chemicals. Chains represent cellulose, cellobiose and glucose.
+Left side shows then synergistic model, the non-synergistic model is shown in the right.
+Note that the amounts of enzymes and substrates is identical in both models.
+You can also view it as an animation .
+An example simulation of the system is shown below. You can see the difference between synergistic and non-synergistic systems.
+A graph showing both synergistic and non-synergistic models of cellulosome.
+Note: The steps in the graph are artifacts from the fact that a large molecule of cellulose can enter the compartment with enzymes and therefore suddenly a large amount of cellulose is available to be digested.
+Manipulating the initial mixture
+In real life, cellulose might exist in the form of a mixture of chains of varying length. As a result of the way we represented cellulose in Spatial Kappa, it is easy to manipulate the initial conditions. We decided that the following initial mixtures represent a range of possible states cellulose might be in:
+all cellulose is in short form (22 glucoses length),
+all cellulose is in relatively short form (24 glucoses length),
+all cellulose is in medium form (26 glucoses length),
+all cellulose is in relatively long form (28 glucoses length),
+all cellulose is in long form (211 glucoses length),
+half cellulose is in long form (211 glucoses length) and half cellulose is in short form (22 glucoses length),
+half cellulose is in relatively long form (28 glucoses length) and half cellulose is in relatively short form (24 glucoses length).
+A graph showing the relationship between the initial mixture composition and time taken to degrade half of the initial cellulose amount (in lime) and all of the initial cellulose (in purple).
+We found that using shorter chains of glucose increases the rate at which cellulose is degraded. Therefore, in a biorefinery , it would be beneficial to use shorter chains of cellulose as the feedstock.
+Additional cellulose
+In a real-world biorefinery , one might want to produce glucose continuously as opposed to in a batch process. To achieve that, cellulose must be added to the system at some point, and some of the glucose removed from the bioreactor. The point at which cellulose is added to the system can be optimised with respect to glucose output over time.
+Kappa can simulate exactly that - adding or removing agents from the reaction mixture. We could test a range of conditions in which cellulose is added, e.g.:
+when a certain percent of cellulose is degraded (10%, 30%, 50%, 70% or 90%),
+at fixed time intervals (every 1 hour, 2 hours, 4 hours, or 8 hours),
+when a certain amount of end-product (glucose) is produced (10%, 30%, 50%, 70% or 90%).
+At each of these events, half of the amount of free-floating glucose would be removed from the system, and an equivalent amount of cellulose would be added. The glucose which is removed from the system will be tallied.
+To get a meaningful number, the amount of glucose will be divided by the amount of cellulose put into the system, thus providing the expected return ratio for cellulose.
+A graph showing the return ratio of a system in 16 hours of simulation time while cellulose is added to the system after certain amount of cellulose is degraded (green), at certain glucose levels (blue) or fixed time intervals (purple).
+It can be seen from the graph above that in principle, it is beneficial to add cellulose to the system at an early opportunity (after 10% of cellulose is degraded or after 10% of glucose is produced, or every two hours). However, other factors also need to be taken into account when choosing the point at which to add more cellulose.
+Firstly, in practice it is impossible to remove just glucose from the system. In real life one would remove a part of the reaction mixture, including partially degraded cellulose, cellobiose, glucose and some enzymes. That would need to be purified and the cost of that process would be a factor in choosing the point at which cellulose is degraded.
+Secondly, especially in the case of the '10% degraded cellulose' set-up (but also other set-ups where cellulose is added after degrading x% of initial cellulose), we noted abnormally high amounts of cellulose produced in the system (after 16 hours of simulated time, cellobiose was over 100% of the initial mass of cellulose). This is possibly because the high amounts of glucose (and cellobiose) inhibit the enzymes, especially β-glucosidase. A possible solution to this problem might be removing not only glucose, but also cellobiose from the system, or adding more enzymes together with cellulose.
+Thirdly, in the systems where cellulose is added after a certain amount of glucose is produced, relatively little cellobiose is left in the system at the end of simulation. Therefore the product of these systems might have higher glucose content, so one might prefer this option.
+Multiple runs
+At the beginning of this page we mentioned that we used the same random seed to run the simulations, for the ease of development and testing the models.
+However, this is not the standard behaviour of Kappa. The stochastic simulator is initialised with a different number every time, so every run of a simulation can differ from the previous one. This is because the principle behind Kappa is that molecules interact with each other in a non-deterministic manner.
+Therefore, it is possible that the random seed we chose at the beginning (itself pseudo-randomly generated) has skewed some of our results. A method is needed to account for that.
+Thanks to the resources provided by the Edinburgh Compute and Data Facility (ECDF, www.ecdf.ed.ac.uk ), we could run our model many (~1,000) times, and then take the average, minimum and maximum values for our observed variables.
+Here is what happened when we put this idea to practice:
+A graph showing the contents of the reaction mixture in synergistic system, averaged over 1,000 runs, with minimal and maximal values.
+Note: The minima and maxima are not necessarily from the same run, therefore the shaded areas look a bit rough.
+We can see that the variables in the system behave differently with respect to random seed. Whereas the range of values of cellulose is relatively small, the range of values of cellobiose and glucose is quite wide.
+However, averaged over 1,000 simulations, the average value represents a likely estimate of the actual performance of a real-life system.
+A graph showing the contents of the reaction mixture in non-synergistic system, averaged over 1,000 runs, with minimal and maximal values.
+Note: The minima and maxima are not necessarily from the same run, therefore the shaded areas look a bit rough.
+Click here to see a longer (48 hours) simulation
+Download the Spatial Kappa model
+You can download the ready model as a .zip file (instructions in README file):
+With thanks to
+ECDF. University of Edinburgh: http://www.ecdf.ed.ac.uk .
+They provided us with (about) 2 years of computation time.
+References
+Danos V, Feret J, Fontana W, Harmer R, Krivine J (2008) Rule-Based Modelling, Symmetries, Refinements . Lecture Notes in Computer Science 5054: 103-122 (doi: 10.1007/978-3-540-68413-8_8)
+Fontes CMGA, Gilbert HJ (2010) Cellulosomes: highly efficient nanomachines designed to deconstruct plant cell wall complex carbohydrates . Annual Review of Biochemistry 79: 655-81 (doi: 10.1146/annurev-biochem-091208-085603).
+Kadam KL, Rydholm EC, McMillan JD (2004) Development and validation of a kinetic model for enzymatic saccharification of lignocellulosic biomass . Biotechnology Progress 20(3): 698–705 (doi: 10.1021/bp034316x).
+Retrieved from " http://2011.igem.org/Team:Edinburgh/Cellulases_(Kappa_model) "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

@@ -1,0 +1,2162 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Cadets2Vets_Safety_script1_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Cadets2Vets/Safety/script1.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>var rowcol_arranger = {};
+</P><P>rowcol_arranger.init = function(container,items,whatsNext){
+	 SpimeEngine.DebugPrint(&quot;rowcol arranger init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+</P><P>	 /******************************************************************
+		 *           HANDLING THE ELEMENTS
+	 ********************************************************************/
+	var elements = items.not(&quot;.element-box&quot;).first().siblings(&quot;.element-box&quot;);
+	elements.remove();
+</P><P>	 /******************************************************************
+		 *           HANDLING THE ITEMS
+	********************************************************************/
+	 var itemsHolder = container.find(&quot;#items-holder&quot;);
+	 var itemsHolderWrapper = container.find(&quot;#items-holder-wrapper&quot;);
+	 //backward compatibility
+	 if (itemsHolder.length == 0){
+		 items = container.find(&quot;.sub.item-box&quot;);
+		 itemsHolder = $(&quot;&lt;div id='items-holder' /&gt;&quot;);
+		 itemsHolderWrapper = $(&quot;&lt;div id='items-holder-wrapper' /&gt;&quot;);
+		 itemsHolder.append(items);
+		 itemsHolderWrapper.append(itemsHolder);
+		 container.find(&quot;#children&quot;).append(itemsHolderWrapper);
+	 }
+</P><P>	 var pagHolder = container.find(&quot;#pagination-holder&quot;);
+	 if (pagHolder.length == 0){
+		 rowcol_arranger.initPaginationHolder(container);
+	 }
+</P><P>	 if (typeof  whatsNext != &quot;undefined&quot;){
+		 whatsNext();
+	 }
+};
+</P><P>rowcol_arranger.arrange = function(items,container,whatsNext){
+	SpimeEngine.DebugPrint(&quot;rowcol arranger arrange for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+</P><P>	/******************************************************************
+	 *           HANDLING THE ELEMENTS
+	 ********************************************************************/
+	//var elementsHolder = container.find(&quot;#elements-holder&quot;);
+	var itemsHolder = container.find(&quot;#items-holder&quot;);
+	items = itemsHolder.children();
+	var calculatedElementsHeight = 0;
+</P><P>	var stripe = container.closest(&quot;.master.item-box&quot;);
+	stripe.css(&quot;min-height&quot;,&quot;initial&quot;);
+	var stripeType = stripe.attr(&quot;data-preset-type-id&quot;);
+	var isFeatures = XPRSHelper.inPresetGroup(stripeType,&quot;FEATURES&quot;);
+</P><P>
+	/******************************************************************
+	 *           LOADING ARRANGER SETTINGS
+	 ********************************************************************/
+</P><P>	var settings = container.closest(&quot;.item-wrapper&quot;).find(&quot;.arranger-settings&quot;);
+	var ratio = parseFloat(settings.attr('data-arranger_item_ratio')) ;
+	var colsFromSettings = parseInt(settings.attr('data-arranger_cols'));
+	colsFromSettings = isFeatures ? items.length : colsFromSettings;
+	var itemsMargin =  parseInt(settings.attr('data-arranger_item_spacing'));
+	var itemMinWidth = parseInt(settings.attr('data-arranger_item_min_width'));
+	var itemMaxWidth = parseInt(settings.attr('data-arranger_item_max_width'));
+	var itemsPerPage = settings.attr('data-arranger_items_per_page');
+	itemsPerPage = isFeatures ? items.length : itemsPerPage;
+	itemsPerPage = (itemsPerPage == &quot;all&quot;) ? items.length : parseInt(itemsPerPage);
+</P><P>	
+	/******************************************************************
+	 * DEFINE PARTICIPATING DIVS        
+	 ********************************************************************/
+	//ParentWrapper is the source for our max width
+	var parentWrapper = itemsHolder.closest(&quot;.gallery-wrapper&quot;);
+</P><P>	var forcedArrange = (typeof stripe.attr(&quot;data-forced-arrange&quot;) != &quot;undefined&quot;);
+	var fromHeightResize = (typeof stripe.attr(&quot;data-height-resize&quot;) != &quot;undefined&quot;);
+	var fromWidthResize = forcedArrange || (typeof stripe.attr(&quot;data-width-resize&quot;) != &quot;undefined&quot;) || (typeof stripe.attr(&quot;data-arranger_cols-from-settings&quot;) != &quot;undefined&quot;)|| (typeof stripe.attr(&quot;data-arranger_item_spacing-from-settings&quot;) != &quot;undefined&quot;);
+	stripe.removeAttr(&quot;data-forced-arrange&quot;);
+	var paginationWrapper =  container.find(&quot;#pagination-wrapper&quot;);
+	var paginationHeight = paginationWrapper.is(':visible') ? paginationWrapper.outerHeight(true) : 0;
+	//var stripeHeight = stripe.height() - calculatedElementsHeight - paginationHeight;//- parseInt(stripe.css(&quot;padding-top&quot;)) - parseInt(stripe.css(&quot;padding-bottom&quot;));
+</P><P>	/******************************************************************
+	 * START CALCULATIONS WITH ITEM MIN WIDTH AND HEIGHT * RATIO AND COLS AS THE NUMBER OF ITEMS      
+	 ********************************************************************/
+	var percentagePaddingFix = 0;
+	if (parseInt(stripe.css(&quot;padding-left&quot;)) &gt; 0){
+		percentagePaddingFix = 1;
+	}
+	var wrapperWidth = parentWrapper.width() - percentagePaddingFix;
+	//Min width can not be larger than  screen or the max item width
+	itemMinWidth = Math.min(itemMinWidth,itemMaxWidth);
+	itemMinWidth = Math.min(itemMinWidth,wrapperWidth);
+	items.find(&quot;.preview-content-holder&quot;).css(&quot;min-height&quot;,&quot;&quot;);
+</P><P>	var cols = Math.floor((wrapperWidth + itemsMargin*2) / (itemMinWidth + itemsMargin*2));
+	cols = Math.min(colsFromSettings,cols);
+	if (fromWidthResize){
+		var wrapperWidthForTest = wrapperWidth - colsFromSettings*itemsMargin*2 + itemsMargin*2;
+		itemMinWidth =   Math.floor(wrapperWidthForTest / colsFromSettings);
+		itemMinWidth = Math.min(itemMinWidth,itemMaxWidth);
+		itemMinWidth *= 0.7;
+		cols = colsFromSettings;
+	}
+	//cols must be at least 1
+	cols =  Math.max(cols,1);
+</P><P>	if (cols == 2 &amp;&amp; colsFromSettings != 2 &amp;&amp; items.length == 3){
+		cols = 1;
+	}
+</P><P>	if (cols == 3 &amp;&amp; items.length == 4 &amp;&amp; colsFromSettings != 3){
+		cols = 2;
+	}
+	if (cols == 5 &amp;&amp; items.length == 6 &amp;&amp; colsFromSettings != 5){
+		cols = 3;
+	}
+</P><P>	//The total number of rows we have
+	var rows = Math.ceil(items.length / cols);
+	//Restoring items defaults (if change during previous arrange)
+	items.show();
+	items.css({&quot;clear&quot;:&quot;&quot;});
+	var itemRow = 0;
+</P><P>	/******************************************************************
+	 * BREAK THE ITEMS ACCORDING TO CALCULATED COLS AND GIVE EACH ONE ROW IDENTIFIER 
+	 ********************************************************************/
+</P><P>	var maxContentHeight = 0;
+	items.removeClass(&quot;top-side&quot;).removeClass(&quot;bottom-side&quot;).removeClass(&quot;left-side&quot;).removeClass(&quot;right-side&quot;);;
+	items.each(function(idx){
+		if (idx % cols == 0){
+			$(this).css({&quot;clear&quot;:&quot;left&quot;});
+			$(this).addClass(&quot;left-side&quot;);
+			itemRow++;
+		}
+		if (idx % cols == cols-1){
+			$(this).addClass(&quot;right-side&quot;);
+		}
+		if (itemRow == 1){
+			$(this).addClass(&quot;top-side&quot;);
+		}
+		if (itemRow == rows){
+			$(this).addClass(&quot;bottom-side&quot;);
+		}
+		$(this).attr(&quot;data-row&quot;,itemRow);
+		maxContentHeight = Math.max(maxContentHeight,$(this).find(&quot;.preview-content-holder&quot;).height()); 
+	});
+	//maxContentHeight = Math.max(itemsHolder.height(),maxContentHeight);
+</P><P>	
+	//if we have more space we enlarge the items 
+	var extraSpace = Math.floor(    (wrapperWidth - (cols*itemMinWidth) - (cols*itemsMargin*2) + (itemsMargin*2) )  /cols     );
+	var	calculatedItemWidth = Math.floor(itemMinWidth + extraSpace);//Math.round((wrapperWidth)/cols) - ((cols-1)*(itemsMargin*2));
+	calculatedItemWidth = Math.min(calculatedItemWidth,itemMaxWidth);
+</P><P>	setTimeout(function(){
+		if (wrapperWidth - parentWrapper.width() &gt; 3){
+			extraSpace = Math.floor(    (parentWrapper.width() - (cols*itemMinWidth) - (cols*itemsMargin*2) + (itemsMargin*2) )  /cols     );
+			calculatedItemWidth = Math.floor(itemMinWidth + extraSpace);//Math.round((wrapperWidth)/cols) - ((cols-1)*(itemsMargin*2));
+			calculatedItemWidth = Math.min(calculatedItemWidth,itemMaxWidth);
+			items.width(calculatedItemWidth);
+		}
+	},10);
+</P><P>	if (fromWidthResize){
+		//calculatedItemWidth = itemMinWidth;
+		settings.attr('data-arranger_item_min_width',itemMinWidth);
+		stripe.attr(&quot;data-items-min-width&quot;,itemMinWidth);
+	}
+</P><P>	/******************************************************************
+	 * CHANGE ITEMS WIDTH HEIGHT AND SPACING ACCORDING TO CALCULATIONS
+	 ********************************************************************/
+	items.width(calculatedItemWidth).css({&quot;margin&quot;:itemsMargin});
+	items.filter(&quot;.top-side&quot;).css(&quot;margin-top&quot;,itemsMargin*2);
+	items.filter(&quot;.bottom-side&quot;).css(&quot;margin-bottom&quot;,itemsMargin*2);
+	items.filter(&quot;.left-side&quot;).css(&quot;margin-left&quot;,0);
+	items.filter(&quot;.right-side&quot;).css(&quot;margin-right&quot;,0);
+</P><P>
+	itemsHolder.css({&quot;width&quot;:&quot;100%&quot;,&quot;text-align&quot;:&quot;&quot;});
+</P><P>	items.slice(itemsPerPage,items.length).hide();
+</P><P>	if (fromHeightResize &amp;&amp; isFeatures){
+		ratio = (stripe.height() - itemsMargin*4) / calculatedItemWidth;
+		stripe.attr(&quot;data-item-ratio&quot;,ratio.toFixed(2));
+		settings.attr('data-arranger_item_ratio',ratio);
+	}
+		var	calculatedItemHeight = calculatedItemWidth*ratio;
+		items.css({&quot;min-height&quot;:calculatedItemHeight});
+		items.find(&quot;.item-wrapper&quot;).css({&quot;min-height&quot;:calculatedItemHeight});
+</P><P>		
+		items.each(function(idx){
+			maxContentHeight = Math.max(maxContentHeight,$(this).find(&quot;.preview-content-holder&quot;).height()); 
+		});
+		//if (items.find(&quot;.helper-div.top-center&quot;).length == 0){
+		if (items.find(&quot;.helper-div.middle-center,.helper-div.bottom-right,.helper-div.bottom-left,.helper-div.top-left,.helper-div.top-right&quot;).length == 0){
+			items.find(&quot;.preview-content-holder&quot;).css(&quot;min-height&quot;,maxContentHeight);
+		}else{
+			//items.find(&quot;.vertical-aligner&quot;).css(&quot;min-height&quot;,maxContentHeight);
+		}
+		//}else{
+		//	items.find(&quot;.text-side .vertical-aligner&quot;).css(&quot;min-height&quot;,maxContentHeight);
+		//}
+</P><P>	/******************************************************************
+	 * HANDLE PAGINATION
+	 ********************************************************************/
+	// If we need pagination (not all items fit the given height)
+	var inMoreMode = (typeof stripe.attr(&quot;data-more-clicked&quot;) != &quot;undefined&quot;);
+	if (itemsPerPage &lt; items.length ){
+		if (inMoreMode){
+			paginationWrapper.hide();
+			items.show();
+		}else{
+			paginationWrapper.show();
+		}
+	}else{
+		//Hide paginator
+		paginationWrapper.hide();
+	}
+</P><P>	
+	extraSpace = Math.floor(    (wrapperWidth - (cols*itemMaxWidth) - (cols*itemsMargin*2) + (itemsMargin*2) )  /cols     );
+	if(calculatedItemWidth == itemMaxWidth &amp;&amp; extraSpace &gt; 0){
+		itemsHolder.css(&quot;text-align&quot;,&quot;center&quot;);
+		var currentRowWidth = (itemMaxWidth * cols) + (cols*itemsMargin*2) - itemsMargin*2;
+		itemsHolder.width(currentRowWidth);
+	}else{
+		itemsHolder.css(&quot;width&quot;,&quot;&quot;);
+	}
+</P><P>	if (typeof  whatsNext != &quot;undefined&quot;){
+		var originalItemMinWidth = parseInt(settings.attr('data-arranger_item_min_width'));
+		var actualItemMinWidth = itemMinWidth;
+		if (actualItemMinWidth != originalItemMinWidth){
+			stripe.attr(&quot;data-items-min-width&quot;,actualItemMinWidth);
+		}
+		whatsNext();
+	 }
+</P><P>};
+</P><P>rowcol_arranger.showMore = function(stripe){
+</P><P>	var itemsHolder = stripe.find(&quot;#items-holder&quot;);
+	var items = itemsHolder.children();
+	var paginationWrapper = stripe.find(&quot;#pagination-wrapper&quot;);
+	paginationWrapper.hide();
+	var itemsWrapper = stripe.find(&quot;#items-holder-wrapper&quot;);
+	var topMargin = parseInt(itemsWrapper.css(&quot;margin-top&quot;));
+	itemsWrapper.css(&quot;margin-bottom&quot;,topMargin);
+	items.show();
+	SpimeEngine.fitVideos(stripe);
+	stripe.attr(&quot;data-more-clicked&quot;,&quot;true&quot;);
+};
+</P><P>rowcol_arranger.showLess = function(stripe){
+	var itemsHolder = stripe.find(&quot;#items-holder&quot;);
+	var items = itemsHolder.children();
+	var paginationWrapper = stripe.find(&quot;#pagination-wrapper&quot;);
+	var itemsWrapper = stripe.find(&quot;#items-holder-wrapper&quot;);
+	//var topMargin = parseInt(itemsWrapper.css(&quot;margin-top&quot;));
+	itemsWrapper.css(&quot;margin-bottom&quot;,&quot;&quot;);
+	var itemsToShow = parseInt(stripe.attr(&quot;data-items-to-show&quot;));
+	if (itemsToShow &lt; items.length){
+		paginationWrapper.show();
+	}
+	items.hide();
+	items.slice(0,itemsToShow).show();
+	stripe.removeAttr(&quot;data-more-clicked&quot;);
+};
+</P><P>rowcol_arranger.initPaginationHolder = function(container){
+	var paginationBtn = $(&quot;&lt;div id='pagination-btn' /&gt;&quot;);
+	paginationBtn.text(&quot;More&quot;);
+	var paginationHolder = $(&quot;&lt;div id='pagination-holder' /&gt;&quot;).addClass(&quot;magic-circle-holder&quot;).attr(&quot;data-menu-name&quot;,&quot;PAGINATION_SETTINGS&quot;);
+	var paginationHolderWrapper = $(&quot;&lt;div id='pagination-wrapper' class='layer5' /&gt;&quot;);
+	paginationHolder.append(paginationBtn);
+	paginationHolderWrapper.append(paginationHolder);
+	container.find(&quot;#children&quot;).append(paginationHolderWrapper);
+	paginationHolder.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+		e.stopPropagation();
+		var stripe = container.closest(&quot;.master.item-box&quot;);
+		rowcol_arranger.showMore(stripe);
+	});
+};; var bottom_layout = {};
+</P><P>bottom_layout.init = function(container,items){
+	 SpimeEngine.DebugPrint(&quot;bottom layout init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	// var originalFontSize = Math.round(parseInt(items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;)));
+	//	items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+};
+</P><P>bottom_layout.applyLayout = function(container,items,paramsFromRealTime){
+	var maxContentHeight = 0;
+	var calculatedItemHeight = 0;
+	var innerMaxHeight = 0;
+	items.find(&quot;.image-cover&quot;).css(&quot;height&quot;,&quot;&quot;);
+	items.find(&quot;.preview-content-holder&quot;).css(&quot;min-height&quot;,&quot;&quot;);
+	items.filter(&quot;:visible&quot;).each(function(){
+		var currentItem = $(this);
+		if ( typeof currentItem.attr(&quot;data-height-from-arranger&quot;) != &quot;undefined&quot;){
+			calculatedItemHeight = parseInt(currentItem.attr(&quot;data-height-from-arranger&quot;));
+		}else{
+			calculatedItemHeight = Math.max(currentItem.height(),calculatedItemHeight);
+		}
+</P><P>		var contentHolder = currentItem.find(&quot;.preview-content-holder&quot;);
+		var contentHeight = contentHolder.outerHeight(true);
+		maxContentHeight = Math.max(contentHeight,maxContentHeight);
+		innerMaxHeight = Math.max(innerMaxHeight,$(this).find(&quot;.item-details&quot;).outerHeight());
+	});
+	var newImageHeight = calculatedItemHeight - maxContentHeight;
+	items.each(function(){
+		var currentItem = $(this);
+		currentItem.find(&quot;.image-cover&quot;).css(&quot;height&quot;,newImageHeight);
+</P><P>		$(this).find(&quot;.preview-content-holder&quot;).css(&quot;min-height&quot;,maxContentHeight);
+//		var textElement = currentItem.find(&quot;.preview-title&quot;);
+//		var contentHolder = currentItem.find(&quot;.preview-content-holder&quot;);
+//		var contentWrapper = currentItem.find(&quot;.preview-content-wrapper&quot;);
+//		var originalFontSize = parseInt(textElement.attr(&quot;data-orig-font-size&quot;));
+//		textElement.css(&quot;font-size&quot;,originalFontSize);
+//		if (contentHolder.outerWidth(true) &gt; contentWrapper.width()){
+//			var newFontSize =  SpimeEngine.shrinkTextToFit(originalFontSize,contentWrapper,contentHolder,textElement,0,30);
+//			textElement.css(&quot;font-size&quot;,newFontSize);
+//		}
+	});
+};; var dual_layout = {};
+</P><P>dual_layout.init = function(container,items){
+	SpimeEngine.DebugPrint(&quot;dual layout init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	var originalFontSize = Math.round(parseInt(items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;)));
+	items.find(&quot;.preview-title&quot;).attr(&quot;original-font-size&quot;,originalFontSize);
+	items.each(function(){
+		var previewContentHolder = $(this).find(&quot;.preview-content-holder&quot;);
+		var originalMaxWidth = parseInt(previewContentHolder.css(&quot;max-width&quot;));
+		previewContentHolder.attr(&quot;data-orig-max-width&quot;, originalMaxWidth)
+</P><P>	});
+}
+</P><P>dual_layout.applyLayout = function(container,items){
+	SpimeEngine.DebugPrint(&quot;dual layout applyLayout for &quot;);
+	//TODO: width for flip should be set in the layout settings
+	if (container.width() &lt; 500){
+		items.each(function(){
+			dual_layout.flipVertically($(this));
+		});
+	}else{
+		items.each(function(){
+			dual_layout.unflip($(this));
+		});
+	}
+</P><P>	items.each(function(){
+		var previewContentHolder = $(this).find(&quot;.preview-content-holder&quot;);
+		var margins = parseInt(previewContentHolder.css(&quot;margin-left&quot;)) + parseInt(previewContentHolder.css(&quot;margin-right&quot;)) + parseInt(previewContentHolder.css(&quot;padding-left&quot;)) + parseInt(previewContentHolder.css(&quot;padding-right&quot;))
+		var previewContentWrapper = $(this).find(&quot;.item-content &quot;);
+		//console.log(&quot;--------------------------- &gt; &quot; + previewContentWrapper.width())
+		var maxWidthVal = (previewContentWrapper.width() / 2) - margins;
+		var originalMaxWith = previewContentHolder.attr(&quot;data-orig-max-width&quot;);
+		maxWidthVal = Math.min(maxWidthVal,originalMaxWith)
+		previewContentHolder.css(&quot;max-width&quot;,maxWidthVal)
+</P><P>	});
+</P><P>//	var originalFontSize = parseInt(items.find(&quot;.preview-title&quot;).attr(&quot;original-font-size&quot;));
+//	var shrinkPlease = true;
+//	if (typeof paramsFromRealTime != &quot;undefined&quot; ){
+//		if (typeof paramsFromRealTime.value != &quot;undefined&quot;){
+//			originalFontSize = parseInt(paramsFromRealTime.value);
+//			items.find(&quot;.preview-title&quot;).attr(&quot;original-font-size&quot;,originalFontSize);
+//			shrinkPlease = false;
+//			
+//		}
+//	}
+//	if (shrinkPlease){
+//		items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;,originalFontSize)
+//		var minFontSize = 9999;
+//		items.each(function(){
+//			var itemDetails = $(this).find(&quot;.item-details&quot;)//.outerHeight(true);
+//			var stripe = itemDetails.closest(&quot;.item-wrapper&quot;)//.outerHeight(true);
+//			minFontSize = Math.min(minFontSize,dual_layout.shrinker(originalFontSize,itemDetails,$(this).find(&quot;.preview-title&quot;)));
+//		});
+//		items.each(function(){
+//			$(this).find(&quot;.helper-div&quot;).css(&quot;padding&quot;,$(this).css(&quot;padding&quot;));
+//			$(this).find(&quot;.preview-title&quot;).css(&quot;font-size&quot;,minFontSize)
+//		});
+//		//items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;,minFontSize)
+//	}
+</P><P>}
+</P><P>
+dual_layout.flipVertically = function(item){	
+	if (typeof item.attr(&quot;data-flipped&quot;) == &quot;undefined&quot;){
+		item.attr(&quot;data-flipped&quot;,&quot;true&quot;)
+		var helperDiv = item.find(&quot;.helper-div&quot;);
+		var itemPreview = helperDiv.children(&quot;.item-preview&quot;);
+		var itemDetails = helperDiv.children(&quot;.item-details&quot;);
+		var textWrapper = $(&quot;&lt;div id='text-wrapper' /&gt;&quot;);
+		var imageWrapper = $(&quot;&lt;div id='image-wrapper' /&gt;&quot;);
+		textWrapper.append(itemDetails);
+		imageWrapper.append(itemPreview);
+		helperDiv.append(textWrapper);
+		helperDiv.append(imageWrapper);
+	}
+}
+</P><P>dual_layout.unflip = function(item){
+	if (typeof item.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+		item.removeAttr(&quot;data-flipped&quot;,&quot;true&quot;)
+		var helperDiv = item.find(&quot;.helper-div&quot;);
+		var itemPreview = helperDiv.find(&quot;.item-preview&quot;);
+		var itemDetails = helperDiv.find(&quot;.item-details&quot;);
+		itemPreview.unwrap();
+		itemDetails.unwrap();
+		itemPreview.after(itemDetails);
+	}
+}
+</P><P>dual_layout.shrinker = function(fontSize,parent,content){
+	if (content.width() &gt;parent.width()){
+		//console.log(&quot;shrink please&quot;)
+		var previewTitle = content.find(&quot;.preview-title&quot;);
+		var shrinkedFontSize =  fontSize * 0.9 ;
+		if (shrinkedFontSize &lt; 15){
+			//console.debug(&quot;cant SHRINK no more!&quot;);
+		}else{
+			content.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;,shrinkedFontSize)
+			return dual_layout.shrinker(shrinkedFontSize,parent,content)
+		}
+</P><P>	}else{
+		//console.log(&quot;dont shrink&quot;)
+		return parseInt(content.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;));
+	}
+}; var right_layout = {};
+</P><P>right_layout.init = function(container,items){
+	SpimeEngine.DebugPrint(&quot;right layout init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	//var originalFontSize = Math.round(parseInt(items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;)));
+	//items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+	items.each(function(){
+		var previewContentHolder = $(this).find(&quot;.preview-content-holder&quot;);
+		var originalMaxWidth = parseInt(previewContentHolder.css(&quot;max-width&quot;));
+		previewContentHolder.attr(&quot;data-orig-max-width&quot;, originalMaxWidth);
+	});
+};
+</P><P>right_layout.applyLayout = function(container,items,paramsFromRealTime){
+	SpimeEngine.DebugPrint(&quot;right layout applyLayout for &quot;);
+	//TODO: width for flip should be set in the layout settings
+	if (container.width() &lt; 500){
+		items.each(function(){
+			right_layout.flipVertically($(this));
+		});
+	}else{
+		items.each(function(){
+			right_layout.unflip($(this));
+		});
+	}
+</P><P>	items.each(function(){
+		var previewContentHolder = $(this).find(&quot;.preview-content-holder&quot;);
+		var margins = parseInt(previewContentHolder.css(&quot;margin-left&quot;)) + parseInt(previewContentHolder.css(&quot;margin-right&quot;)) + parseInt(previewContentHolder.css(&quot;padding-left&quot;)) + parseInt(previewContentHolder.css(&quot;padding-right&quot;));
+		var previewContentWrapper = $(this).find(&quot;.item-content &quot;);
+		var maxWidthVal = (previewContentWrapper.width() / 2) - margins;
+		var originalMaxWith = previewContentHolder.attr(&quot;data-orig-max-width&quot;);
+		maxWidthVal = Math.min(maxWidthVal,originalMaxWith);
+		//previewContentHolder.css(&quot;max-width&quot;,maxWidthVal)
+</P><P>	});
+</P><P>	items.each(function(idx){
+		var currentItem = $(this);
+		//var textElement = currentItem.find(&quot;.preview-title&quot;);
+		//var contentHolder = currentItem.find(&quot;.preview-content-holder&quot;);
+		var contentWrapper = currentItem.find(&quot;.preview-content-wrapper&quot;);
+		//var originalFontSize = parseInt(textElement.attr(&quot;data-orig-font-size&quot;));
+		if (typeof currentItem.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+			contentWrapper.removeClass(&quot;shrinker-parent&quot;);
+			currentItem.find(&quot;.helper-div&quot;).addClass(&quot;shrinker-parent&quot;); 
+		}else{
+			contentWrapper.addClass(&quot;shrinker-parent&quot;);
+			currentItem.find(&quot;.helper-div&quot;).removeClass(&quot;shrinker-parent&quot;); 
+		}
+		//textElement.css(&quot;font-size&quot;,originalFontSize);
+		//if (contentHolder.outerWidth(true) &gt; contentWrapper.width()){
+		//	var newFontSize = SpimeEngine.shrinkTextToFit(originalFontSize,contentWrapper,contentHolder,textElement,0,30);
+		//	textElement.css(&quot;font-size&quot;,newFontSize);
+		//}
+	});	
+</P><P>	
+};
+</P><P>
+right_layout.flipVertically = function(item){	
+	if (typeof item.attr(&quot;data-flipped&quot;) == &quot;undefined&quot;){
+		item.attr(&quot;data-flipped&quot;,&quot;true&quot;);
+		var helperDiv = item.find(&quot;.helper-div&quot;);
+		var itemPreview = helperDiv.children(&quot;.item-preview&quot;);
+		var itemDetails = helperDiv.children(&quot;.item-details&quot;);
+		var textWrapper = $(&quot;&lt;div id='text-wrapper' /&gt;&quot;);
+		var imageWrapper = $(&quot;&lt;div id='image-wrapper' class='preview image-cover' /&gt;&quot;);
+		textWrapper.append(itemDetails);
+		imageWrapper.append(itemPreview);
+		helperDiv.append(textWrapper);
+		helperDiv.append(imageWrapper);
+	}
+};
+</P><P>right_layout.unflip = function(item){
+	if (typeof item.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+		item.removeAttr(&quot;data-flipped&quot;,&quot;true&quot;);
+		var helperDiv = item.find(&quot;.helper-div&quot;);
+		var itemPreview = helperDiv.find(&quot;.item-preview&quot;);
+		var itemDetails = helperDiv.find(&quot;.item-details&quot;);
+		itemPreview.unwrap();
+		itemDetails.unwrap();
+		itemPreview.after(itemDetails);
+	}
+};; var left_layout = {};
+</P><P>left_layout.init = function(container,items){
+	SpimeEngine.DebugPrint(&quot;left layout init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	//var originalFontSize = Math.round(parseInt(items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;)));
+	//items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+	items.each(function(){
+		var previewContentHolder = $(this).find(&quot;.preview-content-holder&quot;);
+		var originalMaxWidth = parseInt(previewContentHolder.css(&quot;max-width&quot;));
+		previewContentHolder.attr(&quot;data-orig-max-width&quot;, originalMaxWidth);
+	});
+};
+</P><P>left_layout.applyLayout = function(container,items,paramsFromRealTime){
+	SpimeEngine.DebugPrint(&quot;left layout applyLayout for &quot;);
+	//TODO: width for flip should be set in the layout settings
+	if (container.width() &lt; 500){
+		items.each(function(){
+			left_layout.flipVertically($(this));
+		});
+	}else{
+		items.each(function(){
+			left_layout.unflip($(this));
+		});
+	}
+</P><P>	
+	items.each(function(){
+		var previewContentHolder = $(this).find(&quot;.preview-content-holder&quot;);
+		var margins = parseInt(previewContentHolder.css(&quot;margin-left&quot;)) + parseInt(previewContentHolder.css(&quot;margin-right&quot;)) + parseInt(previewContentHolder.css(&quot;padding-left&quot;)) + parseInt(previewContentHolder.css(&quot;padding-right&quot;));
+		var previewContentWrapper = $(this).find(&quot;.item-content &quot;);
+		var maxWidthVal = (previewContentWrapper.width() / 2) - margins;
+		var originalMaxWith = previewContentHolder.attr(&quot;data-orig-max-width&quot;);
+		maxWidthVal = Math.min(maxWidthVal,originalMaxWith);
+	//	previewContentHolder.css(&quot;max-width&quot;,maxWidthVal);		
+	});
+</P><P>
+	items.each(function(idx){
+		var currentItem = $(this);
+		//var textElement = currentItem.find(&quot;.preview-title&quot;);
+		//var contentHolder = currentItem.find(&quot;.preview-content-holder&quot;);
+		var contentWrapper = currentItem.find(&quot;.preview-content-wrapper&quot;);
+		//var originalFontSize = parseInt(textElement.attr(&quot;data-orig-font-size&quot;));
+		if (typeof currentItem.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+			contentWrapper.removeClass(&quot;shrinker-parent&quot;);
+			currentItem.find(&quot;.helper-div&quot;).addClass(&quot;shrinker-parent&quot;); 
+		}else{
+			contentWrapper.addClass(&quot;shrinker-parent&quot;);
+			currentItem.find(&quot;.helper-div&quot;).removeClass(&quot;shrinker-parent&quot;); 
+		}
+//		textElement.css(&quot;font-size&quot;,originalFontSize);
+//		if (contentHolder.outerWidth(true) &gt; contentWrapper.width()){
+//			var newFontSize =  SpimeEngine.shrinkTextToFit(originalFontSize,contentWrapper,contentHolder,textElement,0,30);
+//			textElement.css(&quot;font-size&quot;,newFontSize);
+//		}
+	});	
+};
+</P><P>
+left_layout.flipVertically = function(item){	
+	if (typeof item.attr(&quot;data-flipped&quot;) == &quot;undefined&quot;){
+		item.attr(&quot;data-flipped&quot;,&quot;true&quot;);
+		var helperDiv = item.find(&quot;.helper-div&quot;);
+		var itemPreview = helperDiv.children(&quot;.item-preview&quot;);
+		var itemDetails = helperDiv.children(&quot;.item-details&quot;);
+		var textWrapper = $(&quot;&lt;div id='text-wrapper' /&gt;&quot;);
+		var imageWrapper = $(&quot;&lt;div id='image-wrapper' class='preview image-cover' /&gt;&quot;);
+		textWrapper.append(itemDetails);
+		imageWrapper.append(itemPreview);
+		helperDiv.append(textWrapper);
+		helperDiv.append(imageWrapper);
+	}
+};
+</P><P>left_layout.unflip = function(item){
+	if (typeof item.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+		item.removeAttr(&quot;data-flipped&quot;,&quot;true&quot;);
+		var helperDiv = item.find(&quot;.helper-div&quot;);
+		var itemPreview = helperDiv.find(&quot;.item-preview&quot;);
+		var itemDetails = helperDiv.find(&quot;.item-details&quot;);
+		itemPreview.unwrap();
+		itemDetails.unwrap();
+		itemPreview.before(itemDetails);
+	}
+};; var top_layout = {};
+</P><P>top_layout.init = function(container,items){
+	SpimeEngine.DebugPrint(&quot;top layout init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	//var originalFontSize = Math.round(parseInt(items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;)));
+	//items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+};
+</P><P>top_layout.applyLayout = function(container,items,paramsFromRealTime){
+	SpimeEngine.DebugPrint(&quot;top layout applyLayout for &quot;);
+	items.find(&quot;.item-details&quot;).css(&quot;height&quot;,&quot;&quot;);
+	items.find(&quot;.image-cover&quot;).css(&quot;height&quot;,&quot;&quot;);
+	items.find(&quot;.image-cover&quot;).css(&quot;min-height&quot;,&quot;&quot;);
+</P><P>	var maxHeight = 0;
+	var innerMaxHeight = 0;
+	var maxItemBoxHeight = 0;
+	items.each(function(){
+		itemDetailsHeight = $(this).find(&quot;.item-details&quot;).outerHeight(true);
+		maxHeight = Math.max(maxHeight,itemDetailsHeight);
+		var itemContent = $(this).find(&quot;.item-content&quot;).andSelf().filter(&quot;.item-content&quot;);
+		maxItemBoxHeight = Math.max(maxItemBoxHeight,itemContent.height());
+		innerMaxHeight = Math.max(innerMaxHeight,$(this).find(&quot;.item-details&quot;).outerHeight());
+	});
+</P><P>	items.each(function(){
+		$(this).find(&quot;.item-details&quot;).height(innerMaxHeight);
+		var itemContent = $(this).find(&quot;.item-content&quot;).andSelf().filter(&quot;.item-content&quot;);
+		itemBoxHeight =  itemContent.height();
+		$(this).find(&quot;.image-cover&quot;).css(&quot;height&quot;,maxItemBoxHeight - maxHeight ).css(&quot;min-height&quot;,maxItemBoxHeight - maxHeight );
+	});
+};; var middle_layout = {};
+</P><P>middle_layout.init = function(container,items){
+	//var originalFontSize = Math.round(parseInt(items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;)));
+	//items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+	items.find(&quot;.image-cover&quot;).css(&quot;min-height&quot;,&quot;inherit&quot;);
+};
+</P><P>middle_layout.applyLayout = function(container,items,paramsFromRealTime){
+	items.find(&quot;.item-content , .item-preview&quot;).css(&quot;min-height&quot;,&quot;initial&quot;);
+	//container.closest(&quot;.master.item-box&quot;).removeAttr(&quot;data-min-stripe-height&quot;);
+	//var originalFontSize = parseInt(items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;));
+	//var shrinkPlease = true;
+//	if (typeof paramsFromRealTime != &quot;undefined&quot; ){
+//		if (typeof paramsFromRealTime.value != &quot;undefined&quot;){
+//			originalFontSize = parseInt(paramsFromRealTime.value);
+//			items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+//			shrinkPlease = false;
+//		}
+//	}
+//	if (shrinkPlease){
+	//	items.find(&quot;.preview-title&quot;).css(&quot;font-size&quot;,originalFontSize);
+		//var minFontSize = 9999;
+		//items.each(function(){
+		//	var itemDetails = $(this).find(&quot;.item-details&quot;);
+		//	var stripe = itemDetails.closest(&quot;.item-wrapper&quot;);
+		//	var textElement = $(this).find(&quot;.preview-title&quot;);
+		//	minFontSize = Math.min(minFontSize,SpimeEngine.shrinkTextToFit(originalFontSize,stripe,itemDetails,textElement,0,30));
+		//});
+		items.each(function(){
+			$(this).find(&quot;.helper-div&quot;).css(&quot;padding&quot;,$(this).css(&quot;padding&quot;));
+			$(this).find(&quot;.item-content, .item-preview&quot;).css(&quot;min-height&quot;,&quot;inherit&quot;);
+			//$(this).find(&quot;.preview-title&quot;).css(&quot;font-size&quot;,minFontSize);
+		});
+//	}
+};; var matrix_arranger = {};
+</P><P>matrix_arranger.init = function(container,items,whatsNext){
+	 SpimeEngine.DebugPrint(&quot;rowcol arranger init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	 var settings = container.closest(&quot;.item-wrapper&quot;).find(&quot;.arranger-settings&quot;);
+	 /******************************************************************
+		 *           HANDLING THE ELEMENTS
+	 ********************************************************************/
+//	var elements = items.not(&quot;.element-box&quot;).first().siblings(&quot;.element-box&quot;);
+	//var stripeHeader
+//	elements.remove();
+</P><P>	 /******************************************************************
+		 *           HANDLING THE ITEMS
+	********************************************************************/
+	 var itemsHolder = container.find(&quot;#items-holder&quot;);
+	 var itemsHolderWrapper = container.find(&quot;#items-holder-wrapper&quot;);
+	 //backward compatibility
+	 if (itemsHolder.length == 0){
+		 items = container.find(&quot;.sub.item-box&quot;);
+		 itemsHolder = $(&quot;&lt;div id='items-holder' /&gt;&quot;);
+		 itemsHolderWrapper = $(&quot;&lt;div id='items-holder-wrapper' /&gt;&quot;);
+		 itemsHolder.append(items);
+		 itemsHolderWrapper.append(itemsHolder);
+		 container.find(&quot;#children&quot;).append(itemsHolderWrapper);
+	 }
+//	 var itemsHolderWrapper = container.find(&quot;#items-holder-wrapper&quot;);
+	//Select only children of type item
+//	 var onlyItems = items.not(&quot;.element-box&quot;).not(&quot;.stripe_header&quot;);
+//	 if (itemsHolder.length == 0){
+//		 itemsHolder = $(&quot;&lt;div id='items-holder' /&gt;&quot;);
+//		 itemsHolderWrapper = $(&quot;&lt;div id='items-holder-wrapper' /&gt;&quot;);
+//		 itemsHolder.append(onlyItems);
+//		 itemsHolderWrapper.append(itemsHolder);
+//		 container.find(&quot;#children&quot;).append(itemsHolderWrapper);
+//	 }
+</P><P>	 var pagHolder = container.find(&quot;#pagination-holder&quot;);
+	 if (pagHolder.length == 0){
+		 matrix_arranger.initPaginationHolder(container);
+	 }
+</P><P>	 if (typeof  whatsNext != &quot;undefined&quot;){
+		 whatsNext();
+	 }
+</P><P>	//set original height
+	items.find(&quot;.inner-pic&quot;).each(function(){
+		SpimeEngine.updateImageRealSize($(this));
+	});
+};
+</P><P>matrix_arranger.arrange = function(items,container,whatsNext){
+	SpimeEngine.DebugPrint(&quot;rowcol arranger arrange for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+</P><P>	/******************************************************************
+	 *           HANDLING THE ELEMENTS
+	 ********************************************************************/
+	//var elementsHolder = container.find(&quot;#elements-holder&quot;);
+	var itemsHolder = container.find(&quot;#items-holder&quot;);
+	items = itemsHolder.children();
+	var calculatedElementsHeight = 0;
+</P><P>	var stripe = container.closest(&quot;.master.item-box&quot;);
+	stripe.css(&quot;min-height&quot;,&quot;initial&quot;);
+	var stripeType = stripe.attr(&quot;data-preset-type-id&quot;);
+	var isFeatures = false//XPRSHelper.inPresetGroup(stripeType,&quot;FEATURES&quot;);
+</P><P>
+	/******************************************************************
+	 *           LOADING ARRANGER SETTINGS
+	 ********************************************************************/
+</P><P>	var settings = container.closest(&quot;.item-wrapper&quot;).find(&quot;.arranger-settings&quot;);
+	var ratio = parseFloat(settings.attr('data-arranger_item_ratio')) ;
+	var colsFromSettings = parseInt(settings.attr('data-arranger_cols'));
+	colsFromSettings = isFeatures ? items.length : colsFromSettings;
+	colsFromSettings = Math.min(items.length,colsFromSettings);
+	var itemsMargin =  parseInt(settings.attr('data-arranger_item_spacing'));
+	var itemMinWidth = parseInt(settings.attr('data-arranger_item_min_width'));
+	var itemMaxWidth = parseInt(settings.attr('data-arranger_item_max_width'));
+	var itemsPerPage = settings.attr('data-arranger_items_per_page');
+	itemsPerPage = isFeatures ? items.length : itemsPerPage;
+	itemsPerPage = (itemsPerPage == &quot;all&quot;) ? items.length : parseInt(itemsPerPage);
+</P><P>	
+	/******************************************************************
+	 * DEFINE PARTICIPATING DIVS        
+	 ********************************************************************/
+	//ParentWrapper is the source for our max width
+	var parentWrapper = itemsHolder.closest(&quot;.gallery-wrapper&quot;);
+</P><P>	var forcedArrange = (typeof stripe.attr(&quot;data-forced-arrange&quot;) != &quot;undefined&quot;);
+	var fromHeightResize = (typeof stripe.attr(&quot;data-height-resize&quot;) != &quot;undefined&quot;);
+	var fromWidthResize = forcedArrange || (typeof stripe.attr(&quot;data-width-resize&quot;) != &quot;undefined&quot;) || (typeof stripe.attr(&quot;data-arranger_cols-from-settings&quot;) != &quot;undefined&quot;)|| (typeof stripe.attr(&quot;data-arranger_item_spacing-from-settings&quot;) != &quot;undefined&quot;);
+	//fromWidthResize = false
+	stripe.removeAttr(&quot;data-forced-arrange&quot;);
+	var paginationWrapper =  container.find(&quot;#pagination-wrapper&quot;);
+	var paginationHeight = paginationWrapper.is(':visible') ? paginationWrapper.outerHeight(true) : 0;
+	//var stripeHeight = stripe.height() - calculatedElementsHeight - paginationHeight;//- parseInt(stripe.css(&quot;padding-top&quot;)) - parseInt(stripe.css(&quot;padding-bottom&quot;));
+</P><P>	/******************************************************************
+	 * START CALCULATIONS WITH ITEM MIN WIDTH AND HEIGHT * RATIO AND COLS AS THE NUMBER OF ITEMS      
+	 ********************************************************************/
+	var percentagePaddingFix = 0;
+	if (parseInt(stripe.css(&quot;padding-left&quot;)) &gt; 0){
+		percentagePaddingFix = 1;
+	}
+	var wrapperWidth = parentWrapper.width() - percentagePaddingFix;
+	//Min width can not be larger than  screen or the max item width
+	itemMinWidth = Math.min(itemMinWidth,itemMaxWidth);
+	itemMinWidth = Math.min(itemMinWidth,wrapperWidth);
+	items.find(&quot;.preview-content-holder&quot;).css(&quot;min-height&quot;,&quot;&quot;);
+</P><P>	var cols = Math.floor((wrapperWidth + itemsMargin*2) / (itemMinWidth + itemsMargin*2));
+	cols = Math.min(colsFromSettings,cols);
+	if (forcedArrange){//if (fromWidthResize){
+		var wrapperWidthForTest = wrapperWidth - colsFromSettings*itemsMargin*2 + itemsMargin*2;
+		itemMinWidth =   Math.floor(wrapperWidthForTest / colsFromSettings);
+		itemMinWidth = Math.min(itemMinWidth,itemMaxWidth);
+		itemMinWidth *= 0.7;
+		cols = colsFromSettings;
+	}
+	//cols must be at least 1
+	cols =  Math.max(cols,1);
+</P><P>	if (cols == 2 &amp;&amp; colsFromSettings != 2 &amp;&amp; items.length == 3){
+		cols = 1;
+	}
+</P><P>	if (cols == 3 &amp;&amp; items.length == 4 &amp;&amp; colsFromSettings != 3){
+		cols = 2;
+	}
+	if (cols == 5 &amp;&amp; items.length == 6 &amp;&amp; colsFromSettings != 5){
+		cols = 3;
+	}
+</P><P>	//The total number of rows we have
+	var rows = Math.ceil(items.length / cols);
+	//Restoring items defaults (if change during previous arrange)
+	//items.show();
+	items.css({&quot;clear&quot;:&quot;&quot;,&quot;display&quot;:&quot;inline-block&quot;});
+	var itemRow = 0;
+</P><P>	/******************************************************************
+	 * BREAK THE ITEMS ACCORDING TO CALCULATED COLS AND GIVE EACH ONE ROW IDENTIFIER 
+	 ********************************************************************/
+</P><P>	var maxContentHeight = 0;
+	items.removeClass(&quot;top-side&quot;).removeClass(&quot;bottom-side&quot;).removeClass(&quot;left-side&quot;).removeClass(&quot;right-side&quot;);;
+	items.each(function(idx){
+		if (idx % cols == 0){
+			$(this).css({&quot;clear&quot;:&quot;left&quot;});
+			$(this).addClass(&quot;left-side&quot;);
+			itemRow++;
+		}
+		if (idx % cols == cols-1){
+			$(this).addClass(&quot;right-side&quot;);
+		}
+		if (itemRow == 1){
+			$(this).addClass(&quot;top-side&quot;);
+		}
+		if (itemRow == rows){
+			$(this).addClass(&quot;bottom-side&quot;);
+		}
+		$(this).attr(&quot;data-row&quot;,itemRow);
+		maxContentHeight = Math.max(maxContentHeight,$(this).find(&quot;.preview-content-holder&quot;).height()); 
+	});
+</P><P>	
+	//maxContentHeight = Math.max(itemsHolder.height(),maxContentHeight);
+</P><P>	
+	//if we have more space we enlarge the items 
+	var extraSpace = Math.floor(    (wrapperWidth - (cols*itemMinWidth) - (cols*itemsMargin*2) + (itemsMargin*2) )  /cols     );
+	var	calculatedItemWidth = Math.floor(itemMinWidth + extraSpace);//Math.round((wrapperWidth)/cols) - ((cols-1)*(itemsMargin*2));
+	calculatedItemWidth = Math.min(calculatedItemWidth,itemMaxWidth);
+</P><P>	setTimeout(function(){
+		if (wrapperWidth - parentWrapper.width() &gt; 3){
+			extraSpace = Math.floor(    (parentWrapper.width() - (cols*itemMinWidth) - (cols*itemsMargin*2) + (itemsMargin*2) )  /cols     );
+			calculatedItemWidth = Math.floor(itemMinWidth + extraSpace);//Math.round((wrapperWidth)/cols) - ((cols-1)*(itemsMargin*2));
+			calculatedItemWidth = Math.min(calculatedItemWidth,itemMaxWidth);
+			items.width(calculatedItemWidth);
+		}
+	},10);
+</P><P>	if (fromWidthResize || forcedArrange){
+		//calculatedItemWidth = itemMinWidth;
+		settings.attr('data-arranger_item_min_width',itemMinWidth);
+		stripe.attr(&quot;data-items-min-width&quot;,itemMinWidth);
+	}
+</P><P>	/******************************************************************
+	 * CHANGE ITEMS WIDTH HEIGHT AND SPACING ACCORDING TO CALCULATIONS
+	 ********************************************************************/
+	items.width(calculatedItemWidth).css({&quot;margin&quot;:itemsMargin});
+	items.filter(&quot;.top-side&quot;).css(&quot;margin-top&quot;,itemsMargin*2);
+	items.filter(&quot;.bottom-side&quot;).css(&quot;margin-bottom&quot;,itemsMargin*2);
+	items.filter(&quot;.left-side&quot;).css(&quot;margin-left&quot;,0);
+	items.filter(&quot;.right-side&quot;).css(&quot;margin-right&quot;,0);
+</P><P>
+	itemsHolder.css({&quot;text-align&quot;:&quot;&quot;});
+</P><P>	items.slice(itemsPerPage,items.length).hide();
+</P><P>	/******************************************************************
+	 * HANDLE PAGINATION
+	 ********************************************************************/
+	// If we need pagination (not all items fit the given height)
+	var inMoreMode = (typeof stripe.attr(&quot;data-more-clicked&quot;) != &quot;undefined&quot;);
+	if (itemsPerPage &lt; items.length ){
+		if (inMoreMode){
+			paginationWrapper.hide();
+			items.css(&quot;display&quot;,&quot;inline-block&quot;);
+		}else{
+			paginationWrapper.show();
+		}
+	}else{
+		//Hide paginator
+		paginationWrapper.hide();
+	}
+</P><P>	
+	extraSpace = Math.floor(    (wrapperWidth - (cols*itemMaxWidth) - (cols*itemsMargin*2) + (itemsMargin*2) )  /cols     );
+	if(calculatedItemWidth == itemMaxWidth &amp;&amp; extraSpace &gt; 0){
+		itemsHolder.css(&quot;text-align&quot;,&quot;center&quot;);
+		var currentRowWidth = (itemMaxWidth * cols) + (cols*itemsMargin*2) - itemsMargin*2;
+		itemsHolder.width(currentRowWidth);
+	}else{
+		itemsHolder.css(&quot;width&quot;,&quot;&quot;);
+	}
+</P><P>	if (typeof  whatsNext != &quot;undefined&quot;){
+		var originalItemMinWidth = parseInt(settings.attr('data-arranger_item_min_width'));
+		var actualItemMinWidth = itemMinWidth;
+		if (actualItemMinWidth != originalItemMinWidth){
+			stripe.attr(&quot;data-items-min-width&quot;,actualItemMinWidth);
+		}
+		whatsNext();
+	 }
+</P><P>};
+</P><P>matrix_arranger.showMore = function(stripe){
+</P><P>	var itemsHolder = stripe.find(&quot;#items-holder&quot;);
+	var items = itemsHolder.children();
+	var paginationWrapper = stripe.find(&quot;#pagination-wrapper&quot;);
+	paginationWrapper.hide();
+	var itemsWrapper = stripe.find(&quot;#items-holder-wrapper&quot;);
+	var topMargin = parseInt(itemsWrapper.css(&quot;margin-top&quot;));
+	itemsWrapper.css(&quot;margin-bottom&quot;,topMargin);
+	items.css(&quot;display&quot;,&quot;inline-block&quot;);
+	SpimeEngine.fitVideos(stripe);
+	stripe.attr(&quot;data-more-clicked&quot;,&quot;true&quot;);
+};
+</P><P>matrix_arranger.showLess = function(stripe){
+	var itemsHolder = stripe.find(&quot;#items-holder&quot;);
+	var items = itemsHolder.children();
+	var paginationWrapper = stripe.find(&quot;#pagination-wrapper&quot;);
+	var itemsWrapper = stripe.find(&quot;#items-holder-wrapper&quot;);
+	//var topMargin = parseInt(itemsWrapper.css(&quot;margin-top&quot;));
+	itemsWrapper.css(&quot;margin-bottom&quot;,&quot;&quot;);
+	var itemsToShow = parseInt(stripe.attr(&quot;data-items-to-show&quot;));
+	if (itemsToShow &lt; items.length){
+		paginationWrapper.show();
+	}
+	items.hide();
+	items.slice(0,itemsToShow).css(&quot;display&quot;,&quot;inline-block&quot;)
+	stripe.removeAttr(&quot;data-more-clicked&quot;);
+};
+</P><P>matrix_arranger.initPaginationHolder = function(container){
+	var paginationBtn = $(&quot;&lt;div id='pagination-btn' /&gt;&quot;);
+	paginationBtn.text(&quot;More&quot;);
+	var paginationHolder = $(&quot;&lt;div id='pagination-holder' /&gt;&quot;).addClass(&quot;magic-circle-holder&quot;).attr(&quot;data-menu-name&quot;,&quot;PAGINATION_SETTINGS&quot;);
+	var paginationHolderWrapper = $(&quot;&lt;div id='pagination-wrapper' class='layer5' /&gt;&quot;);
+	paginationHolder.append(paginationBtn);
+	paginationHolderWrapper.append(paginationHolder);
+	container.find(&quot;#children&quot;).append(paginationHolderWrapper);
+	paginationHolder.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+		e.stopPropagation();
+		var stripe = container.closest(&quot;.master.item-box&quot;);
+		matrix_arranger.showMore(stripe);
+	});
+};; var stripes_arranger = {};
+</P><P>stripes_arranger.init = function(container,items,whatsNext){
+	SpimeEngine.DebugPrint(&quot;stripes arranger init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	items.each(function(){
+		var currentItem = $(this);
+		if (currentItem.hasClass(&quot;element-box&quot;)){
+			var textElement = currentItem.find(&quot;.text-element&quot;);
+			if (textElement.length &gt; 0){
+				textElement.each(function(){
+					$(this).attr(&quot;data-orig-font-size&quot;,parseInt($(this).css(&quot;font-size&quot;)));
+				});
+			}
+		}
+	});
+	if (typeof  whatsNext != &quot;undefined&quot;){
+		 whatsNext();
+	}
+};
+</P><P>stripes_arranger.arrange = function(items,container){
+	SpimeEngine.DebugPrint(&quot;stripes arranger arrange for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	items.each(function(idx){
+		var currentItem = $(this);
+		if (currentItem.hasClass(&quot;element-box&quot;)){
+</P><P>//			var currentItem = $(this);
+//			var textElement = currentItem.find(&quot;.preview-title&quot;);
+//			var contentHolder = currentItem.find(&quot;.preview-content-holder&quot;);
+//			var contentWrapper = currentItem.find(&quot;.preview-content-wrapper&quot;);
+//			var originalFontSize = parseInt(textElement.attr(&quot;data-orig-font-size&quot;));
+//			if (typeof currentItem.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+//				contentWrapper = currentItem.find(&quot;.helper-div&quot;); 
+//			}
+//			textElement.css(&quot;font-size&quot;,originalFontSize);
+//			if (contentHolder.outerWidth(true) &gt; contentWrapper.width()){
+//				var newFontSize =  SpimeEngine.shrinkTextToFit(originalFontSize,contentWrapper,contentHolder,textElement,0,30);
+//				textElement.css(&quot;font-size&quot;,newFontSize);
+//			}
+</P><P>			var textElement = currentItem.find(&quot;.text-element&quot;);
+</P><P>			
+			textElement.each(function(){
+				var originalFontSize = parseInt($(this).attr(&quot;data-orig-font-size&quot;));
+				$(this).css(&quot;font-size&quot;,originalFontSize);
+				var contentHolder = $(this).parent();
+				if ($(this).outerWidth(true) &gt; contentHolder.width()){
+					//var newFontSize = stripes_arranger.shrinker(originalFontSize,currentItem,textElement);
+					var newFontSize = SpimeEngine.shrinkTextToFit(originalFontSize,currentItem,$(this),$(this),0,30);
+					$(this).css(&quot;font-size&quot;,newFontSize);
+				}
+			});
+</P><P>			
+		}
+	});
+</P><P>};
+</P><P>stripes_arranger.shrinker = function(fontSize,parent,content){
+	if (content.outerWidth(true) &gt; parent.width()){
+		var shrinkedFontSize =  fontSize * 0.9 ;
+		if (shrinkedFontSize &lt; 15){
+			return 15;
+		}else{
+			content.css(&quot;font-size&quot;,shrinkedFontSize);
+			return stripes_arranger.shrinker(shrinkedFontSize,parent,content);
+		}
+	}else{
+		return parseInt(content.css(&quot;font-size&quot;));
+	}
+};; var flex_arranger = {};
+</P><P>flex_arranger.init = function(container,items,whatsNext,title){
+	SpimeEngine.DebugPrint(&quot;flex arranger init for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	container.css(&quot;overflow&quot;,&quot;hidden&quot;)
+	var itemsHolder = container.find(&quot;#items-holder&quot;);
+	var itemsHolderWrapper = container.find(&quot;#items-holder-wrapper&quot;);
+	 //backward compatibility
+	 if (itemsHolder.length == 0){
+		 items = container.find(&quot;.sub.item-box&quot;);
+		 itemsHolder = $(&quot;&lt;div id='items-holder' /&gt;&quot;);
+		 itemsHolderWrapper = $(&quot;&lt;div id='items-holder-wrapper' /&gt;&quot;);
+		 itemsHolder.append(items);
+		 itemsHolderWrapper.append(itemsHolder);
+		 container.find(&quot;#children&quot;).append(itemsHolderWrapper);
+	 }
+	items = itemsHolder.children();
+	//if we have elements in the container remove them
+	var elements = items.not(&quot;.element-box&quot;).first().siblings(&quot;.element-box&quot;);
+	elements.remove();
+	//create the arrows
+	var flexArrows = container.find(&quot;.flex-arrows&quot;);
+	var leftArrow = flexArrows.filter(&quot;.left&quot;);
+	var rightArrow = flexArrows.filter(&quot;.right&quot;);
+	var staticServer = XPRSHelper.getStaticServerPath();
+	if (flexArrows.length == 0){
+		rightArrow = $(&quot;&lt;img /&gt;&quot;);
+		rightArrow.attr(&quot;src&quot;,&quot;<A rel="nofollow" class="external free" href="https://lh3.googleusercontent.com/6zb8WwTey8418Mlgf5wJomMN_7JjY8T8ULq74HO77G1_wYJQC3o70RMGnRyP_89wZ4jQ93uNwIP82kKRz6AakfxfKA=s50">https://lh3.googleusercontent.com/6zb8WwTey8418Mlgf5wJomMN_7JjY8T8ULq74HO77G1_wYJQC3o70RMGnRyP_89wZ4jQ93uNwIP82kKRz6AakfxfKA=s50</A>&quot;);
+		rightArrow.addClass(&quot;flex-arrows&quot;).addClass(&quot;right&quot;).addClass(&quot;layer5&quot;);
+		leftArrow = $(&quot;&lt;img /&gt;&quot;);
+		leftArrow.attr(&quot;src&quot;,&quot;<A rel="nofollow" class="external free" href="https://lh3.googleusercontent.com/ZMARmveTg1geksYKXZKdh71KW09XrhDLg8N-XrfXCGsDBEHnuKwhmYpHd55Y2-NwuwLX8qsyx26JNyJWtr1jEcxD=s50">https://lh3.googleusercontent.com/ZMARmveTg1geksYKXZKdh71KW09XrhDLg8N-XrfXCGsDBEHnuKwhmYpHd55Y2-NwuwLX8qsyx26JNyJWtr1jEcxD=s50</A>&quot;);
+		leftArrow.addClass(&quot;flex-arrows&quot;).addClass(&quot;left&quot;).addClass(&quot;layer5&quot;);
+		itemsHolder.parent().prepend(leftArrow).prepend(rightArrow);
+	}
+	rightArrow.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(event){
+		event.stopPropagation();
+		if (container.attr(&quot;data-interval-id&quot;)){
+			clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+		}
+		flex_arranger.slide(rightArrow,&quot;right&quot;,items,container);
+	});
+	leftArrow.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(event){
+		event.stopPropagation();
+		if (container.attr(&quot;data-interval-id&quot;)){
+			clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+		}
+		flex_arranger.slide(leftArrow,&quot;left&quot;,items,container);
+	});
+	items.attr(&quot;data-child-type&quot;,&quot;SLIDE&quot;);
+</P><P>	this.handlePagination(items,container);
+	if (typeof  whatsNext != &quot;undefined&quot;){
+		 whatsNext();
+	}
+</P><P>	if (typeof container.attr(&quot;start-with-slide&quot;) != &quot;undefined&quot;){
+		items.filter(&quot;.slide-&quot; + container.attr(&quot;start-with-slide&quot;)).attr(&quot;data-visible&quot;,&quot;visible&quot;).css(&quot;left&quot;,0).addClass(&quot;play-effect&quot;);
+	}else{
+		items.first().attr(&quot;data-visible&quot;,&quot;visible&quot;).css(&quot;left&quot;,0).addClass(&quot;play-effect&quot;);
+	}
+</P><P>	container.unbind(&quot;swipeleft&quot;).bind(&quot;swipeleft&quot;,function(){
+		if (items.length &gt; 1){
+			if (container.attr(&quot;data-interval-id&quot;)){
+				clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+			}
+	    	flex_arranger.slide(rightArrow,&quot;right&quot;,items,container);
+		}
+	});
+</P><P>	container.unbind(&quot;swiperight&quot;).bind(&quot;swiperight&quot;,function(){
+		if (items.length &gt; 1){
+			if (container.attr(&quot;data-interval-id&quot;)){
+				clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+			}
+	    	flex_arranger.slide(leftArrow,&quot;left&quot;,items,container);
+		}
+	});
+</P><P>
+};
+</P><P>flex_arranger.arrange = function(items,container){
+	SpimeEngine.DebugPrint(&quot;flex arranger arrange for &quot; + items.length + &quot; items and container: &quot; + container.width() + &quot; X &quot; + container.height());
+	var itemsHolder = container.find(&quot;#items-holder&quot;);
+	items = itemsHolder.children();
+	var stripe = container.closest(&quot;.master.item-box&quot;);
+	var flexArrows = container.find(&quot;.flex-arrows&quot;);
+	var settings = stripe.find(&quot;.arranger-settings&quot;);
+	if (stripe.width() &lt; 400){
+		flexArrows.addClass(&quot;disabled&quot;);
+	}else{
+		flexArrows.removeClass(&quot;disabled&quot;);
+	}
+	var autoPlay = settings.attr(&quot;data-auto_play&quot;) == &quot;AUTOPLAY&quot;;
+	var autoPlayDuration = parseInt(settings.attr(&quot;data-auto_play_duration&quot;));
+	var allowAutoPlay = !($(&quot;#xprs&quot;).hasClass(&quot;in-editor&quot;));
+	allowAutoPlay = allowAutoPlay || (typeof stripe.attr(&quot;data-auto_play-from-settings&quot;) != &quot;undefined&quot;);
+	allowAutoPlay = allowAutoPlay &amp;&amp; items.length &gt; 1;
+	stripe.removeAttr(&quot;data-auto_play-from-settings&quot;);
+</P><P>	var effectsClass = settings.attr(&quot;data-flex_element_effect&quot;);
+	if (effectsClass == &quot;&quot;){
+		var newClass = container.find('.preview-content-holder').attr(&quot;class&quot;).replace(/\seffect-[^\s]*|^effect-[^\s]*\s+/g,&quot;&quot;);
+		container.find('.preview-content-holder').attr(&quot;class&quot;,newClass);
+	}else{
+		container.find('.preview-content-holder').addClass(effectsClass);
+	}
+</P><P>	var durationSettingsChanged = stripe.attr(&quot;data-auto_play_duration-from-settings&quot;) || stripe.attr(&quot;data-forced-arrange&quot;);
+	stripe.removeAttr(&quot;data-forced-arrange&quot;);
+	if (durationSettingsChanged){
+		stripe.removeAttr(&quot;data-auto_play_duration-from-settings&quot;);
+		if (container.attr(&quot;data-interval-id&quot;)){
+			clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+			container.removeAttr(&quot;data-interval-id&quot;);
+		}
+	}
+	if (autoPlay &amp;&amp; !container.attr(&quot;data-interval-id&quot;)){
+</P><P>		var rightArrow = flexArrows.filter(&quot;.right&quot;);
+		var intervalId = setInterval(function(){
+			if (!stripe.hasClass(&quot;manage-mode&quot;) &amp;&amp; allowAutoPlay){
+				flex_arranger.slide(rightArrow,&quot;right&quot;,items,container);
+			}
+		},autoPlayDuration*1000);
+		container.attr(&quot;data-interval-id&quot; , intervalId);
+	}else{
+		if (!autoPlay){
+			if (container.attr(&quot;data-interval-id&quot;)){
+				clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+			}
+		}
+	}
+</P><P>	if (items.length == 1 ){
+		container.find(&quot;.flex-arrows&quot;).hide();
+	}else{
+		container.find(&quot;.flex-arrows&quot;).show();
+	}
+	var rightArrow = container.find(&quot;.flex-arrows.right&quot;);
+	var leftArrow = container.find(&quot;.flex-arrows.left&quot;);
+	var newTop = container.height()/2 - rightArrow.height/2;
+	leftArrow.css({&quot;float&quot;:&quot;none&quot;,&quot;left&quot;:0,&quot;top&quot;:newTop,&quot;position&quot;:&quot;absolute&quot;});
+	rightArrow.css({&quot;float&quot;:&quot;none&quot;,&quot;right&quot;:0,&quot;top&quot;:newTop,&quot;position&quot;:&quot;absolute&quot;});
+	container.find(&quot;#paginator&quot;).css(&quot;bottom&quot;, 50);
+	items.each(function(){
+		var currentItem = $(this);
+		currentItem.css(&quot;width&quot;,container.width());
+	});
+</P><P>	container.find(&quot;#items-holder&quot;).width(parseInt(container.width()) * items.length);
+</P><P>	var visibleItem = items.filter(&quot;[data-visible='visible']&quot;);
+	if (visibleItem.length  == 0 ){
+		items.removeAttr(&quot;data-visible&quot;);
+		visibleItem = items.first();
+		visibleItem.attr(&quot;data-visible&quot;,&quot;visible&quot;);
+		visibleItem.addClass(&quot;play-effect&quot;);
+	}
+</P><P>	items.removeClass(&quot;before-visible after-visible&quot;)
+	visibleItem.nextAll().addClass(&quot;after-visible&quot;);
+	visibleItem.prevAll().addClass(&quot;before-visible&quot;);
+</P><P>	var itemsNewLeft = visibleItem.index() * -1 * visibleItem.width();
+	items.each(function(){
+		var currentItem = $(this);
+		currentItem.css(&quot;left&quot;,itemsNewLeft);
+	});
+</P><P>};
+</P><P>flex_arranger.slide = function(btn,direction,items,container){
+	var currentVisible = items.filter('[data-visible=&quot;visible&quot;]');
+	var nextVisible = currentVisible.prev();
+	if (direction==&quot;left&quot;){
+		if(nextVisible.length==0){
+			nextVisible = items.last();
+			flex_arranger.showPage(nextVisible.attr(&quot;data-page-num&quot;),container,items);
+		}else{
+			flex_arranger.showPage(nextVisible.attr(&quot;data-page-num&quot;),container,items);
+		}
+	}else{
+		nextVisible = currentVisible.next();
+		if(nextVisible.length==0){
+			nextVisible = items.first();
+			flex_arranger.showPage(nextVisible.attr(&quot;data-page-num&quot;),container,items);
+</P><P>		}else{
+			flex_arranger.showPage(nextVisible.attr(&quot;data-page-num&quot;),container,items);
+</P><P>		}
+</P><P>	}
+</P><P>
+};
+</P><P>flex_arranger.showItem = function(container,items,itemId){
+	var nextVisible = items.filter(&quot;#&quot; + itemId);
+	var itemToShowPageNum = nextVisible.attr(&quot;data-page-num&quot;);
+	flex_arranger.showPage(itemToShowPageNum,container,items);
+};
+</P><P>flex_arranger.showPage = function(pageNum,container,items){
+	container.find(&quot;.page-navigator&quot;).removeClass(&quot;active&quot;);
+	//container.find(event.target).addClass(&quot;active&quot;);
+</P><P>	container.find(&quot;.page-navigator&quot;).removeClass(&quot;active&quot;);
+	container.find(&quot;#nav&quot; + pageNum).addClass(&quot;active&quot;);
+</P><P>	var pageToShow = items.filter(&quot;.slide-&quot; + pageNum);
+	items.removeAttr(&quot;data-visible&quot;);
+	pageToShow.attr(&quot;data-visible&quot;,&quot;visible&quot;);
+	items.removeClass(&quot;before-visible after-visible&quot;)
+	pageToShow.nextAll().addClass(&quot;after-visible&quot;);
+	pageToShow.prevAll().addClass(&quot;before-visible&quot;);
+	//var currentVisibleLeft = parseInt(pageToShow.css(&quot;left&quot;));
+	var pageToShowIndex = pageToShow.index();
+	var itemsNewLeft = pageToShowIndex * -1 * pageToShow.width();
+	//if (currentVisibleLeft &lt; 0){
+		items.each(function(){
+			var currentItem = $(this);
+			//var currentLeft = parseInt(currentItem.css(&quot;left&quot;));
+			//var newLeft = currentLeft + (currentVisibleLeft * -1);
+			currentItem.css(&quot;left&quot;,itemsNewLeft);
+		});
+		items.removeClass(&quot;play-effect&quot;);
+		flex_arranger.emulateTransitionEnd (pageToShow,1050,function(){
+			pageToShow.addClass(&quot;play-effect&quot;);
+		});
+</P><P>	//}else{
+//		items.each(function(){
+//			var currentItem = $(this);
+//			var currentLeft = parseInt(currentItem.css(&quot;left&quot;));
+//			var newLeft = currentLeft - currentVisibleLeft;
+//			currentItem.css(&quot;left&quot;,newLeft);
+//		});
+//	}
+};
+</P><P>flex_arranger.handlePagination = function(items,container){
+</P><P>	items.each(function(idx){
+		var currentItem = $(this);
+		currentItem.removeClass (function (index, className) {
+		    return (className.match (/(^|\s)slide-\S+/g) || []).join(' ');
+		});
+		currentItem.addClass(&quot;slide-&quot; + (idx + 1)).attr(&quot;data-page-num&quot;,(idx + 1));
+	});
+	var numOfPages = items.length;
+</P><P>
+	container.find(&quot;.page-navigator&quot;).remove();
+	container.find(&quot;#paginator&quot;).remove();
+	var paginator = $(&quot;&lt;div /&gt;&quot;).attr(&quot;id&quot;,&quot;paginator&quot;);
+	for(var i=1;i &lt;= numOfPages; i++){
+		var pageNavigator = $(&quot;&lt;div /&gt;&quot;).attr(&quot;id&quot;,&quot;nav&quot;+i).addClass(&quot;page-navigator&quot;).attr(&quot;data-page-num&quot;,i).click(function(e){
+			e.stopPropagation();
+			if (container.attr(&quot;data-interval-id&quot;)){
+				clearInterval(parseInt(container.attr(&quot;data-interval-id&quot;)));
+			}
+			flex_arranger.showPage($(this).attr(&quot;data-page-num&quot;),container,items);
+		});
+		paginator.append(pageNavigator);
+	}
+</P><P>	//paginator.css(&quot;left&quot;,parseInt(container.width())/2);
+	//paginator.css(&quot;top&quot;,parseInt(container.height()) - 40);
+</P><P>	
+	container.find(&quot;#items-holder-wrapper&quot;).append(paginator);
+</P><P>	var paginationWidth = parseInt(paginator.width());
+	paginatorNeMargin = paginationWidth / -2; 
+	paginator.css(&quot;margin-left&quot;,paginatorNeMargin);
+	if (items.length == 1){
+		paginator.hide();
+	}else{
+		paginator.show();
+	}
+</P><P>	container.find(&quot;#nav1&quot;).addClass(&quot;active&quot;);
+</P><P>};
+</P><P>
+flex_arranger.emulateTransitionEnd = function(element,duration,callbackFunc) {
+	  var called = false;
+	  element.one('webkitTransitionEnd', function() { called = true; callbackFunc();});
+	  var callback = function() { if (!called) element.trigger('webkitTransitionEnd'); };
+	  setTimeout(callback, duration);
+	};; var menu_layout = {};
+menu_layout.LEFT_MENU_WIDTH = 270;
+menu_layout.SCROLLBAR_WIDTH = 0;
+</P><P>menu_layout.init = function(container,items){
+	var currentPageId = $(&quot;.master.container&quot;).attr(&quot;id&quot;);
+	var currentPageSlug = $(&quot;.master.container&quot;).attr(&quot;data-itemslug&quot;);
+	if (XPRSHelper.isChrome()){
+		menu_layout.SCROLLBAR_WIDTH = 0;
+		//$(&quot;.master.container&quot;).addClass(&quot;chrome&quot;);
+	}
+	items.each(function(){
+		var currentItem = $(this);
+</P><P>		//Mark link of the current page
+		currentItem.find(&quot;.preview-item-links a&quot;).each(function(){
+			var linkStr = $(this).attr(&quot;href&quot;);
+			if (linkStr){
+				//remove query params
+				if (linkStr.indexOf(&quot;?&quot;) != -1){
+					linkStr = linkStr.substring(0,linkStr.indexOf(&quot;?&quot;));
+				}
+				//match slug or vbid
+				var linkToCurrentPage = linkStr.indexOf(currentPageId, linkStr.length - currentPageId.length) !== -1;
+				linkToCurrentPage = linkToCurrentPage || linkStr.indexOf(currentPageSlug, linkStr.length - currentPageSlug.length) !== -1;
+				if (linkToCurrentPage){
+					$(this).addClass(&quot;current-page&quot;);
+					//do not mark more than one even if found
+					return false;
+				}
+			}
+		});
+</P><P>		
+		//LEFT MENU
+		var holder = container.closest(&quot;.master.item-box&quot;);
+		holder.addClass(&quot;animated-color&quot;)
+		var settings = holder.find(&quot;.layout-settings&quot;);
+		var menuPosition = settings.attr(&quot;data-menu_position&quot;);
+		var isProductPage = window.location.href.indexOf(&quot;/product/&quot;) != -1;
+		if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+			var submenuTitles = currentItem.find(&quot;.submenu-title&quot;);
+			submenuTitles.each(function(){
+				var submenuTitle = $(this);
+				if (submenuTitle.parent().is(&quot;a&quot;)){
+					submenuTitle.unwrap()
+				}
+				submenuTitle.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+					e.stopPropagation();
+					var clickedTitle = $(this);
+					menu_layout.toggleSubmenu(clickedTitle);
+				});
+			});
+			// submenuTitles.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+			// 	e.stopPropagation();
+			// 	var clickedTitle = $(this);
+			// 	menu_layout.toggleSubmenu(clickedTitle);
+			// });
+		}
+</P><P>		if (isProductPage &amp;&amp; menuPosition == &quot;none&quot;){
+			menuPosition= &quot;top&quot;;
+			settings.attr(&quot;data-menu_position&quot;,&quot;top&quot;)
+		}
+		holder.removeClass(&quot;hidden-menu&quot;);
+		if (menuPosition == &quot;none&quot;){
+			holder.css(&quot;display&quot;,&quot;none&quot;);
+		}else if (menuPosition == &quot;left&quot;){
+			$(&quot;.master.container&quot;).find(&quot;#children&quot;).first().css(&quot;width&quot;,$(window).innerWidth() - menu_layout.SCROLLBAR_WIDTH - menu_layout.LEFT_MENU_WIDTH);
+			$(&quot;.left-menu-placeholder&quot;).height($(window).height());
+		}else{
+			$(&quot;.master.container&quot;).find(&quot;#children&quot;).first().css(&quot;width&quot;,&quot;&quot;);
+		}
+</P><P>		var previewTitle = currentItem.find(&quot;.preview-title&quot;);
+		//var previewSubtitle = currentItem.find(&quot;.preview-subtitle&quot;);
+		var rightSideDiv = currentItem.find('.right-div');
+		var leftSideDiv = currentItem.find('.left-div');
+		var stripe = container.closest(&quot;.master.item-box&quot;);
+		totalLinksWidth = rightSideDiv.outerWidth(true);
+</P><P>		//Saving the original links width for unmenufying - only if we are not centered
+		if (!rightSideDiv.hasClass(&quot;centerified&quot;) &amp;&amp; settings.attr(&quot;data-menu_align&quot;) != &quot;center&quot; &amp;&amp; stripe.css(&quot;display&quot;) != &quot;none&quot;){
+			stripe.attr(&quot;data-original-menu-width&quot;,totalLinksWidth);
+		}
+</P><P>		//no shrink if title is not present
+		var originalFontSize = &quot;N/A&quot;;
+		if (currentItem.find(&quot;.element-placeholder[data-elementtype='TITLE']&quot;).length == 0){
+			originalFontSize = Math.round(parseInt(previewTitle.css(&quot;font-size&quot;)));
+			leftSideDiv.attr(&quot;data-orig-font-size&quot;,originalFontSize);
+		}
+</P><P>		//If no subtitle and no title found link will be aligned to center
+		if (currentItem.find(&quot;.element-placeholder[data-elementtype='TITLE']&quot;).length &gt; 0 &amp;&amp; currentItem.find(&quot;.element-placeholder[data-elementtype='SUBTITLE']&quot;).length &gt; 0){
+			currentItem.find(&quot;.helper-div&quot;).hide();
+			if (currentItem.find(&quot;.element-placeholder[data-elementtype='ICON']&quot;).length &gt; 0){
+				menu_layout.centerifyLinks(leftSideDiv,rightSideDiv);
+			}else{
+				menu_layout.uncenterifyLinks(leftSideDiv,rightSideDiv);
+			}
+		}else{
+			currentItem.find(&quot;.helper-div&quot;).show();
+			menu_layout.uncenterifyLinks(leftSideDiv,rightSideDiv);
+		}
+	});
+};
+</P><P>
+menu_layout.closeOpenedSubmenus = function(){
+	var openedSubmenus = $(&quot;.submenu-title.menu-opened&quot;);
+	var wasOpen = openedSubmenus.length &gt; 0;
+	if (wasOpen){
+		var holder = openedSubmenus.closest(&quot;.master.item-box&quot;);
+		holder.css(&quot;z-index&quot;,&quot;&quot;);
+	}
+	openedSubmenus.each(function(){
+		var currentSubmenuTitle = $(this);
+		if (currentSubmenuTitle.parent().is(&quot;a&quot;)){
+			currentSubmenuTitle.parent().next(&quot;.submenu&quot;).hide();
+		}else{
+			currentSubmenuTitle.next(&quot;.submenu&quot;).hide();
+		}
+		currentSubmenuTitle.removeClass(&quot;menu-opened&quot;);
+	});
+	return wasOpen;
+};
+</P><P>menu_layout.toggleSubmenu = function(clickedTitle){
+	var holder = clickedTitle.closest(&quot;.master.item-box&quot;);
+	var settings = holder.find(&quot;.layout-settings&quot;);
+	var menuPosition = settings.attr(&quot;data-menu_position&quot;);
+	var currentSubmenu = clickedTitle.next(&quot;.submenu&quot;);
+	if (clickedTitle.parent().is(&quot;a&quot;)){
+		currentSubmenu = clickedTitle.parent().next(&quot;.submenu&quot;);
+	}
+	var noPlaceMode = holder.find(&quot;.preview-item-links.no-place&quot;).length == 1;
+	var minifiyType = settings.attr(&quot;data-always_minified&quot;);
+	if (currentSubmenu.is(&quot;:visible&quot;)){
+		holder.css(&quot;z-index&quot;,&quot;&quot;)
+		if (menuPosition == &quot;left&quot; || minifiyType == &quot;side_screen&quot; || minifiyType == &quot;full_screen&quot; || noPlaceMode){
+			currentSubmenu.slideUp(function(){
+				clickedTitle.removeClass(&quot;menu-opened&quot;);
+			});
+		}else{
+			currentSubmenu.fadeOut(function(){
+				clickedTitle.removeClass(&quot;menu-opened&quot;);
+			});
+		}
+</P><P>	}else{
+		holder.css(&quot;z-index&quot;,&quot;1234567890&quot;)
+		menu_layout.calculateSubmenuBG(holder,currentSubmenu);
+		holder.find(&quot;.menu-opened&quot;).removeClass(&quot;menu-opened&quot;);
+		clickedTitle.addClass(&quot;menu-opened&quot;);
+		if (menuPosition == &quot;left&quot; || minifiyType == &quot;side_screen&quot; || minifiyType == &quot;full_screen&quot; || noPlaceMode){
+			holder.find(&quot;.submenu:visible&quot;).slideUp()
+			currentSubmenu.slideDown();
+		}else{
+			holder.find(&quot;.submenu:visible&quot;).fadeOut()
+			currentSubmenu.fadeIn(function(){
+				clickedTitle.addClass(&quot;menu-opened&quot;);
+			});
+		}
+</P><P>	}
+};
+</P><P>menu_layout.centerifyLinks = function(leftSideDiv,rightSideDiv){
+	leftSideDiv.css({&quot;width&quot;:0,&quot;display&quot;:&quot;inline&quot;});
+	rightSideDiv.css({&quot;width&quot;:&quot;100%&quot;,&quot;text-align&quot;:&quot;center&quot;}).addClass(&quot;centerified&quot;);
+};
+</P><P>menu_layout.uncenterifyLinks = function(leftSideDiv,rightSideDiv){
+	leftSideDiv.css({&quot;width&quot;:&quot;&quot;,&quot;display&quot;:&quot;&quot;});
+	rightSideDiv.css({&quot;width&quot;:&quot;&quot;,&quot;text-align&quot;:&quot;&quot;}).removeClass(&quot;centerified&quot;);;
+};
+</P><P>menu_layout.applyLayout = function(container,items,paramsFromRealTime){
+	var holder = container.closest(&quot;.master.item-box&quot;);
+	var masterContainer = $(&quot;.master.container&quot;);
+	items.each(function(){
+		var currentItem = $(this);
+		currentItem.find(&quot;.preview-item-links&quot;).css(&quot;display&quot;,&quot;&quot;);
+		var settings = container.closest(&quot;.master.item-box&quot;).find(&quot;.layout-settings&quot;);
+</P><P>		var alwaysMinify = settings.attr(&quot;data-always_minified&quot;) != &quot;false&quot;;
+		var leftMenuPlaceHolder = masterContainer.find(&quot;.left-menu-placeholder&quot;);
+		var menuAlign = settings.attr(&quot;data-menu_align&quot;);
+		if(holder.find(&quot;.item-wrapper&quot;).innerWidth() &lt; 400 &amp;&amp; leftMenuPlaceHolder.length == 0 &amp;&amp; holder.css(&quot;display&quot;) != &quot;none&quot;){
+			menuAlign = &quot;left&quot;;
+			holder.addClass(&quot;force-min-height50 minimal-design&quot;);
+		}else{
+			if (!holder.is(&quot;.being-scrolled&quot;)){
+				holder.removeClass(&quot;force-min-height50 minimal-design&quot;);
+			}
+		}
+		var menuPosition = settings.attr(&quot;data-menu_position&quot;);
+</P><P>		
+		if (menuPosition == &quot;none&quot;){
+			holder.css(&quot;display&quot;,&quot;none&quot;);
+			//return;
+		}else if (menuPosition == &quot;left&quot;){
+			holder.css(&quot;display&quot;,&quot;&quot;);
+			holder.removeClass(&quot;minimal-design&quot;);
+			masterContainer.find(&quot;#children&quot;).first().css(&quot;width&quot;,$(window).innerWidth() - menu_layout.SCROLLBAR_WIDTH - menu_layout.LEFT_MENU_WIDTH);
+			$(&quot;.left-menu-placeholder&quot;).height($(window).height());
+		}else{
+			holder.css(&quot;display&quot;,&quot;&quot;);
+			masterContainer.find(&quot;#children&quot;).first().css(&quot;width&quot;,&quot;&quot;);
+			//holder.find('.right-div').css(&quot;height&quot;,holder.find('.preview-icon-holder').height());
+			if (holder.find('.preview-icon-holder').length &gt; 0){
+				holder.find('.right-div').css(&quot;height&quot;,holder.find('.preview-icon-holder').height());
+			}else{
+				holder.find('.right-div').css(&quot;height&quot;,&quot;&quot;);
+			}
+		}
+</P><P>		
+		var menuRatio = $(window).width()/menu_layout.LEFT_MENU_WIDTH;
+		if (menuPosition == &quot;left&quot; &amp;&amp; menuRatio &gt; 4){
+			menuAlign = &quot;center&quot;;
+			masterContainer.addClass(&quot;left-menu-layout&quot;);
+			holder.find(&quot;.preview-content-holder&quot;).css(&quot;height&quot;,$(window).height());
+			if (leftMenuPlaceHolder.length == 0){
+				leftMenuPlaceHolder = $(&quot;&lt;div /&gt;&quot;).addClass(&quot;left-menu-placeholder&quot;);
+				var holderHandle = holder.next(&quot;.control-handle&quot;);
+				leftMenuPlaceHolder.append(holder);
+				if (holderHandle.length &gt; 0){
+					leftMenuPlaceHolder.append(holderHandle);
+				}
+				$(&quot;.master.container &gt; #children&quot;).before(leftMenuPlaceHolder);
+			} 
+		}else{
+			masterContainer.removeClass(&quot;left-menu-layout&quot;);
+			holder.find(&quot;.preview-content-holder&quot;).css(&quot;height&quot;,&quot;&quot;);
+			masterContainer.find(&quot;#children&quot;).first().css(&quot;width&quot;,&quot;&quot;);
+			menuPosition=&quot;top&quot;;
+			if (leftMenuPlaceHolder.length != 0){
+				var holderHandle = holder.next(&quot;.control-handle&quot;);
+				$(&quot;.master.container &gt; #children&quot;).prepend(holder);
+				if (holderHandle.length &gt; 0){
+					holder.after(holderHandle);
+				}
+</P><P>				leftMenuPlaceHolder.remove();
+			}
+		}
+		if (menuAlign == &quot;center&quot;){
+			holder.addClass(&quot;center-aligned-menu&quot;);
+		}else{
+			holder.removeClass(&quot;center-aligned-menu&quot;);
+		}
+		var previewTitle = currentItem.find(&quot;.preview-title&quot;);
+		var previewSubtitle = currentItem.find(&quot;.preview-subtitle&quot;);
+		var rightSideDiv = currentItem.find('.right-div');
+		var leftSideDiv = currentItem.find('.left-div');
+		leftSideDiv.find(&quot;.helper-div&quot;).show();
+		if (currentItem.find(&quot;.element-placeholder[data-elementtype='TITLE']&quot;).length &gt; 0 &amp;&amp; currentItem.find(&quot;.element-placeholder[data-elementtype='SUBTITLE']&quot;).length &gt; 0){
+			currentItem.find(&quot;.helper-div&quot;).hide();
+			if (currentItem.find(&quot;.element-placeholder[data-elementtype='ICON']&quot;).length &gt; 0){
+				menu_layout.centerifyLinks(leftSideDiv,rightSideDiv);
+			}else{
+				menu_layout.uncenterifyLinks(leftSideDiv,rightSideDiv);
+			}
+		}else{
+			currentItem.find(&quot;.helper-div&quot;).show();
+			menu_layout.uncenterifyLinks(leftSideDiv,rightSideDiv);
+		}
+</P><P>		var stripe = container.closest(&quot;.master.item-box&quot;);
+</P><P>		var textElement = currentItem.find(&quot;.preview-title&quot;);
+		var contentHolder = currentItem.find(&quot;.preview-content-holder&quot;);
+		var contentWrapper = currentItem.find(&quot;.preview-content-wrapper&quot;);
+</P><P>		var originalFontSize = &quot;N/A&quot;;
+		if (currentItem.find(&quot;.element-placeholder[data-elementtype='TITLE']&quot;).length == 0){
+			originalFontSize =  parseInt(leftSideDiv.attr(&quot;data-orig-font-size&quot;));
+			if (textElement.attr(&quot;data-orig-font-size&quot;)){
+				if (originalFontSize != textElement.attr(&quot;data-orig-font-size&quot;)){
+					originalFontSize = textElement.attr(&quot;data-orig-font-size&quot;);
+				}
+			}
+			textElement.css(&quot;font-size&quot;,originalFontSize + &quot;px&quot;);
+		}
+</P><P>		var totalLinksWidth = 0;
+</P><P>		if (typeof stripe.attr(&quot;data-original-menu-width&quot;) != &quot;undefined&quot;){
+			totalLinksWidth = parseInt(stripe.attr(&quot;data-original-menu-width&quot;));
+		}else{
+			totalLinksWidth = currentItem.find(&quot;.preview-item-links&quot;).outerWidth(true);
+			if (stripe.css(&quot;display&quot;) != &quot;none&quot;){
+				stripe.attr(&quot;data-original-menu-width&quot;,totalLinksWidth)
+			}
+		}
+</P><P>		
+		var textSpace = 0;
+		if (leftSideDiv.length &gt; 0){
+			textSpace = parseInt(leftSideDiv.width());
+		}
+</P><P>		var shrinkerRelevantContainer = contentWrapper;
+		if (menuAlign == &quot;center&quot;){
+			if (masterContainer.hasClass(&quot;left-menu-layout&quot;)){
+				totalLinksWidth = 0; //(no shrink at all)
+				shrinkerRelevantContainer = holder.find(&quot;.item-wrapper&quot;);
+			}else{
+				textSpace = 0; //(shrink and center)
+			}
+		}
+</P><P>		//Shrink if needed
+		if (leftSideDiv.outerWidth(true) + totalLinksWidth &gt; shrinkerRelevantContainer.width()){
+			var newFontSize = SpimeEngine.shrinkTextToFit(originalFontSize,shrinkerRelevantContainer,leftSideDiv,textElement,totalLinksWidth,15);
+			if (newFontSize != -1){
+				textElement.css(&quot;font-size&quot;,newFontSize);
+			}
+		}
+		var atLeastOneLink = holder.find(&quot;#sr-basket-widget , .preview-element.Link.item-link&quot;).length &gt; 0
+		alwaysMinify = alwaysMinify &amp;&amp; menuAlign==&quot;left&quot; &amp;&amp; menuPosition==&quot;top&quot;;
+</P><P>		//console.log( contentHolder.width() + &quot; &quot; +  totalLinksWidth + &quot; &quot; + textSpace + &quot; &quot; +  alwaysMinify +  &quot; &quot; +atLeastOneLink)
+</P><P>		if ((contentHolder.width() &lt;= totalLinksWidth + textSpace || alwaysMinify) &amp;&amp; menuPosition==&quot;top&quot; &amp;&amp; atLeastOneLink){
+			//if shrink is not working menufyLinks
+			menu_layout.menufyLinks(container,currentItem.find(&quot;.preview-item-links&quot;));
+			//if menufy is not enough remove text
+			if (contentHolder.width() &lt; textSpace + rightSideDiv.width()){
+				//console.log(&quot;still NO space &quot;);
+				leftSideDiv.find(&quot;.helper-div&quot;).hide(); 
+			}
+		}else{
+			if (!alwaysMinify || !atLeastOneLink){
+				menu_layout.unmenufyLinks(container,container.next(&quot;.preview-item-links&quot;));
+</P><P>			}
+		}
+</P><P>		if (!holder.hasClass(&quot;menu-open&quot;)){
+			if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;absolute&quot; &amp;&amp; !holder.is(&quot;.being-scrolled&quot;)){
+				holder.addClass(&quot;force-transparency&quot;);
+				if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;absolute&quot; &amp;&amp; holder.css(&quot;position&quot;)!= &quot;absolute&quot;){
+					 holder.css(&quot;position&quot;,&quot;absolute&quot;);
+				}
+			}
+			if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;relative&quot; &amp;&amp; !holder.is(&quot;.being-scrolled&quot;)){
+				if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;relative&quot; &amp;&amp; holder.css(&quot;position&quot;)!= &quot;relative&quot;){
+					holder.css(&quot;position&quot;,&quot;relative&quot;);
+					holder.removeClass(&quot;force-transparency&quot;);
+				}
+			}
+		}
+		menu_layout.updateBurgerColor(stripe.find(&quot;.preview-item-links&quot;));
+		menu_layout.adjustMenuScrolling(stripe);
+	});
+</P><P>};
+</P><P>menu_layout.forceRedraw = function(elements){
+	elements.each(function(){
+		var element = $(this)[0];
+		  var disp = element.style.display;
+		  element.style.display = 'none';
+		  var trick = element.offsetHeight;
+		  element.style.display = disp;
+	});
+</P><P>};
+</P><P>menu_layout.adjustMenuScrolling = function(stripe){
+	var linksHolder =  stripe.find(&quot;.preview-item-links&quot;);
+	var linksWrapper = linksHolder.find(&quot;.preview-links-wrapper&quot;);
+	if (stripe.hasClass(&quot;full-screen-menu menu-open&quot;)){
+		if (linksWrapper.outerHeight(true) + linksWrapper.outerHeight(true)/2 &gt; $(window).innerHeight() - stripe.height() -50){
+			if (!linksHolder.hasClass(&quot;transform-disabled&quot;)){
+				linksHolder.addClass(&quot;transform-disabled&quot;)
+				linksWrapper.css({&quot;top&quot;:stripe.height()});
+				//linksWrapper.closest(&quot;.preview-item-links&quot;).css({&quot;overflow-y&quot;:&quot;scroll&quot;,&quot;padding-right&quot;: &quot;20px&quot;})//.attr(&quot;id&quot;,&quot;scrolling-menu&quot;);
+			}
+		}else{
+			linksWrapper.css({&quot;top&quot;:&quot;&quot;});
+			//linksWrapper.closest(&quot;.preview-item-links&quot;).css({&quot;overflow-y&quot;:&quot;&quot;,&quot;padding-right&quot;: &quot;&quot;});
+			linksHolder.removeClass(&quot;transform-disabled&quot;)
+		}
+	}else{
+		if (linksHolder.hasClass(&quot;transform-disabled&quot;)){
+			linksHolder.removeClass(&quot;transform-disabled&quot;)
+		}
+	}
+};
+</P><P>menu_layout.handleScroll = function(holder,scrollPos){
+	if (holder.hasClass(&quot;is-blocked&quot;)){
+		return;
+	}
+	var settings = holder.find(&quot;.layout-settings&quot;);
+	var menuAlign = settings.attr(&quot;data-menu_align&quot;);
+	var menuPosition = settings.attr(&quot;data-menu_position&quot;);
+	if(holder.find(&quot;.item-wrapper&quot;).innerWidth() &lt; 400 &amp;&amp; menuPosition!=&quot;left&quot;){
+		menuAlign = &quot;left&quot;;
+		holder.addClass(&quot;force-min-height50 minimal-design&quot;);
+	}else{
+		holder.removeClass(&quot;minimal-design&quot;);
+	}
+	if (settings.attr(&quot;data-menu_scroll&quot;) == &quot;true&quot;){
+		if (scrollPos == 0){
+			$(&quot;#menu-placeholder&quot;).remove();
+			if (menuAlign == &quot;center&quot;){
+				holder.addClass(&quot;center-aligned-menu&quot;);
+			}
+			holder.css({&quot;position&quot;:settings.attr(&quot;data-menu_overlay&quot;)});
+			holder.removeClass(&quot;animated-top&quot;);
+			holder.css(&quot;top&quot;,&quot;&quot;);
+			//holder.find(&quot;.preview-subtitle-holder&quot;).show();
+			holder.find('.left-div').removeClass(&quot;scale-down08&quot;);
+			if (holder.find(&quot;.item-wrapper&quot;).innerWidth() &gt;= 400){
+				holder.removeClass(&quot;force-min-height50&quot;);
+			}
+			holder.removeClass(&quot;being-scrolled&quot;);
+			if (!holder.is(&quot;.menufied&quot;)){
+				//holder.find('.right-div').css(&quot;height&quot;,&quot;&quot;);
+			}
+			if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;absolute&quot;){
+				holder.addClass(&quot;force-transparency&quot;);
+			}
+			menu_layout.forceRedraw(holder.find(&quot;.item-wrapper&quot;))
+		}else if(scrollPos &lt; holder.outerHeight(true)){
+			//console.log(&quot;still seen&quot;)
+			//if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+				//if (holder.is(&quot;.being-scrolled&quot;)){
+				//	holder.css(&quot;top&quot;,scrollPos);
+				//}
+			//}
+</P><P>		}else{
+			if (holder.css(&quot;position&quot;) != &quot;fixed&quot; ){
+				//Create a menu place holder to prevent the mobile scroll jump
+				var menuHeight = parseInt(holder.css(&quot;height&quot;));
+				if (holder.parent().find(&quot;#menu-placeholder&quot;).length == 0 &amp;&amp; !holder.is(&quot;.force-transparency&quot;)){
+					var menuPlaceHolder = $(&quot;&lt;div /&gt;&quot;).attr(&quot;id&quot;,&quot;menu-placeholder&quot;).css({&quot;height&quot;:menuHeight,&quot;width&quot;:&quot;100%&quot;});
+					holder.after(menuPlaceHolder);
+				}
+				//holder.attr(&quot;data-orig-min-height&quot;, holder.css(&quot;min-height&quot;));
+				holder.removeClass(&quot;center-aligned-menu&quot;);
+				holder.addClass(&quot;being-scrolled&quot;);
+				holder.addClass(&quot;force-min-height50&quot;);
+				holder.css({&quot;position&quot;:&quot;fixed&quot;,&quot;top&quot;:menuHeight*-1,&quot;left&quot;:&quot;0px&quot;});
+				holder.find('.left-div').addClass(&quot;scale-down08&quot;);
+				holder.find('.right-div').css(&quot;height&quot;,holder.find('.left-div').height());
+				//holder.find(&quot;.preview-subtitle-holder&quot;).hide();
+				holder.addClass(&quot;animated-top&quot;);
+				holder.removeClass(&quot;force-transparency&quot;);
+				setTimeout(function(){
+					var offsetFix = 0;
+					//if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+						//offsetFix = scrollPos;
+//						if ($(&quot;.site-thumb&quot;).lenght &gt; 0){
+//							offsetFix = 0;
+//						}
+					//}
+					holder.css(&quot;top&quot;,offsetFix);	
+				},10);
+			}else{
+				//if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot; ){
+				//	holder.removeClass(&quot;animated-top&quot;);
+			//	holder.css(&quot;top&quot;,scrollPos);
+				//}
+			}
+		}
+	}
+</P><P>};
+</P><P>
+menu_layout.updateBurgerColor = function(linksHolder){
+	var linksColor = linksHolder.find(&quot;.item-link&quot;).css(&quot;color&quot;);
+	var styleForBurger = $(&quot;head style#for-burger&quot;);
+	if (styleForBurger.length == 0){
+		styleForBurger = $(&quot;&lt;style&gt;&quot;).attr(&quot;id&quot;,&quot;for-burger&quot;);
+	}
+	styleForBurger.text(&quot;.hamburger-inner:before,.hamburger-inner,.hamburger-inner:after {background-color:&quot;+linksColor+&quot;;}&quot;)
+	$('head').append(styleForBurger);
+};
+</P><P>menu_layout.menufyLinks = function(container,linksHolder){
+	var stripe = container.closest(&quot;.master.item-box&quot;);
+	var settings = stripe.find(&quot;.layout-settings&quot;);
+	var minifiyType = settings.attr(&quot;data-always_minified&quot;);
+</P><P>	var menuBtn = container.find(&quot;.links-menu-btn&quot;);
+	//menuBtn.find(&quot;.hamburger-inner&quot;).css(&quot;background-color&quot;,linksColor);
+</P><P>	menuBtn.addClass(&quot;shown&quot;);
+	if (container.next(&quot;.preview-item-links&quot;).length == 0){
+		var allLinks = linksHolder.children();
+		var menuBackground = container.find(&quot;.item-content&quot;).css(&quot;background-color&quot;);
+		var menuMaxWidth = container.css(&quot;max-width&quot;);
+		allLinks.addClass(&quot;flipped&quot;);
+		stripe.addClass(&quot;menufied&quot;);
+		if (!stripe.hasClass(&quot;menu-open&quot;)){
+			//linksHolder.css({&quot;max-width&quot;:menuMaxWidth,&quot;background-color&quot;:menuBackground});
+			linksHolder.hide();
+		}
+</P><P>		//if (minifiyType != &quot;false&quot;){
+			container.after(linksHolder);
+			//linksHolder.css({&quot;background-color&quot;:stripe.css(&quot;background-color&quot;)});
+		//}
+</P><P>		stripe.attr(&quot;data-original-stripe-height&quot; , stripe.height());
+</P><P>		menuBtn.unbind('click').bind('click', function(e){
+			e.stopPropagation();
+			menu_layout.burgerClick($(this),stripe,linksHolder);
+		});
+</P><P>		
+		if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+			linksHolder.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+				e.stopPropagation();
+				menu_layout.burgerClick(menuBtn,stripe,linksHolder);
+			});
+		}
+</P><P>		stripe.find('.right-div').css(&quot;height&quot;,stripe.find('.preview-icon-holder').height());
+	}
+};
+</P><P>
+menu_layout.burgerClick = function(burger,stripe,linksHolder){
+	if (!burger.hasClass(&quot;being-clicked&quot;)){
+		burger.addClass(&quot;being-clicked&quot;)
+		var settings = stripe.find(&quot;.layout-settings&quot;);
+		var minifiyType = settings.attr(&quot;data-always_minified&quot;);
+		linksHolder.removeClass(&quot;allow-bg-color&quot;);
+		switch(minifiyType){
+		case &quot;true&quot;:
+			menu_layout.handleMinifiedDefault(burger,stripe,linksHolder,settings);
+			break;
+		case &quot;full_screen&quot;:
+			linksHolder.addClass(&quot;allow-bg-color&quot;);
+			menu_layout.handleMinifiedFullScreen(burger,stripe,linksHolder,settings);
+			break;
+		case &quot;side_screen&quot;:
+			linksHolder.addClass(&quot;allow-bg-color&quot;);
+			menu_layout.handleMinifiedSideScreen(burger,stripe,linksHolder,settings);
+			break;
+		default:
+			menu_layout.handleMinifiedDefault(burger,stripe,linksHolder,settings);
+			break;
+		}
+		menu_layout.adjustMenuScrolling(stripe);
+	}
+};
+</P><P>menu_layout.handleMinifiedDefault = function(burger,stripe,linksHolder,settings){
+	stripe.addClass(&quot;animated&quot;);
+	burger.toggleClass(&quot;is-active&quot;);
+	if (burger.hasClass(&quot;is-active&quot;)){
+		stripe.removeClass(&quot;force-transparency&quot;);
+		linksHolder.addClass(&quot;flipped&quot;);
+		linksHolder.removeClass(&quot;no-place&quot;);
+		stripe.addClass(&quot;menu-open&quot;);
+		if (linksHolder.width() &gt;=  stripe.width() &amp;&amp; !linksHolder.is(&quot;.no-place&quot;)){
+			linksHolder.addClass(&quot;no-place&quot;)
+		}
+		stripe.find(&quot;.item-content&quot;).addClass(&quot;flipped&quot;);
+		burger.removeClass(&quot;being-clicked&quot;);
+		linksHolder.slideDown(function(){
+</P><P>		});
+	}else{
+		linksHolder.slideUp(function(){
+			stripe.removeClass(&quot;menu-open&quot;);
+			if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;absolute&quot; &amp;&amp; !stripe.is(&quot;.being-scrolled&quot;)){
+				stripe.addClass(&quot;force-transparency&quot;);
+			}
+		});
+		burger.removeClass(&quot;being-clicked&quot;);
+</P><P>		linksHolder.removeClass(&quot;flipped&quot;);
+		//linksHolder.css({&quot;background-color&quot;:&quot;&quot;});
+	}
+</P><P>};
+</P><P>menu_layout.handleMinifiedFullScreen = function(burger,stripe,linksHolder,settings){
+	burger.toggleClass(&quot;is-active&quot;);
+	if (burger.hasClass(&quot;is-active&quot;)){
+		//stripe.css(&quot;background-color&quot;,&quot;transparent&quot;)
+		var master = $(&quot;.master.container&quot;);
+		linksHolder.css({&quot;margin-left&quot;:master.css(&quot;margin-left&quot;),&quot;margin-right&quot;:master.css(&quot;margin-right&quot;)});
+		if (master.is(&quot;.narrow-site&quot;)){
+			linksHolder.css(&quot;width&quot;,&quot;1000px&quot;);
+		}
+		$(&quot;body&quot;).addClass(&quot;noscroll&quot;);
+		menu_layout.disableScroll();
+		linksHolder.addClass(&quot;flipped&quot;);
+		stripe.find(&quot;.item-content&quot;).addClass(&quot;flipped&quot;);
+		linksHolder.fadeIn(function(){
+			burger.removeClass(&quot;being-clicked&quot;)
+		});
+		stripe.addClass(&quot;full-screen-menu menu-open&quot;);
+	}else{
+		//stripe.css(&quot;background-color&quot;,&quot;&quot;)
+		$(&quot;body&quot;).removeClass(&quot;noscroll&quot;);
+		menu_layout.enableScroll();
+		linksHolder.removeClass(&quot;flipped&quot;);
+		linksHolder.fadeOut(function(){
+			burger.removeClass(&quot;being-clicked&quot;)
+			stripe.removeClass(&quot;full-screen-menu menu-open&quot;);
+			//linksHolder.css({&quot;background-color&quot;:&quot;&quot;});
+			linksHolder.css({&quot;margin-left&quot;:&quot;&quot;,&quot;margin-right&quot;:&quot;&quot;,&quot;width&quot;:&quot;&quot;})
+		});
+	}
+};
+</P><P>menu_layout.handleMinifiedSideScreen = function(burger,stripe,linksHolder,settings){
+	burger.toggleClass(&quot;is-active&quot;);
+	if (burger.hasClass(&quot;is-active&quot;)){
+		var master = $(&quot;.master.container&quot;);
+		linksHolder.css({&quot;margin-right&quot;:master.css(&quot;margin-right&quot;)})
+		linksHolder.addClass(&quot;flipped&quot;);
+		stripe.find(&quot;.item-content&quot;).addClass(&quot;flipped&quot;);
+		stripe.addClass(&quot;side-screen-menu menu-open&quot;);
+		linksHolder.show();
+		setTimeout(function(){
+			burger.removeClass(&quot;being-clicked&quot;)
+			linksHolder.css(&quot;right&quot;,&quot;0px&quot;)
+		},10)
+</P><P>	}else{
+		linksHolder.css({&quot;transition&quot;:&quot;none&quot;});
+		linksHolder.animate({
+			right:&quot;-360px&quot;
+		  }, 1000, function() {
+			  	burger.removeClass(&quot;being-clicked&quot;)
+				linksHolder.hide();
+				stripe.removeClass(&quot;side-screen-menu menu-open&quot;);
+				linksHolder.css({&quot;margin-right&quot;:&quot;&quot;,&quot;right&quot;:&quot;&quot;,&quot;transition&quot;:&quot;&quot;});
+		  });
+		linksHolder.removeClass(&quot;flipped&quot;);
+	}
+};
+</P><P>menu_layout.handleMinifiedBoxed = function(burger,stripe,linksHolder,settings){
+	burger.toggleClass(&quot;is-active&quot;);
+	if (burger.hasClass(&quot;is-active&quot;)){
+		stripe.removeClass(&quot;force-transparency&quot;);
+		linksHolder.addClass(&quot;flipped&quot;);
+		stripe.find(&quot;.item-content&quot;).addClass(&quot;flipped&quot;);
+		linksHolder.css({&quot;top&quot;:stripe.height()})
+		linksHolder.fadeIn();
+		stripe.addClass(&quot;boxed-menu menu-open&quot;);
+	}else{
+		linksHolder.removeClass(&quot;flipped&quot;);
+		linksHolder.css(&quot;right&quot;,&quot;0px&quot;)
+		//linksHolder.fadeOut(function(){stripe.removeClass(&quot;boxed-menu menu-open&quot;);});
+		//if (settings.attr(&quot;data-menu_overlay&quot;) == &quot;absolute&quot; &amp;&amp; !stripe.is(&quot;.being-scrolled&quot;)){
+		//	stripe.addClass(&quot;force-transparency&quot;);
+		//}
+</P><P>		
+	}
+</P><P>};
+</P><P>
+menu_layout.disableScroll = function(){
+	var x=window.scrollX;
+</P><PRE>   var y=window.scrollY;
+   window.onscroll=function(){window.scrollTo(x, y);};
+</PRE><P>};
+</P><P>menu_layout.enableScroll = function(){
+	window.onscroll=function(){};
+};
+</P><P>menu_layout.unmenufyLinks = function(container,linksHolder){
+	var holder = container.closest(&quot;.master.item-box&quot;);
+	if (holder.hasClass(&quot;menufied&quot;)){//container.next(&quot;.preview-item-links&quot;).length &gt; 0){
+</P><P>		var menuLinksHolder = linksHolder.find(&quot;.menu-links-holder&quot;);
+		//linksHolder.find(&quot;span&quot;).css({&quot;display&quot;:&quot;&quot;,&quot;margin-right&quot;:&quot;&quot;,&quot;margin-left&quot;:&quot;&quot;});
+		linksHolder.css({&quot;max-width&quot;:&quot;&quot;,&quot;background-color&quot;:&quot;&quot;,&quot;margin&quot;:&quot;&quot;});
+		holder.removeClass(&quot;menufied&quot;);
+		//linksHolder.find(&quot;.links-menu-btn&quot;).removeClass(&quot;shown&quot;);
+		container.find(&quot;.links-menu-btn&quot;).removeClass(&quot;shown&quot;);
+		var allLinks = menuLinksHolder.children();
+		allLinks.removeClass(&quot;flipped&quot;);
+		container.find(&quot;.item-content&quot;).removeClass(&quot;flipped&quot;);
+		linksHolder.append(allLinks);
+		container.find(&quot;.right-div&quot;).prepend(linksHolder);
+		var stripe = container.closest(&quot;.master.item-box&quot;);
+		stripe.removeClass(&quot;animated&quot;);
+		linksHolder.show();
+		linksHolder.removeClass(&quot;flipped&quot;);
+		//holder.find('.right-div').css(&quot;height&quot;,&quot;&quot;);
+		holder.find('.right-div').css(&quot;height&quot;,holder.find('.preview-icon-holder').height());
+		linksHolder.removeClass(&quot;allow-bg-color&quot;);
+		if (holder.hasClass(&quot;menu-open&quot;)){
+			holder.find(&quot;.hamburger&quot;).click();
+			setTimeout(function(){
+				holder.find(&quot;.preview-item-links&quot;).css(&quot;display&quot;,&quot;&quot;);
+			},1500);
+		}
+		holder.find(&quot;.preview-item-links&quot;).css(&quot;display&quot;,&quot;&quot;);
+	}
+</P><P>};
+</P><P>
+menu_layout.calculateSubmenuBG = function(container,submenu){
+	var menuBackground = container.find(&quot;.item-content&quot;).css(&quot;background-color&quot;);
+	if (menuBackground.indexOf(&quot;rgba(&quot;) != -1 &amp;&amp; menuBackground.indexOf(&quot;, 0)&quot;) != -1){
+		menuBackground = container.closest(&quot;.master.item-box&quot;).css(&quot;background-color&quot;);
+	}
+	submenu.css(&quot;background-color&quot;,menuBackground);
+};; var footer_layout = {};
+</P><P>footer_layout.init = function(container,items){
+	items.each(function(){
+		var currentItem = $(this);
+		var links = currentItem.find(&quot;.preview-item-links&quot;).children();
+		links.css(&quot;clear&quot;,&quot;&quot;);
+		links.each(function(idx){
+			if (idx % 2 == 0 &amp;&amp; idx!=0){
+				$(this).css(&quot;clear&quot;,&quot;left&quot;);
+			}
+		});
+	});
+</P><P>};
+</P><P>footer_layout.applyLayout = function(container,items){
+	items.each(function(){
+		var currentItem = $(this);
+		var stripe = container.closest(&quot;.master.item-box&quot;);
+		var rightDivWidth = currentItem.find(&quot;.preview-social-wrapper&quot;).width();
+		var leftDivWidth = currentItem.find(&quot;.helper-div&quot;).width();
+		var centerDivWidth = currentItem.find(&quot;.preview-item-links&quot;).innerWidth();
+		var stripeWidth = stripe.width();
+		if (rightDivWidth + leftDivWidth + centerDivWidth &gt; stripeWidth){
+			footer_layout.flipVertically(currentItem);
+		}else{
+			footer_layout.unflip(currentItem);
+		}
+	});
+};
+</P><P>footer_layout.flipVertically = function(item){	
+	if (typeof item.attr(&quot;data-flipped&quot;) == &quot;undefined&quot;){
+		item.attr(&quot;data-flipped&quot;,&quot;true&quot;);
+		var rightDiv = item.find(&quot;.right-div&quot;);
+		var leftDiv = item.find(&quot;.left-div&quot;);
+		var centerDiv = item.find(&quot;.center-div&quot;);
+		rightDiv.addClass(&quot;flipped&quot;);
+		leftDiv.addClass(&quot;flipped&quot;);
+		centerDiv.addClass(&quot;flipped&quot;);
+	}
+};
+</P><P>footer_layout.unflip = function(item){
+	if (typeof item.attr(&quot;data-flipped&quot;) != &quot;undefined&quot;){
+		item.removeAttr(&quot;data-flipped&quot;,&quot;true&quot;);
+		var rightDiv = item.find(&quot;.right-div&quot;);
+		var leftDiv = item.find(&quot;.left-div&quot;);
+		var centerDiv = item.find(&quot;.center-div&quot;);
+		rightDiv.removeClass(&quot;flipped&quot;);
+		leftDiv.removeClass(&quot;flipped&quot;);
+		centerDiv.removeClass(&quot;flipped&quot;);
+	}
+};; var multi_layout = {};
+</P><P>multi_layout.init = function(container,items){
+	//items.find(&quot;.image-cover&quot;).css(&quot;min-height&quot;,&quot;inherit&quot;);
+	items = items.not(&quot;.stripe-header&quot;).not(&quot;.stripe-footer&quot;);
+	items.each(function(){
+		var helperDiv = $(this).find(&quot;.helper-div&quot;);
+		//there is no class to helperdiv (usually on switching to multi) 
+	//	if (helperDiv.attr(&quot;class&quot;).indexOf(&quot;top&quot;) == -1 &amp;&amp; helperDiv.attr(&quot;class&quot;).indexOf(&quot;middle&quot;) == -1 &amp;&amp; helperDiv.attr(&quot;class&quot;).indexOf(&quot;bottom&quot;) == -1){
+	//		helperDiv.addClass()
+	//	}
+		var picSide = $(this).find(&quot;.pic-side&quot;);
+		var textSide = $(this).find(&quot;.text-side&quot;);
+		if (helperDiv.is(&quot;.top-center&quot;)){
+			picSide.before(textSide);
+		}else{
+			picSide.after(textSide);
+		}
+	});
+};
+</P><P>multi_layout.applyLayout = function(container,items,paramsFromRealTime){
+	items = items.not(&quot;.stripe-header&quot;).not(&quot;.stripe-footer&quot;);
+	var textVerticalAligner;//if it is bigger that the pic side we should flip?
+	var helperDiv = items.find(&quot;.helper-div&quot;);
+	var picSide = items.find(&quot;.pic-side&quot;);
+	var textSide = items.find(&quot;.text-side&quot;);
+</P><P>	
+	items.find(&quot;.image-cover , .item-preview&quot;).css(&quot;min-height&quot;,&quot;inherit&quot;);
+</P><P>	//Handle Ratio
+	if (container.find(&quot;.arranger-settings&quot;).length &gt; 0){
+		var arrangerSettings = container.find(&quot;.arranger-settings&quot;);
+		if (arrangerSettings.attr(&quot;data-arranger_type&quot;) == &quot;matrix&quot;){
+			var isMazonite = arrangerSettings.attr(&quot;data-arranger_order_type&quot;) == &quot;mazonite&quot;;
+			var ratioFromArranger = parseFloat(arrangerSettings.attr(&quot;data-arranger_item_ratio&quot;)).toFixed(1);
+			items.each(function(){
+				var currentItem = $(this);
+				var innerPic = currentItem.find(&quot;.inner-pic&quot;);
+				if (isMazonite){
+					var origHeight = innerPic.attr(&quot;data-orig-height&quot;);
+					var origWidth = innerPic.attr(&quot;data-orig-width&quot;);
+					if (origHeight &amp;&amp; origWidth){
+						ratioFromArranger = parseInt(origHeight) / parseInt(origWidth)
+					}else{
+						if (innerPic.attr(&quot;id&quot;) != &quot;no-image&quot;){
+							container.closest(&quot;.master.item-box&quot;).addClass(&quot;rearrange&quot;);
+						}
+						ratioFromArranger = 0;
+					}
+</P><P>				}
+				var newPicHeight = currentItem.find(&quot;.pic-side&quot;).width() * ratioFromArranger;
+				if (currentItem.find(&quot;.video-frame&quot;).length &gt; 0 &amp;&amp; isMazonite){
+					//found video
+					newPicHeight = currentItem.find(&quot;.pic-side&quot;).width() * (9/16);
+				}
+				if (helperDiv.is(&quot;.top-center&quot;) || helperDiv.is(&quot;.bottom-center&quot;)){
+					innerPic.css({&quot;height&quot;:newPicHeight});	
+					currentItem.find(&quot;.helper-div&quot;).css({&quot;min-height&quot;:&quot;&quot;});
+				}else{
+					currentItem.find(&quot;.helper-div&quot;).css({&quot;min-height&quot;:newPicHeight});	
+					innerPic.css({&quot;height&quot;:&quot;&quot;});	
+				}
+			});
+</P><P>		}else{
+			items.find(&quot;.item-details&quot;).css(&quot;height&quot;,&quot;&quot;)
+			if (helperDiv.is(&quot;.top-center&quot;) || helperDiv.is(&quot;.bottom-center&quot;)){
+				items.each(function(){
+					var currentItem = $(this)
+					var textHeight = currentItem.find(&quot;.item-details&quot;).outerHeight(true);
+					var newHeight = currentItem.height() - textHeight
+					currentItem.find(&quot;.inner-pic&quot;).css(&quot;height&quot;,newHeight);
+					//if (currentItem.find(&quot;.inner-pic&quot;).is(&quot;.circlize&quot;)){
+					//	console.log(&quot;here&quot;)
+					//}
+				});
+			}else{
+				picSide.find(&quot;.inner-pic&quot;).css({&quot;height&quot;:&quot;&quot;});	
+			}
+		}
+	}else{
+		items.find(&quot;.item-details&quot;).css(&quot;height&quot;,&quot;&quot;)
+		if (helperDiv.is(&quot;.top-center&quot;) || helperDiv.is(&quot;.bottom-center&quot;)){
+			items.each(function(){
+				var currentItem = $(this)
+				var textHeight = currentItem.find(&quot;.item-details&quot;).outerHeight(true);
+				var newHeight = currentItem.height() - textHeight
+				currentItem.find(&quot;.inner-pic&quot;).not(&quot;.circlize&quot;).css(&quot;height&quot;,newHeight);
+				if (currentItem.find(&quot;.inner-pic&quot;).is(&quot;.circlize&quot;)){
+					currentItem.find(&quot;.pic-side&quot;).not(&quot;.circlize&quot;).css(&quot;height&quot;,newHeight);
+				}
+			});
+		}else{
+			picSide.find(&quot;.inner-pic&quot;).css({&quot;height&quot;:&quot;&quot;});	
+		}
+	}
+</P><P>	
+	if (container.width() &lt; 500){
+		//if (!picSide.attr(&quot;data-prev-height&quot;)){
+			//picSide.attr(&quot;data-prev-height&quot;,picSide[0].style.height)
+			//picSide.css(&quot;min-height&quot;,&quot;&quot;);
+			//picSide.css(&quot;height&quot;,&quot;&quot;);
+			//picSide.addClass(&quot;reset&quot;)
+		//}
+		if (!helperDiv.is(&quot;.middle-center&quot;) &amp;&amp; !helperDiv.is(&quot;.top-center&quot;) &amp;&amp; !helperDiv.is(&quot;.bottom-center&quot;)){
+			items.each(function(){
+				multi_layout.flipVertically($(this));
+			});
+		}
+		//multi_layout.init(container,items); //cause edited text to loose focus
+</P><P>	}else{
+		if (helperDiv.attr(&quot;data-orig-class&quot;)){
+		items.each(function(){
+			multi_layout.unflip($(this));
+		});
+		//multi_layout.init(container,items); //cause edited text to loose focus
+</P><P>		//picSide.css(&quot;min-height&quot;,picSide.attr(&quot;data-prev-height&quot;));
+		picSide.css(&quot;top&quot;,&quot;&quot;)
+		textSide.find(&quot;.vertical-aligner&quot;).css(&quot;min-height&quot;,&quot;&quot;)
+</P><P>		}
+		//picSide.css(&quot;bottom&quot;,&quot;&quot;)
+		//picSide.css(&quot;height&quot;,picSide.attr(&quot;data-prev-height&quot;));
+		//picSide.removeAttr(&quot;data-prev-height&quot;);
+		//picSide.removeClass(&quot;reset&quot;)
+	}
+</P><P>	if (paramsFromRealTime &amp;&amp; &quot;force_redraw&quot; in paramsFromRealTime){
+		multi_layout.forceRedraw($(&quot;.item-wrapper&quot;));
+	}
+	//items.find(&quot;.background-div, .item-preview, .preview-image-holder,.text-side, .vertical-aligner , .inner-pic&quot;).css(&quot;min-height&quot;,&quot;inherit&quot;);
+	//, .text-side, .vertical-aligner, .inner-pic
+	//textSide.css(&quot;height&quot;,&quot;&quot;);
+	if (helperDiv.is(&quot;.top-center&quot;) || helperDiv.is(&quot;.bottom-center&quot;)){
+		var insideSlideshow = container.is(&quot;.flex&quot;);
+		//multi_layout.handleVerticalLayouts(items,insideSlideshow,helperDiv);
+	}
+	if (helperDiv.is(&quot;.middle-center&quot;)){
+			items.each(function(){
+				var currentItemDetails = $(this).find(&quot;.item-details&quot;);
+				var draggableImages = $(this).find(&quot;.draggable-div-holder&quot;);
+				if (currentItemDetails.css(&quot;text-align&quot;) == &quot;center&quot; || currentItemDetails.css(&quot;text-align&quot;) == &quot;right&quot;){
+					var divisor = 2;
+					if ( currentItemDetails.css(&quot;text-align&quot;) == &quot;right&quot;){
+						divisor = 1;
+					}
+					var textSideMaxWidth = $(this).find(&quot;.text-side&quot;).css(&quot;max-width&quot;);
+					if (textSideMaxWidth != &quot;none&quot;){
+						textSideMaxWidth = parseInt(textSideMaxWidth);
+						if (draggableImages.width() &lt; textSideMaxWidth ){
+							var newMarginLeft = (textSideMaxWidth - draggableImages.width())/divisor * -1;
+							draggableImages.css(&quot;margin-left&quot;,newMarginLeft);
+						}else{
+							draggableImages.css(&quot;margin-left&quot;,0);
+						}
+					}
+				}
+</P><P>				if ( currentItemDetails.css(&quot;vertical-align&quot;) == &quot;top&quot;){
+					draggableImages.css(&quot;margin-top&quot;,0);
+				}
+</P><P>				if ( currentItemDetails.css(&quot;vertical-align&quot;) == &quot;middle&quot; || currentItemDetails.css(&quot;vertical-align&quot;) == &quot;bottom&quot;){
+					if (currentItemDetails.css(&quot;vertical-align&quot;) == &quot;bottom&quot;){
+						if (!draggableImages.is(&quot;.bottomized&quot;)){
+							draggableImages.addClass(&quot;bottomized&quot;);
+							draggableImages.css({&quot;top&quot;:&quot;auto&quot;,&quot;bottom&quot;:0});
+							draggableImages.css(&quot;margin-top&quot;,0);
+						}
+					}else{
+						if (draggableImages.is(&quot;.bottomized&quot;)){
+							draggableImages.css({&quot;bottom&quot;:&quot;&quot;,&quot;top&quot;:&quot;&quot;});
+							draggableImages.removeClass(&quot;bottomized&quot;);
+						}
+						var itemDetailsHeight = parseInt(currentItemDetails.innerHeight());
+						var stripeHeight = parseInt($(this).closest(&quot;.master.item-box&quot;).height());
+						if (itemDetailsHeight &lt;= stripeHeight ){
+							var newMarginTop = (stripeHeight - draggableImages.height())/2;
+							draggableImages.css(&quot;margin-top&quot;,newMarginTop);
+						}else{
+							draggableImages.css(&quot;margin-top&quot;,0);
+						}
+					}
+				}
+</P><P>			});
+	}
+</P><P>};
+</P><P>
+multi_layout.forceRedraw = function(elements){
+	//setting body height to prevent jitter 
+	$(&quot;body&quot;).css(&quot;height&quot;,$(&quot;body&quot;).height())
+	elements.each(function(){
+		var element = $(this)[0];
+		  var disp = element.style.display;
+		  element.style.display = 'none';
+		  var trick = element.offsetHeight;
+		  element.style.display = disp;
+	});
+	$(&quot;body&quot;).css(&quot;height&quot;,&quot;&quot;)
+};
+</P><P>
+multi_layout.handleVerticalLayouts = function(items,insideSlideshow,helperDiv,fromFlip){
+</P><P>//	var maxHeight = 0;
+//	var innerMaxHeight = 0;
+//	var maxItemBoxHeight = 0;
+//	if (!insideSlideshow){
+//		items.each(function(){
+//			textSideHeight = $(this).find(&quot;.text-side&quot;).outerHeight(true);
+//			maxHeight = Math.max(maxHeight,textSideHeight);
+//			var itemContent = $(this).find(&quot;.item-content&quot;).andSelf().filter(&quot;.item-content&quot;);
+//			maxItemBoxHeight = Math.max(maxItemBoxHeight,itemContent.height());
+//			innerMaxHeight = Math.max(innerMaxHeight,$(this).find(&quot;.text-side&quot;).outerHeight());
+//		});
+//	}
+//	var fromWidthResize = items.closest(&quot;.master.item-box[data-width-resize=true]&quot;).length &gt; 0
+//	items.each(function(){
+//		var currentItem = $(this)
+//		var itemContent = currentItem.find(&quot;.item-content&quot;).andSelf().filter(&quot;.item-content&quot;);
+//		if (!insideSlideshow){
+//			//currentItem.find(&quot;.text-side&quot;).height(innerMaxHeight);
+//		}else{
+//			
+//			maxItemBoxHeight = itemContent.height();
+//		}
+//		
+//		itemBoxHeight =  itemContent.height();
+//	});
+};
+</P><P>
+multi_layout.flipVertically = function(itemToFlip){
+	var helperDiv = itemToFlip.find(&quot;.helper-div&quot;);
+	var currentClass = helperDiv.attr(&quot;class&quot;).replace(&quot;helper-div&quot;, &quot;&quot;).replace(&quot; &quot;,&quot;&quot;);
+	if (currentClass==&quot;top-left&quot; || currentClass==&quot;middle-left&quot; || currentClass==&quot;bottom-left&quot;){
+		helperDiv.removeClass(&quot;top-left top-center top-right middle-left middle-center middle-right bottom-left bottom-center bottom-right&quot;);
+		helperDiv.addClass(&quot;top-center&quot;);
+		helperDiv.attr(&quot;data-orig-class&quot;,currentClass);
+		helperDiv.addClass(&quot;flipped-image&quot;)
+	}
+	if (currentClass==&quot;top-right&quot; || currentClass==&quot;middle-right&quot; || currentClass==&quot;bottom-right&quot;){
+		helperDiv.removeClass(&quot;top-left top-center top-right middle-left middle-center middle-right bottom-left bottom-center bottom-right&quot;);
+		helperDiv.addClass(&quot;bottom-center&quot;);
+		//multi_layout.handleVerticalLayouts(itemToFlip,itemToFlip.closest(&quot;.flex&quot;).length &gt; 0,itemToFlip.find(&quot;.helper-div&quot;),true);
+		helperDiv.attr(&quot;data-orig-class&quot;,currentClass);
+		helperDiv.addClass(&quot;flipped-image&quot;)
+	}
+};
+</P><P>multi_layout.unflip = function(itemToUnFlip){
+	var helperDiv = itemToUnFlip.find(&quot;.helper-div&quot;);
+	itemToUnFlip.find(&quot;.inner-pic&quot;).css({&quot;height&quot;:&quot;&quot;});
+	if (helperDiv.attr(&quot;data-orig-class&quot;)){
+		helperDiv.removeClass(&quot;top-left top-center top-right middle-left middle-center middle-right bottom-left bottom-center bottom-right&quot;);
+		helperDiv.addClass(helperDiv.attr(&quot;data-orig-class&quot;));
+		helperDiv.removeAttr(&quot;data-orig-class&quot;)
+		helperDiv.removeClass(&quot;flipped-image&quot;)
+	}
+};; var blocks_layout = {};
+</P><P>blocks_layout.init = function(container,items){
+</P><P>};
+</P><P>blocks_layout.applyLayout = function(container,items,paramsFromRealTime){
+	var helperDiv = container.find(&quot;.helper-div&quot;);
+	var containerHeight = container.height();
+	var helperDivHeight = helperDiv.height();
+	var center = (containerHeight/2) - (helperDivHeight/2);
+	center = Math.max(0,center);
+	helperDiv.css(&quot;top&quot;,center)
+};;
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

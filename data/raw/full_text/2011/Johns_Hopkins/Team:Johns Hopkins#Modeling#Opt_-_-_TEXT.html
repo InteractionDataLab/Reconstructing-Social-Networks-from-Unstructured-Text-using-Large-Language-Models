@@ -1,0 +1,107 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Johns Hopkins/Modeling/Opt
+From 2011.igem.org
+VitaYeast - Johns Hopkins University, iGEM 2011
+Team
+Members
+Acknowledgements
+Advisors
+Sponsors
+Attributions
+Gallery
+Vitamins
+Background
+Overview
+Vitamin A
+Vitamin C
+Measurements
+Applications
+Results
+Future Plans
+Yeast Toolkit
+Background
+Overview
+Promoters and UTRs
+Violacein
+Yeast Vector Library
+Results
+Future Plans
+Human Practices
+Overview
+IRB Approval
+Data
+Modeling
+Platform
+LBS Models
+Optimization
+Sensitivity
+Parameter Fitting
+Notebook
+Protocols
+Vitamin Experiments
+Yeast Toolkit Experiments
+Safety
+Related Links:
+Modeling:
+Modeling Platforms
+LBS Models
+Sensitivity
+Parameter fitting
+Optimization
+We transition from mathematical description to engineering by using optimization techniques to rationally design the most efficient system that meets our specifications. In our case, we are trying to design a strain of yeast that produces a significant amount of vitamins relative to consensus daily value levels while minimizing the amount of enzyme that the cell needs to produce.
+Here we introduce multi-objective optimization to iGEM for the first time. We hope that the narrative below helps team evaluate and implement this powerful technique for their own projects.
+In this discussion we consider optimizing the β-carotene pathway. All analysis done for β-carotene has been duplicated for L-ascorbate as well. Plots for L-ascorbate are also shown.
+Objectives
+We have used optimization techniques to answer a number of questions.
+What concentration of each enzyme should we attempt to attain in vivo in order to have optimal vitamin production?
+How much vitamin can we expect VitaYeast to produce under different constraints?
+What sort of resources will vitamin production demand from the cell?
+How will VitaYeast allocate its resources to produce vitamins optimally?
+Multi-objective optimization
+We began by hypothesizing what sort of results we could expect from optimizing our pathway for maximum β-carotene production. We quickly realized that we were in for a major problem: from the perspective of the optimization algorithm, adding more enzyme is always right thing to do. Adding enzyme might increase the pathway's speed and efficiency, but would never cause it to slow down. Thus, any decent algorithm would converge on a solution that pushed the enzyme concentrations to their upper bounds. Running optimization in this way would be trivial.
+We know intuitively that as we demand increasing enzyme production from cells, we strain their resources until the cell viability and overall product output actually decrease. We do not have a quantitative model for this vague notion of "straining" our VitaYeast, so it cannot be incorporated directly into our simulation. We are left with needing to express the "strain" constraint in a more powerful and dynamic way than bounding and simple linear constraints. One solution is to maximize vitamin production while simultaneously solving the problem of minimizing "strain". Then, for a given level of strain, we know the optimal vitamin production level and vice-versa.
+Pareto Front
+In biology, like engineering, it is not rare to require the attainment of different and possibly conflicting objectives; for example, reaching a place as fast as possible with minimum fuel consumption. Multi-objective optimization aims to identify the largest set of trade-off solutions, using the well known financial principle of Pareto optimality. Multi-objective optimization yields a set of Pareto-optimal solutions from all feasible solutions such that an improvement in any single objective causes a worsening of another objective. Such points are said to lie approximately on the Pareto frontier: a surface in the objective function space containing all the Pareto-optimal points.
+We are interested in solving the following multi-objective problem: how can we maximize the amount of vitamin produced while minimizing the extra nitrogen required to produce the enzyme. Nitrogen usage serves as a proxy for the general burden of making extra enzymes out of amino acids. We quickly calculated the nitrogen content of each enzyme in our pathways.
+Experimental Setup
+In order to take advantage of Matlab's many built-in optimization and analysis tools, we translated our LBS models into models in Matlab's SimBiology Toolbox. The Toolbox lets us generate SBML files which can be loaded into your modeling package of choice.
+SMBL models: File:Beta-carotene pathway.zip | File:L-ascorbate pathway.zip
+The first multi-objective optimizer we explored is Matlab's built-in genetic algorithm "gamultiobj", which is based on the NSGA-II algorithm. When we run this optimizer, it generates a population of 100 "individuals" which code for certain enzyme production levels. For each individual a 30-minute simulation of the pathway is run, yielding the β-carotene production level. A separate function figures out how much nitrogen was used. Combined, the β-carotene production and nitrogen usage constitute that population member's "fitness". The algorithm keeps fit individuals and "breeds" them.
+β-carotene pathway Pareto front
+L-ascorbate pathway Pareto front
+Simulating years of time is no small feat. We started by using Visual GEC , which is the native environment for simulating LBS models . Visual GEC uses the Gillespie algorithm , a stochastic simulator that has many run-time advantages over standard ODE solvers. But Visual GEC is restricted to running in Microsoft Silverlight: a serious drawback for performance simulation. To make our optimization goals computationally tractable, we ported our models to Matlab's SimBiology toolbox. This allowed us to pre-compile our model to C++ code. Further, our optimization algorithm ran multiple simulation runs in parallel, taking advantage of modern multi-core architectures. The result was a lightening-fast single-run simulation time.
+Allocation analysis
+The graphic above tells us a lot about what goes in (nitrogen) and what comes out (vitamin) of our system, but we are left with somewhat of a black box. We know how much nitrogen gets used and that this usage is optimal, but how does our virtual cell choose to allocate this nitrogen between the various enzymes? What determines this choice? Since the optimizer explicitly minimizes nitrogen usage and maximizes vitamin production, it seems reasonable that our virtual cell is trying to balance each enzyme's usefulness in synthesizing vitamins with the nitrogen cost to produce it. Perhaps one of these two factors dominates the decision.
+Lets start by looking at how much of each enzyme simulated VitaYeast made as we gave it more nitrogen to work with.
+β-carotene nitrogen allocation
+L-ascorbate nitrogen allocation
+After simulating the real-time equivalent of years, the algorithm returns a large set of individuals that approximate the Pareto frontier. No individual can make more β-carotene without spending more nitrogen.
+As we can see, this plot is pretty noisy. For marginal increases in nitrogen usage, the simulated VitaYeast seems to shift the allocations with a bit of randomness. We interpret this as a result of the model not being very nitrogen content sensitive to the amounts of enzyme made. Consider adding 1000 nitrogen atoms to the system. That's a difference of only one or two enzyme molecules no matter how it is allocated. The difference between adding it to GGPP_synth_endo versus GGPP_synth_exo is likely erased by rounding error. Thus, for small increases in nitrogen allocation, the simulated VitaYeast is indifferent to how it is allocated, resulting in noise.
+Marginal allocation
+Despite the noise, we still see clear overall trends, such as the low levels of GGPP_synth_endo used in the optimal solutions. We make these trends explicit with a linear fit to each of the curves above. The slope of the fitted curves is the marginal nitrogen allocation, or the portion of each additional unit of nitrogen allocated to each enzyme. A good way to summarize VitaYeast's allocation decisions is to look at the ratios of the marginal allocations below.
+β-carotene marginal nitrogen allocation
+L-ascorbate marginal nitrogen allocation
+Normalized marginal allocation
+The marginal allocation represents the amount of enzyme made, not the actual nitrogen allocation. For example, every molecule of phytoene-cyclase/lycopene-synthase made requires almost twice as much nitrogen as each molecule of endogenous GGPP synthase. To understand exactly where the nitrogen is going, we need to examine the molecule-wise allocation of nitrogen. So we also plot the fraction of a marginal nitrogen atom allocated to each enzyme. We can see that the bifunctional cyclase/synthase receives a very large portion of the nitrogen, both because it is a large enzyme and because it is important, as seen in the marginal allocation below.
+Fraction of each nitrogen atom allocated to each β-cartoene production enzyme
+Fraction of each nitrogen atom allocated to each L-ascorbate production enzyme
+Conclusions
+We initially set out to use our optimization results to solve for the genetic construct we would need in order to reproduce optimal VitaYeast in vitro. We have gotten as far as finding the optimal enzyme concentrations needed, but developing an accurate model of enzyme expression from DNA is tricky. VitaYeast uses enzymes not native to yeast. How quickly do these enzymes degrade in their new host? How stable is their mRNA? Without this information, we have little hope of figuring out how to fine-tune our enzyme expression levels. The best we can do is to try to express all the enzymes in the right ratio. Looking at the marginal allocation data, we can see which genes we might be interested in including multiple copies of or using stronger promoters. We believe this rough approximation would be a significant improvement over simply placing all genes in identical constructs. Thus in the future we plan on actually testing out the conclusions drawn from optimization in vitro by trying to attain the optimal enzyme concentrations through trial and error.
+Despite the inability to suggest precise expression parameters, our analysis gave us a good deal of insight into the workings of our pathway. Perhaps this analysis could be applied to natural pathways and larger-scale metabolic networks in order to understand the allocation decisions that drive them.
+Retrieved from " http://2011.igem.org/Team:Johns_Hopkins/Modeling/Opt "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

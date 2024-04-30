@@ -1,0 +1,323 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Cornell_modelingJS skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Cornell/modelingJS</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>const svgHeight = 800; //svg is container containing everything
+const svgWidth = 1100;
+var shadow = false; //shadow determines the drop shadow, not sure if implementing yet
+var GFParr = [];
+var hrpRarr = [];
+var hrpSarr = [];
+var isParsed = true; //whether the data is parsed or not
+var freq = 1; //freq is current frequency
+var GFPpath = null;
+var hrpRpath = null;
+var hrpSpath = null;
+const datalength = 398; //length of data aka how many frequencies .
+const datarange = .1; //how wide the data spreads
+var hrpR = null; //these contain the circles that shows the data
+var hrpS = null;
+var GFP = null;
+var focus = null;
+var movable = true;
+var form = d3.format(&quot;0.5f&quot;); //formating
+var form2 = d3.format(&quot;0.0f&quot;);
+//svg is the svg container reference svg2 might be animation
+/*const svg2 = d3.select(&quot;body&quot;).append(&quot;svg&quot;)
+</P><PRE>           .attr(&quot;width&quot;, svgWidth)
+           .attr(&quot;height&quot;, svgHeight); */
+</PRE><P>const svg = d3.select(&quot;#modeling-content&quot;).append(&quot;svg&quot;)
+</P><PRE>           .attr(&quot;width&quot;, svgWidth)
+           .attr(&quot;height&quot;, svgHeight)
+           .style(&quot;opacity&quot;, 0);
+</PRE><P>// svg repositioning using jquery
+//$(&quot;svg&quot;).css({top: 50, left: 200, position:'absolute'});
+//$(&quot;rect&quot;).css({position:'absolute'});
+//creating the graph
+</P><P>const graphHeight = 300;
+const graphWidth = 600;
+const offsety = 100; //offset of the svg from border
+const offsetx = (450);
+//creating interpolation function for our graph
+var xScale = d3.scaleLinear().domain([0,datalength]).range([0, graphWidth]);
+var xScale2 = d3.scaleLinear().domain([0,140]).range([0, graphWidth]);
+var yScale = d3.scaleLinear().domain([0,datarange]).range([graphHeight, 0]);
+var yScale2 = d3.scaleLinear().domain([0,1]).range([graphHeight, 0]);
+//Code for text ====================================================================================================
+</P><P>//svg.append(&quot;text&quot;).text(&quot;Values&quot;).attr(&quot;x&quot;, graphWidth+300).attr(&quot;y&quot;, 100);
+svg.append(&quot;text&quot;).text(&quot;Frequency:&quot;).attr(&quot;x&quot;, 30).attr(&quot;y&quot;, 210);
+svg.append(&quot;text&quot;).text(&quot;hrpS:&quot;).attr(&quot;x&quot;, 30).attr(&quot;y&quot;, 240).attr(&quot;fill&quot;, &quot;blue&quot;);
+svg.append(&quot;text&quot;).text(&quot;hrpR:&quot;).attr(&quot;x&quot;, 30).attr(&quot;y&quot;, 270).attr(&quot;fill&quot;, &quot;green&quot;);
+svg.append(&quot;text&quot;).text(&quot;GFP:&quot;).attr(&quot;x&quot;, 30).attr(&quot;y&quot;, 300).attr(&quot;fill&quot;, &quot;red&quot;);
+</P><P>var FrequencyText = svg.append(&quot;text&quot;).text(&quot;0s&quot;).attr(&quot;x&quot;, 110).attr(&quot;y&quot;, 210);
+var HRPSText = svg.append(&quot;text&quot;).text(&quot;0&quot;).attr(&quot;x&quot;, 80).attr(&quot;y&quot;, 240).attr(&quot;fill&quot;, &quot;blue&quot;);
+var HRPRText = svg.append(&quot;text&quot;).text(&quot;0&quot;).attr(&quot;x&quot;, 80).attr(&quot;y&quot;, 270).attr(&quot;fill&quot;, &quot;green&quot;);
+var GFPText = svg.append(&quot;text&quot;).text(&quot;0&quot;).attr(&quot;x&quot;, 70).attr(&quot;y&quot;, 300).attr(&quot;fill&quot;, &quot;red&quot;);
+</P><P>
+//Code for text ====================================================================================================
+</P><P>//Our function to convert Matrix to points on a line
+const line = d3.line()
+</P><PRE>            .curve(d3.curveLinear)
+            .x(function(d) {return xScale(d[0]-1);}) //since the first column is 1-&gt;data value, this extablished the domain first column basically 1,2,3,4...
+            .y(function(d) {return yScale(d[freq]);});
+</PRE><P>createMovingObject();
+createGraph();
+parseData(); //read data and make graphs
+//makeShadow(); //drop shadow
+MyTransition();
+//Radial Scroller Code ==============================================================================================================================
+var PI2 = Math.PI*2;
+var slideable = false;
+var radius = 200;
+for (var i = 0; i &lt; 8; i++) {
+</P><PRE> svg.append(&quot;line&quot;)
+     .attr(&quot;x1&quot;, (radius-5)*Math.cos(i*PI2/(8*2) - Math.PI/2))
+     .attr(&quot;x2&quot;, (radius+5)*Math.cos(i*PI2/(8*2) - Math.PI/2))
+     .attr(&quot;y1&quot;, (radius-5)*Math.sin(i*PI2/(8*2) - Math.PI/2))
+     .attr(&quot;y2&quot;, (radius+5)*Math.sin(i*PI2/(8*2) - Math.PI/2))
+     .attr(&quot;stroke-width&quot;, 2)
+     .attr(&quot;stroke&quot;, d3.rgb(201, 56, 67))
+     .attr(&quot;transform&quot;, &quot;translate(0, 250)&quot;);
+</PRE><P>}
+var arc = d3.arc()
+</P><PRE>   .startAngle(0)
+   .outerRadius((radius+3)) //centered at 125
+   .innerRadius((radius-3))
+   .cornerRadius(2)
+   .padAngle(0.005)
+   .endAngle(PI2);
+</PRE><P>var CurrAngle = 0;
+</P><P>var arc2 = d3.arc()
+</P><PRE>   .startAngle(0)
+   .outerRadius((radius+3))
+   .innerRadius((radius-3))
+   .cornerRadius(2)
+   .padAngle(0.005)
+   .endAngle(0);
+</PRE><P>var RadSlider = svg.append(&quot;path&quot;)
+</P><PRE>   .attr(&quot;d&quot;, arc)
+   .attr(&quot;id&quot;, &quot;RadSlider&quot;)
+   .attr(&quot;fill&quot;, d3.rgb(227, 172, 36))
+   .attr(&quot;transform&quot;, &quot;translate(0,250)&quot;);//yellowish?
+</PRE><P>var DragLine = svg.append(&quot;path&quot;)
+</P><PRE>   .attr(&quot;d&quot;, arc2)
+   .attr(&quot;fill&quot;, d3.rgb(201, 56, 67)) //now reddish //blueish d3.rgb(13, 28, 56)
+   .attr(&quot;transform&quot;, &quot;translate(0,250)&quot;);
+</PRE><P>var DragObject = svg.append(&quot;circle&quot;)
+</P><PRE> .attr(&quot;r&quot;, 10)
+ .attr(&quot;cx&quot;, 0)
+ .attr(&quot;cy&quot;, -150)
+ .attr(&quot;transform&quot;, &quot;translate(0,&quot;+radius+&quot;)&quot;)
+ .attr(&quot;fill&quot;, d3.rgb(201, 56, 67)); //redish
+</PRE><P>var DragOverLay = svg.append(&quot;circle&quot;) //the overlay
+</P><PRE> .attr(&quot;pointer-events&quot;, &quot;all&quot;)
+ .attr(&quot;class&quot;, &quot;overlay&quot;)
+ .attr(&quot;r&quot;, (radius+75))
+ .attr(&quot;cx&quot;, 0)
+ .attr(&quot;cy&quot;, 250)
+ .attr(&quot;fill&quot;, &quot;none&quot;)
+ .on(&quot;mousemove&quot;, Dragging)
+ .on(&quot;mousedown&quot;, mouseDrag4)
+ .on(&quot;mouseup&quot;, mouseDrag2)
+ .on(&quot;mouseout&quot;, mouseDrag2);
+</PRE><P>function Dragging() {
+</P><PRE> //console.log(slideable);
+ if (slideable) {
+   //console.log(d3.mouse(document.body)); //d3.mouse(this) is current object, we want parent
+   CurrAngle = Math.atan(d3.mouse(d3.select(&quot;#RadSlider&quot;).node())[1]/d3.mouse(d3.select(&quot;#RadSlider&quot;).node())[0]) + Math.PI/2; //referencing the slider as the coordinate
+   //console.log(CurrAngle);
+   arc2.endAngle(CurrAngle);
+   DragLine.attr(&quot;d&quot;, arc2);
+   DragObject.transition().duration(1).attr(&quot;cx&quot;, radius*Math.cos(CurrAngle - Math.PI/2)).attr(&quot;cy&quot;, radius*Math.sin(CurrAngle - Math.PI/2) + (250-radius))
+ }
+</PRE><P>}
+function mouseDrag1() {
+</P><PRE> slideable = true;
+</PRE><P>}
+function mouseDrag2() {
+</P><PRE> slideable = false;
+ freq = Math.round(32*CurrAngle/Math.PI)+1; //I used round istead of floor because the simple slider uses round on axis
+ //console.log(freq);
+ FrequencyText.text(form2(3550+freq*50) + &quot;s&quot;);
+ //if (isParsed) {
+   GFPpath.transition().attr(&quot;d&quot;, line(GFParr));
+   hrpSpath.transition().attr(&quot;d&quot;, line(hrpSarr));
+   hrpRpath.transition().attr(&quot;d&quot;, line(hrpRarr));
+ //  }
+</PRE><P>}
+</P><P>function mouseDrag4() {
+</P><PRE> CurrAngle = Math.atan(d3.mouse(d3.select(&quot;#RadSlider&quot;).node())[1]/d3.mouse(d3.select(&quot;#RadSlider&quot;).node())[0]) + Math.PI/2;
+ arc2.endAngle(CurrAngle);
+ DragLine.attr(&quot;d&quot;, arc2);
+ DragObject.transition().duration(10).attr(&quot;cx&quot;, radius*Math.cos(CurrAngle - Math.PI/2)).attr(&quot;cy&quot;, radius*Math.sin(CurrAngle - Math.PI/2) + (250-radius))
+ slideable = true;
+</PRE><P>}
+</P><P>//Radial Scroller Code ==============================================================================================================================
+//all functions
+function parseData() { //asynchronous thing
+</P><PRE> //creates an array of arrays with arr[time][data]
+ d3.csv(&quot;<A rel="nofollow" class="external free" href="https://static.igem.org/mediawiki/2018/9/9f/T--Cornell--GFP.csv">https://static.igem.org/mediawiki/2018/9/9f/T--Cornell--GFP.csv</A>&quot;, function(data) {
+   GFParr.push(Object.values(data));
+   if (GFParr.length == datalength+1) {
+     //console.log(arr); testing
+     GFPpath = svg.append(&quot;path&quot;).attr(&quot;d&quot;, line(GFParr))
+                       .attr(&quot;stroke&quot;, &quot;red&quot;)
+                       .attr(&quot;stroke-width&quot;, 1)
+                       .attr(&quot;fill&quot;, &quot;none&quot;)
+                       .style(&quot;filter&quot;, function() { return shadow ? &quot;url(#drop-shadow)&quot; : &quot;&quot; ;})
+                       .attr(&quot;transform&quot;, &quot;translate(&quot;+offsetx+&quot;,&quot;+ offsety+&quot;)&quot;);
+   }
+ });
+ d3.csv(&quot;<A rel="nofollow" class="external free" href="https://static.igem.org/mediawiki/2018/a/a0/T--Cornell--hrpS.csv">https://static.igem.org/mediawiki/2018/a/a0/T--Cornell--hrpS.csv</A>&quot;, function(data) {
+   hrpSarr.push(Object.values(data));
+   if (hrpSarr.length == datalength+1) {
+     //console.log(arr); testing
+     hrpSpath = svg.append(&quot;path&quot;).attr(&quot;d&quot;, line(hrpSarr))
+                       .attr(&quot;stroke&quot;, &quot;blue&quot;)
+                       .attr(&quot;stroke-width&quot;, 1)
+                       .attr(&quot;fill&quot;, &quot;none&quot;)
+                       .style(&quot;filter&quot;, function() { return shadow ? &quot;url(#drop-shadow)&quot; : &quot;&quot; ;})
+                       .attr(&quot;transform&quot;, &quot;translate(&quot;+offsetx+&quot;,&quot;+ offsety+&quot;)&quot;);
+   }
+ });
+ d3.csv(&quot;<A rel="nofollow" class="external free" href="https://static.igem.org/mediawiki/2018/6/6d/T--Cornell--hrpR.csv">https://static.igem.org/mediawiki/2018/6/6d/T--Cornell--hrpR.csv</A>&quot;, function(data) {
+   hrpRarr.push(Object.values(data));
+   if (hrpRarr.length == datalength+1) {
+     //console.log(arr); testing
+     hrpRpath = svg.append(&quot;path&quot;).attr(&quot;d&quot;, line(hrpRarr))
+                       .attr(&quot;stroke&quot;, &quot;green&quot;)
+                       .attr(&quot;stroke-width&quot;, 1)
+                       .attr(&quot;fill&quot;, &quot;none&quot;)
+                       .style(&quot;filter&quot;, function() { return shadow ? &quot;url(#drop-shadow)&quot; : &quot;&quot; ;})
+                       .attr(&quot;transform&quot;, &quot;translate(&quot;+offsetx+&quot;,&quot;+ offsety+&quot;)&quot;);
+   }
+ });
+</PRE><P>}
+function createGraph() { //creates the shape of the graph
+</P><PRE> var x_axis = d3.axisBottom().scale(xScale2).ticks(20);
+ var y_axis = d3.axisLeft().scale(yScale);
+ var x_title = svg.append(&quot;text&quot;).text(&quot;Minutes&quot;).attr(&quot;x&quot;, svgWidth/2 -50).attr(&quot;y&quot;, graphHeight+offsety+50);
+ //overlay that determines points
+ svg.append(&quot;rect&quot;)
+    .attr(&quot;pointer-events&quot;, &quot;all&quot;)
+    .attr(&quot;class&quot;, &quot;overlay&quot;)
+    .attr(&quot;x&quot;, offsetx)
+    .attr(&quot;y&quot;, offsety)
+    .attr(&quot;width&quot;, graphWidth)
+    .attr(&quot;height&quot;, graphHeight)
+    .attr(&quot;fill&quot;, &quot;none&quot;)//you can also set color
+    .on(&quot;mouseover&quot;, mouseOver)
+    .on(&quot;mouseout&quot;, mouseOut)
+    .on(&quot;click&quot;, mouseClick)
+    .on(&quot;mousemove&quot;, mouseMove);
+ for (let i = 1; i&lt;11 ; i++) {
+   svg.append(&quot;line&quot;)
+      .style(&quot;stroke&quot;, &quot;grey&quot;)
+      .style(&quot;stroke-dasharray&quot;, &quot;8,8&quot;)
+      .style(&quot;opacity&quot;, 0.3)
+      .attr(&quot;x1&quot;, offsetx)
+      .attr(&quot;y1&quot;, yScale2(0.1*i)+offsety)
+      .attr(&quot;x2&quot;, graphWidth + offsetx)
+      .attr(&quot;y2&quot;, yScale2(0.1*i)+offsety);
+</PRE><PRE> }
+ svg.append(&quot;g&quot;)
+    .call(y_axis)
+    .attr(&quot;transform&quot;, &quot;translate(&quot; + offsetx + &quot;,&quot;+ offsety +&quot;)&quot;);
+ svg.append(&quot;g&quot;)
+    .call(x_axis)
+    .attr(&quot;transform&quot;, &quot;translate(&quot;+offsetx +&quot;,&quot; + (graphHeight+offsety) + &quot;)&quot;);
+</PRE><P>}
+function createMovingObject() {
+</P><PRE> focus = svg.append(&quot;g&quot;) //focus is our object that moves
+                .attr(&quot;class&quot;, &quot;focus&quot;)
+                .raise()
+                .style(&quot;display&quot;, &quot;none&quot;);
+ focus.append(&quot;line&quot;)
+      .style(&quot;stroke&quot;, &quot;black&quot;)
+      .attr(&quot;x1&quot;, 0)
+      .attr(&quot;y1&quot;, offsety)
+      .attr(&quot;x2&quot;, 0)
+      .attr(&quot;y2&quot;, offsety+graphHeight);
+ GFP = focus.append(&quot;circle&quot;)
+      .attr(&quot;r&quot;, 5)
+      .attr(&quot;fill&quot;, &quot;red&quot;)
+      .attr(&quot;stroke&quot;, &quot;white&quot;);
+ hrpR = focus.append(&quot;circle&quot;)
+      .attr(&quot;r&quot;, 5)
+      .attr(&quot;fill&quot;, &quot;green&quot;)
+      .attr(&quot;stroke&quot;, &quot;white&quot;);
+ hrpS = focus.append(&quot;circle&quot;)
+      .attr(&quot;r&quot;, 5)
+      .attr(&quot;fill&quot;, &quot;blue&quot;)
+      .attr(&quot;stroke&quot;, &quot;white&quot;);
+</PRE><P>}
+function mouseClick() {
+</P><PRE> movable = !movable;
+</PRE><P>}
+function mouseMove() {
+</P><PRE> if (movable) {
+   focus.select(&quot;line&quot;).attr(&quot;transform&quot;, &quot;translate(&quot; + d3.mouse(this)[0] + &quot;,0)&quot;);
+   //console.log(GFParr[Math.round(xScale.invert(d3.mouse(this)[0] - offsetx))][freq]);
+</PRE><PRE>   let xVAL = xScale.invert(d3.mouse(this)[0] - offsetx);
+   let xRound = Math.floor(xVAL);
+   let GFPyValue = (yScale(GFParr[xRound+1][freq]) - yScale(GFParr[xRound][freq]))*(xVAL-xRound)+offsety+yScale(GFParr[xRound][freq]);
+   let hrpSyValue = (yScale(hrpSarr[xRound+1][freq]) - yScale(hrpSarr[xRound][freq]))*(xVAL-xRound)+offsety+yScale(hrpSarr[xRound][freq]);
+   let hrpRyValue = (yScale(hrpRarr[xRound+1][freq]) - yScale(hrpRarr[xRound][freq]))*(xVAL-xRound)+offsety+yScale(hrpRarr[xRound][freq]);
+   //let yVAL = (yScale(arr[Math.round(xScale.invert(d3.mouse(this)[0] - offsetx))][freq])+offsety);
+   //d3.select(&quot;#value&quot;).text(&quot;GFP = &quot; + GFPyValue + &quot;, hrpS = &quot; + hrpSyValue + &quot;, hrpR = &quot; + hrpRyValue);
+   HRPSText.text(form((hrpSarr[xRound][freq])));
+   HRPRText.text(form(hrpRarr[xRound][freq]));
+   GFPText.text(form(GFParr[xRound][freq]));
+</PRE><PRE>   GFP.attr(&quot;transform&quot;, &quot;translate(&quot; + d3.mouse(this)[0] + &quot;,&quot; + GFPyValue + &quot;)&quot;);
+   hrpS.attr(&quot;transform&quot;, &quot;translate(&quot; + d3.mouse(this)[0] + &quot;,&quot; + hrpSyValue + &quot;)&quot;);
+   hrpR.attr(&quot;transform&quot;, &quot;translate(&quot; + d3.mouse(this)[0] + &quot;,&quot; + hrpRyValue + &quot;)&quot;);
+ }
+</PRE><PRE> //focus.select(&quot;rect&quot;).attr(&quot;transform&quot;, &quot;translate(&quot; + d3.mouse(this)[0] + &quot;,&quot; + GFPyValue + &quot;)&quot;); originally wanted moving rect.
+</PRE><P>}
+function mouseOut() {
+</P><PRE> if (movable) {
+   focus.style(&quot;display&quot;, &quot;none&quot;);
+ }
+</PRE><P>}
+function mouseOver() {
+</P><PRE> if (movable) {
+   focus.style(&quot;display&quot;, null);
+ }
+</PRE><P>}
+function MyTransition() {
+</P><PRE> svg.transition().delay(1000).duration(1000).style(&quot;opacity&quot;, 1);
+</PRE><P>}
+function makeShadow() {
+</P><PRE> if (shadow) {
+   let defs = svg.append(&quot;defs&quot;);
+   let stdDeviation = 3;
+   let filter = defs.append(&quot;filter&quot;)
+                    .attr(&quot;id&quot;, &quot;drop-shadow&quot;)
+                    .attr(&quot;height&quot;, &quot;130%&quot;)
+                    .attr(&quot;filterUnits&quot;,&quot;userSpaceOnUse&quot;);
+   filter.append(&quot;feColorMatrix&quot;)
+         .attr(&quot;result&quot;, &quot;offOut&quot;)
+         .attr(&quot;in&quot;, &quot;offOut&quot;)
+         .attr(&quot;type&quot;, &quot;matrix&quot;)
+         .attr(&quot;values&quot;, &quot;1 1 1 1 1 &quot; +
+                         &quot;0 0 0 0 0 &quot; +
+                         &quot;0 0 0 0 0 &quot; +
+                         &quot;0 0 0 1 0&quot;);
+   filter.append(&quot;feGaussianBlur&quot;)
+           .attr(&quot;in&quot;, &quot;SourceGraphic&quot;) //SourceAlpha for black shadow/ matrixOut for color / graphic for its own color
+           .attr(&quot;stdDeviation&quot;, stdDeviation)
+           .attr(&quot;result&quot;, &quot;blur&quot;);
+   filter.append(&quot;feOffset&quot;)
+         .attr(&quot;in&quot;, &quot;blur&quot;)
+         .attr(&quot;dx&quot;, stdDeviation)
+         .attr(&quot;dy&quot;, stdDeviation)
+         .attr(&quot;result&quot;, &quot;offsetBlur&quot;);
+   let feMerge = filter.append(&quot;feMerge&quot;);
+   feMerge.append(&quot;feMergeNode&quot;).attr(&quot;in&quot;,&quot;offsetBlur&quot;);
+   feMerge.append(&quot;feMergeNode&quot;).attr(&quot;in&quot;, &quot;SourceGraphic&quot;);
+ }
+</PRE><P>}
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

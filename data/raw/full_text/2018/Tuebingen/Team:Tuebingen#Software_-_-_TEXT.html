@@ -1,0 +1,231 @@
+Team:Tuebingen/Software
+Project
+Team
+Labwork
+Bioinformatics
+Human Practices
+Collaborations
+Results
+Software
+I grew up on the street... No, not the hood. The Sesame Street.- John 'J.D.' Dorian
+BERT - Boosted Epitope Reduction based on Trees
+Links to GitHub repositories
+https://github.com/igemsoftware2018/Team_Tuebingen_BERT
+https://github.com/igemsoftware2018/Team_Tuebingen_MHCBoost
+The releases can be found here:
+https://github.com/igemsoftware2018/Team_Tuebingen_BERT/releases
+https://github.com/igemsoftware2018/Team_Tuebingen_MHCBoost/releases
+Motivation
+The availability of biopharmaceuticals has been steadily growing in recent years. Furthermore, due to expiring patents, it is expected that biosimilar agents will flood the markets.  All pharmaceuticals - including our BoNTC shuttle mechanism- have to face one major challange, compared to small molecule drugs: the triggering of the humoral immune responses. [] . The production of anti-drug antibodies (ADAs) by plasma cells and the resulting presence of the ADAs in the circulation can cause unwanted side effects. Additionally, the antibodies reduce the efficacy of the treatment, by specifically binding and neutralizing its function or by reducing the availability of the biopharmaceutical in the targeted area [] [] . Moreover, an unwanted triggering of the immune response is always a great risk for the patient. In the worst case scenario the treatment can even be life threatening by causing an anaphylactic shock as response to the foreign protein [] . Another big problem often arises in replacement therapies, when the immune system triggers a cross-reactive immune response to the endogenous protein like thrombopoietin or erythropoietin while treating the patient with its recombinant counterpart [] [] .  Hence, there's clearly a demand for deimmunization of biopharmaceuticals. Decreased immunogenicity of biopharmaceuticals is very likely to result in a safer and more effective treatment. Therefore we decided to engineer a software tool to solve this problem.
+MHC Molecules
+The major histocompatibility complex, in humans also called human leucocyte antigen (HLA), is encoded on chromosome six, containing separate gene clusters for the different MHC molecule types [] . The MHC molecules can be divided into two classes, the MHC class I molecules and the MHC class II molecules. Both molecules present short peptide fragments on the cell surface to the T-Cell. The peptide is bound in a binding groove on the MHC molecule. Both classes of MHC share similar structural characteristics, but differ in their subdomains. MHC class I is a heterodimer consisting of an alpha transmembrane chain and smaller beta-2 microglobulin, which is not convalently bound to the MHC molecule. MHC class II molecules are heterodimers consisting of two transmembrane chains (alpha and beta) [] . Due to those structural differences, both molecule have different peptide binding properties. MHC class I molecules favor binding peptides of 8-10 amino acids in their binding groove, since hydrogen bonds at the C-terminus and the N-terminus of the peptide are the main stabilizers of the MHC-I/peptide complex, whereas MHC class II molecules favor peptides between 13 and 18 amino acids [] .
+Immunogenicity
+The immunogenicity of biopharmaceuticals can be caused by many different patient- and drug-associated factors. In our software tool we focus on the most important aspect, which is the sequence of the protein and the resulting T-cell immune epitopes presented on MHC class II molecules. However factors like a lack of glycosylation, different glycosylation patterns or protein aggregates might also trigger the immune system to a response. An important patient related factor is the set of alleles of every individual. Since they all have slightly different peptide binding capabilities, an immune response to a protein can be related to the presence of certain alleles [] .
+MHC allele frequencies
+Since immunogenicity is largely influenced by the MHC molecule peptide binding characteristics, our tool  destroys epitopes for alleles of choice. However, since every individual has a different set of alleles, it is nearly impossible to perform a generalized perfect deimmunization of the protein. As a result, it is inevitable to make compromises in the epitope removal. The goal is not to completely remove all epitopes for all possible alleles, but to reduce the immunogenicity of the protein for the largestpart of the population possible. Another major challenge in this optimization problem is the different frequency of MHC alleles around the world, which limits a deimmunization to a distinct population carrying those alleles. In case of an average central European population, a combined epitope removal for the most prevalent alleles like DRB1*07:01 and DRB1*03:01 would be a reasonable choice.
+Table 1: Allele frequency for for the DRB1 allele in central Europe.
+The frequencies are obtained from the allelefrequencies.net database []
+Allele
+Frequency
+DRB1*07:01
+0.110
+DRB1*03:01
+0.099
+DRB1*15:01
+0.097
+DRB1*11:01
+0.081
+DRB1*01:01
+0.078
+DRB1*11:04
+0.069
+DRB1*13:01
+0.067
+DRB1*04:01
+0.056
+DRB1*16:01
+0.047
+DRB1*13:02
+0.037
+Workflow Design
+The major design goals of our workflow are accessability and a fast generation of reproducible, extensive results. Moreover, a modular software architecture should allow for easy extensibility, as well as a high potential of reusage of workflow components for other tasks or workflows.
+The deimmunization of biopharmaceuticals poses a big challenge, since every attempt of decreasing the immunogenicity of a protein by a point mutation might lead to a loss of function or the protein might outright not fold anymore. Thus, we formulated two goals:
+Decrease the immunogenicity
+Keep structural solidity
+As the key metric of immunogenicity we used the epitope count for a user-defined set of alleles and implemented our own epitope predictor for MHC-I in MHCBoost. MHC-II epitope prediction is enabled through interoperability with NetMHCIIPan 3.2 [] .
+To narrow down the set of potential amino acid substitutions and identify highly conserved amino acids, we developed EvoCS.
+Together with CoReM, an innovative machine learning estimator of mutation-affected structural solidity, experimentally feasible deimmunization targets are identified accurately.
+In the following we will introduce all tools and finally explain how they are connected and how their interplay works.
+Figure 1:  A high level overview of BERT. The protein sequence is deimmunized while taking the loss of immunogenicity and the impact on the structural solidity of a set of considered mutations into account.
+EvoCS - Evolutionary Consensus Sequencer
+Motivation
+The deimmunization of a protein is the act of utilizing position specific point mutations to decrease the chances of immune reactions. Artificially inducing point mutations simply by chance is a risky act, which is likely to impair the protein's folding capabilities and in the worst-case completely destroy the protein structure. Amino acids involved at important protein sites such as its active site are usually evolutionary conserved. Therefore, it is of great use to examine naturally occurring point mutations.
+Multiple sequence alignment
+Investigating diverging sequences with similar evolutionary backgrounds allows us to find naturally occurring mutations. A prerequisite for the determination of evolutionary conserved residues is a multiple sequence alignment (MSA). A multiple sequence alignment characterizes the alignment of three or more biological sequences of similar length. MSAs can be created by popular webservices such as Clustal Omega. For example, we created a MSA for BoNTC with Clustal Omega using various related sequences like BoNTA, BoNTD or even artifical sequences like eBoNT. The resulting MSA is shown in Figure 2.
+Figure 2: Multiple sequence alignment of related proteins of Botulinum toxin C. The red box marks a single aligned amino acid position, for which the module computes whether this position either is highly conserved or variable.
+Implementation
+To easily find evolutionary highly conserved or very mutative residues we developed EvoCS using the popular programming language Python. EvoCS parses the MSA file and computes preserved residues or residue classes for each residue position. The conserved amino acid or class assignment is decided by a user customizable threshold (0 \(\leq\)  threshold \(\leq\) 1). If the number of occurrences of a residue or residue class surpasses the total number of sequences times the threshold it is considered a preserved residue. We differentiate between ten different residueclasses: Negative '-', alcoholic 'o', tiny 'u', positive '+', aliphatic 'l', aromatic 'a', charged 'c', small 's', polar 'p', turnlike 't', and hydrophobic 'h'. Classes containing less amino acids are preferred. This allows subclasses (ex. '-' \( \subset \) 'c') to be chosen instead of their supersets.
+Moreover, the gap percentage of each residue is calculated. A higher gap percentage indicates more evolutionary insertions of amino acids. Since they're unlikely to be evolutionary conserved they have to be ruled out. For example, considering a MSA of 10 aminoacids, where two sequences contain an E at a specific position and all other eight sequences a gap, one should not count the E as a conserved amino acid.
+Figure 3  Output format of the EvoCS module: For every position of the protein of interest a vector of length three is produced. The first position of the vector stores the amino acid in one-letter code, the second the most frequent amino acid group and the third the proportion of gaps aligned to the residue of the target sequence
+Results
+As output an array is constructed containing the residue from the reference sequence, the preserved residue or residue class for all sequences, and the percentage of gaps of the MSA at this position. This gives us a list of point mutations within a preserved residue class which proved to be evolutionary important/robust in nature, and hence can be ruled out from the considered residues for mutations. Furthermore, the preferred class of amino acid may help us in choosing appropriate replacement amino acid for a residue, since amino acids with similar physico-chemical properties can more likely be replaced with each other.
+MHCBoost
+Motivation
+MHC (Major Histocompability Complex) encodes for a group of proteins which are important for immune recognition, histocompability at transplantations and the immunological individuality. The MHC genes are divided in class I and class II. The MHC proteins in humans are encoded by the human leukocyte antigen (HLA) complex. HLA is highly polymorphic, because of numerous alleles for each gene that encodes the MHC molecules. Every allele binds to a specific set of peptides. The MHC class I molecule presents only peptides from intracellular antigens that can activate cytotoxic T cells (CD8+ cells).
+Inside a cell, peptides are proteolytically cleaved by the proteasom in smaller fragments, which are subsequently transported into the endoplasmic reticulum by a Transporter associated with antigen processing (TAP).  Afterwards, the peptide will be loaded on an MHC-I molecule and represented on the cell surface. This mechanism allows the adaptive immune system to determine whether or not a cell contains malicious components.
+Since the LC of our botulinum toxin based shuttle protein enters the cell together with its cargo, it would also be cleaved by the proteasome and would eventually be presented on the MHC molecules. Since the botulinum toxin fragments are unknown to the human immune system, an unwanted immune response directed against the neuronal cells could be triggered. This scenario is most likely to occur upon long term treatment using the shuttle mechanism, for example while substituting lacking proteins in the cells.  To be able to assess the immunogenicity of proteins with respect to MHC class I we implemented a machine learning based tool in python using the gradient boosted tree implementation of XGBoost to predict whether or not epitopes are MHC class I binders.
+Data and Feature Encoding
+Machine learning requires verified and large datasets. The IEDB (Immune Epitope Database) offers experimentally derived datasets containing 157327 samples of MHC class I binding for the most frequent HLA alleles [] . A single data point contains the species, the allele, the peptide length, its sequence, an inequality value and finally and most importantly the ic50 value. The ic50 is a measure of effectiveness of a substance in inhibiting a biochemical function - in this case MHC I binding. Hence, we receive an experimentally derived value of the binding strength of peptides to MHC class I molecules. An affinity of 500 nM is commonly used as a threshold for peptide selection [] . An ic50 value of less or equal than 500 nM indicates an MHC I binder, anything above 500 indicates a non-binder. Due to machine learning algorithms not being able to operate well or not at all on strings, all peptide sequences have to be encoded into features containing more additional information than just a character sequence.
+To be able to feed our machine learning algorithm biochemical properties of the individual amino acids, we encoded each residue of the peptide sequences into feature vectors of length 11. Figure 4 shows our chosen encoding for the amino acids. By adding amino acid substitution information (blomap) and physico-chemical properties (columns 6-11) we enabled our machine learning algorithm to learn deep interactions between neighboured amino acids [] . All encoded peptides were used for the training of our machine learning algorithm of choice: Gradient boosted trees.
+Figure 4: Extended blomap encoding of all amino acids.  The blomap values are basedon  the  blosum62  matrix,  the  additional  columns  feature  physico-chemical  properties  ofthe respective amino acid.  The blomap was obtained from Maetschke et al, all additional columns from the NCBI amino acid explorer.
+Gradient Boosted Trees - Training
+As our machine learning algorithm of choice we used extreme gradient boosted trees implemented in python by the XGBoost library [] . Gradient boosted trees are commonly used for supervised learning problems, where training data is used (with multiple features, in our case the physico-chemical properties) \(x_i\) to predict a target variable \(y_i\) (in our case binary - binder or non-binder). Gradient boosted trees are based on decision tree ensembles consisting of a set of classification and regression trees (CART).
+Major advantages of gradient boosted trees when compared to other popular machine learning algorithms such as neural networks or support vector machines is their training speed. Where neural networks often times train days or even weeks, gradient boosted trees are trained in a matter of minutes or sometimes even seconds. However, when dealing with image or speech data, deep learning using neural networks is likely to result in a better performance due to their intrinsically hierarchical approach to the modeling of large datasets where subunits like a single pixel are hard put into the larger context.
+Luckily, we aren't dealing with extremely large datasets or imaging data. Therefore, tree-based algorithms are a natural and modern choice. The problem of MHC class I binding has so far rarely been approached by tree-based algorithms. Most implementations feature neural networks, support vector machines or bayesian based methods.
+To evaluate our performance we used 5-fold cross validations on the most common alleles and evaluated the resulting ROCAUC value.   Gradient boosted trees are used for supervised learning problems, where one uses training data (with multiple features) \(xi\) to predict a target variable \(yi\). With well chosen \(yi\) we can express tasks such as regression, classification, and ranking. The task of training the model amounts to finding the best parameters \(\theta\) that best fit the training data \(xi\) and labels \(yi\). To train a model an objective function measuring how well the model fits the training data has to be defined. Objective functions for machine learning algorithms commonly incorporate two terms: training loss and regularization.  We define the objective function as follows: $$\text{obj}(\theta) = L(\theta) + \omega(\theta)\\$$ where \(L\) is the training loss function, and \(\Omega\) is the regularization term. The training loss measures how predictive our model is with respect to the training data. A common choice of \(L\) is the mean squared error, which is given by: $$L(\theta) = \sum_i (y_i-\hat{y}_i)^2\\$$ The regularization term controls the complexity of the model, which helps us to avoid overfitting. Since gradient boosted trees are working with tree ensembles, the prediction scores of each individual tree are summed up for a final score. Hence, we define our model as follows: $$\hat{y}_i = \sum_{k=1}^K f_k(x_i), f_k \in \mathcal{F}\\$$ where \(K\) is the number of trees, \(f\) is a function in the functional space \(\mathcal{F}\), and \(\mathcal{F}\) is the set of all possible CARTs. The objective function to be optimized is given by: $$\text{obj} = \sum_{i=1}^n l(y_i, \hat{y}_i^{(t)}) + \sum_{i=1}^t\Omega(f_i)\\$$ Now we can learn the functions \(f_i\) containing the structure of the tree and the leaf scores. We're using an additive structure which fixes what has already been learned and adds one tree at a time: $$\begin{split}\hat{y}_i^{(0)} &= 0\\ \hat{y}_i^{(1)} &= f_1(x_i) = \hat{y}_i^{(0)} + f_1(x_i)\\ \hat{y}_i^{(2)} &= f_1(x_i) + f_2(x_i)= \hat{y}_i^{(1)} + f_2(x_i)\\ &\dots\\ \hat{y}_i^{(t)} &= \sum_{k=1}^t f_k(x_i)= \hat{y}_i^{(t-1)} + f_t(x_i)\end{split}\\$$ Now we simply add one tree which optimizes our objective. If we use the mean squared error as our loss function, the objective follows: $$\begin{split}\text{obj}^{(t)} & = \sum_{i=1}^n (y_i - (\hat{y}_i^{(t-1)} + f_t(x_i)))^2 + \sum_{i=1}^t\Omega(f_i) \\ & = \sum_{i=1}^n [2(\hat{y}_i^{(t-1)} - y_i)f_t(x_i) + f_t(x_i)^2] + \Omega(f_t) + \mathrm{constant}\end{split}\\$$ Now that the training step has been added we have to add the regularization term to our model. We define the complexity of the tree \(\omega(f)\). Therefore we redefine our tree \(f(x)\) as  $$f_t(x) = w_{q(x)}, w \in R^T, q:R^d\rightarrow \{1,2,\cdots,T\}\\$$  \(w\) is the vector of scores on the leaves, \(q\) is a function which assigns each data point to the corresponding leaf and \(T\) is equal to the number of leaves. This allows us to formulate the complexity as: $$\Omega(f) = \gamma T + \frac{1}{2}\lambda \sum_{j=1}^T w_j^2\\$$ Now we just need to formulate the objective function for the t-th tree: $$\begin{split}\text{obj}^{(t)} &\approx \sum_{i=1}^n [g_i w_{q(x_i)} + \frac{1}{2} h_i w_{q(x_i)}^2] + \gamma T + \frac{1}{2}\lambda \sum_{j=1}^T w_j^2\\ &= \sum^T_{j=1} [(\sum_{i\in I_j} g_i) w_j + \frac{1}{2} (\sum_{i\in I_j} h_i + \lambda) w_j^2 ] + \gamma T\end{split}\\$$ Finally, but most importantly, we formulate the Gain function which optimizes one tree at a time. More precisely, it splits a leaf into two leaves and calculates the gain: $$Gain = \frac{1}{2} \left[\frac{G_L^2}{H_L+\lambda}+\frac{G_R^2}{H_R+\lambda}-\frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\right] - \gamma\\$$ The gain function contains the score on the new left leaf, the new right leaf, the original leaf and the regularization term on the additional leaf.
+Hyperparameter Optimization
+Hyperparameter optimization is often times a very time-consuming and difficult task. However, the extremely quick training and cross validation runtime of our algorithm allowed us to test out a lot more hyperparameter optimizations than other machine learning algorithms. Grid-search is a commonly used hyperparameter optimization concept which performs cross-validation on every possible combination of a supplied set of hyperparameters and finally returns the best combination of all hyperparameter values.
+Unfortunately, even with our fast algorithm, too many possible combinations of hyperparameters took far too long to evaluate on our working stations. Hence, we narrowed down the search-space using randomized-search. Randomized-search has a probability of 98% of finding a combination of parameters within the 5% optima with only 60 iterations, with a much lower runtime [] .  The results of the randomized-searches allowed us to fine-tune our model with carefully selected grid-search parameters. Our final parameters are shown in table 2.
+Table 2: Hyperparameter of the XGBClassifier.
+The final hyperparameters chosen after multiple randomized-searches with subsequent grid-searches. The hyperparameters resulted in the best average AUC on all alleles.
+Hyperparameter
+Value
+n_estimators
+1200
+learning_rate
+0.2
+max_depth
+6
+subsample
+1
+gamma
+3
+min_child_weight
+1
+colsample_bytree
+0.7
+Results
+We evaluated our tool on all 65 alleles provided by the IEDB database using 5-fold cross validation. Furthermore, we compared all of our calculated AUC values with the currently best performing tool  NetMHCPan. The detailed results can be found here MHCBoostvsNetMHCPan .
+Discussion
+MHCBoost's performance is already very competitive when compared to the absolute state of the art - NetMHCPan. Considering that we developed MHCBoost in a matter of weeks, whereas NetMHCPan has been continuously refined over the last 10 years, our performance is very respectable.
+To further explore the demonstrated potential of our tree-based approach to MHC class I binding prediction, we're planning to perform hyperparameter optimization using bayesian optimization. Bayesian optimization offers a fast, but powerful hyperparameter optimization for large sets of supplied hyperparameter and therefore an alternative to randomized-search and grid-search.
+CoReM - Contact Residue Mutation
+Motivation
+To only take, concerning the structural solidity and protein function, reasonable point mutations into further consideration, we implemented a machine learning based tool to compute the change of change of Gibbs free energy (ddG) between a tuple of considered amino acid exchanges.
+Background
+The ddG values for proteins are computed from the Gibbs free energy difference between their unfolded and folded state before and after the respective point mutation. A ddG value of less than 0 indicates, that the inspected mutation causes destabilizations within the protein structure. Contrary, a value bigger than 0 indicates that the mutation may even increase the structural solidity. A ddG of 0 indicates no change in the protein's stability.
+Machine-Learning-Model
+Our machine-learning algorithm is based on gradient boosted trees from the python library XGBoost. Using XGBoost's implementation of gradient boosted trees regression we trained on the S2648 dataset obtained from ProTherm, a thermodynamic database for Proteins and Mutants. The dataset features 2648 datapoints containing: the PDB ID, the wild type amino acid, its chain and position, the mutation amino acid, the PH and temperature at the time of measurement and finally the ddG value for the amino acid exchange. All amino acids were encoded using the blomap introduced in MHCBoost's encoding of amino acids with a few modifications. Our feature encoding was expanded to include the number of neighbours in contact with the currently encoded amino acid and its secondary structure type encoded in three bits (helix(010), sheet(100), or none(001)). Residue neighbours were labeled as such if they weren't directly linked and if their sidechains were less than seven angstroms away from each other. It all in all amounted to a feature vector length of fourteen (5 per blomap, 1 for neighbourcount, 3 for secondary structure).
+Figure 5: Feature vector used to train XGBRegression-class (yellow = blomap old residue, red = blomap new residue, green = number of neighbours, blue = secondary structuretype)
+Training the learning algorithm on eighty percent of a set with 2648 datapoints, allowed us to test our regression on the remaining twenty percent (529 datapoints). Evaluating the first results we decided to remove the five datapoints with the highest ddG-value since heavily skewed the average of values. They likely result from measuring errors and impact machine learning algorithms to a large degree. Moreover, analogous to the reasoning given in MHCBoost, we explored and optimized hyperparameters using randomized-search and subsequently grid-search (Table 3).
+Table 3: Hyperparamter of the XGBRegressor.
+The parameters have been determined using an extensive grid search
+Hyperparameter
+Value
+learning_rate
+0.2
+max_depth
+2
+min_child_weight
+2
+n_estimators
+320
+seed
+1
+Results
+Testing the predictions with the remaining non-trained twenty percent of our datapoints shows that our predicted ddG-value on average never surpasses a difference of one from the test-values. Considering the interval of ddG-values of about eleven in our overall trainings data these results aren't incredibly convincing, but certainly usable. The very low size of the training dataset and more importantly how the dataset was generated makes predicting the ddG a very difficult task. Since the dataset was created from values submitted by different groups using different methods at different points of time, the ddG values contained in the dataset are likely to not be perfectly accurate.
+Figure 6: x-coordinates show predicted ddG-values, y-coordinates show real ddG-values.
+Final Workflow
+Overview
+All three modular tools together are part of BERT, our powerful deimmunization workflow.
+Figure 7: Here, the interplay of our three modular tools which are the building blocks of BERT is shown. The user enters a protein sequence, the corresponding structure file in pdb format and a set of alleles which he wants to deimmunize against. The generated output consists of the deimmunized protein sequence.
+First of all, the user inputs his protein sequence, a corresponding structure (required for the identification of neighbour amino acids which are in contact with each other) file (*.pdb), a generated MSA for example using the very popular and easy to use webservice Clustal Omega and finally the name of the alleles that the user wants to deimmunize his protein against.
+First of all the set of even considered point mutations is greatly reduced by running EvoCS. This allows subsequent, iterative runs of either MHCBoost or NetMHCIIPan in conjunction with CoReM to score all remaining possible point mutations according to the factors explained below.
+Point Mutation Evaluation
+To evaluate which amino acid should be substituted by another amino acids, we took two different factors into consideration. The first factor is the overall immunogenicity of the protein, before and after the amino acid substitution.  The second factor is the structural stability of protein, which account for the protein being functional. In the process of the deimmunization we seek minimum value for the protein’s immunogenicity while maximizing the free folding energy ddG. For the immunogenicity score we used an adapted version of a score for population optimized peptide vaccines and epitope reduction [] [] .
+$$ I(S \vert A) := \sum_{e\in E(S)} \sum_{a\in A} p_m \cdot i_{e,a}\\\\  with \\ E := set of epitopes \\ A := set \ of \ alleles\\ p_a := frequency \ of \ allele \ a \ in \ target \ population\\ i_{e,a} := immunogenicity \ of \ epitope \ e \ for \ allele \ a\\ b_{e,m} := binding \ affinity \ of \ epitope \ e \ on \ allele \ a$$
+Using both, the calculated difference in the immunogenicity score and the predicted ddG after the amino acid substitution, we formulated a score which takes both objectives together. We added an adjustable weight w in the formula, which controls whether the immunogenicity value or the ddG value is give more weight for the final scoring. A low weight favors the reduction of the immunogenicity but could result in accepting in structurally very unfavorable mutations. In contrast, a high value for the weight allows mainly structurally neutral mutation but could result in an ineffective removal of T-cell immune epitopes.  In order to ensure reasonable results in the deimmunization workflow, we set different constraints. Firstly, the immunogenicity has to be improved in every step, to make sure that no unnecessary mutations are introduced in the sequence (CI). Secondly, every position of the amino acid should be mutated only once (CII). Thirdly, we also limited the maximum number of point mutations introduced in the sequence (CIII).
+Application on BoNTC
+We applied our BERT deimmunization workflow on our botulinum neurotoxin C shuttle to show the capabilities of our modular tool, as well as to optimize the potential applicability our shuttle, which is the key players of our project. In particular we applied the workflow to the binding domain of the botulinum toxin C, since this domain plays the most important role in recognizing and entering neurons by specifically binding to ganliosides. Therefore it is crucial that this domain in not masked by ADAs which would most likely prevent interactions between the protein and its target. Is has already been shown, that a vaccination in mice with the binding domain of BoNT-A in mice protected them botulism, by neutralizing antibodies [] . Transferred to our project, this shows the importance of an unmasked the binding domain for the shuttle mechanism to work properly. The binding domain is mainly build of beta-sheets and has two subdomains. The crucial part of this domain is the ganglioside binding loop with a conserved tryptophane at position 1258 [] .
+Structural Analysis
+As a first step to deimmunize this domain, we obtained the crystal structure (PDB ID: 3N7K) and performed a 10 ns MD simulation in order to check the stability of the domain.  We used the AMBER99SB force field with the MD simulation software GROMACS 2016.3.  The RMSD of the simulation slowly rises during the MD simulation up to a value of 0.3 nm (Figure 8.1). This can be largely explained by the characteristics of the structure itself, since the structure contains many large loops. An overlay of the structure before and after the MD simulation shows, that the beta-sheets stay in their initial position, whereas the loops show some conformation change due to their flexibility (Figure 8.2). This information about the stability of the protein is needed, because we wanted verify the stability of the structure after the amino acid substitutions using another MD simulation. We concluded that this structure is sufficiently stable for the analysis after the introduction of the point mutations.
+Figure 8.1: RMSD plot of the botulinum toxin C binding domain. The RMSD has been calculated on the coordinates of the backbone atoms
+Figure 8.2: Structure alignment of the botulinum toxin C binding domain before and after a 10 ns MD simulation.
+Epitope Removal
+The second step was the calculation of the best point mutations in order to reduce the immunogenicity by our tool BERT, calculated on the three most prevalent alleles in central Europe DRB1*03:01, DRB1*07:01, DRB1*15:01. As input of our tool we used the crystal structure 3N7K and a MSA of the binding domains of the other known botulinum toxins and toxin related proteins. We complete set of parameters is shown in Table 4.
+Table 4: Parameters for the deimmunization of the Botulinum toxin C binding domain
+Parameter
+Value
+Number of mutations
+4
+Positions to check
+10
+Chain
+B
+Weight w
+5
+Alleles
+DRB1_0301,DRB1_0701,DRB1_1501
+Allele Frequencies
+0.099,0.109,0.0967
+Our tool calculated four substitutions shown in Table 5. The calculated immnogenicty reduced from 36.9 to 29.2, which is reduction of about 21 %. The number of T-cell immune epitope for all three alleles reduced from 361 to 285. All four substitutions our tool BERT chose for the best deimmunization, are placed in loops of the protein. Of the four amino acids, only the phenylalanine at position 1042 has its side chain directed to the center of the protein, which could potentially explain the slightly higher change in the free folding energy. The ddG values of all mutations are close to zero and can therefore be interpreted as only a small structural destabilization.
+Table 5 Computed amino acid point mutations in the Botulinum toxin binding domain to reduce the immunogenicity.
+Mutation
+Immunogenicity after mutation
+Predicted ddG value [kcal/mol]
+F 1042 D
+34.403
+-0.598
+I 1174 D
+32.718
+-0.093
+V 950 D
+30.854
+-0.352
+L 1120 D
+29.225
+-0.524
+Figure 9:  Tertiary structure of the botulinum toxin C binding domain. The four amino acids which were chosen by BERT for mutation are labeled.
+Figure 10.1: T-Cell immune epitopes before the deimmunization workflow shown as combined bar-/lineplot. For each amino acid, the number of MHC class II epitopes  is plotted. Note: the numbering starts at position 1, which is equivalent to the position 867 of the BoNTC binding domain
+Figure 10.2: T-Cell immune epitopes after the deimmunization workflow shown as combined bar-/lineplot. For each amino acid, the number of MHC class II epitopes  is plotted. Note: the numbering starts at position 1, which is equivalent to the position 867 of the BoNTC binding domain
+Structural Verification
+To validate whether the protein is still stable, we performed a second 10 ns MD simulation with the mutated protein. The RMSD plot shows a RMSD of 0.2 nm, which can be interpreted as stable conformation, regarding the substitution of four phyicochemical totally different amino acids (Figure 11.1). Most of the differences between both structure can again be mostly explained changes in flexible loops of the protein (Figure 11.2).
+Figure 11.1: RMSD plot of the mutated botulinum toxin C binding domain. The RMSD has been calculated on the coordinates of the backbone atoms
+Figure 11.2: Structural alignment of the mutated botulinum toxin C binding domain with the WT binding domain.
+Conclusion
+We developed a comprehensive, modular workflow called BERT for the automated deimmunization of proteins. By applying BERT to various protein and subsequent molecular dynamics simulations sequences we demonstrated the immense power and precision of BERT. BERT not only decreases the immunogenicity by large amounts, it also does so while preserving the structural integrity of the deimmunized protein. We applied BERT on the binding domain of the botulinum neurotoxin C and were able to reduce the immunogenicity drastically.
+Furthermore, we externally validated BERT on an previously to us unknown protein provided in an intensive collaboration with team Paris-Bettencourt. The very convincing results and validations of our approach can be found on the Collaborations site.
+Our very modular code structure allows us to release all of BERTs modules: MHCBoost, EvoCS and CoReM as standalone tools for other researchers to use them for either specific scientific questions or for the development of other workflows.
+With our innovative idea to combine the output of multiple machine learning tools based on modern machine learning methods, we achieved excellent computation time and results.
+Moreover, we adhered to software development best practices. During the exciting development sprints we were using an agile development structure. Features were implemented on separate branches in two week long sprints, followed by pull requests and code reviews by our very small developer team. Our continous integration setup which is using Travis, ensured that each feature was firstly still passing tests and secondly and most importantly, the project was still building without any errors. To enable easy debugging and inform users about the current status of our tools on runtime, we also incorporated LOG messages at different log levels, such as 'debug' for developers and 'info' for users.
+References
+THOMAS MORROW, L. H. F. (2012) Defining the difference: what makes biologics unique. Biotechnology healthcare, 1(4), 24.. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3564302/
+Schellekens, H., & Casadevall, N. (2004) Important work about something important. Journal of neurology, 251(2), ii4-ii9.. http://doi.org/10.1007/s00415-004-1202-9
+Gunn III, G. R., Sealey, D. C., Jamali, F., Meibohm, B., Ghosh, S., & Shankar, G. (2016) From the bench to clinical practice: understanding the challenges and uncertainties in immunogenicity testing for biopharmaceuticals. Clinical & Experimental Immunology, 184(2), 137-146.. https://doi.org/10.1111/cei.12742
+Abramowicz, D., Crusiaux, A., & Goldman, M. (1992) Anaphylactic shock after retreatment with OKT3 monoclonal antibody. The New England journal of medicine, 327(10), 736.. https://doi.org/10.1056/NEJM199209033271018
+Li, J., Yang, C., Xia, Y., Bertino, A., Glaspy, J., Roberts, M., & Kuter, D. J. (2001) Thrombocytopenia caused by the development of antibodies to thrombopoietin. Blood, 98(12), 3241-3248.. https://doi.org/10.1182/blood.V98.12.3241
+Casadevall, N., Nataf, J., Viron, B., Kolta, A., Kiladjian, J. J., Martin-Dupont, P., ... & Varet, B. (2002) Pure red-cell aplasia and antierythropoietin antibodies in patients treated with recombinant erythropoietin. New England Journal of Medicine, 346(7), 469-475.. https://doi.org/10.1056/NEJMoa011931
+MHC Sequencing Consortium. (1999) Complete sequence and gene map of a human major histocompatibility complex. Nature, 401, 921-923.. https://doi.org/10.1038/44853
+Jones, E. Y. (1997) MHC class I and class II structures. Current opinion in immunology, 9(1), 75-79.. https://doi.org/10.1016/S0952-7915(97)80162-8
+Sercarz, E. E., & Maverakis, E. (2003) Mhc-guided processing: binding of large antigen fragments. Nature Reviews Immunology, 3(8), nri1149.. https://doi.org/10.1038/nri1149
+Tovey, M. G., & Lallemand, C. (2011) Immunogenicity and other problems associated with the use of biopharmaceuticals. Therapeutic advances in drug safety, 2(3), 113-128.. https://doi.org/10.1177/2042098611406318
+González-Galarza, F. F., Takeshita, L. Y., Santos, E. J., Kempson, F., Maia, M. H. T., Silva, A. L. S. D., ... & Middleton, D. (2015) Allele frequency net 2015 update: new features for HLA epitopes, KIR and disease and HLA adverse drug reaction associations. Nucleic acids research, 43(D1), D784-D788.. https://doi.org/10.1093/nar/gku1166
+Jensen, K. K., Andreatta, M., Marcatili, P., Buus, S., Greenbaum, J. A., Yan, Z., ... & Nielsen, M. (2018) Improved methods for predicting peptide binding affinity to MHC class II molecules. Immunology. https://doi.org/10.1111/imm.12889
+Vita, R., Overton, J. A., Greenbaum, J. A., Ponomarenko, J., Clark, J. D., Cantrell, J. R., ... & Peters, B. (2014) The immune epitope database (IEDB) 3.0. Nucleic acids research, 43(D1), D405-D412.. https://doi.org/10.1093/nar/gku938
+Paul, S., Weiskopf, D., Angelo, M. A., Sidney, J., Peters, B., & Sette, A. (2013) HLA class I alleles are associated with peptide-binding repertoires of different size, affinity, and immunogenicity. The Journal of Immunology, 1302101.. https://doi.org/10.4049/jimmunol.1302101
+Maetschke, S., Towsey, M., & Boden, M. (2005) BLOMAP: an encoding of amino acids which improves signal peptide cleavage site prediction. In Proceedings of the 3rd Asia-Pacific bioinformatics conference (pp. 141-150).. https://doi.org/10.1142/9781860947322_0014
+Chen, T., & Guestrin, C. (2016) Xgboost: A scalable tree boosting system. -In Proceedings of the 22nd acm sigkdd international conference on knowledge discovery and data mining (pp. 785-794). ACM.. https://doi.org/10.1145/2939672.2939785
+Bergstra, J., & Bengio, Y. (2012) Random search for hyper-parameter optimization. Journal of Machine Learning Research, 13(Feb), 281-305..
+Toussaint, N. C., Dönnes, P., & Kohlbacher, O. (2008) A mathematical framework for the selection of an optimal set of peptides for epitope-based vaccines. PLoS computational biology, 4(12), e1000246.. https://doi.org/10.1371/journal.pcbi.1000246
+Schubert, B., Schärfe, C., Dönnes, P., Hopf, T., Marks, D., & Kohlbacher, O. (2018) Population-specific design of de-immunized protein biotherapeutics PLoS computational biology, 14(3), e1005983.. https://doi.org/10.1371/journal.pcbi.1005983
+Zhang, Y., & Varnum, S. M.  (2012) The receptor binding domain of botulinum neurotoxin serotype C binds phosphoinositides.  Biochimie, 94(3), 920-923. https://doi.org/10.1128/CVI.00268-13
+Karalewitz, A. P. A., Kroken, A. R., Fu, Z., Baldwin, M. R., Kim, J. J. P., & Barbieri, J. T.  (2010) Identification of a unique ganglioside binding loop within botulinum neurotoxins C and D-SA  Biochemistry, 49(37), 8117-8126.. https://doi.org/10.1021/bi100865f
+S
+BERT
+EvoCS
+MHCBoost
+CoReM
+Final Workflow
+Application
+on BoNTC
+Conclusion

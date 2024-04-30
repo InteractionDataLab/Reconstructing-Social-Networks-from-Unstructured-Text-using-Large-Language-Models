@@ -1,0 +1,239 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_HZAU-China_ddaccordion_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:HZAU-China/ddaccordion.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:HZAU-China/ddaccordion.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:HZAU-China/ddaccordion.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:HZAU-China/ddaccordion.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:HZAU-China/ddaccordion.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:HZAU-China/ddaccordion.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>//** Accordion Content script: By Dynamic Drive, at <A href="http://www.dynamicdrive.com" class="external free" rel="nofollow">http://www.dynamicdrive.com</A>
+//** Created: Jan 7th, 08'. Last updated: June 7th, 2010 to v1.9
+</P><P>//Version 1.9: June 7th, 2010':
+//**1) Ajax content support added, so a given header's content can be dynamically fetched from an external file and on demand.
+//**2) Optimized script performance by caching header and content container references
+</P><P>
+var ddaccordion={
+	ajaxloadingmsg: '&lt;img src=&quot;loading2.gif&quot; /&gt;Loading Content...', //customize HTML to output while Ajax content is being fetched (if applicable)
+</P><P>	headergroup: {}, //object to store corresponding header group based on headerclass value
+	contentgroup: {}, //object to store corresponding content group based on headerclass value
+</P><P>	preloadimages:function($images){
+		$images.each(function(){
+			var preloadimage=new Image()
+			preloadimage.src=this.src
+		})
+	},
+</P><P>	expandone:function(headerclass, selected){ //PUBLIC function to expand a particular header
+		this.toggleone(headerclass, selected, &quot;expand&quot;)
+	},
+</P><P>	collapseone:function(headerclass, selected){ //PUBLIC function to collapse a particular header
+		this.toggleone(headerclass, selected, &quot;collapse&quot;)
+	},
+</P><P>	expandall:function(headerclass){ //PUBLIC function to expand all headers based on their shared CSS classname
+		var $headers=this.headergroup[headerclass]
+		this.contentgroup[headerclass].filter(':hidden').each(function(){
+			$headers.eq(parseInt($(this).attr('contentindex'))).trigger(&quot;evt_accordion&quot;)
+		})
+	},
+</P><P>	collapseall:function(headerclass){ //PUBLIC function to collapse all headers based on their shared CSS classname
+		var $headers=this.headergroup[headerclass]
+		this.contentgroup[headerclass].filter(':visible').each(function(){
+			$headers.eq(parseInt($(this).attr('contentindex'))).trigger(&quot;evt_accordion&quot;)
+		})
+	},
+</P><P>	toggleone:function(headerclass, selected, optstate){ //PUBLIC function to expand/ collapse a particular header
+		var $targetHeader=this.headergroup[headerclass].eq(selected)
+		var $subcontent=this.contentgroup[headerclass].eq(selected)
+		if (typeof optstate==&quot;undefined&quot; || optstate==&quot;expand&quot; &amp;&amp; $subcontent.is(&quot;:hidden&quot;) || optstate==&quot;collapse&quot; &amp;&amp; $subcontent.is(&quot;:visible&quot;))
+			$targetHeader.trigger(&quot;evt_accordion&quot;)
+	},
+</P><P>	ajaxloadcontent:function($targetHeader, $targetContent, config, callback){
+		var ajaxinfo=$targetHeader.data('ajaxinfo')
+</P><P>		function handlecontent(content){ //nested function
+			if (content){ //if ajax content has loaded
+				ajaxinfo.cacheddata=content //remember ajax content 
+				ajaxinfo.status=&quot;cached&quot; //set ajax status to cached
+				if ($targetContent.queue(&quot;fx&quot;).length==0){ //if this content isn't currently expanding or collapsing
+					$targetContent.hide().html(content) //hide loading message, then set sub content's HTML to ajax content
+					ajaxinfo.status=&quot;complete&quot; //set ajax status to complete
+					callback() //execute callback function- expand this sub content
+				}
+			}
+			if (ajaxinfo.status!=&quot;complete&quot;){
+				setTimeout(function(){handlecontent(ajaxinfo.cacheddata)}, 100) //call handlecontent() again until ajax content has loaded (ajaxinfo.cacheddata contains data)
+			}
+		} //end nested function
+</P><P>		if (ajaxinfo.status==&quot;none&quot;){ //ajax data hasn't been fetched yet
+			$targetContent.html(this.ajaxloadingmsg)
+			$targetContent.slideDown(config.animatespeed)
+			ajaxinfo.status=&quot;loading&quot; //set ajax status to &quot;loading&quot;
+			$.ajax({
+				url: ajaxinfo.url, //path to external menu file
+				error:function(ajaxrequest){
+					handlecontent('Error fetching content. Server Response: '+ajaxrequest.responseText)
+				},
+				success:function(content){
+					content=(content==&quot;&quot;)? &quot; &quot; : content //if returned content is empty, set it to &quot;space&quot; is content no longer returns false/empty (hasn't loaded yet)
+					handlecontent(content)
+				}
+			})
+		}
+		else if (ajaxinfo.status==&quot;loading&quot;)
+			handlecontent(ajaxinfo.cacheddata)
+	},
+</P><P>	expandit:function($targetHeader, $targetContent, config, useractivated, directclick, skipanimation){
+		var ajaxinfo=$targetHeader.data('ajaxinfo')
+		if (ajaxinfo){ //if this content should be fetched via Ajax
+			if (ajaxinfo.status==&quot;none&quot; || ajaxinfo.status==&quot;loading&quot;)
+				this.ajaxloadcontent($targetHeader, $targetContent, config, function(){ddaccordion.expandit($targetHeader, $targetContent, config, useractivated, directclick)})
+			else if (ajaxinfo.status==&quot;cached&quot;){
+				$targetContent.html(ajaxinfo.cacheddata)
+				ajaxinfo.cacheddata=null
+				ajaxinfo.status=&quot;complete&quot;
+			}
+		}
+		this.transformHeader($targetHeader, config, &quot;expand&quot;)
+		$targetContent.slideDown(skipanimation? 0 : config.animatespeed, function(){
+			config.onopenclose($targetHeader.get(0), parseInt($targetHeader.attr('headerindex')), $targetContent.css('display'), useractivated)
+			if (config.postreveal==&quot;gotourl&quot; &amp;&amp; directclick){ //if revealtype is &quot;Go to Header URL upon click&quot;, and this is a direct click on the header
+				var targetLink=($targetHeader.is(&quot;a&quot;))? $targetHeader.get(0) : $targetHeader.find('a:eq(0)').get(0)
+				if (targetLink) //if this header is a link
+					setTimeout(function(){location=targetLink.href}, 200) //ignore link target, as window.open(targetLink, targetLink.target) doesn't work in FF if popup blocker enabled
+			}
+		})
+	},
+</P><P>	collapseit:function($targetHeader, $targetContent, config, isuseractivated){
+		this.transformHeader($targetHeader, config, &quot;collapse&quot;)
+		$targetContent.slideUp(config.animatespeed, function(){config.onopenclose($targetHeader.get(0), parseInt($targetHeader.attr('headerindex')), $targetContent.css('display'), isuseractivated)})
+	},
+</P><P>	transformHeader:function($targetHeader, config, state){
+		$targetHeader.addClass((state==&quot;expand&quot;)? config.cssclass.expand : config.cssclass.collapse) //alternate btw &quot;expand&quot; and &quot;collapse&quot; CSS classes
+		.removeClass((state==&quot;expand&quot;)? config.cssclass.collapse : config.cssclass.expand)
+		if (config.htmlsetting.location=='src'){ //Change header image (assuming header is an image)?
+			$targetHeader=($targetHeader.is(&quot;img&quot;))? $targetHeader : $targetHeader.find('img').eq(0) //Set target to either header itself, or first image within header
+			$targetHeader.attr('src', (state==&quot;expand&quot;)? config.htmlsetting.expand : config.htmlsetting.collapse) //change header image
+		}
+		else if (config.htmlsetting.location==&quot;prefix&quot;) //if change &quot;prefix&quot; HTML, locate dynamically added &quot;.accordprefix&quot; span tag and change it
+			$targetHeader.find('.accordprefix').html((state==&quot;expand&quot;)? config.htmlsetting.expand : config.htmlsetting.collapse)
+		else if (config.htmlsetting.location==&quot;suffix&quot;)
+			$targetHeader.find('.accordsuffix').html((state==&quot;expand&quot;)? config.htmlsetting.expand : config.htmlsetting.collapse)
+	},
+</P><P>	urlparamselect:function(headerclass){
+		var result=window.location.search.match(new RegExp(headerclass+&quot;=((\\d+)(,(\\d+))*)&quot;, &quot;i&quot;)) //check for &quot;?headerclass=2,3,4&quot; in URL
+		if (result!=null)
+			result=RegExp.$1.split(',')
+		return result //returns null, [index], or [index1,index2,etc], where index are the desired selected header indices
+	},
+</P><P>	getCookie:function(Name){ 
+		var re=new RegExp(Name+&quot;=[^;]+&quot;, &quot;i&quot;) //construct RE to search for target name/value pair
+		if (document.cookie.match(re)) //if cookie found
+			return document.cookie.match(re)[0].split(&quot;=&quot;)[1] //return its value
+		return null
+	},
+</P><P>	setCookie:function(name, value){
+		document.cookie = name + &quot;=&quot; + value + &quot;; path=/&quot;
+	},
+</P><P>	init:function(config){
+	document.write('&lt;style type=&quot;text/css&quot;&gt;\n')
+	document.write('.'+config.contentclass+'{display: none}\n') //generate CSS to hide contents
+	document.write('a.hiddenajaxlink{display: none}\n') //CSS class to hide ajax link
+	document.write('&lt;\/style&gt;')
+	jQuery(document).ready(function($){
+		ddaccordion.urlparamselect(config.headerclass)
+		var persistedheaders=ddaccordion.getCookie(config.headerclass)
+		ddaccordion.headergroup[config.headerclass]=$('.'+config.headerclass) //remember header group for this accordion
+		ddaccordion.contentgroup[config.headerclass]=$('.'+config.contentclass) //remember content group for this accordion
+		var $headers=ddaccordion.headergroup[config.headerclass]
+		var $subcontents=ddaccordion.contentgroup[config.headerclass]
+		config.cssclass={collapse: config.toggleclass[0], expand: config.toggleclass[1]} //store expand and contract CSS classes as object properties
+		config.revealtype=config.revealtype || &quot;click&quot;
+		config.revealtype=config.revealtype.replace(/mouseover/i, &quot;mouseenter&quot;)
+		if (config.revealtype==&quot;clickgo&quot;){
+			config.postreveal=&quot;gotourl&quot; //remember added action
+			config.revealtype=&quot;click&quot; //overwrite revealtype to &quot;click&quot; keyword
+		}
+		if (typeof config.togglehtml==&quot;undefined&quot;)
+			config.htmlsetting={location: &quot;none&quot;}
+		else
+			config.htmlsetting={location: config.togglehtml[0], collapse: config.togglehtml[1], expand: config.togglehtml[2]} //store HTML settings as object properties
+		config.oninit=(typeof config.oninit==&quot;undefined&quot;)? function(){} : config.oninit //attach custom &quot;oninit&quot; event handler
+		config.onopenclose=(typeof config.onopenclose==&quot;undefined&quot;)? function(){} : config.onopenclose //attach custom &quot;onopenclose&quot; event handler
+		var lastexpanded={} //object to hold reference to last expanded header and content (jquery objects)
+		var expandedindices=ddaccordion.urlparamselect(config.headerclass) || ((config.persiststate &amp;&amp; persistedheaders!=null)? persistedheaders : config.defaultexpanded)
+		if (typeof expandedindices=='string') //test for string value (exception is config.defaultexpanded, which is an array)
+			expandedindices=expandedindices.replace(/c/ig, <I>).split(',') //transform string value to an array (ie: &quot;c1,c2,c3&quot; becomes [1,2,3]</I>
+		if (expandedindices.length==1 &amp;&amp; expandedindices[0]==&quot;-1&quot;) //check for expandedindices value of [-1], indicating persistence is on and no content expanded
+			expandedindices=[]
+		if (config[&quot;collapseprev&quot;] &amp;&amp; expandedindices.length&gt;1) //only allow one content open?
+			expandedindices=[expandedindices.pop()] //return last array element as an array (for sake of jQuery.inArray())
+		if (config[&quot;onemustopen&quot;] &amp;&amp; expandedindices.length==0) //if at least one content should be open at all times and none are, open 1st header
+			expandedindices=[0]
+		$headers.each(function(index){ //loop through all headers
+			var $header=$(this)
+			if (/(prefix)|(suffix)/i.test(config.htmlsetting.location) &amp;&amp; $header.html()!=&quot;&quot;){ //add a SPAN element to header depending on user setting and if header is a container tag
+				$('').prependTo(this)
+				$('').appendTo(this)
+			}
+			$header.attr('headerindex', index+'h') //store position of this header relative to its peers
+			$subcontents.eq(index).attr('contentindex', index+'c') //store position of this content relative to its peers
+			var $subcontent=$subcontents.eq(index)
+			var $hiddenajaxlink=$subcontent.find('a.hiddenajaxlink:eq(0)') //see if this content should be loaded via ajax
+			if ($hiddenajaxlink.length==1){
+				$header.data('ajaxinfo', {url:$hiddenajaxlink.attr('href'), cacheddata:null, status:'none'}) //store info about this ajax content inside header
+			}
+			var needle=(typeof expandedindices[0]==&quot;number&quot;)? index : index+<I> //check for data type within expandedindices array- index should match that type</I>
+			if (jQuery.inArray(needle, expandedindices)!=-1){ //check for headers that should be expanded automatically (convert index to string first)
+				ddaccordion.expandit($header, $subcontent, config, false, false, !config.animatedefault) //3rd last param sets 'isuseractivated' parameter, 2nd last sets isdirectclick, last sets skipanimation param
+				lastexpanded={$header:$header, $content:$subcontent}
+			}  //end check
+			else{
+				$subcontent.hide()
+				config.onopenclose($header.get(0), parseInt($header.attr('headerindex')), $subcontent.css('display'), false) //Last Boolean value sets 'isuseractivated' parameter
+				ddaccordion.transformHeader($header, config, &quot;collapse&quot;)
+			}
+		})
+		$headers.bind(&quot;evt_accordion&quot;, function(e, isdirectclick){ //assign CUSTOM event handler that expands/ contacts a header
+				var $subcontent=$subcontents.eq(parseInt($(this).attr('headerindex'))) //get subcontent that should be expanded/collapsed
+				if ($subcontent.css('display')==&quot;none&quot;){
+					ddaccordion.expandit($(this), $subcontent, config, true, isdirectclick) //2nd last param sets 'isuseractivated' parameter
+					if (config[&quot;collapseprev&quot;] &amp;&amp; lastexpanded.$header &amp;&amp; $(this).get(0)!=lastexpanded.$header.get(0)){ //collapse previous content?
+						ddaccordion.collapseit(lastexpanded.$header, lastexpanded.$content, config, true) //Last Boolean value sets 'isuseractivated' parameter
+					}
+					lastexpanded={$header:$(this), $content:$subcontent}
+				}
+				else if (!config[&quot;onemustopen&quot;] || config[&quot;onemustopen&quot;] &amp;&amp; lastexpanded.$header &amp;&amp; $(this).get(0)!=lastexpanded.$header.get(0)){
+					ddaccordion.collapseit($(this), $subcontent, config, true) //Last Boolean value sets 'isuseractivated' parameter
+				}
+</P><PRE>		})
+</PRE><P>		$headers.bind(config.revealtype, function(){
+			if (config.revealtype==&quot;mouseenter&quot;){
+				clearTimeout(config.revealdelay)
+				var headerindex=parseInt($(this).attr(&quot;headerindex&quot;))
+				config.revealdelay=setTimeout(function(){ddaccordion.expandone(config[&quot;headerclass&quot;], headerindex)}, config.mouseoverdelay || 0)
+			}
+			else{
+				$(this).trigger(&quot;evt_accordion&quot;, [true]) //last parameter indicates this is a direct click on the header
+				return false //cancel default click behavior
+			}
+		})
+		$headers.bind(&quot;mouseleave&quot;, function(){
+			clearTimeout(config.revealdelay)
+		})
+		config.oninit($headers.get(), expandedindices)
+		$(window).bind('unload', function(){ //clean up and persist on page unload
+			$headers.unbind()
+			var expandedindices=[]
+			$subcontents.filter(':visible').each(function(index){ //get indices of expanded headers
+				expandedindices.push($(this).attr('contentindex'))
+			})
+			if (config.persiststate==true &amp;&amp; $headers.length&gt;0){ //persist state?
+				expandedindices=(expandedindices.length==0)? '-1c' : expandedindices //No contents expanded, indicate that with dummy '-1c' value?
+				ddaccordion.setCookie(config.headerclass, expandedindices)
+			}
+		})
+	})
+	}
+}
+</P><P>//preload any images defined inside ajaxloadingmsg variable
+ddaccordion.preloadimages(jQuery(ddaccordion.ajaxloadingmsg).filter('img'))
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:HZAU-China/ddaccordion.js">http://2014.igem.org/Team:HZAU-China/ddaccordion.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:HZAU-China/ddaccordion.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:HZAU-China/ddaccordion.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:HZAU-China/ddaccordion.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:HZAU-China/ddaccordion.js&amp;oldid=121589" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,302 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Heidelberg_js_bibtexParse skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Heidelberg/js/bibtexParse</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/* start bibtexParse 0.0.22 */
+</P><P>//Original work by Henrik Muehe (c) 2010
+//
+//CommonJS port by Mikola Lysenko 2013
+//
+//Port to Browser lib by ORCID / RCPETERS
+//
+//Issues:
+//no comment handling within strings
+//no string concatenation
+//no variable values yet
+//Grammar implemented here:
+//bibtex -&gt; (string | preamble | comment | entry)*;
+//string -&gt; '@STRING' '{' key_equals_value '}';
+//preamble -&gt; '@PREAMBLE' '{' value '}';
+//comment -&gt; '@COMMENT' '{' value '}';
+//entry -&gt; '@' key '{' key ',' key_value_list '}';
+//key_value_list -&gt; key_equals_value (',' key_equals_value)*;
+//key_equals_value -&gt; key '=' value;
+//value -&gt; value_quotes | value_braces | key;
+//value_quotes -&gt; '&quot;' .*? '&quot;'; // not quite
+//value_braces -&gt; '{' .*? '&quot;'; // not quite
+(function(exports) {
+</P><PRE>   function BibtexParser() {
+       
+       this.months = [&quot;jan&quot;, &quot;feb&quot;, &quot;mar&quot;, &quot;apr&quot;, &quot;may&quot;, &quot;jun&quot;, &quot;jul&quot;, &quot;aug&quot;, &quot;sep&quot;, &quot;oct&quot;, &quot;nov&quot;, &quot;dec&quot;];
+       this.notKey = [',','{','}',' ','='];
+       this.pos = 0;
+       this.input = &quot;&quot;;
+       this.entries = new Array();
+</PRE><PRE>       this.currentEntry = &quot;&quot;;
+</PRE><PRE>       this.setInput = function(t) {
+           this.input = t;
+       };
+</PRE><PRE>       this.getEntries = function() {
+           return this.entries;
+       };
+</PRE><PRE>       this.isWhitespace = function(s) {
+           return (s == ' ' || s == '\r' || s == '\t' || s == '\n');
+       };
+</PRE><PRE>       this.match = function(s, canCommentOut) {
+           if (canCommentOut == undefined || canCommentOut == null)
+               canCommentOut = true;
+           this.skipWhitespace(canCommentOut);
+           if (this.input.substring(this.pos, this.pos + s.length) == s) {
+               this.pos += s.length;
+           } else {
+               throw &quot;Token mismatch, expected &quot; + s + &quot;, found &quot;
+                       + this.input.substring(this.pos);
+           };
+           this.skipWhitespace(canCommentOut);
+       };
+</PRE><PRE>       this.tryMatch = function(s, canCommentOut) {
+           if (canCommentOut == undefined || canCommentOut == null)
+               canComment = true;
+           this.skipWhitespace(canCommentOut);
+           if (this.input.substring(this.pos, this.pos + s.length) == s) {
+               return true;
+           } else {
+               return false;
+           };
+           this.skipWhitespace(canCommentOut);
+       };
+</PRE><PRE>       /* when search for a match all text can be ignored, not just white space */
+       this.matchAt = function() {
+           while (this.input.length &gt; this.pos &amp;&amp; this.input[this.pos] != '@') {
+               this.pos++;
+           };
+</PRE><PRE>           if (this.input[this.pos] == '@') {
+               return true;
+           };
+           return false;
+       };
+</PRE><PRE>       this.skipWhitespace = function(canCommentOut) {
+           while (this.isWhitespace(this.input[this.pos])) {
+               this.pos++;
+           };
+           if (this.input[this.pos] == &quot;%&quot; &amp;&amp; canCommentOut == true) {
+               while (this.input[this.pos] != &quot;\n&quot;) {
+                   this.pos++;
+               };
+               this.skipWhitespace(canCommentOut);
+           };
+       };
+</PRE><PRE>       this.value_braces = function() {
+           var bracecount = 0;
+           this.match(&quot;{&quot;, false);
+           var start = this.pos;
+           var escaped = false;
+           while (true) {
+               if (!escaped) {
+                   if (this.input[this.pos] == '}') {
+                       if (bracecount &gt; 0) {
+                           bracecount--;
+                       } else {
+                           var end = this.pos;
+                           this.match(&quot;}&quot;, false);
+                           return this.input.substring(start, end);
+                       };
+                   } else if (this.input[this.pos] == '{') {
+                       bracecount++;
+                   } else if (this.pos &gt;= this.input.length - 1) {
+                       throw &quot;Unterminated value&quot;;
+                   };
+               };
+               if (this.input[this.pos] == '\\' &amp;&amp; escaped == false)
+                   escaped == true;
+               else
+                   escaped == false;
+               this.pos++;
+           };
+       };
+</PRE><PRE>       this.value_comment = function() {
+           var str = <I>;</I>
+           var brcktCnt = 0;
+           while (!(this.tryMatch(&quot;}&quot;, false) &amp;&amp; brcktCnt == 0)) {
+               str = str + this.input[this.pos];
+               if (this.input[this.pos] == '{')
+                   brcktCnt++;
+               if (this.input[this.pos] == '}')
+                   brcktCnt--;
+               if (this.pos &gt;= this.input.length - 1) {
+                   throw &quot;Unterminated value:&quot; + this.input.substring(start);
+               };
+               this.pos++;
+           };
+           return str;
+       };
+</PRE><PRE>       this.value_quotes = function() {
+           this.match('&quot;', false);
+           var start = this.pos;
+           var escaped = false;
+           while (true) {
+               if (!escaped) {
+                   if (this.input[this.pos] == '&quot;') {
+                       var end = this.pos;
+                       this.match('&quot;', false);
+                       return this.input.substring(start, end);
+                   } else if (this.pos &gt;= this.input.length - 1) {
+                       throw &quot;Unterminated value:&quot; + this.input.substring(start);
+                   };
+               }
+               if (this.input[this.pos] == '\\' &amp;&amp; escaped == false)
+                   escaped == true;
+               else
+                   escaped == false;
+               this.pos++;
+           };
+       };
+</PRE><PRE>       this.single_value = function() {
+           var start = this.pos;
+           if (this.tryMatch(&quot;{&quot;)) {
+               return this.value_braces();
+           } else if (this.tryMatch('&quot;')) {
+               return this.value_quotes();
+           } else {
+               var k = this.key();
+               if (k.match(&quot;^[0-9]+$&quot;))
+                   return k;
+               else if (this.months.indexOf(k.toLowerCase()) &gt;= 0)
+                   return k.toLowerCase();
+               else
+                   throw &quot;Value expected:&quot; + this.input.substring(start) + ' for key: ' + k;
+           
+           };
+       };
+</PRE><PRE>       this.value = function() {
+           var values = [];
+           values.push(this.single_value());
+           while (this.tryMatch(&quot;#&quot;)) {
+               this.match(&quot;#&quot;);
+               values.push(this.single_value());
+           };
+           return values.join(&quot;&quot;);
+       };
+</PRE><PRE>       this.key = function() {
+           var start = this.pos;
+           while (true) {
+               if (this.pos &gt;= this.input.length) {
+                   throw &quot;Runaway key&quot;;
+               };
+                               // а-яА-Я is Cyrillic
+               //console.log(this.input[this.pos]);
+               if (this.notKey.indexOf(this.input[this.pos]) &gt;= 0) {
+                   return this.input.substring(start, this.pos);
+               } else {
+                   this.pos++;
+                   
+               };
+           };
+       };
+</PRE><PRE>       this.key_equals_value = function() {
+           var key = this.key();
+           if (this.tryMatch(&quot;=&quot;)) {
+               this.match(&quot;=&quot;);
+               var val = this.value();
+               return [ key, val ];
+           } else {
+               throw &quot;... = value expected, equals sign missing:&quot;
+                       + this.input.substring(this.pos);
+           };
+       };
+</PRE><PRE>       this.key_value_list = function() {
+           var kv = this.key_equals_value();
+           this.currentEntry['entryTags'] = {};
+           this.currentEntry['entryTags'][kv[0]] = kv[1];
+           while (this.tryMatch(&quot;,&quot;)) {
+               this.match(&quot;,&quot;);
+               // fixes problems with commas at the end of a list
+               if (this.tryMatch(&quot;}&quot;)) {
+                   break;
+               }
+               ;
+               kv = this.key_equals_value();
+               this.currentEntry['entryTags'][kv[0]] = kv[1];
+           };
+       };
+</PRE><PRE>       this.entry_body = function(d) {
+           this.currentEntry = {};
+           this.currentEntry['citationKey'] = this.key();
+           this.currentEntry['entryType'] = d.substring(1);
+           this.match(&quot;,&quot;);
+           this.key_value_list();
+           this.entries.push(this.currentEntry);
+       };
+</PRE><PRE>       this.directive = function() {
+           this.match(&quot;@&quot;);
+           return &quot;@&quot; + this.key();
+       };
+</PRE><PRE>       this.preamble = function() {
+           this.currentEntry = {};
+           this.currentEntry['entryType'] = 'PREAMBLE';
+           this.currentEntry['entry'] = this.value_comment();
+           this.entries.push(this.currentEntry);
+       };
+</PRE><PRE>       this.comment = function() {
+           this.currentEntry = {};
+           this.currentEntry['entryType'] = 'COMMENT';
+           this.currentEntry['entry'] = this.value_comment();
+           this.entries.push(this.currentEntry);
+       };
+</PRE><PRE>       this.entry = function(d) {
+           this.entry_body(d);
+       };
+</PRE><PRE>       this.bibtex = function() {
+           while (this.matchAt()) {
+               var d = this.directive();
+               this.match(&quot;{&quot;);
+               if (d == &quot;@STRING&quot;) {
+                   this.string();
+               } else if (d == &quot;@PREAMBLE&quot;) {
+                   this.preamble();
+               } else if (d == &quot;@COMMENT&quot;) {
+                   this.comment();
+               } else {
+                   this.entry(d);
+               }
+               this.match(&quot;}&quot;);
+           };
+       };
+   };
+   
+   exports.toJSON = function(bibtex) {
+       var b = new BibtexParser();
+       b.setInput(bibtex);
+       b.bibtex();
+       return b.entries;
+   };
+</PRE><PRE>   /* added during hackathon don't hate on me */
+   exports.toBibtex = function(json) {
+       out = <I>;</I>
+       for ( var i in json) {
+           out += &quot;@&quot; + json[i].entryType;
+           out += '{';
+           if (json[i].citationKey)
+               out += json[i].citationKey + ', ';
+           if (json[i].entry)
+               out += json[i].entry ;
+           if (json[i].entryTags) {
+               var tags = <I>;</I>
+               for (jdx in json[i].entryTags) {
+                   if (tags.length != 0)
+                       tags += ', ';
+                   tags += jdx + '= {' + json[i].entryTags[jdx] + '}';
+               }
+               out += tags;
+           }
+           out += '}\n\n';
+       }
+       return out;
+       
+   };
+</PRE><P>})(typeof exports === 'undefined' ? this['bibtexParse'] = {} : exports);
+</P><P>/* end bibtexParse */
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

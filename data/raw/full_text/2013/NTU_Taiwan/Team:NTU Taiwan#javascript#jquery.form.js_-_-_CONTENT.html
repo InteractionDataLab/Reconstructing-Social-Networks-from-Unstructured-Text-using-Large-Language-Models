@@ -1,0 +1,734 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_NTU_Taiwan_javascript_jquery_form_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:NTU_Taiwan/javascript/jquery.form.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:NTU_Taiwan/javascript/jquery.form.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:NTU_Taiwan/javascript/jquery.form.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:NTU_Taiwan/javascript/jquery.form.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:NTU_Taiwan/javascript/jquery.form.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:NTU Taiwan/javascript/jquery.form.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><DL><DT>(function($) {
+</DT></DL><P>$.fn.ajaxSubmit = function(options) {
+	if (!this.length) {
+		log('ajaxSubmit: skipping submit process - no element selected');
+		return this;
+	}
+</P><P>	var method, action, url, $form = this;
+</P><P>	if (typeof options == 'function') {
+		options = { success: options };
+	}
+</P><P>	method = this.attr('method');
+	action = this.attr('action');
+	url = (typeof action === 'string') ? $.trim(action) : <I>;</I>
+	url = url || window.location.href || <I>;</I>
+	if (url) {
+		// clean url (don't include hash vaue)
+		url = (url.match(/^([^#]+)/)||[])[1];
+	}
+</P><P>	options = $.extend(true, {
+		url:  url,
+		success: $.ajaxSettings.success,
+		type: method || 'GET',
+		iframeSrc: /^https/i.test(window.location.href || <I>) ? 'javascript:false' : 'about:blank'</I>
+	}, options);
+</P><P>	// hook for manipulating the form data before it is extracted;
+	// convenient for use with rich editors like tinyMCE or FCKEditor
+	var veto = {};
+	this.trigger('form-pre-serialize', [this, options, veto]);
+	if (veto.veto) {
+		log('ajaxSubmit: submit vetoed via form-pre-serialize trigger');
+		return this;
+	}
+</P><P>	// provide opportunity to alter form data before it is serialized
+	if (options.beforeSerialize &amp;&amp; options.beforeSerialize(this, options) === false) {
+		log('ajaxSubmit: submit aborted via beforeSerialize callback');
+		return this;
+	}
+</P><P>	var traditional = options.traditional;
+	if ( traditional === undefined ) {
+		traditional = $.ajaxSettings.traditional;
+	}
+</P><P>	var qx,n,v,a = this.formToArray(options.semantic);
+	if (options.data) {
+		options.extraData = options.data;
+		qx = $.param(options.data, traditional);
+	}
+</P><P>	// give pre-submit callback an opportunity to abort the submit
+	if (options.beforeSubmit &amp;&amp; options.beforeSubmit(a, this, options) === false) {
+		log('ajaxSubmit: submit aborted via beforeSubmit callback');
+		return this;
+	}
+</P><P>	// fire vetoable 'validate' event
+	this.trigger('form-submit-validate', [a, this, options, veto]);
+	if (veto.veto) {
+		log('ajaxSubmit: submit vetoed via form-submit-validate trigger');
+		return this;
+	}
+</P><P>	var q = $.param(a, traditional);
+	if (qx) {
+		q = ( q ? (q + '&amp;' + qx) : qx );
+	}	
+	if (options.type.toUpperCase() == 'GET') {
+		options.url += (options.url.indexOf('?') &gt;= 0 ? '&amp;' : '?') + q;
+		options.data = null;  // data is null for 'get'
+	}
+	else {
+		options.data = q; // data is the query string for 'post'
+	}
+</P><P>	var callbacks = [];
+	if (options.resetForm) {
+		callbacks.push(function() { $form.resetForm(); });
+	}
+	if (options.clearForm) {
+		callbacks.push(function() { $form.clearForm(options.includeHidden); });
+	}
+</P><P>	// perform a load on the target only if dataType is not provided
+	if (!options.dataType &amp;&amp; options.target) {
+		var oldSuccess = options.success || function(){};
+		callbacks.push(function(data) {
+			var fn = options.replaceTarget ? 'replaceWith' : 'html';
+			$(options.target)[fn](data).each(oldSuccess, arguments);
+		});
+	}
+	else if (options.success) {
+		callbacks.push(options.success);
+	}
+</P><P>	options.success = function(data, status, xhr) { // jQuery 1.4+ passes xhr as 3rd arg
+		var context = options.context || options;	// jQuery 1.4+ supports scope context 
+		for (var i=0, max=callbacks.length; i &lt; max; i++) {
+			callbacks[i].apply(context, [data, status, xhr || $form, $form]);
+		}
+	};
+</P><P>	// are there files to upload?
+	var fileInputs = $('input:file:enabled[value]', this); // [value] (issue #113)
+	var hasFileInputs = fileInputs.length &gt; 0;
+	var mp = 'multipart/form-data';
+	var multipart = ($form.attr('enctype') == mp || $form.attr('encoding') == mp);
+</P><P>	var fileAPI = !!(hasFileInputs &amp;&amp; fileInputs.get(0).files &amp;&amp; window.FormData);
+	log(&quot;fileAPI :&quot; + fileAPI);
+	var shouldUseFrame = (hasFileInputs || multipart) &amp;&amp; !fileAPI;
+</P><P>	if (options.iframe !== false &amp;&amp; (options.iframe || shouldUseFrame)) {
+		if (options.closeKeepAlive) {
+			$.get(options.closeKeepAlive, function() {
+				fileUploadIframe(a);
+			});
+		}
+</P><PRE> 		else {
+</PRE><P>			fileUploadIframe(a);
+</P><PRE> 		}
+</PRE><P>	}
+	else if ((hasFileInputs || multipart) &amp;&amp; fileAPI) {
+		options.progress = options.progress || $.noop;
+		fileUploadXhr(a);
+	}
+	else {
+		$.ajax(options);
+	}
+</P><P>	 // fire 'notify' event
+	 this.trigger('form-submit-notify', [this, options]);
+	 return this;
+</P><P>	 // XMLHttpRequest Level 2 file uploads (big hat tip to francois2metz)
+	function fileUploadXhr(a) {
+		var formdata = new FormData();
+</P><P>		for (var i=0; i &lt; a.length; i++) {
+			if (a[i].type == 'file')
+				continue;
+			formdata.append(a[i].name, a[i].value);
+		}
+</P><P>		$form.find('input:file:enabled').each(function(){
+			var name = $(this).attr('name'), files = this.files;
+			if (name) {
+				for (var i=0; i &lt; files.length; i++)
+					formdata.append(name, files[i]);
+			}
+		});
+</P><P>		if (options.extraData) {
+			for (var k in options.extraData)
+				formdata.append(k, options.extraData[k])
+		}
+</P><P>		options.data = null;
+</P><P>		var s = $.extend(true, {}, $.ajaxSettings, options, {
+			contentType: false,
+			processData: false,
+			cache: false,
+			type: 'POST'
+		});
+</P><PRE>     s.context = s.context || s;
+</PRE><PRE>     s.data = null;
+     var beforeSend = s.beforeSend;
+     s.beforeSend = function(xhr, o) {
+         o.data = formdata;
+         if(xhr.upload) { // unfortunately, jQuery doesn't expose this prop (<A href="http://bugs.jquery.com/ticket/10190" class="external free" rel="nofollow">http://bugs.jquery.com/ticket/10190</A>)
+             xhr.upload.onprogress = function(event) {
+                 o.progress(event.position, event.total);
+             };
+         }
+         if(beforeSend)
+             beforeSend.call(o, xhr, options);
+     };
+     $.ajax(s);
+  }
+</PRE><P>	function fileUploadIframe(a) {
+		var form = $form[0], el, i, s, g, id, $io, io, xhr, sub, n, timedOut, timeoutHandle;
+		var useProp = !!$.fn.prop;
+</P><P>		if (a) {
+			if ( useProp ) {
+				// ensure that every serialized input is still enabled
+				for (i=0; i &lt; a.length; i++) {
+					el = $(form[a[i].name]);
+					el.prop('disabled', false);
+				}
+			} else {
+				for (i=0; i &lt; a.length; i++) {
+					el = $(form[a[i].name]);
+					el.removeAttr('disabled');
+				}
+			};
+		}
+</P><P>		if ($(':input[name=submit],:input[id=submit]', form).length) {
+			alert('Error: Form elements must not have name or id of &quot;submit&quot;.');
+			return;
+		}
+</P><P>		s = $.extend(true, {}, $.ajaxSettings, options);
+		s.context = s.context || s;
+		id = 'jqFormIO' + (new Date().getTime());
+		if (s.iframeTarget) {
+			$io = $(s.iframeTarget);
+			n = $io.attr('name');
+			if (n == null)
+			 	$io.attr('name', id);
+			else
+				id = n;
+		}
+		else {
+			$io = $('&lt;iframe name=&quot;' + id + '&quot; src=&quot;'+ s.iframeSrc +'&quot; /&gt;');
+			$io.css({ position: 'absolute', top: '-1000px', left: '-1000px' });
+		}
+		io = $io[0];
+</P><P>
+		xhr = { // mock object
+			aborted: 0,
+			responseText: null,
+			responseXML: null,
+			status: 0,
+			statusText: 'n/a',
+			getAllResponseHeaders: function() {},
+			getResponseHeader: function() {},
+			setRequestHeader: function() {},
+			abort: function(status) {
+				var e = (status === 'timeout' ? 'timeout' : 'aborted');
+				log('aborting upload... ' + e);
+				this.aborted = 1;
+				$io.attr('src', s.iframeSrc); // abort op in progress
+				xhr.error = e;
+				s.error &amp;&amp; s.error.call(s.context, xhr, e, status);
+				g &amp;&amp; $.event.trigger(&quot;ajaxError&quot;, [xhr, s, e]);
+				s.complete &amp;&amp; s.complete.call(s.context, xhr, e);
+			}
+		};
+</P><P>		g = s.global;
+		// trigger ajax global events so that activity/block indicators work like normal
+		if (g &amp;&amp; ! $.active++) {
+			$.event.trigger(&quot;ajaxStart&quot;);
+		}
+		if (g) {
+			$.event.trigger(&quot;ajaxSend&quot;, [xhr, s]);
+		}
+</P><P>		if (s.beforeSend &amp;&amp; s.beforeSend.call(s.context, xhr, s) === false) {
+			if (s.global) {
+				$.active--;
+			}
+			return;
+		}
+		if (xhr.aborted) {
+			return;
+		}
+</P><P>		// add submitting element to data if we know it
+		sub = form.clk;
+		if (sub) {
+			n = sub.name;
+			if (n &amp;&amp; !sub.disabled) {
+				s.extraData = s.extraData || {};
+				s.extraData[n] = sub.value;
+				if (sub.type == &quot;image&quot;) {
+					s.extraData[n+'.x'] = form.clk_x;
+					s.extraData[n+'.y'] = form.clk_y;
+				}
+			}
+		}
+</P><P>		var CLIENT_TIMEOUT_ABORT = 1;
+		var SERVER_ABORT = 2;
+</P><P>		function getDoc(frame) {
+			var doc = frame.contentWindow ? frame.contentWindow.document : frame.contentDocument ? frame.contentDocument : frame.document;
+			return doc;
+		}
+</P><P>		// Rails CSRF hack (thanks to Yvan Barthelemy)
+		var csrf_token = $('meta[name=csrf-token]').attr('content');
+		var csrf_param = $('meta[name=csrf-param]').attr('content');
+		if (csrf_param &amp;&amp; csrf_token) {
+			s.extraData = s.extraData || {};
+			s.extraData[csrf_param] = csrf_token;
+		}
+</P><P>		// take a breath so that pending repaints get some cpu time before the upload starts
+		function doSubmit() {
+			// make sure form attrs are set
+			var t = $form.attr('target'), a = $form.attr('action');
+</P><P>			// update form attrs in IE friendly way
+			form.setAttribute('target',id);
+			if (!method) {
+				form.setAttribute('method', 'POST');
+			}
+			if (a != s.url) {
+				form.setAttribute('action', s.url);
+			}
+</P><P>			// ie borks in some cases when setting encoding
+			if (! s.skipEncodingOverride &amp;&amp; (!method || /post/i.test(method))) {
+				$form.attr({
+					encoding: 'multipart/form-data',
+					enctype:  'multipart/form-data'
+				});
+			}
+</P><P>			// support timout
+			if (s.timeout) {
+				timeoutHandle = setTimeout(function() { timedOut = true; cb(CLIENT_TIMEOUT_ABORT); }, s.timeout);
+			}
+</P><P>			// look for server aborts
+			function checkState() {
+				try {
+					var state = getDoc(io).readyState;
+					log('state = ' + state);
+					if (state.toLowerCase() == 'uninitialized')
+						setTimeout(checkState,50);
+				}
+				catch(e) {
+					log('Server abort: ' , e, ' (', e.name, ')');
+					cb(SERVER_ABORT);
+					timeoutHandle &amp;&amp; clearTimeout(timeoutHandle);
+					timeoutHandle = undefined;
+				}
+			}
+</P><P>			// add &quot;extra&quot; data to form if provided in options
+			var extraInputs = [];
+			try {
+				if (s.extraData) {
+					for (var n in s.extraData) {
+						extraInputs.push(
+							$('&lt;input type=&quot;hidden&quot; name=&quot;'+n+'&quot;&gt;').attr('value',s.extraData[n])
+								.appendTo(form)[0]);
+					}
+				}
+</P><P>				if (!s.iframeTarget) {
+					// add iframe to doc and submit the form
+					$io.appendTo('body');
+					io.attachEvent ? io.attachEvent('onload', cb) : io.addEventListener('load', cb, false);
+				}
+				setTimeout(checkState,15);
+				form.submit();
+			}
+			finally {
+				// reset attrs and remove &quot;extra&quot; input elements
+				form.setAttribute('action',a);
+				if(t) {
+					form.setAttribute('target', t);
+				} else {
+					$form.removeAttr('target');
+				}
+				$(extraInputs).remove();
+			}
+		}
+</P><P>		if (s.forceSync) {
+			doSubmit();
+		}
+		else {
+			setTimeout(doSubmit, 10); // this lets dom updates render
+		}
+</P><P>		var data, doc, domCheckCount = 50, callbackProcessed;
+</P><P>		function cb(e) {
+			if (xhr.aborted || callbackProcessed) {
+				return;
+			}
+			try {
+				doc = getDoc(io);
+			}
+			catch(ex) {
+				log('cannot access response document: ', ex);
+				e = SERVER_ABORT;
+			}
+			if (e === CLIENT_TIMEOUT_ABORT &amp;&amp; xhr) {
+				xhr.abort('timeout');
+				return;
+			}
+			else if (e == SERVER_ABORT &amp;&amp; xhr) {
+				xhr.abort('server abort');
+				return;
+			}
+</P><P>			if (!doc || doc.location.href == s.iframeSrc) {
+				if (!timedOut)
+					return;
+			}
+			io.detachEvent ? io.detachEvent('onload', cb) : io.removeEventListener('load', cb, false);
+</P><P>			var status = 'success', errMsg;
+			try {
+				if (timedOut) {
+					throw 'timeout';
+				}
+</P><P>				var isXml = s.dataType == 'xml' || doc.XMLDocument || $.isXMLDoc(doc);
+				log('isXml='+isXml);
+				if (!isXml &amp;&amp; window.opera &amp;&amp; (doc.body == null || doc.body.innerHTML == <I>)) {</I>
+					if (--domCheckCount) {
+						log('requeing onLoad callback, DOM not available');
+						setTimeout(cb, 250);
+						return;
+					}
+				}
+</P><P>				//log('response detected');
+				var docRoot = doc.body ? doc.body : doc.documentElement;
+				xhr.responseText = docRoot ? docRoot.innerHTML : null;
+				xhr.responseXML = doc.XMLDocument ? doc.XMLDocument : doc;
+				if (isXml)
+					s.dataType = 'xml';
+				xhr.getResponseHeader = function(header){
+					var headers = {'content-type': s.dataType};
+					return headers[header];
+				};
+				// support for XHR 'status' &amp; 'statusText' emulation :
+				if (docRoot) {
+					xhr.status = Number( docRoot.getAttribute('status') ) || xhr.status;
+					xhr.statusText = docRoot.getAttribute('statusText') || xhr.statusText;
+				}
+</P><P>				var dt = (s.dataType || <I>).toLowerCase();</I>
+				var scr = /(json|script|text)/.test(dt);
+				if (scr || s.textarea) {
+					// see if user embedded response in textarea
+					var ta = doc.getElementsByTagName('textarea')[0];
+					if (ta) {
+						xhr.responseText = ta.value;
+						// support for XHR 'status' &amp; 'statusText' emulation :
+						xhr.status = Number( ta.getAttribute('status') ) || xhr.status;
+						xhr.statusText = ta.getAttribute('statusText') || xhr.statusText;
+					}
+					else if (scr) {
+						// account for browsers injecting pre around json response
+						var pre = doc.getElementsByTagName('pre')[0];
+						var b = doc.getElementsByTagName('body')[0];
+						if (pre) {
+							xhr.responseText = pre.textContent ? pre.textContent : pre.innerText;
+						}
+						else if (b) {
+							xhr.responseText = b.textContent ? b.textContent : b.innerText;
+						}
+					}
+				}
+				else if (dt == 'xml' &amp;&amp; !xhr.responseXML &amp;&amp; xhr.responseText != null) {
+					xhr.responseXML = toXml(xhr.responseText);
+				}
+</P><P>				try {
+					data = httpData(xhr, dt, s);
+				}
+				catch (e) {
+					status = 'parsererror';
+					xhr.error = errMsg = (e || status);
+				}
+			}
+			catch (e) {
+				log('error caught: ',e);
+				status = 'error';
+				xhr.error = errMsg = (e || status);
+			}
+</P><P>			if (xhr.aborted) {
+				log('upload aborted');
+				status = null;
+			}
+</P><P>			if (xhr.status) { // we've set xhr.status
+				status = (xhr.status &gt;= 200 &amp;&amp; xhr.status &lt; 300 || xhr.status === 304) ? 'success' : 'error';
+			}
+</P><P>			if (status === 'success') {
+				s.success &amp;&amp; s.success.call(s.context, data, 'success', xhr);
+				g &amp;&amp; $.event.trigger(&quot;ajaxSuccess&quot;, [xhr, s]);
+			}
+			else if (status) {
+				if (errMsg == undefined)
+					errMsg = xhr.statusText;
+				s.error &amp;&amp; s.error.call(s.context, xhr, status, errMsg);
+				g &amp;&amp; $.event.trigger(&quot;ajaxError&quot;, [xhr, s, errMsg]);
+			}
+</P><P>			g &amp;&amp; $.event.trigger(&quot;ajaxComplete&quot;, [xhr, s]);
+</P><P>			if (g &amp;&amp; ! --$.active) {
+				$.event.trigger(&quot;ajaxStop&quot;);
+			}
+</P><P>			s.complete &amp;&amp; s.complete.call(s.context, xhr, status);
+</P><P>			callbackProcessed = true;
+			if (s.timeout)
+				clearTimeout(timeoutHandle);
+</P><P>			setTimeout(function() {
+				if (!s.iframeTarget)
+					$io.remove();
+				xhr.responseXML = null;
+			}, 100);
+		}
+</P><P>		var toXml = $.parseXML || function(s, doc) { 
+			if (window.ActiveXObject) {
+				doc = new ActiveXObject('Microsoft.XMLDOM');
+				doc.async = 'false';
+				doc.loadXML(s);
+			}
+			else {
+				doc = (new DOMParser()).parseFromString(s, 'text/xml');
+			}
+			return (doc &amp;&amp; doc.documentElement &amp;&amp; doc.documentElement.nodeName != 'parsererror') ? doc : null;
+		};
+		var parseJSON = $.parseJSON || function(s) {
+			return window['eval']('(' + s + ')');
+		};
+</P><P>		var httpData = function( xhr, type, s ) {
+</P><P>			var ct = xhr.getResponseHeader('content-type') || <I>,</I>
+				xml = type === 'xml' || !type &amp;&amp; ct.indexOf('xml') &gt;= 0,
+				data = xml ? xhr.responseXML : xhr.responseText;
+</P><P>			if (xml &amp;&amp; data.documentElement.nodeName === 'parsererror') {
+				$.error &amp;&amp; $.error('parsererror');
+			}
+			if (s &amp;&amp; s.dataFilter) {
+				data = s.dataFilter(data, type);
+			}
+			if (typeof data === 'string') {
+				if (type === 'json' || !type &amp;&amp; ct.indexOf('json') &gt;= 0) {
+					data = parseJSON(data);
+				} else if (type === &quot;script&quot; || !type &amp;&amp; ct.indexOf(&quot;javascript&quot;) &gt;= 0) {
+					$.globalEval(data);
+				}
+			}
+			return data;
+		};
+	}
+};
+</P><P>$.fn.ajaxForm = function(options) {
+	if (this.length === 0) {
+		var o = { s: this.selector, c: this.context };
+		if (!$.isReady &amp;&amp; o.s) {
+			log('DOM not ready, queuing ajaxForm');
+			$(function() {
+				$(o.s,o.c).ajaxForm(options);
+			});
+			return this;
+		}
+		log('terminating; zero elements found by selector' + ($.isReady ? <I> : ' (DOM not ready)'));</I>
+		return this;
+	}
+</P><P>	return this.ajaxFormUnbind().bind('submit.form-plugin', function(e) {
+		if (!e.isDefaultPrevented()) { // if event has been canceled, don't proceed
+			e.preventDefault();
+			$(this).ajaxSubmit(options);
+		}
+	}).bind('click.form-plugin', function(e) {
+		var target = e.target;
+		var $el = $(target);
+		if (!($el.is(&quot;:submit,input:image&quot;))) {
+			var t = $el.closest(':submit');
+			if (t.length == 0) {
+				return;
+			}
+			target = t[0];
+		}
+		var form = this;
+		form.clk = target;
+		if (target.type == 'image') {
+			if (e.offsetX != undefined) {
+				form.clk_x = e.offsetX;
+				form.clk_y = e.offsetY;
+			} else if (typeof $.fn.offset == 'function') { // try to use dimensions plugin
+				var offset = $el.offset();
+				form.clk_x = e.pageX - offset.left;
+				form.clk_y = e.pageY - offset.top;
+			} else {
+				form.clk_x = e.pageX - target.offsetLeft;
+				form.clk_y = e.pageY - target.offsetTop;
+			}
+		}
+		setTimeout(function() { form.clk = form.clk_x = form.clk_y = null; }, 100);
+	});
+};
+</P><P>$.fn.ajaxFormUnbind = function() {
+	return this.unbind('submit.form-plugin click.form-plugin');
+};
+</P><P>$.fn.formToArray = function(semantic) {
+	var a = [];
+	if (this.length === 0) {
+		return a;
+	}
+</P><P>	var form = this[0];
+	var els = semantic ? form.getElementsByTagName('*') : form.elements;
+	if (!els) {
+		return a;
+	}
+</P><P>	var i,j,n,v,el,max,jmax;
+	for(i=0, max=els.length; i &lt; max; i++) {
+		el = els[i];
+		n = el.name;
+		if (!n) {
+			continue;
+		}
+</P><P>		if (semantic &amp;&amp; form.clk &amp;&amp; el.type == &quot;image&quot;) {
+			if(!el.disabled &amp;&amp; form.clk == el) {
+				a.push({name: n, value: $(el).val(), type: el.type });
+				a.push({name: n+'.x', value: form.clk_x}, {name: n+'.y', value: form.clk_y});
+			}
+			continue;
+		}
+</P><P>		v = $.fieldValue(el, true);
+		if (v &amp;&amp; v.constructor == Array) {
+			for(j=0, jmax=v.length; j &lt; jmax; j++) {
+				a.push({name: n, value: v[j]});
+			}
+		}
+		else if (v !== null &amp;&amp; typeof v != 'undefined') {
+			a.push({name: n, value: v, type: el.type});
+		}
+	}
+</P><P>	if (!semantic &amp;&amp; form.clk) {
+		var $input = $(form.clk), input = $input[0];
+		n = input.name;
+		if (n &amp;&amp; !input.disabled &amp;&amp; input.type == 'image') {
+			a.push({name: n, value: $input.val()});
+			a.push({name: n+'.x', value: form.clk_x}, {name: n+'.y', value: form.clk_y});
+		}
+	}
+	return a;
+};
+</P><P>$.fn.formSerialize = function(semantic) {
+	return $.param(this.formToArray(semantic));
+};
+</P><P>$.fn.fieldSerialize = function(successful) {
+	var a = [];
+	this.each(function() {
+		var n = this.name;
+		if (!n) {
+			return;
+		}
+		var v = $.fieldValue(this, successful);
+		if (v &amp;&amp; v.constructor == Array) {
+			for (var i=0,max=v.length; i &lt; max; i++) {
+				a.push({name: n, value: v[i]});
+			}
+		}
+		else if (v !== null &amp;&amp; typeof v != 'undefined') {
+			a.push({name: this.name, value: v});
+		}
+	});
+	return $.param(a);
+};
+</P><P>$.fn.fieldValue = function(successful) {
+	for (var val=[], i=0, max=this.length; i &lt; max; i++) {
+		var el = this[i];
+		var v = $.fieldValue(el, successful);
+		if (v === null || typeof v == 'undefined' || (v.constructor == Array &amp;&amp; !v.length)) {
+			continue;
+		}
+		v.constructor == Array ? $.merge(val, v) : val.push(v);
+	}
+	return val;
+};
+</P><P>
+$.fieldValue = function(el, successful) {
+	var n = el.name, t = el.type, tag = el.tagName.toLowerCase();
+	if (successful === undefined) {
+		successful = true;
+	}
+</P><P>	if (successful &amp;&amp; (!n || el.disabled || t == 'reset' || t == 'button' ||
+		(t == 'checkbox' || t == 'radio') &amp;&amp; !el.checked ||
+		(t == 'submit' || t == 'image') &amp;&amp; el.form &amp;&amp; el.form.clk != el ||
+		tag == 'select' &amp;&amp; el.selectedIndex == -1)) {
+			return null;
+	}
+</P><P>	if (tag == 'select') {
+		var index = el.selectedIndex;
+		if (index &lt; 0) {
+			return null;
+		}
+		var a = [], ops = el.options;
+		var one = (t == 'select-one');
+		var max = (one ? index+1 : ops.length);
+		for(var i=(one ? index : 0); i &lt; max; i++) {
+			var op = ops[i];
+			if (op.selected) {
+				var v = op.value;
+				if (!v) { 
+					v = (op.attributes &amp;&amp; op.attributes['value'] &amp;&amp; !(op.attributes['value'].specified)) ? op.text : op.value;
+				}
+				if (one) {
+					return v;
+				}
+				a.push(v);
+			}
+		}
+		return a;
+	}
+	return $(el).val();
+};
+</P><P>$.fn.clearForm = function(includeHidden) {
+	return this.each(function() {
+		$('input,select,textarea', this).clearFields(includeHidden);
+	});
+};
+</P><P>$.fn.clearFields = $.fn.clearInputs = function(includeHidden) {
+	var re = /^(?:color|date|datetime|email|month|number|password|range|search|tel|text|time|url|week)$/i; // 'hidden' is not in this list
+	return this.each(function() {
+		var t = this.type, tag = this.tagName.toLowerCase();
+		if (re.test(t) || tag == 'textarea' || (includeHidden &amp;&amp; /hidden/.test(t)) ) {
+			this.value = <I>;</I>
+		}
+		else if (t == 'checkbox' || t == 'radio') {
+			this.checked = false;
+		}
+		else if (tag == 'select') {
+			this.selectedIndex = -1;
+		}
+	});
+};
+</P><P>$.fn.resetForm = function() {
+	return this.each(function() {
+		if (typeof this.reset == 'function' || (typeof this.reset == 'object' &amp;&amp; !this.reset.nodeType)) {
+			this.reset();
+		}
+	});
+};
+</P><P>$.fn.enable = function(b) {
+	if (b === undefined) {
+		b = true;
+	}
+	return this.each(function() {
+		this.disabled = !b;
+	});
+};
+</P><P>$.fn.selected = function(select) {
+	if (select === undefined) {
+		select = true;
+	}
+	return this.each(function() {
+		var t = this.type;
+		if (t == 'checkbox' || t == 'radio') {
+			this.checked = select;
+		}
+		else if (this.tagName.toLowerCase() == 'option') {
+			var $sel = $(this).parent('select');
+			if (select &amp;&amp; $sel[0] &amp;&amp; $sel[0].type == 'select-one') {
+				// deselect all other options
+				$sel.find('option').selected(false);
+			}
+			this.selected = select;
+		}
+	});
+};
+</P><P>$.fn.ajaxSubmit.debug = false;
+</P><P>function log() {
+	if (!$.fn.ajaxSubmit.debug) 
+		return;
+	var msg = '[jquery.form] ' + Array.prototype.join.call(arguments,<I>);</I>
+	if (window.console &amp;&amp; window.console.log) {
+		window.console.log(msg);
+	}
+	else if (window.opera &amp;&amp; window.opera.postError) {
+		window.opera.postError(msg);
+	}
+};
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:NTU_Taiwan/javascript/jquery.form.js">http://2013.igem.org/Team:NTU_Taiwan/javascript/jquery.form.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:NTU_Taiwan/javascript/jquery.form.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:NTU_Taiwan/javascript/jquery.form.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:NTU_Taiwan/javascript/jquery.form.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:NTU_Taiwan/javascript/jquery.form.js&amp;oldid=43831" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

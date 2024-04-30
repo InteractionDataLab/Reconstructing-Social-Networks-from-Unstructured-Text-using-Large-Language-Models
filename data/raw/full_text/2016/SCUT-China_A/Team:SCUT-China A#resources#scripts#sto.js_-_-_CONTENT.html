@@ -1,0 +1,200 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_sto_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/sto.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>$axure.internal(function($ax) {
+</P><PRE>   var funcs = {};
+</PRE><PRE>   var weekday = new Array(7);
+   weekday[0] = &quot;Sunday&quot;;
+   weekday[1] = &quot;Monday&quot;;
+   weekday[2] = &quot;Tuesday&quot;;
+   weekday[3] = &quot;Wednesday&quot;;
+   weekday[4] = &quot;Thursday&quot;;
+   weekday[5] = &quot;Friday&quot;;
+   weekday[6] = &quot;Saturday&quot;;
+</PRE><PRE>   funcs.getDayOfWeek = function() {
+       return _getDayOfWeek(this.getDay());
+   };
+</PRE><PRE>   var _getDayOfWeek = $ax.getDayOfWeek = function(day) {
+       return weekday[day];
+   };
+</PRE><PRE>   var month = new Array(12);
+   month[0] = &quot;January&quot;;
+   month[1] = &quot;February&quot;;
+   month[2] = &quot;March&quot;;
+   month[3] = &quot;April&quot;;
+   month[4] = &quot;May&quot;;
+   month[5] = &quot;June&quot;;
+   month[6] = &quot;July&quot;;
+   month[7] = &quot;August&quot;;
+   month[8] = &quot;September&quot;;
+   month[9] = &quot;October&quot;;
+   month[10] = &quot;November&quot;;
+   month[11] = &quot;December&quot;;
+</PRE><PRE>   funcs.getMonthName = function() {
+       return _getMonthName(this.getMonth());
+   };
+</PRE><PRE>   var _getMonthName = $ax.getMonthName = function(monthNum) {
+       return month[monthNum];
+   };
+</PRE><PRE>   funcs.getMonth = function() {
+       return this.getMonth() + 1;
+   };
+</PRE><PRE>   funcs.addYears = function(years) {
+       var retVal = new Date(this.valueOf());
+       retVal.setFullYear(this.getFullYear() + Number(years));
+       return retVal;
+   };
+</PRE><PRE>   funcs.addMonths = function(months) {
+       var retVal = new Date(this.valueOf());
+       retVal.setMonth(this.getMonth() + Number(months));
+       return retVal;
+   };
+</PRE><PRE>   funcs.addDays = function(days) {
+       var retVal = new Date(this.valueOf());
+       retVal.setDate(this.getDate() + Number(days));
+       return retVal;
+   };
+</PRE><PRE>   funcs.addHours = function(hours) {
+       var retVal = new Date(this.valueOf());
+       retVal.setHours(this.getHours() + Number(hours));
+       return retVal;
+   };
+</PRE><PRE>   funcs.addMinutes = function(minutes) {
+       var retVal = new Date(this.valueOf());
+       retVal.setMinutes(this.getMinutes() + Number(minutes));
+       return retVal;
+   };
+</PRE><PRE>   funcs.addSeconds = function(seconds) {
+       var retVal = new Date(this.valueOf());
+       retVal.setSeconds(this.getSeconds() + Number(seconds));
+       return retVal;
+   };
+</PRE><PRE>   funcs.addMilliseconds = function(milliseconds) {
+       var retVal = new Date(this.valueOf());
+       retVal.setMilliseconds(this.getMilliseconds() + Number(milliseconds));
+       return retVal;
+   };
+</PRE><PRE>   var _stoHandlers = {};
+</PRE><PRE>   _stoHandlers.literal = function(sto, scope, eventInfo) {
+       return sto.value;
+   };
+</PRE><PRE>   //need angle bracket syntax because var is a reserved word
+   _stoHandlers['var'] = function(sto, scope, eventInfo) {
+       // Can't us 'A || B' here, because the first value can be false, true, or empty string and still be valid.
+       var retVal = scope.hasOwnProperty(sto.name) ? scope[sto.name]  : $ax.globalVariableProvider.getVariableValue(sto.name, eventInfo);
+       // Handle desired type here?
+       
+       if(retVal &amp;&amp; retVal.exprType) {
+           retVal = $ax.expr.evaluateExpr(retVal, eventInfo);
+       }
+       
+       if((sto.desiredType == 'int' || sto.desiredType == 'float')) {
+           var num = new Number(retVal);
+           retVal = isNaN(num.valueOf()) ? retVal : num;
+       }
+</PRE><PRE>       return retVal;
+   };
+</PRE><PRE>   //TODO: Perhaps repeaterId can be detirmined at generation, and stored in the sto info.
+   _stoHandlers.item = function(sto, scope, eventInfo, prop) {
+       prop = prop || (eventInfo.data ? 'data' : eventInfo.link ? 'url' : eventInfo.image ? 'img' : 'text');
+       var id = sto.isTarget || !$ax.repeater.hasData(eventInfo.srcElement, sto.name) ? eventInfo.targetElement : eventInfo.srcElement;
+       return getData(eventInfo, id, sto.name, prop);
+   };
+</PRE><PRE>   var getData = function(eventInfo, id, name, prop) {
+       var repeaterId = $ax.getParentRepeaterFromScriptId($ax.repeater.getScriptIdFromElementId(id));
+       var itemId = $ax.repeater.getItemIdFromElementId(id);
+       return $ax.repeater.getData(eventInfo, repeaterId, itemId, name, prop);
+   };
+</PRE><PRE>   _stoHandlers.paren = function(sto, scope, eventInfo) {
+       return _evaluateSTO(sto.innerSTO, scope, eventInfo);
+   };
+</PRE><PRE>   _stoHandlers.fCall = function(sto, scope, eventInfo) {
+       //TODO: [mas] handle required type
+       var thisObj = _evaluateSTO(sto.thisSTO, scope, eventInfo);
+       if(sto.thisSTO.desiredType == 'string' &amp;&amp; sto.thisSTO.computedType != 'string') thisObj = thisObj.toString();
+       
+       var args = [];
+       for(var i = 0; i &lt; sto.arguments.length; i++) {
+           args[i] = _evaluateSTO(sto.arguments[i], scope, eventInfo);
+       }
+       var fn = (funcs.hasOwnProperty(sto.func) &amp;&amp; funcs[sto.func]) || thisObj[sto.func];
+       return fn.apply(thisObj, args);
+   };
+</PRE><PRE>   _stoHandlers.propCall = function(sto, scope, eventInfo) {
+       //TODO: [mas] handle required type
+       if((sto.prop == 'url' || sto.prop == 'img') &amp;&amp; sto.thisSTO.sto == 'item') return _stoHandlers.item(sto.thisSTO, scope, eventInfo, sto.prop);
+       var thisObj = _evaluateSTO(sto.thisSTO, scope, eventInfo);
+       return thisObj[sto.prop];
+   };
+</PRE><PRE>   var _binOps = {};
+   _binOps['+'] = function(left, right) {
+       if(left instanceof Date) return addDayToDate(left, right);
+       if(right instanceof Date) return addDayToDate(right, left);
+</PRE><PRE>       var num = Number(left) + Number(right);
+       return isNaN(num) ? (String(left) + String(right)) : num;
+   };
+   _binOps['-'] = function(left, right) {
+       if(left instanceof Date) return addDayToDate(left, -right);
+       return left - right;
+   };
+   _binOps['*'] = function(left, right) { return Number(left) * Number(right); };
+   _binOps['/'] = function(left, right) { return Number(left) / Number(right); };
+   _binOps['%'] = function(left, right) { return Number(left) % Number(right); };
+   _binOps['=='] = function(left, right) { return _getBool(left) == _getBool(right); };
+   _binOps['!='] = function(left, right) { return _getBool(left) != _getBool(right); };
+   _binOps['&lt;'] = function(left, right) { return Number(left) &lt; Number(right); };
+   _binOps['&lt;='] = function(left, right) { return Number(left) &lt;= Number(right); };
+   _binOps['&gt;'] = function(left, right) { return Number(left) &gt; Number(right); };
+   _binOps['&gt;='] = function(left, right) { return Number(left) &gt;= Number(right); };
+   _binOps['&amp;&amp;'] = function(left, right) { return _getBool(left) &amp;&amp; _getBool(right); };
+   _binOps['||'] = function(left, right) { return _getBool(left) || _getBool(right); };
+</PRE><PRE>   // TODO: Move this to generic place to be used.
+   var addDayToDate = function(date, days) {
+       var retVal = new Date(date.valueOf());
+       retVal.setDate(date.getDate() + days);
+       return retVal;
+   };
+</PRE><PRE>   var _unOps = {};
+   _unOps['+'] = function(arg) { return +arg; };
+   _unOps['-'] = function(arg) { return -arg; };
+   _unOps['!'] = function(arg) { return !_getBool(arg); };
+</PRE><PRE>   _stoHandlers.binOp = function(sto, scope, eventInfo) {
+       var left = _evaluateSTO(sto.leftSTO, scope, eventInfo);
+       var right = _evaluateSTO(sto.rightSTO, scope, eventInfo);
+       return _binOps[sto.op](left, right);
+   };
+</PRE><PRE>   _stoHandlers.unOp = function(sto, scope, eventInfo) {
+       var input = _evaluateSTO(sto.inputSTO, scope, eventInfo);
+       return _unOps[sto.op](input);
+   };
+</PRE><PRE>   var _getBool = function(val) {
+       var lowerVal = val.toLowerCase ? val.toLowerCase() : val;
+       return lowerVal == &quot;false&quot; ? false : lowerVal == &quot;true&quot; ? true : val;
+   };
+   $ax.getBool = _getBool;
+</PRE><PRE>   var _evaluateSTO = function(sto, scope, eventInfo) {
+       if(sto.sto == 'error') return undefined;
+       return _tryEscapeRichText(castSto(_stoHandlers[sto.sto](sto, scope, eventInfo), sto), eventInfo);
+   };
+   $ax.evaluateSTO = _evaluateSTO;
+</PRE><PRE>   var castSto = function(val, sto) {
+       var type = sto.computedType || sto.desiredType;
+       if(type == 'string') val = String(val);
+       else if(type == 'date' &amp;&amp; !(val instanceof Date)) val = new Date(val);
+       else if(type == 'int' || type == 'float') val = Number(val);
+       else if(type == 'bool') val = Boolean(val);
+</PRE><PRE>       return val;
+   };
+</PRE><PRE>   var _tryEscapeRichText = function(text, eventInfo) {
+       return eventInfo.htmlLiteral ? _escapeRichText(text) : text;
+   };
+</PRE><PRE>   var _escapeRichText = function(text) {
+       if(typeof (text) != 'string') return text;
+</PRE><PRE>       return text.replace('&lt;', '&lt;');
+   };
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

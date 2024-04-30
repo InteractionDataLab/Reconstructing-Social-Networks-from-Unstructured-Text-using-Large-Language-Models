@@ -1,0 +1,411 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Paris_Saclay_Notebook_script_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Paris_Saclay/Notebook/script.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Paris_Saclay/Notebook/script.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Saclay/Notebook/script.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Saclay/Notebook/script.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Paris_Saclay/Notebook/script.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Paris Saclay/Notebook/script.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>function nb_month()
+{
+</P><PRE>this.index= undefined;
+this.id= undefined;
+this.text= undefined;
+this.days= undefined;
+this.firstdayofweek= 1;
+this.nitems= 0;
+</PRE><P>}
+</P><P>function nb_tag()
+{
+</P><PRE>this.id= undefined;
+this.text= undefined;
+this.target= undefined;
+</PRE><P>}
+</P><P>function nb_item()
+{
+</P><PRE>this.day= undefined;
+this.month= undefined;
+this.image= undefined;
+this.tags= new Array();
+</PRE><P>}
+</P><P>var nb_months= new Array();
+var nb_tags= new Array();
+var nb_items= new Array(); //[month][day]
+</P><P>var nb_months_index= new Array();
+var nb_tags_revindex= new Array(); //[tag][month]
+</P><P>var nb_curmonth= null;
+var nb_curtag= null;
+</P><P>function nb_is_posint(str)
+{
+</P><PRE> if(str == <I>) return false;</I>
+ var parsed= parseInt(str);
+ if(isNaN(parsed)) return false;
+ if(!isFinite(parsed)) return false;
+ if(parsed &lt;= 0) return false;
+ return true;
+</PRE><P>}
+</P><P>function pb_load_xmldata(nbdiv)
+{
+</P><PRE>//Open XML data file
+var xmldata= null;
+try
+{
+ var xmlfile= '<A href="https://2014.igem.org/Team:Paris_Saclay/Notebook/liste.xml?action=raw&amp;ctype=text/css&amp;ps_tstamp='+new" class="external free" rel="nofollow">https://2014.igem.org/Team:Paris_Saclay/Notebook/liste.xml?action=raw&amp;ctype=text/css&amp;ps_tstamp='+new</A> Date().getTime();
+ var xhr= new XMLHttpRequest();
+ xhr.open(&quot;GET&quot;, xmlfile, false);
+ xhr.send();
+ var parser= new DOMParser();
+ xmldata= parser.parseFromString(xhr.responseText, &quot;application/xml&quot;);
+ if(xmldata.documentElement.nodeName != 'notebook')
+  throw 'XML parsing error';
+}
+catch(err)
+{
+ document.getElementById('notebook_div').innerHTML='Error : ' + err;
+ return false;
+}
+</PRE><PRE>var reserr= <I>;</I></PRE><PRE>//Get months
+var month_found= false;
+var tmp_months= xmldata.getElementsByTagName('mois');
+for(var i= 0 ; i &lt; tmp_months.length ; ++i)
+{
+ var tmpm= tmp_months[i];
+</PRE><PRE> if(!tmpm.hasAttribute('id'))
+ {
+  reserr += (&quot;ERREUR : Il manque l'attribut 'id' au &quot; + i+1 + (i==0?'er':'ème') + ' mois défini.') + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> var tmpid= tmpm.getAttribute('id');
+ if(tmpid == <I>)</I>
+ {
+  reserr += (&quot;ERREUR : l'attribut 'id' du &quot; + i+1 + (i==0?'er':'ème') + ' mois défini est vide.') + &quot;\n&quot;;
+  continue;
+ }
+ if(nb_months[tmpid] != undefined)
+ {
+  reserr += (&quot;ERREUR : plus d'un mois défini avec l'id '&quot;+tmpid+&quot;'.&quot;) + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> if(!tmpm.hasAttribute('jours'))
+ {
+  reserr += (&quot;ERREUR : il manque le nombre de jours du mois avec l'id '&quot;+tmpid+&quot;'.&quot;) + &quot;\n&quot;;
+  continue;
+ }
+ var tmp_ndays= tmpm.getAttribute('jours');
+ if(!nb_is_posint(tmp_ndays))
+ {
+  reserr += (&quot;ERREUR : le nombre de jours du mois avec l'id &quot;+tmpid+&quot; est invalide ('&quot;+tmp_ndays+&quot;').&quot;) + &quot;\n&quot;;
+  continue;
+ }
+ tmp_ndays= parseInt(tmp_ndays);
+</PRE><PRE> var tmp_firstdayofweek= 1;
+ if(tmpm.hasAttribute('premier-jour'))
+ {
+  tmp_firstdayofweek= tmpm.getAttribute('premier-jour');
+  if(!nb_is_posint(tmp_firstdayofweek))
+  {
+   reserr += (&quot;ERREUR : le premier jour du mois avec l'id &quot;+tmpid+&quot; est invalide ('&quot;+tmp_firstdayofweek+&quot;').&quot;) + &quot;\n&quot;;
+   tmp_firstdayofweek= 1;
+  }
+ }
+</PRE><PRE> nb_months[tmpid]= new nb_month();
+ nb_months[tmpid].id= tmpid;
+ nb_months[tmpid].days= tmp_ndays;
+ nb_months[tmpid].text= tmpid;
+ nb_months[tmpid].firstdayofweek= tmp_firstdayofweek;
+ if(tmpm.hasAttribute('texte'))
+  nb_months[tmpid].text= tmpm.getAttribute('texte');
+</PRE><PRE> nb_months[tmpid].index= nb_months_index.length;
+ nb_months_index.push(nb_months[tmpid]);
+</PRE><PRE> nb_items[tmpid]= new Array();
+</PRE><PRE> month_found= true;
+}
+</PRE><PRE>if(!month_found)
+{
+ alert('ERREUR : aucun mois défini.');
+ return false;
+}
+
+//Get tags
+var tmp_tags= xmldata.getElementsByTagName('declaration_tag');
+for(var i= 0 ; i &lt; tmp_tags.length ; ++i)
+{
+ var tmpt= tmp_tags[i];
+</PRE><PRE> if(!tmpt.hasAttribute('id'))
+ {
+  reserr += (&quot;ERREUR : Il manque l'attribut 'id' au &quot; + i+1 + (i==0?'er':'ème') + ' tag défini.')  + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> var tmpid= tmpt.getAttribute('id');
+ if(tmpid == <I>)</I>
+ {
+  reserr += (&quot;ERREUR : l'attribut 'id' du &quot; + i+1 + (i==0?'er':'ème') + ' tag défini est vide.') + &quot;\n&quot;;
+  continue;
+ }
+ if(nb_tags[tmpid] != undefined)
+ {
+  reserr += alert(&quot;ERREUR : plus d'un tag défini avec l'id '&quot;+tmpid+&quot;'.&quot;) + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> if(!tmpt.hasAttribute('cible'))
+ {
+  reserr += (&quot;ERREUR : il manque la cible du tag avec l'id '&quot;+tmpid+&quot;'.&quot;) + &quot;\n&quot;;
+  continue;
+ }
+ var tmp_target= tmpt.getAttribute('cible');
+ if(tmp_target == <I>)</I>
+ {
+  reserr += (&quot;ERREUR : la cible du tag avec l'id '&quot;+tmpid+&quot;' est vide.&quot;) + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> if(!tmpt.hasAttribute('code'))
+ {
+   reserr += (&quot;ERREUR : il manque le code du tag avec l'id '&quot;+tmpid+&quot;'.&quot;) + &quot;\n&quot;;
+   continue;
+ }
+ var tmp_code = tmpt.getAttribute('code');
+ if(tmp_code==<I>)</I>
+ {
+   reserr += (&quot;ERREUR : le code du tag avec l'id '&quot;+tmpid+&quot;' est vide.&quot;) + &quot;\n&quot;;
+   continue;
+ }
+</PRE><PRE> nb_tags[tmpid]= new nb_tag();
+ nb_tags[tmpid].id= tmpid;
+ nb_tags[tmpid].target= tmp_target;
+ nb_tags[tmpid].text= tmpid;
+ nb_tags[tmpid].code=tmp_code;
+ if(tmpt.hasAttribute('texte'))
+  nb_tags[tmpid].text= tmpt.getAttribute('texte');
+</PRE><PRE> nb_tags_revindex[tmpid]= new Array();
+ for(var mid in nb_months)
+  nb_tags_revindex[tmpid][nb_months[mid].id]= new Array();
+}
+</PRE><PRE>//Get items
+var tmp_items= xmldata.getElementsByTagName('lien');
+for(var i= 0 ; i &lt; tmp_items.length ; ++i)
+{
+ var tmpi= tmp_items[i];
+ 
+ if(!tmpi.hasAttribute('mois'))
+ {
+  reserr += ('ERREUR : il manque le mois du ' + i+1 + (i==0?'er':'ème') + ' lien défini.') + &quot;\n&quot;;
+  continue;
+ }
+ var tmp_month= tmpi.getAttribute('mois');
+ if(nb_months[tmp_month] == undefined)
+ {
+  reserr += ('ERREUR : le mois du ' + i+1 + (i==0?'er':'ème') + &quot; lien défini est non déclaré ('&quot;+tmp_month+&quot;').&quot;) + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> if(!tmpi.hasAttribute('jour'))
+ {
+  reserr == ('ERREUR : il manque le jour du ' + i+1 + (i==0?'er':'ème') + ' lien défini.') + &quot;\n&quot;;
+  continue;
+ }
+ var tmp_day= tmpi.getAttribute('jour');
+ if(!nb_is_posint(tmp_day))
+ {
+  reserr += ('ERREUR : le numéro de jour du ' + i+1 + (i==0?'er':'ème') + &quot; lien défini est invalide ('&quot;+tmp_day+&quot;').&quot;) + &quot;\n&quot;;
+  continue;
+ }
+ tmp_day= parseInt(tmp_day);
+ if(tmp_day &gt; nb_months[tmp_month].days)
+ {
+  reserr += ('ERREUR : le numéro de jour du ' + i+1 + (i==0?'er':'ème') + &quot; lien défini (&quot;+tmp_day+&quot;) dépasse le nombre de jours du mois '&quot; + tmp_month + &quot;' (&quot;+nb_months[tmp_month].days+&quot;).&quot;) + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> if(nb_items[tmp_month][tmp_day] != undefined)
+ {
+  reserr += ('ERREUR : le ' + i+1 + (i==0?'er':'ème') + &quot; lien défini tombe le même jour qu'un autre lien (le &quot;+tmp_day+&quot; '&quot; + tmp_month + &quot;').&quot;) + &quot;\n&quot;;
+  continue;
+ }
+</PRE><PRE> nb_months[tmp_month].nitems ++;
+</PRE><PRE> nb_items[tmp_month][tmp_day]= new nb_item();
+ nb_items[tmp_month][tmp_day].month= tmp_month;
+ nb_items[tmp_month][tmp_day].day= tmp_day;
+ if(tmpi.hasAttribute('image'))
+  nb_items[tmp_month][tmp_day].image= tmpi.getAttribute('image');
+</PRE><PRE> var tmp_tags= tmpi.getElementsByTagName('tag');
+ for(var j= 0 ; j &lt; tmp_tags.length ; ++j)
+ {
+  var tmpt= tmp_tags[j].childNodes[0].nodeValue;
+  if(nb_tags[tmpt] == undefined)
+  {
+   reserr += ('ERREUR : le lien du ' + tmp_day + &quot; '&quot; + tmp_month + &quot;' comporte un tag non déclaré : '&quot; + tmpt + &quot;'.&quot;) + &quot;\n&quot;;
+   continue;
+  }
+  nb_items[tmp_month][tmp_day].tags[tmpt]= true;
+  nb_tags_revindex[tmpt][tmp_month].push(nb_items[tmp_month][tmp_day]);
+ }
+}
+</PRE><PRE>if(reserr != <I>)</I>
+ alert(reserr);
+</PRE><PRE>return true;
+</PRE><P>}
+</P><P>function nb_create_interface()
+{
+</P><PRE>var nbdiv= document.getElementById('notebook_div');
+nbdiv.innerHTML= <I>;</I>
+
+//days box
+var db= document.createElement('div');
+db.id= 'nb_daysdiv';
+nbdiv.appendChild(db);
+</PRE><PRE>//months bar
+var mb= document.createElement('div');
+mb.id= 'nb_monthsbar';
+for(var mindx in nb_months_index)
+{
+ var tmpm= nb_months_index[mindx];
+</PRE><PRE> var mlnk= document.createElement('a');
+ mlnk.appendChild(document.createTextNode(tmpm.text + ' (' + tmpm.nitems + ')'));
+ //mlnk.href= '#';
+ mlnk.setAttribute('data-month', tmpm.id);
+ mlnk.id= 'nb_month_'+tmpm.id;
+ mlnk.className= 'nb_month_inact';
+ mlnk.onclick= function(evt) { nb_display(nb_curtag, evt.target.getAttribute('data-month')); };
+ mb.insertBefore(mlnk, mb.firstChild);
+}
+var btmp = document.createElement('b');
+btmp.appendChild(document.createTextNode(&quot;Callendar's History&quot;));
+var ptmp = document.createElement('p');
+ptmp.appendChild(btmp);
+mb.insertBefore(ptmp, mb.firstChild);
+</PRE><PRE>nbdiv.appendChild(mb);
+</PRE><PRE>//filter box
+var fb= document.createElement('div');
+fb.id= 'nb_filterdiv';
+{
+ var tlnk= document.createElement('a');
+ tlnk.appendChild(document.createTextNode('No filtering'));
+ //tlnk.href= '#';
+ tlnk.id= 'nb_alltags';
+ tlnk.className= 'nb_tag_act';
+ tlnk.onclick= function(evt) { nb_display(null, nb_curmonth); };
+ fb.appendChild(tlnk);
+}
+for(var ti in nb_tags)
+{
+ var tmpt= nb_tags[ti];
+ var tlnk= document.createElement('a');
+ tlnk.appendChild(document.createTextNode(tmpt.text));
+ //tlnk.href= '#';
+ tlnk.id= 'nb_tag_'+tmpt.id;
+ tlnk.className= 'nb_tag_inact';
+ tlnk.setAttribute('data-tag', tmpt.id);
+ tlnk.onclick= function(evt) { nb_display(evt.target.getAttribute('data-tag'), nb_curmonth); };
+ var bille=document.createElement('span');
+ bille.className='bille bille_'+tmpt.code;
+ tlnk.appendChild(bille);
+ fb.appendChild(tlnk);
+}
+nbdiv.appendChild(fb);
+
+//init : no tag filter, last month
+nb_display(null, nb_months['septembre'].id);
+</PRE><P>}
+</P><P>function nb_display(f_tag, f_month)
+{
+</P><PRE>//check for changes
+if(f_month == null) return;
+var month_changed= (f_month != nb_curmonth);
+var tag_changed= (f_tag != nb_curtag);
+</PRE><PRE>//update dynamically
+if(month_changed)
+{
+ nb_mark_tag(null);
+ nb_display_newmonth(f_month);
+ nb_mark_tag(f_tag);
+}
+else if(tag_changed)
+ nb_mark_tag(f_tag);
+</PRE><P>}
+</P><P>function nb_display_newmonth(f_month)
+{
+</P><PRE>if(nb_curmonth != null)
+ document.getElementById('nb_month_'+nb_curmonth).className= 'nb_month_inact';
+</PRE><PRE>var m= nb_months[f_month];
+</PRE><PRE>var db= document.getElementById('nb_daysdiv');
+db.innerHTML= <I>;</I>
+var res_html= '<SPAN class="month_tt">'+nb_months[f_month].text+'</SPAN>';
+for(var i= 1 ; i &lt; nb_months[f_month].firstdayofweek ; ++i)
+</PRE>
+  res_html += '';
+<PRE>for(var i= 1 ; i &lt;= m.days ; ++i)
+{
+ var tmpi= nb_items[f_month][i];
+ var url= '<A href="https://2014.igem.org/Team:Paris_Saclay/Notebook/'+nb_months" class="external free" rel="nofollow">https://2014.igem.org/Team:Paris_Saclay/Notebook/'+nb_months</A>[f_month].text+'/'+i;
+ if(tmpi != undefined) //day is defined
+   {
+</PRE>
+    res_html += '<DIV id="nb_d.27.2Bi.2B.27" class="nb_dd">';
+<PRE>   res_html += '&lt;a id=&quot;nb_d'+i+'&quot; href=&quot;'+url+'&quot;'+(tmpi.image != undefined ? ' style=&quot;background-image:url(\<I>+tmpi.image+'\');background-size:100% 100%, 100% 100%;&quot;' : </I>)+'&gt;&lt;/a&gt;';
+   res_html += '&lt;aside&gt;';
+</PRE><PRE>   for(var k in nb_tags)
+   {
+     if(tmpi.tags[k]==true)
+     {
+       res_html += '';
+     }
+   }
+</PRE>
+    res_html += '<P>'+i+'</P>';
+    res_html += '&lt;/aside&gt;</DIV>';
+<PRE>  }
+ else {
+</PRE>
+    res_html += '<DIV class="nb_nd">';
+    res_html += '&lt;a id=&quot;nb_d'+i+'&quot; href=&quot;'+url+'&quot;&gt;&lt;/a&gt;&lt;aside&gt;<P>'+i+'</P>&lt;/aside&gt;</DIV>';
+<PRE> }
+}
+
+db.innerHTML= res_html;
+</PRE><PRE>nb_curmonth= f_month;
+document.getElementById('nb_month_'+nb_curmonth).className= 'nb_month_act';
+</PRE><P>}
+</P><P>function nb_mark_tag(f_tag)
+{
+</P><PRE>//reset previous filter
+if(nb_curtag != null)
+{
+ var ds= nb_tags_revindex[nb_curtag][nb_curmonth];
+ for(var i in ds)
+ {
+  var url= '<A href="https://2014.igem.org/Team:Paris_Saclay/Notebook/'+nb_months" class="external free" rel="nofollow">https://2014.igem.org/Team:Paris_Saclay/Notebook/'+nb_months</A>[nb_curmonth].text+'/'+ds[i].day;
+  var lnk= document.getElementById('nb_d'+ds[i].day);
+  lnk.href= url;
+  lnk.className= 'nb_dd';
+ }
+ document.getElementById('nb_tag_'+nb_curtag).className= 'nb_tag_inact';
+ nb_curtag= null;
+}
+else //previous was null
+ document.getElementById('nb_alltags').className= 'nb_tag_inact';
+</PRE><PRE>//set new filter
+if(f_tag != null)
+{
+ var ds= nb_tags_revindex[f_tag][nb_curmonth];
+ for(var i in ds)
+ {
+  var url= '<A href="https://2014.igem.org/Team:Paris_Saclay/Notebook/'+nb_months" class="external free" rel="nofollow">https://2014.igem.org/Team:Paris_Saclay/Notebook/'+nb_months</A>[nb_curmonth].text+'/'+ds[i].day+'#'+nb_tags[f_tag].target;
+  var lnk= document.getElementById('nb_d'+ds[i].day);
+  lnk.href= url;
+  lnk.className= 'nb_fd nb_fd_'+nb_tags[f_tag].code;
+ }
+}
+</PRE><PRE>nb_curtag= f_tag;
+if(nb_curtag != null)
+ document.getElementById('nb_tag_'+nb_curtag).className= 'nb_tag_act';
+else
+ document.getElementById('nb_alltags').className= 'nb_tag_act';
+</PRE><P>}
+</P><P>function init_notebook()
+{
+</P><PRE>if(!pb_load_xmldata())
+ return;
+
+nb_create_interface();
+</PRE><P>}
+</P><P>window.addEventListener(&quot;load&quot;, init_notebook, false);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:Paris_Saclay/Notebook/script.js">http://2014.igem.org/Team:Paris_Saclay/Notebook/script.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Paris_Saclay/Notebook/script.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Paris_Saclay/Notebook/script.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Paris_Saclay/Notebook/script.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Paris_Saclay/Notebook/script.js&amp;oldid=100775" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

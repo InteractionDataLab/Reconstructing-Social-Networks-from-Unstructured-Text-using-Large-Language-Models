@@ -1,0 +1,693 @@
+Team:EPFL/Results
+iGEM EPFL 2018
+iGEM EPFL 2018
+HOME
+Project
+Description
+Take a closer look at CAPOEIRA
+Design
+Learn more about how we designed CAPOEIRA
+Software
+Explore the Bioinformatic Pipeline implemented in CAPOEIRA
+Results
+Discover the Results of our experiments
+Demonstration
+Demonstration of how our Therapeutic System works
+Interlab
+Learn more about our participation in the Interlab Study
+Parts
+Discover the Parts that make up CAPOEIRA
+Improve
+Explore our Novel and Improvements Parts
+Measurement
+Learn about measurement approaches we used for Part Characterization
+Team
+Team Members
+Learn more about our Team Members
+Collaborations
+Discover the interactions we had with other iGEM Teams during CAPOEIRA
+Human Practices
+Integrated Human Practices
+Discover how we integrated Human Practices into the Purpose, Design and Implementation of CAPOEIRA
+Ethics
+Explore the ethical considerations of CAPOEIRA
+Applied Design
+Explore how our therapeutic system attempts to meet real world medical need
+Education and Public Engagement
+Discover our Education and Public Engagement work with the public and scientific communities
+European and Eurasian Meetup
+Learn about our interactions with the iGEM Community during the Meetups
+Lab
+Safety
+Entrepreneurship
+Acknowledgements
+Attributions
+Sponsors
+Partners
+Awards
+Top
+Results
+Bioinformatics
+Vaccine
+Follow Up
+Index
+Dataset
+Limitations of the Dataset
+Quality Assessment - FastQC Analysis
+Sequencing Adapter Cut and Quality Control - Trimmomatic/BBmap
+Reference Alignment, Sort and Indexing - BWA and Samtools
+Remove Duplicate Reads - Picard
+Base Quality Assessment - GATK
+Mutation Calling - Mutect2
+Filter Mutations - GATK
+Gene-Based Annotation - Annovar
+Sort Annotated Proteins - neoExtract
+MHC-I-Peptide binding Affinity - NetMHC
+Rank Binding Affinity - neoSearch
+Preface
+Here we are presenting the results from the bioinformatic analysis we performed with Ginga pipeline. In order to ensure that the Ginga works effectively, the whole pipeline, from start to finish, was validated with some real world                       public data from melanoma patients. Although, this data was extremely useful to understand the workflow and requirements of the pipeline it is limited and doesn’t contemplate the full potential of Ginga. Nevertheless, accessing patient                       data have been proven to be extremely difficult due to the lack of the necessary ethical assessment and stiff data protection policies of sequenced data. However, the team has plans to validate Ginga with additional data and we are                       already in progress of completing an application for International Cancer Genome Consortium (ICGC) regulated by the Data Access Compliance Office (DACO). The study we are interested in contains WES data from 52 melanoma patients                       and matched normal samples. We hope to gain access to this data to be able to keep supporting and improving Ginga.
+On the other hand, the ethical considerations regarding the used of patient data were carefully evaluated and all the data protection protocols were correctly assessed and followed. The datasets are completely anonymised and have no                       identification that could lead or allow the tracking of the origin patient. Furthermore, we have disclose the data and the results made available for the community are processed and cannot be used to reconstruct the full genome of                       the patient. Furthermore, the whole data was safely secured in AWS cloud storage and encrypted. The raw sequences were never stored in any local drive. Once the data has fulfilled its purpose, the raw data will be completely and                       safely remove from any device or cloud storage.
+The Ginga Github containing all the results of this analysis can be found here.
+Dataset
+The data used for validating the pipeline was extracted from the Sequence Read Archive (SRA) toolkit. The samples were extracted from a study from Department of Molecular Biology of Cancer, Medical University of Lodz, Poland (ID: PRJEB27635).                   The study contains whole exome sequencing data from 8 different melanoma patients according to the following description: Melanoma specimens were obtained during surgical interventions, and grown in vitro in serum-free EGF/bFGF-containing                   medium as described previously (Sztiller-Sikorska et al., 2012 Melanoma Research). DNA was extracted using DNeasy Blood & Tissue Kit from Qiagen according to manufacturer protocol. DNA samples were subjected to Nextera tagmentation followed                   by index PCR, first hybridization, capture, washes, elution, second hybridization, capture, washes, elution and enrichment of DNA fragments. The samples were subjected to two rounds of exome enrichment, followed by real-time PCR quantification                   (KAPA SYBR FAST qPCR Kit) prior to sequencing.
+The samples were sequenced using NextSeq 500 sequencing of the cell DNA after in-vitro culture. The different samples extracted can be found in the table below:
+Table 1 - Summary of the data contained in study and basic metrics PRJEB27635
+Experiment
+Run
+Spots
+Bases Size
+GC content
+Technique
+ERX2698480
+ERR2683866
+56.4M
+4.2Gbp
+43.8%
+Illumina
+ERX2698479
+ERR2683865
+52.0M
+3.9Gbp
+43.2%
+Illumina
+ERX2698478
+ERR2683864
+44.5M
+3.3Gbp
+42.1%
+Illumina
+ERX2698477
+ERR2683863
+50.8M
+3.8Gbp
+43.3%
+Illumina
+ERX2698475
+ERR2683862
+32.7M
+2.3Gbp
+45.9%
+Illumina
+ERX2698474
+ERR2683861
+36.4M
+2.5Gbp
+45.4%
+Illumina
+ERX2698473
+ERR2683860
+37.3M
+2.6Gbp
+45.6%
+Illumina
+ERX2698472
+ERR2683859
+33.8M
+2.4Gbp
+46.7%
+Illumina
+The datasets were downloaded in FASTQ format using fastq-dump tool in the SRA toolkit (v. 2.9.1). Documentation and details on how to use this packages can be found here . In general,                   the data from the study appears to show good general indices, with a good overall GC content, in the lower end of the expected 45-50% range of typical exome sequences (MacKinnon). At the same time, the large base size of around 100 times                   bigger than a typical human exome, showing good coverage of the reads.
+Limitations of the Dataset
+Before starting the analysis there are a few notes to point out about the use of this dataset. First, the accuracy of the genomic analysis highly depends on decoding the and subtracting the noise and artifacts generated during the sequencing                   protocol (Wang et al.). Furthermore, other characteristics, such as coverage, index adapters, number of flow-cells among other parameters are key to avoid false positives. The samples contained in the study PRJEB27635, have limited information                   about these characteristics, which only allow to make assumptions based on the observations of other parameters. This makes the validation process shown in this part more conversome.
+Furthermore, In order to precisely find all the mutations contained in the genome and avoid any bias originated by the sequencing protocol or the genomic analysis, a matched normal sample from the patient is required. The study PRJEB27635                   does not contain any normal samples and hence the tumor and normal samples cannot be directly compared to detect the mutations. However, recent developments in the tools allow the use of only the tumor sample (Teer et al.)
+Quality Assessment - FastQC Analysis
+The data was pre-analysed using FastQC (Version 0.11.7). The program outputs a summary of different metrics of the reads and signals with a flag the scores that are suboptimal for genomic analysis. In general the results show good quality                   of the reads, with overall good per base sequence quality and Per tile sequence quality for all the patient’s data. Furthermore, the per sequence quality score follows the typical trend for good illumina sequence data as seen in Figure                   1. This implies that the data was collected accordingly and it represents the overall field of view of the targeted data. However, FastQC report shows three metrics that are consistently poor for all the samples in the study. These are                   per base sequence content.
+Figure 1. Per sequence quality score for sample ERR2683866. The other samples in the study follow similar trends.
+All samples contained an irregular profile of per base sequence content. The per base sequence content represents the relative amount of each base in your genome. Normally, in correctly sequenced data this value should be maintained constant                   throughout the genome. In the data obtained from the study the difference between A and T, or G and C is greater than 20% in certain position especially concentrated at the end of the library. This results can have several implications                   in the data to analyse. Often, this errors are caused by the presence of overrepresented sequences such as sequencing adapter dimers use to index and sort the Illumina reads, this can often bias the data and cause unrealistic results                   (Andrews). This suggest that the adapter primers are contained in the sequences. However, by looking at the Overrepresented sequences metric in report none of the datasets seem to contain any heavily repeated sequences. On the other                   hand, the low score of the per base sequence content can be attributed to a aggressive trimming of adapters that can introduce bias in the library. This typically occurs at the end of the reads (Andrews). The per base sequence content                   for the study reads as seen in Figure 2, seem to be extensively trimmed as the sequence content at the end of the reads deviate from the general trend. This is further confirm by the GC content of the data which shows a deviation from                   the normal distribution of more than 15% of the reads (Andrews).
+Figure 2 - Sequence content across bases for sample ERR2683866. The samples in the study follow similar trends.
+Sequence Duplication levels were also found to be abnormal, since non-unique sequences make up more than 20% of the total library for all the samples. This can be appreciated by high duplication peaks in the center of Figure 3. FastQC                   also calculates the overall loss of the sequence for the library after removal of the duplicated sequences, found on the title of Figure 3. For the sample ERR2683866, the non-duplicated sequences represent 65.2% of the total library.                   This might be due to specific PCR enrichment during the sequencing process (Andrews).
+Figure 3 - Sequence Duplication levels for sample ERR2683866. Similar trends were observed in the other samples of this study.
+Based on the output of these reports the pipeline was optimized to ensure that any possible adapters that might affect GC sequence content or Per base sequence content are removed, using BBmap or Trimmomatic. Furthermore, given the high                   content of duplicate reads its necessary to ensure that the library is filtered to remove any bias information that can affect the final outcome. Duplicate reads were filtered using MarkDuplicates package in picard tools.
+Sequencing Adapter Cut and Quality Control - Trimmomatic/BBmap
+The sequences were analysed using BBmap (v38.36) and Trimmomatic (v0.38), to remove any sequencing adapters related to the reads (Bolger, Lohse and Usadel 2114-2120). Usually sequence data contains adapters used for indexing and sorting                   the reads in the genome. Normally, is ideal to use the specific adapter-sets according to the technique used to perform the sequencing. TruSeq is commonly used for performing this analysis, however, the original method of extraction                   of the libraries of study PRJEB27635, are not known which makes the task of assessing the quality of reads a challenge. In order to ensure that the analysis is complete, Ginga implements both Trimmomatic and BBmap trimming tools.
+All samples were analysed using Trimmomatic (v0.38). To remove the adapters the Trimmomatic was run using the single end mode (SE) and IlluminaClip was initially performed using the standard parameters (seedMismatches = 2, palindromeClipThreshold                   = 30 and simpleClipThreshold = 10) and the universal adapters contained in the TruSeq v3 single end adapters which can be found in the table below (Table 1). With the above parameters, no sequences were clipped from the raw initial sequences.                   The method was repeated, in order to optimize the parameters. seedMismatches was maintained at 2 bp since TruSeq v3 adapters are particularly short and enriching the bias towards mismatched sequences can lead to deletion of exonic information                   (Bolger, Lohse and Usadel 2114-2120). The other quality control options of Trimmomatic were not used, since the FastQC report of the library shows good overall base per quality and distribution, however they are recommended.
+To ensure that the sequences were not containing no other bias, other typical adapters were used, including NextEra [ID:5-6] and TrueSeq [ID:3-4]. AmpliSeq adapter trimming, typically used for creating large cancer panels was also tested                   [ID:7]. When using adapters 5 and 6, the 265 sequences were successfully clipped, which accounts for below the 0.01% of reads in the library, while the other adapters [ID:3,4,6] where unsuccessful. This is unusually low, and might be                   due to sequences that are similar to the kmer adapters in the exome.
+Table 1 - List of universal and index adapters used against the samples.
+ID
+Name of Adapter
+Sequence
+1
+Single_End TruSeq3_IndexedAdapter
+AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC
+2
+Single_End_TruSeq3_UniversalAdapter
+AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTA
+3
+TruSeq Universal Adapter (Tufts University Core Facility)
+AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
+4
+TruSeq Indexes Adapter (Tufts University Core Facility)
+GATCGGAAGAGCACACGTCTGAACTCCAGTCAC‐NNNNNN‐ATCTCGTATGCCGTCTTCTGCTTG*
+5
+NextEra Adapters - Read 1
+TCGTCGGCAGCGTCAGATGTGTATAAGAGACAG
+6
+NextEra Adapters - Read 2
+GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAG
+7
+AmpliSeq
+CTGTCTCTTATACACATCT
+Alternatively, to Trimmomatic, Ginga also supports the use of BBmap tools. Using the Decontamination Using Kmers (BBDuk) package it is possible to search the library for the most common kmer adapters and perform trimming automatically.                   The file containing the list of adapters used can be found in Ginga’s GitHub. BBDuk standard settings were used (ktrim=r k=23 mink=11 hdist=1). Adapters based on pair overlap were also trimmed. The results showed that the algorithm was                   able to successfully trim 307 reads (0.00%) and 521667 bases (0.01%) for sample ERR2683866, which closely matches the output of trimmomatic.
+Reference Alignment, Sort and Indexing - BWA and Samtools
+All the samples were aligned with the hg19 human reference genome using Burrows-Wheeler Aligner, BWA (v.0.7.17) mem command . Although, the new updated GRCh38 reference sequence is available, some of the current tools of the pipeline do                   not support this reference genome. This new genome annotated reference genome will be supported in future versions of Ginga. hg19 is based on the b37 version, with some different updated patches and nomenclature (Auwera). The reference                   genome was obtained from the Broad Institute FTP Server (McKenna et al. 1297-1303). The alignment was performed using standard conditions, including no clipping and discard options. The output of BWA is a SAM file containing the aligned                   sequence.
+Once the sequences were aligned the output SAM files were sorted using Samtools (v 1.7) sort(Li et al. 2078-2079).The sequences were sorted with no compression level and by default coordinates in                   the original aligned SAM file. The sorted file was outputted in the compressed BAM file format to reduce the size of the library and simplify the analysis, later in the pipeline. The headers of the processed BAM file can be found in                   the table below (Table 2). Additionally to this main headers the file contains between 39 clone contigs that were not able to be placed in any specific part of the gene (ChrUN) and 20 additional chr_random tables that contain data related                   to sequence that is known to be in a particular chromosome, but could not be reliably ordered within the current sequence (Ken et al.). Furthermore, the remaining 9 tables that were not correctly aligned correspond to different haplotypes                   in the chromosome. Normally, the reference sequence can only display a single haplotype per chromosome, so alternative haplotypes are contained in this file (Ex. chr6_apd_hap) (Ken et al.).
+Table 2 - Header of the generated BAM file for sample ERR2683866
+@HD     VN:1.5  SO:coordinate                   @SQ     SN:chrM LN:16571                   @SQ     SN:chr1 LN:249250621                   @SQ     SN:chr2 LN:243199373                   @SQ     SN:chr3 LN:198022430                   @SQ     SN:chr4 LN:191154276                   @SQ     SN:chr5 LN:180915260                   @SQ     SN:chr6 LN:171115067 @SQ     SN:chr7 LN:159138663                   @SQ     SN:chr8 LN:146364022                   @SQ     SN:chr9 LN:141213431                   @SQ     SN:chr10 LN:135534747                   @SQ     SN:chr11 LN:135006516                   @SQ     SN:chr12 LN:133851895                   @SQ     SN:chr13 LN:115169878                   @SQ     SN:chr14 LN:107349540                   @SQ     SN:chr15 LN:102531392                   @SQ     SN:chr16 LN:90354753                   @SQ     SN:chr17 LN:81195210                   @SQ     SN:chr18 LN:78077248                   @SQ     SN:chr19 LN:59128983                   @SQ     SN:chr20 LN:63025520                   @SQ     SN:chr21 LN:48129895                   @SQ     SN:chr22 LN:51304566                   @SQ     SN:chrX LN:155270560                   @SQ     SN:chrY LN:59373566
+An index file was generated for each of the sample using the
+index
+function in Samtools. The index file allow aligners to narrow down the potential origin of a query sequence within the genome, saving both time and memory. The                   index file typically is a .bai file, with the same name as the alined BAM file. This step is key for future package alingers to asses the sequences.
+Remove Duplicate Reads - Picard
+After assessing the quality of the samples with FastQC, the reports show that more than 20% of the total sample is composed by duplicated and non-unique sequences as seen in Figure 3 (Shlee). The duplicated sequences were search and deleted                   from the libraries using Picard Tools (v 2.18.14) MarkDuplicates program. The remove sequencing duplicates option was tagged to output the file with the duplicated sequences already removed. Alternatively, it is possible to flag the                   duplicates instead of removing them from the file by using <-drf> DuplicateRead option (Shlee). The duplication metrics of this analysis were also compiled and can be found in the Ginga Github. A summary of this metrics can be                   found in Table 3. The average percentage of duplication for the library was 36% which correlates to the previous information reported in the FastQC report. For more information about correct usage of MarkDuplicates please refer to this link .
+Table 3 - Duplication Metrics for all the samples in the study.
+Sample
+Unpaired Read Duplicates
+Percent of Duplication (Fraction)
+ERR2683866
+22881676
+0.408448
+ERR2683865
+18705992
+0.372971
+ERR2683864
+16224579
+0.388612
+ERR2683863
+19652412
+0.400268
+ERR2683862
+10397335
+0.326865
+ERR2683861
+12065982
+0.343042
+ERR2683860
+11725045
+0.318898
+ERR2683859
+10391886
+0.311339
+Base quality assessment - GATK
+Variant calling algorithms are heavily sensitive to the quality scores of the sequences. The base quality scores are often subjected to various technical errors due to the sequencing technique. For this reason base recalibration is key                   to ensure that the quality scores are accurate and that the variant calling analysis is accurate. Base recalibration was perform with BaseRecalibrator inside GATK package (v 4.0.9.0) (McKenna et al. 1297-1303).
+Before recalibrating the bases, it is necessary to ensure that the samples must be sorted, indexed and contain the appropriate read groups. Read groups are fields contained in the header of the libraries (@RG) and the represent a set of                   runs that were obtained in the same run. Due to the unknown specification of the dataset used, it is not possible to determine the appropriate read group, however, for the validation of the pipeline it was decided that each sample was                   part of a unique read group. To view if the sample contains any read group, Samtools view command can be used by specifying the header group of interest (ex. -H <sample.bam> | grep ‘@RG’). For more information about read-groups                   and correct usage please refer to (Van deer Auwera).
+In addition to the sample input BAM file, BaseRecalibrator has the option to add more additional fields labeled as known sites to calibrate the analysis. The know sites refer to any database of known polymorphic sites for the specific                   reference sequence. This include a list of know SNPs and Indels sites within the reference genome. During the creation of the model and analysis of reads, this known sites will be avoided and the program assumes that all reference mismatches                   seen outside this sites are therefore errors and indicative of poor base quality. There are three main files recommended for a correct BaseCalibrator analysis: the dbSNP sites, Mills and 1000 Genome Project gold standard indels and the                   1000 Genome Project standard Indels. This datasets can be obtained from the Broad Institute FTP server and are specific for each human reference genome. For this study hg19 reference genome and known sites were used. Base recalibration                   was performed with standard settings. The output of the analysis is a GATKReport file containing the various recalibration tables.(McKenna et al. 1297-1303) For more information about the format and characteristics of GATKReport format                   please refer to this link. A summary of the recalibration table by read group can be found in Table 6. The full reports can be found in Ginga Github.
+Table 6 - Quality Base Scores for the different samples in the study.
+Sample
+Empirical Quality
+Estimated Quality
+Observations
+Errors
+66
+24
+26.1765
+2145367615
+8084387
+65
+24
+26.2521
+2037553264
+7381802
+64
+22
+24.3183
+1629915318
+10780841
+63
+24
+26.2284
+1894369400
+6940697
+62
+25
+25.8251
+1300673788
+4429929
+61
+25
+25.7581
+1386635004
+4730936
+60
+25
+25.6903
+1519152488
+5340974
+59
+25
+25.7731
+1391548906
+4765284
+The output BAM file from base recalibration can be used directly to call the somatic mutations in the samples. Additional information might additional be trimmed or flag in order to avoid bias in the final result.
+Mutation Calling - Mutect2
+Mutation calling is one of the core functions of the Ginga pipeline. The somatic mutations found in the samples are responsible for the modifications in the final translated proteins and effectively the neoantigen sequences that Ginga                   aims to detect. Unfortunately, due to the lack of ethical approval to access other patient’s dataset and the concerns regarding the data protection of whole exome sequences, the results of this validation were perform without a reference                   matched normal sample. The lack of a matched normal reduces the mutation calling accuracy of this validation results and requires extensive optimization of the parameters. However, this analysis is now supported in the latest version                   of Mutect2 (v 4.0.9.0) and can be performed by running the single tumor sample mode in addition to using databases of known polymorphic sites (Kalatskaya et al.).
+The mutation calling was done with Mutect2 in GATK (v 4.0.9.0), which currently is under development (Beta Version). The samples were initially analysed in single tumor sample mode against the hg19 human reference genome with no germline                   resource or PON. This first results identify an unrealistic number of mutations, for example a total of 198,760 mutations were identified for sample ERR2683866. These results (Table 7) are expected as no matched normal sample was used                   to perform the analysis and the known sites were not included.
+Table 7 - First 10 mutations found in the output VCF file of mutect after analysis sample ERR2683866 using Mutect2.
+CHROM POS ID REF ALT QUAL FILTER                   chr1 830181 . A G . .                   chr1 871334 . G T . .                   chr1 876499 . A G . .                   chr1 877831 . T C . .                   chr1 878314 . G C . .                   chr1 880238 . A G . .                   chr1 881627 . G A . .                   chr1 883625 . A G . .                   chr1 884101 . A C . .                   chr1 887560 . A C . .
+The analysis was then optimized by using the germline resources from the gnomad, in order to consider the known sites of exome SNPs and Indels in the analysis.
+Filter Mutations - GATK
+Due to the lack of matched normal to perform the mutation calling analysis, there is a higher risk to select false positives in the pipeline. Some of these artifacts are generated by the presence of cross-sample contamination in the original                   FASTQ file and are due to sequencing technique. For this reason, it is important to reduce the large pool of mutations generated and filter them accordingly. This can be done by using GetPileupSummaries, CalculateContamination and FilterMutectCalls                   from GATK (v 4.0.9.0) package (McKenna et al. 1297-1303).
+The data was first processed GetPileupSummaries, to summarize the reads that support reference genome and list of known allele sites. This can estimate the overall cross-sample contamination. The BAM files used prior to mutation calling                   were assessed against the hg19 human reference genome and two sets of known sites from the Gnomad Library only containing biallelic variants. The whole exome known sites (v 2.0.2) was filtered using GATK (v 4.0.9.0), SelectVariants to                   restrict the alleleles to only biallelic. The maximum population of allele frequency was set to 0.2 and the minimum mapping quality to 50. Furthermore, due to the interest in search on the whole exome sequence for the neoantigen variants,                   the whole Gnomad biallelic variants were selected as the interval of the analys. The output consists in a table containing 6 different columns: contig, position, ref_count, alt_count, other_alt_count, allele_frequency. The alt_count                   field contains the reads that are supported by the germline resource.
+The pileup summaries table was then used to calculate the fraction of cross-sample contamination in the tumor reads and output the contamination table that can be used to filter the mutations. The resulting table contains the estimates                   for contamination and error in the sample. Furthermore, CalculateContamination also supports an alternate mode which uses the matched normal sample to improve on the accuracy of the analysis.The results show that the contamination levels                   for the samples are relatively low.
+Table 8 - Contamination Table for sample ERR2683866.
+Sample
+Contamination
+Error
+ERR2683866
+0.004125546
+0.001190943
+The mutations outputted by Mutect2 were filtered using FilterMutectCalls. This applies a preset of thresholds and filters to remove false positives from the data. It uses the contamination table as an additional input. FilterMutectCalls                   outputs a VCF and index file, containing the true positives with the PASS label and the false positives with the FILTER field.
+Gene-Based Annotation - Annovar
+The gene-based annotation was performed using Annovar (v. 2018Apr16) annotate_variation.pl script. Gene-based annotation was used to annotate the mutations of the discover in the samples and the coding_change.pl was change to translate                   the annotated sequences into the corresponding coding proteins. Additionally, filter-based mutation was used to filter mutations from the Cosmic Database and the International Cancer Genome Consortium (ICGC) database.
+Annovar uses the predetermined file format VCF4 for the inputs. The annotated mutations from Mutect2 or other GATK packages commonly found in VCF format can be converted using the perl code convert2annovar.pl. This tool adds three additional                   rows to the VCF format, zygosity status, genotype quality and read depth. The genotype calling files from the samples extracted after filtering the contamination with FilterMutectCalls were converted to VCF4 format.
+Before annotating the samples with annovar, the FASTA sequences for all annotated transcripts in RefSeq Gene hg19, were downloaded using the built-in --downdb argument in the annotated_variation.pl package. This argument allows you to                   access files directly from the UCSC Genome Browser Annotation Database. Furthermore, the reference gRNA files were created using the retrieve_seq_from_fasta.pl package in Annovar. The VCF4 were annotated using the core function of Annovar,                   the annotate_variation.pl program. Standard parameters were selected and the hg19 refGene was used as a reference. The annotated variations are outputted in two different VCF files. The variant_function VCF file, contains the information                   regarding the nature of the variation and the position in the exome. This file summarises if the variant is exonic, splicing, or if it hit a non-coding RNA genes, as well as the gene containing the mutation. The second file, exonic_variant_function                   VCF file, contains the amino acid changes as a result of the exonic variant and furthermore identifies the type of functional consequences caused by the variant (frameshift insertion, deletion,frameshift block substitution...). The exonic_variant_function                   VCF annotations, were translated into protein sequences through the coding_change.pl tool in Annovar. This outputs a FASTA format containing the wild type and mutated protein sequences under a header containing the original mutation,                   gene affected and amino acid sequence change. All the annotation results can be found in Ginga’s Github.
+Sort Annotated Proteins - neoExtract
+The proteins annotated in Annovar contain both the mutated sequence as well as the wild type protein. Moreover, since neoantigen sequences are typically 8 to 11 amino acids long, the major part of protein sequence which doesn’t contain                   any functional variation associated with the cancer mutation of the sample, has no implications on the end library of neoantigens. For determining the final neoantigens, only a short amino acid sequence around the mutation is required,                   in the case of SNVs. neoExtract was used to sort the annotated proteins, removing the wildtype from the Annovar FA output file, and only retains a short amino acid sequence of specified length around the mutation. The coding change exonic                   variant function, was processed by neoExtract, using standard parameters. The output FASTA file contains all the possible combinations of neoantigen candidates derived from the mutated proteins. neoExtract can also process other functional                   consequences of the variant such as insertions, deletions and frameshift. The first 10 results from the
+MHC-I-Peptide binding Affinity - NetMHC
+In order to determine if the neontaingen candidates can be presented in the surface of of antigen presenting cells such as dendritic cells, which are the precursors of the immune response, the neoantigens need to have a high binding affinity                   to the MHC-I complexes on the cell surface. This MHC-I complexes are specific for cytotoxic cytokine releasing CD8+ T cells, that can target and lysate the tumor cells. In order to shortlist the best neoantigen candidates, the neoantigens                   etracted can be rank according to their binding affinity to MHC-I complexes. This was performed using netMHC (v 4.0)(Andreatta and Nielsen 511-517). The FASTA file containing the candidate neoantigens was input and 8 to 14mer peptide                   len gth was selected to obtain the widest library of neoantigens. The species/loci chosen was the standear HLA supertype representative. To test the system only alleles of class HLA-A were selected, including HLA-A0101, HLA-A0201, HLA-A0301,                   HLA-A2402, HLA-A2601. The options to sort by predicted affinity and save output in XLS format, were also selected in order to be able to easily postprocess the neoantigens. The results of the analysis can be found in the Ginga Github.
+Additionally, to netMHC Ginga also includes the support to mixMHCpred, a software that adds mass-spectrometry analysis of the MHC-I alleles to improve the prediction of MHC-I-peptide binding (Bassani-Sternberg M et al.). However, this                   is currently under development.
+Rank Binding Affinity - neoSearch
+Although, netMHC can sort the peptide sequences by their ranking affinity this data is difficult to organis. Furthermore, sorting the peptides according to their binding affinity and not the parent sequence that they originate from is                   currently not possible. neoSearch sorts the XLS file from netMHC and returns the ranked neoantigens in a CSV file that can be easily read and processed to create high throughput therapeutics. The final expected results of the pipeline                   can be found in the Ginga Github and a brief summary of the results can be found in Table 9.
+neoSearch has also the option to obtain the original exome mutated sequence and index position, of the mutation that coded the specific neoantigen. neoSearch uses the protein index and the VCF file outputted by Mutect2 to find the original                   coding sequence for the neoantigen candidate. The length of the sequence extracted can be adjusted accordingly, to detect the . The purpose of this trace back is to
+Table 9 - First 19 neoantigens discovered for sample ERR2683866 for the HLA-A0101 allele. The SB label indicates the binding affinity (SB).
+HLA-A0101
+Sample ERR2683866
+Pos
+Peptide
+ID
+nM
+Rank
+Core
+18
+PTNTYTLDY
+line216_NM_0013
+5.2
+0.01
+PTNTYTLDY
+SB
+17
+VPTNTYTLDY
+line216_NM_0013
+12.1
+0.02
+VTNTYTLDY
+SB
+15
+TTVPTNTYTLDY
+line216_NM_0013
+25.8
+0.04
+TTNTYTLDY
+SB
+14
+KTTVPTNTYTLDY
+line216_NM_0013
+25.8
+0.04
+TTNTYTLDY
+SB
+13
+EKTTVPTNTYTLDY
+line216_NM_0013
+23.9
+0.04
+TTNTYTLDY
+SB
+6
+HTAGTFLSY
+line16092_NM_00
+24.2
+0.04
+HTAGTFLSY
+SB
+16
+TVPTNTYTLDY
+line216_NM_0013
+27.9
+0.05
+TTNTYTLDY
+SB
+19
+TNTYTLDY
+line216_NM_0013
+57.9
+0.1
+_TNTYTLDY
+SB
+5
+MHTAGTFLSY
+line16092_NM_00
+90.2
+0.15
+MTAGTFLSY
+SB
+18
+ESDSIQWFH
+line10122_NM_00
+241.5
+0.25
+ESDSIQWFH
+SB
+11
+LVTAALVALGVLY
+line284_NM_0334
+345.2
+0.3
+VTAALVALY
+SB
+10
+LLVTAALVALGVLY
+line284_NM_0334
+339.9
+0.3
+VTAALVALY
+SB
+4
+VMHTAGTFLSY
+line16092_NM_00
+340.6
+0.3
+MTAGTFLSY
+SB
+3
+AVMHTAGTFLSY
+line16092_NM_00
+348.9
+0.3
+MTAGTFLSY
+SB
+2
+IAVMHTAGTFLSY
+line16092_NM_00
+342.8
+0.3
+MTAGTFLSY
+SB
+1
+LIAVMHTAGTFLSY
+line16092_NM_00
+289.3
+0.3
+MTAGTFLSY
+SB
+12
+VTAALVALGVLY
+line284_NM_0334
+381.9
+0.4
+VTAALVALY
+SB
+0
+TSEAFSSY
+line4423_NM_021
+446.9
+0.4
+TSEAFSS_Y
+SB
+0
+LSLEDLSQLAV
+line20806_NM_01
+499.6
+0.4
+LSDLSQLAV
+SB
+References
+Andreatta, Massimo, and Morten Nielsen. "Gapped Sequence Alignment Using Artificial Neural Networks: Application To The MHC Class I System." Bioinformatics 32.4 (2015): 511-517. Web.
+Andrews S. (2010). FastQC: a quality control tool for high throughput sequence data. Available online at: http://www.bioinformatics.babraham.ac.uk/projects/fastqc
+Auwera, Geraldine. "What's The Difference Between B37 And Hg19 Resources?." GATK-Forum. N.p., 2012. Web. 17 Oct. 2018.
+Bassani-Sternberg M et al. Deciphering HLA motifs across HLA peptidomes improves neo-antigen predictions and identifies allostery regulating HLA specificity (2017).
+Bolger, Anthony M., Marc Lohse, and Bjoern Usadel. "Trimmomatic: A Flexible Trimmer For Illumina Sequence Data." Bioinformatics 30.15 (2014): 2114-2120. Web.
+Kalatskaya, Irina et al. "ISOWN: Accurate Somatic Mutation Identification In The Absence Of Normal Tissue Controls." Genome Medicine 9.1 (2017): n. pag. Web.
+Kent WJ, Sugnet CW, Furey TS, Roskin KM, Pringle TH, Zahler AM, Haussler D. The human genome browser at UCSC. Genome Res. 2002 Jun;12(6):996-1006.
+Li, H. et al. "The Sequence Alignment/Map Format And Samtools." Bioinformatics 25.16 (2009): 2078-2079. Web.
+Li, H., and R. Durbin. "Fast And Accurate Short Read Alignment With Burrows-Wheeler Transform." Bioinformatics 25.14 (2009): 1754-1760. Web.
+MacKinnon, Libby. "Characteristics Of The Human Genome." Courses.cs.washington.edu. N.p., 2007. Web. 17 Oct. 2018.
+McKenna, A. et al. "The Genome Analysis Toolkit: A Mapreduce Framework For Analyzing Next-Generation DNA Sequencing Data." Genome Research 20.9 (2010): 1297-1303. Web.
+Shlee. "(How To) Mark Duplicates With Markduplicates Or Markduplicateswithmatecigar." GATK-Forum. N.p., 2016. Web. 17 Oct. 2018.
+Sims, David et al. "Sequencing Depth And Coverage: Key Considerations In Genomic Analyses." Nature Reviews Genetics 15.2 (2014): 121-132. Web.
+Teer, Jamie K. et al. "Evaluating Somatic Tumor Mutation Detection Without Matched Normal Samples." Human Genomics 11.1 (2017): n. pag. Web.
+Tufts University Core Facility. Illumina Truseq DNA Adapters De-Mystified. Tufts University Core Facility, 2011. Print.
+Van deer Auwera, Geraldine. "Read Groups." GATK-Forum. N.p., 2015. Web. 17 Oct. 2018.
+Van deer Auwera, Geraldine. "What Is The Gatkreport File Format?." GATK-Forum. N.p., 2012. Web. 17 Oct. 2018.
+Wang, Zuoheng et al. "The Role And Challenges Of Exome Sequencing In Studies Of Human Diseases." Frontiers in Genetics 4 (2013): n. pag. Web.
+Zhou, Zhan et al. "TSNAD: An Integrated Software For Cancer Somatic Mutation And Tumour-Specific Neoantigen Detection." Royal Society Open Science 4.4 (2017): 170050. Web.
+Index
+CellFree
+Plasmid Construction
+HexaHistidine Encapsulin cell-free expression and purification
+Plasmid construction (HexaHistidine Encapsulin with C-terminus BsaI cut sites)
+Incorporation of the OT1 coding sequence into our platform
+Encapsulin-OT1 cell-free expression and purification
+Encapsulin-OT1 mass spec
+HexaHistidine Encapsulin-OT1
+HexaHistidine Encapsulin (control)
+Encapsulin uptake by dendritic cells
+Encapsulin protein cage nanocarrier - Toward high throughput production of personalized cancer vaccines
+In order to assess the feasibility of our vaccine production scheme, we performed different experiments. First, we will demonstrate that it is possible to express encapsulin in a home-made cell-free system. Next, we will modify Encapsulin for the purpose of increasing its heat stability following the research done by Moon et al., 2014. Then, we will demonstrate a rapid and efficient purification method of the expressed protein nanocompartments. In order to allow for the generation of neoantigen-presenting encapsulin, we will generate plasmid constructs for the rapid genetic integration of neoantigen sequences. This platform will be tested by the production of the model encapsulin-OT-1 protein nanoparticle, which will be extensively characterized by common techniques and ultimately by its action on dendritic cells.
+Cell-free expression of proteins
+Assessing the efficiency of our TX-TL (Sun et al., 2013) cell-free system is key before expressing our protein of interest. To do so, we made use of the fluorescence of sfGFP to assess the efficiency of expression. We therefore expressed                     sfGFP in our cell-free system and measured fluorescence with a microplate reader over time, following the 2017 EPFL iGEM protocol . We used this kind of experiments as an internal                     reference to assess in a relative way the quality of our lysates and energy solutions.
+Figure 1: Microplate reader measurement of fluorescence over time. Measurements were taken every 90s during approximately 6h (with a quick shake between each measurement). The samples were hold at 29°C.The positive sample is a cell-free                       expression of sfGFP template. In the negative control sample, the plasmid stock solution volume was replaced with nuclease free water.
+This is the maximum fluorescence intensity we have gotten, that is, around 200 000 RFU (Relative Fluorescence Units).
+Plasmid construction
+Figure 2: Schematic overview of our plasmid construct containing HexaHistidine Encapsulin coding sequence
+Figure 3: Gel electrophoresis of both the HexaHistidine insert (first gel) and the Encapsulin and plasmid backbone (second gel) . The bands at the correct length were extracted and assembled using a Golden Gate assembly.
+Figure 4
+HexaHistidine Encapsulin cell-free expression and purification
+In this section, we show some results of our trials to express HexaHistidine Encapsulin in our cell-free systems, as well as heat purify it.
+The cell-free expression were done following a standard protocol: 8 to 12h of expression at 29°C with shaking (600rpm).
+Figure 5: Standard heat purification method for heat stable proteins. Full protocol can be found here (LINK). After the centrifugation step, the heat stable proteins can be found in the supernatant of the solution. The others, which                       have been denatured, aggregate and are found in the pellet.
+Right after the end of the expression, we performed standard heat purification. Our protein of interest, HexaHistidine Encapsulin is extremely heat stable and should be found in the supernatant of the sample after heat purification.
+We observed the cell-free expression products before and after heat purification thanks to SDS-PAGE and coomassie staining. The full protocol can be found here.
+Figure 6: SDS-PAGE gel after coomassie staining. B: before heat purification S: supernatant of the sample after heat purification
+Before heat purification, in the sample expressed with HexaHistidine Encapsulin DNA template, we can distinguish a band at around 31 kDa among many other proteins. This band being absent in the negative control lane, might be Encapsulin                       monomers. We also see a band at higher molecular weight, also not present in the negative control sample, which might be Encapsulin multimers.
+After heat purification, we see a distinct band at around 31 kDa which is not present in the negative control. We can therefore hypothesize that this are Encapsulin monomers. All the other proteins that surrounded it before heat purification                       are not here anymore. This show that the Encapsulin has not been denatured during the process of heat purification, unlike the other ones. On top of that, we also still see the higher molecular weight band. This purification method                       is therefore suitable to HexaHistidine Encapsulin and allow us to get rid of the majority of the non desired proteins, as it can be seen on the gel.
+The high molecular weight band on our SDS-PAGE gels gives good hints that the Encapsulin properly assembles in its spherical form. However, we performed DLS measurements to assess if fully assembled 60-mers nanoparticles occurred.
+Figure 7: Negative control, TX-TL cell free expression medium purified according to the same procedure described above. The refractive index chosen for the particles was the "protein" presetting and the refractive index of the medium                     was approximated to be that of water.
+Figure 8: DLS measurements of Encapsulin K2686002 using a Zetasizer Nano ZS from Malvern Analytical determining the average particle size using volumes, intensities                     and counts. The refractive index chosen for the particles was the "protein" presetting and the refractive index of the medium was approximated to be that of water. These plots shows a peak at 21.037nm,18.166nm and 32.674nm which corresponds                     to the encapsulin protein cage within the literature (Putri et al., 2017; Moon et al. 2014) when taking into account the peculiarities of each measurement method, since Intensity is highly sensitive to small amount of larger aggregates                     (these could be some small aggregated proteins, explaining the larger size of the peak). The counts and volume based methods require the refractive indices and absorbance coefficients to be known (these were merely approximated) creating                     a source of error ((Stetefeld, McKenna and Patel, 2016)(Zetasizer user manual)).
+Figure 9: DLS measurements of part K2686000 where the results are highly inconclusive. The DLS measurements using the same techniques do not overlap at all, which indicates either an experimental                     error or a mistake with the handling of the cell-free expression. Because of that no conclusions can be drawn from these measurements.
+Plasmid construction (HexaHistidine Encapsulin with C-terminus BsaI cut sites)
+The sfGFP coding insert was amplified and gel extracted (left), and the encapsulin containing plasmids had their backbones linearized through PCR (right).
+The bands were then gel extracted and a Golden Gate assembly using the Esp3I type IIs restriction enzyme was used to build the construct with BsaI cut sites.
+Incorporation of the OT1 coding sequence into our platform
+We then wished to test our platform by inserting a peptide sequence in the C-terminus cutsite. We chose to insert the coding sequence of the peptide OT-1, a well-characterized epitope of the protein OVA (Ovalbumin). Indeed, the last step                   of our vaccine characterization would be to perform dendritic cell assay in order to assess the vaccine’s immunogenicity. One of the assay is to check if the right peptide is presented on MHC I molecules by the dendritic cells. This                   requires antibody targeting the peptide/MHC I molecule complex. Such antibodies are commercially available for OT1.
+Encapsulin-OT1 cell-free expression and purification
+Figure 10: SDS-PAGE gel after coomassie staining. B: before heat purification S: supernatant of the sample after heat purification
+Before and after purification, we see a high molecular weight band in the HexaHistidine Encapsulin-OT1 lanes that are similar to the ones in the non-modified HexaHistidine Encapsulin lanes. This is a good indication of expression and proper                   assembly of our product.
+Encapsulin-OT1 mass spec
+Figure 11: The gel was stained with Coomassie blue and then given to the Proteomics Core Facility, where the two bands shown surrounded by squares were excised.
+All manipulations after this step were not performed by us according to Protocol
+The Proteomics Core Facility then washed the gel we provided, reduced and alkylated it, digested the proteins using trypsin and extracted the peptides to perform MALDI-TOF mass spec. The analysis of the results was also performed by the                   facility and we were provided the peptide sequence alignments onto the HexaHistidine Encapsulin-OT1 construct.
+HexaHistidine Encapsulin-OT1
+This image was taken in Scaffold Viewer 4, where the peptides identified from mass spec are aligned to the HexaHistidine Encapsulin-OT1 sequence using a peptide threshold of 1% FDR. The OT1 peptide has alignments with peptides at the encapsulin’s                   C terminus which indicates that the OT1 peptide is successfully expressed.
+Spectrum of peptide FSIINFEKL at 1% FDR threshold
+Fragmentation table of FSIINFEK, cutoff at 95% probablilty
+HexaHistidine Encapsulin (control)
+Here the HexaHistidine Encapsulin sample’s peptides are aligned to the HexaHistidine Encapsulin-OT1 sequence at 1% FDR cutoff (first image) and at 95% probability cutoff (second image). There are no peptides aligning to the SIINFEKL part                   of the sequence, which is the expected result since our protein does not have the peptide.
+Overall the purity of the samples is relatively good, and the important parts of the sequence were clearly identifiable.
+Conclusion
+Our results demonstrate that we successfully incorporated the OT1 peptide at the C terminus of our encapsulin vaccine.
+Vaccine Validation
+Two experiments were performed for the validation of our vaccine system. The first experiment tested the ability of dendritic cells to uptake encapsulin, our vaccine platform. The second experiment tested encapsulin’s ability to mediate                   the neoantigen presentation on MHC-I complexes on the surface of dendritic cells. Note that the word ‘encapsulin’, throughout the whole Vaccine Validation part refers to encapsulin with inserted Hexahistidine (HH) linker.
+Validation of Encapsulin Uptake by Dendritic Cells
+We hypothesized that an appropriate method of checking the ability of dendritic cells to uptake our vaccine platform encapsulin is through the fluorescent tagging the encapsulin protein, presentation of 60-mer nanoparticles assembled from                   encapsulin monomers to a dendritic cell culture, and then imaging to check for the vaccine uptake by the dendritic cells. For imaging, we used Nanolive’s precision tomographic microscope to acquire 3D spatial and olerlaid 2D fluorescent                   images of the uptake process.
+Hexahistidine encapsulin was first expressed in our cell free expression system, that was supplemented with Promega’s lysine BODIPY, following our BODIPY fluorescence expression protocol. This way some of lysine residues present in our                   protein construct would be fluorescently labeled, making the the whole construct fluorescently labeled.
+After expression and purification, the correct expression of Hexahistidine encapsulin and the correct incorporation of fluorescent lysines was checked by performing an SDS PAGE and fluorescently imaging the gel (Figure 1). This fluorescent                   image suggests that we have a fluorescent band just below the 32 kDa ladder band, for both HH encapsulin B and HH encapsulin S, but not in the negative control (N.C. in Fig. 1). This indicates the presence of encapsulin at its expected                   size of 31 kDa. The image also suggests the presence of fluorescent bands of high weight for HH encapsulin B and HH encapsulin S, but not N.C. These high bands refer to a very high molecular weight, which we believe indicates the presence                   of the encapsulin multimer (M.W. ~ 1.8 MDa). This gel image serves as a proof that we are able to express fluorescent HH encapsulin.
+Figure 12: Fluorescent Image of an SDS PAGE gel of the encapsulin expressed in cell free transcription-translation system (TX-TL system) with Lysine-BODIPY. This expression was performed to generate the encapsulin to be used for validation                     of vaccine uptake by dendritic cells. Imaging filters used were those for measuring fluorescein λex = 494 nm, λem= 512 nm. The first lane is a fluorescent ladder. The second lane (N.C.) is for a negative control (cell free reaction                     with no DNA template supplied). Third lane (HH encapsulin B) is Hexahistidine encapsulin expressed in the TX-TL system supplied with Lysine BODIPY before purification (B stands for Before purification). The fourth lane (HH encapsulin                     S) is Hexahistidine encapsulin expressed in the TX-TL system supplied with Lysine BODIPY after applying our purification protocol (S stands for the Supernatant generated post heat purification).
+Murine bone marrow derived dendritic cells were obtained from the LBI lab at EPFL. These were cultured in Matrigel, presented with encapsulin, and imaged according to our Dendritic Cell Culture in Matrigel and Vaccine Presentation protocol.                   In short, imaging was performed before encapsulin presentation, one hour after encapsulin presentation, four hours after encapsulin presentation, and six hours after encapsulin presentation and washing (six hours following encapsulin                   presentation, the dendritic cells were washed and imaged). Note that the Nanolive microscope is fitted with a miniature top stage incubator that keeps the cells at 37ºC whilst performing the imaging. 3D imaging was done using Nanolive’s                   Tomographic microscope. Fluorescence Imaging was done using FITC filter (Excitation maximum: 490 nm, Emission Maximum: 525 nm) on Nanolive’s tomographic microscope. We thank Nanolive for setting up the microscope and helping us in acquiring                   the images.
+The iGEM team pre-processed the raw 3D tomographic and 2D fluorescent image files in the Demo version of Nanolive’s software STEVE. The processed files were exported from STEVE into the open source software Fiji, where a z projection of                   the 3D stack was acquired according to the max intensity. The output image was channel merged with the fluorescence channel output. Prior to that, contrast in the fluorescence channel was increased to attenuate background noise. The                   resulting figures are depicted in figure 2.
+Figure 13: Fluorescent Image of an SDS PAGE gel of the encapsulin expressed in cell free transcription-translation system (TX-TL system) with Lysine-BODIPY. This expression was performed to generate the encapsulin to be used for validation                     of vaccine uptake by dendritic cells. Imaging filters used were those for measuring fluorescein λex = 494 nm, λem= 512 nm. The first lane is a fluorescent ladder. The second lane (N.C.) is for a negative control (cell free reaction                     with no DNA template supplied). Third lane (HH encapsulin B) is Hexahistidine encapsulin expressed in the TX-TL system supplied with Lysine BODIPY before purification (B stands for Before purification). The fourth lane (HH encapsulin                     S) is Hexahistidine encapsulin expressed in the TX-TL system supplied with Lysine BODIPY after applying our purification protocol (S stands for the Supernatant generated post heat purification).
+The images acquired before encapsulin presentation show dendritic cells in their immature round shape. Moreover, fluorescence imaging showed very faint fluorescence originating autofluorescence. One hour following encapsulin presentation,                   no significant change concerning the shape of the dendritic cells was observed. Fluorescence channels showed a diffuse fluorescence signal throughout the field, indicating the spread of fluorescent encapsulin throughout the mixture.                   Four hours post presentation, we could see that the dendritic cells had developed extensive processes indicating maturation of these cells. Fluorescence channels revealed localization of fluorescence particles within the processes and                   around the nuclei of the dendritic cells. We believe that these fluorescent particles indicate the presence of encapsulin aggregates in the processes and in endosomal areas in dendritic cells. Two hours later (6 hours post presentation and washing), the processes were more pronounced and the fluorescence was stronger, again revealing encapsulin aggregate localization to the processes and endosomal areas of the dendritic cells .
+We also created a video of a 3D reconstruction of a dendritic cell using STEVE and Fuiji to represent the 3D shape of the dendritic cell following the encapsulin vaccine presentation. The video is presented above.
+Validation of neoantigen presentation on dendritic cells
+For the validation of the neoantigen presentation, we tested the ability of the encapsulin vaccine template to deliver the standard immunogenic OT-1 peptide (OT-1 is a model antigens in immunological studies) to dendritic cells, and trigger                   its presentation of MHC-1 complexes on the surface of dendritic cells. For that aim, we started by cell free expression of Hexahistidine encapsulin with the SIINFEKL peptide (SIINFEKL is the actual amino acid sequence of the OT-1 peptide)                   fused to its C-terminus. We also expressed standard Hexahistidine encapsulin, and prepared a negative control (Negative Control is standard cell free expression system without any DNA template that has been purified using our heat purification                   protocol).
+Immature bone marrow derived dendritic cells were obtained from the Laboratory of Biomaterials for Immunoengineering. They were prepared, plated and presented with the vaccine construct/negative control according to our Culturing/Plating                   Protocol. Following presentation, the cells were incubated for 18 hours, then immunostained for FACS according to our Immunostaining/FACS Protocol. The results are depicted in figure 3.
+Figure 14: Immunostaining FACS results. The y-axis represents the signal from anti-mouse H-2Kb-SIINFEKL, which reflects how strong the presentation of the OT-1 SIINFEKL peptide on dendritic MHC-I complexes is. PBS is buffer negative control                     (75 µl of PBS buffer added to the well). NC is vaccine negative control (standard cell free expression system without any DNA template that has been purified using our heat purification protocol); 75 µl of NC was added to the well.                     Encapsulin is Hexahistidine Encapsulin (Hexahistidine Encapsulin expressed in a cell free expression system and then purified using our heat purification protocol); 75 µl of ENCAP was added to the well. E+P is Hexahistidine Encapsulin                     with OT-1 peptide fused to its C-terminus (Hexahistidine Encapsulin-OT-1 expressed in a cell free expression system and then purified using our heat purification protocol); 75 µl of E+P was added to the well. E+P+A is Hexahistidine                     Encapsulin with OT-1 peptide fused to its C-terminus (as previous) supplied with poly(I:C) adjuvant; 75 µl of E+P was added along with poly(I:C) to a final concentration of 2.5 µg/ml in the solution. Each condition was repeated 3 times                     (3 wells). Average over the three wells of each condition (along with SD) is presented in the figure.
+We were expecting E+P/E+P+A to elicit a strong presentation of the OT-1 peptide on MHC-1 complexes on dendritic cells, as suggested by literature review. However, unfortunately, the results were disappointing as they show no difference                   between experimental conditions and negative controls. This might be to multiple reasons, such as low expression of Encapsulin-OT-1 by our TX-TL cell free expression system, or some other experimental error. We are planning on repeating                   the experiment with the hopes for better results next time.
+miRNA
+ctDNA
+Index
+Probe and gRNA design
+Probe preparation
+Amplification
+Cas12a assay for detection
+Conclusions/Improvements
+Preface
+This section is dedicated to the analysis of the results from the part of our project on cancer relapse detection by means of microRNA (miRNA). The results include: design of our dumbbell-shaped probes and gRNAs, preparation of                           our probes, Rolling Circle Amplification and Cas12a assay for detection. The final paragraph deals with our conclusions and future improvements of our assay.
+Probe and gRNA design
+As shown extensively in Detailed Design , we were able to understand the reasoning behind the dumbbell-shaped probes designed by Qiu et al., 2018 and Deng et al., 2014 . We translated the analysed structure to our probes for Cas 12a, designing 6 new probes which were tested in addition to 4 probes from the above-mentioned                       groups. This implied modifying the template structure in order to contain the PAM sequence for LbCas12a, as well as designing specific gRNAs.
+All the probes and their amplicons were successfully tested with available softwares ( NUPACK , Mfold ) and the absence of unwanted                       minor secondary interactions was verified in all cases.
+Probe preparation
+The dumbbell-shaped probes used for Rolling Circle Amplification (RCA) of miRNA were prepared starting from linear DNA oligonucleotides (details on the sequences can be found in the Design ).                             A phosphorylation step was performed in the presence of T4 Polynucleotide Kinase in order to obtain the phosphorylated 5’-end necessary for the ligation. Ligation was then performed using T4 DNA ligase, with the unsealed DNA                             templates being digested by means of Exonucleases I and III. Agarose gel analysis suggests that the probes were successfully ligated (Figure 1).
+Figure 1. Agarose gel for the ligation of probe 2. 1st lane: 100 bp ladder, 2nd lane: non-ligated product after digestion by exonucleases, 3rd lane: ligated product after digestion by exonucleases. Ligated probes are                               resistant to exonuclease degradation.
+Amplification
+By the end of our project, we were able to show that our probes could successfully trigger amplification in the presence of let-7a-5p, with results comparable to those achieved by Deng et al., 2014 and Qiu et al., 2018
+The presence of the amplicons was verified by means of agarose gel electrophoresis: as shown in Figure 2, different designs of our probes were able to start the RCA reaction in the presence of miRNA being in solution with a concentration                       of 1 μM. For lower concentrations the results on the gel were not as clear, but amplification was indeed confirmed by means of SYBR Green measurements (as explained after). In the end we decided to focus for the Cas assay only on                       Probe 1, which we believed to be the one with the best design among the ones designed for Cas12a by our team.
+As expected, and consistently with previous papers on RCA, the size of the obtained amplicons was so large that they could not actually move through the agarose gel, being stuck in a position very close to the well (Figure 2).
+Figure 2. Left: Agarose gel analysis of the RCA products obtained in the presence of 1 μM let-7a-5p with some of the probes we investigated. Probes 1 and 8 were designed by our team, Probes 2 and 4 are used as a control                           from Qiu et al., 2018. Right: Agarose gel analysis of RCA product, indicated by the arrow”. [Reproduced from Takahashi et al., 2018 ]
+Furthermore, by means of SYBR Green I fluorescence measurements, we were able to quantitatively confirm that our probes indeed successfully trigger amplification. We were also able to estimate more accurately the specificity of our                       amplification assay: we showed that our system could amplify let-7a-5p with a concentration as low as 10-100 pM (Figure 3). This value is consistent with the results obtained by Qiu et al., 2018.
+Figure 3. Left: Real-time fluorescent measurements of sensitivity of RCA reaction by means of SYBR Green I. Concentrations are referred to the reagents before being put in the RCA solution. Measurements were done                           with 10 nM, 1 nM, 100 pM and no let-7a, with the concentration of probe in all samples being 1 μM. All the values are blank-subtracted. Right: Fluorescence intensity for the different concentrations of let-7a at 120-min                           time point.
+The SYBR Green I assay also allowed us to verify that the design of our probe 1 was specific for its target miRNA (let-7a-5p): the signal obtained in the presence of the same concentration of another miRNA target with very similar                       sequence (let-7d-5p, two mismatches only) was proved to be significantly lower, as shown in Figure 4.
+Figure 4. Left: Real-time fluorescent measurements of specificity RCA reaction by means of SYBR Green I. Concentrations are referred to the reagents before being put in the RCA solution. Measurements were done with                           1 nM of let-7a-5p and let-7d-5p, with the concentration of probe in all samples being 1 μM. All the values are blank-subtracted. Right: Fluorescence intensity for the two different miRNAs at 120-min time point.
+Cas12a assay for detection
+Nonetheless, as Qiu et al., 2018 pointed out, the sensitivity of SYBR Green I is too limited for detecting circulating miRNA concentration (which ranges from fM levels                       to pM level), due to its high background and unstable output. Despite the positive results, therefore, the amplification step alone is not sufficient and highlights the need of a secondary-stage mechanism to increase miRNA detection                       sensitivity, in our case the Cas12a detection system.
+After amplification, the RCA products were tested with the Cas12a detection assay: each RCA product was placed in solution with the Cas12a/gRNA complex and the fluorescence-quenched substrate DNase Alert, as explained in the Protocols.
+From our assay, we expected to obtain a fluorescent signal from DNase Alert proportional to the concentration of the amplicon (i.e. to the concentration of miRNA in the original sample).
+More specifically, due to the fact that the PAM sequence was only present in the amplicon of the probe, and not in the probe itself (more details in “Detailed Design”), we did not expect activation in control samples containing all                       the RCA reagents but no miRNA.
+On the contrary, results showed activation also for samples where the RCA product contained no miRNA (i.e. no amplicon either), and moreover the activation was proved to be comparable to the samples containing miRNA, with no difference                       among different concentrations of miRNA (Figure 5).
+Figure 5. Fluorescent measurements for Cas12a detection assay of RCA products with different concentrations of let-7a by means of DNase Alert. Concentrations are referred to the reagents before being put in the RCA solution,                           the concentration of probe in all samples being 1 μM. All the values are blank-subtracted.
+This was symptomatic of a potential saturation of the detection system and led us to a new hypothesis, which is explained in details in “Promiscuous Cas12a activation: probes as a target”.
+In short, we suspected that the probe itself (Probe 1 in our case) was causing activation of the Cas/gRNA complex, due to the fact that, although it did not contain the PAM sequence, it was perfectly complementary to the gRNA.
+We therefore decided to test a new gRNA targeting the loop region of the amplicon (more details in “Detailed Design”), designed to have no complementarity with the probe and perfect complementarity with the amplicon. Even though we                       were not able to reach reproducible results at the stage, we observed the expected signal in one of our iterations (Figure 6). Based on this preliminary success, we believe that with further optimization of our protocol we should                       be able to successfully detect samples with different miRNA concentrations.
+Figure 6. Unsuccessful (left) and successful trial (right) for fluorescent measurements of Cas12a detection assay by means of DNase Alert. RCA products with different concentrations of let-7a were tested with the newly designed                         gRNA “L_1”. Concentrations are referred to the reagents before being put in the RCA solution, the concentration of probe in all samples being 1 μM. All the values are blank-subtracted.
+From what we experienced, we therefore hypothesized that the promiscuous activation of Cas12a was most probably a consequence of a too high concentration of DNA in solution.
+To attempt to solve this issue we tried to titrate the concentration of probe in the RCA reaction to investigate whether a lower concentration of probe was still sufficient to successfully amplify miRNA: starting from the initial concentration                       of 5 μM probe used by Qiu et al., 2018 in their RCA protocol, we were able to show that a concentration of 500 nM - 1 μM is still sufficient whereas, for lower concentrations                       of probe, amplification is not successfully achieved (Figure 7).
+Figure 7. Fluorescent measurements of Cas12a detection assay of RCA products by means of DNase Alert. Here probe 1 was titrated from the original concentration of 5 μM to 100 nM, and RCA was conducted in the presence of                           10 nM let-7a in all samples.Concentrations are referred to the reagents before being put in the RCA solution. All the values are blank subtracted. A titration assay was also done with lower concentrations of probe 1 by means                           of real-time fluorescence measurements with SYBR Green I (not shown here).
+Time limitations did not allow us to investigate the whole range of hypotheses, but we are confident that, with further optimization, our detection assay could indeed be successful, as explained in Conclusions/Improvements.
+Promiscuous Cas12a activation: probes as a target
+After starting testing our amplicons with Cas12a and DNase Alert, we realized that the probe itself (more specifically the product of RCA in the absence of miRNA, i.e. with no amplicon) was triggering the Cas system causing                               a very high fluorescence signal, comparable to the signal obtained for the samples with miRNA (i.e. with probe+amplicon).
+As already explained (more details in Detailed Design), both probe 1 (as also the other probes) and its amplicon contain a sequence complementary to the original gRNA, due to the fact that the                               binding of the gRNA was designed to occur on the double-stranded stem part. Nonetheless, since the (single-stranded) PAM sequence was only contained in the amplicon - and not in the probe itself -, we would not have expected                               an activation in the case of the samples with probe alone, due to the fact that the gRNA requires a PAM sequence in the double-stranded target in order to activate Cas12a.
+Nevertheless, Chen et al., 2018 demonstrated that LbCas12a can target and cleave also single-stranded DNAs (ssDNA), and that this cleavage is PAM-independent, i.e.                               it does not require the presence of the PAM sequence; the kinetics of DNase Alert cleavage is however less efficient when triggered by ss-DNA targets compared to ds-DNA targets.
+Having knowledge of this behaviour, we tried to understand whether cleavage triggered by ss-DNA target could actually explain our unexpected results. We therefore considered the thermodynamic properties of the probes we designed,                               more specifically Boltzmann distribution.
+As already specified in the design page, we had already used available servers ( ViennaRNA , MFold ) to verify the secondary                               structure of probes and amplicons and check the absence of unwanted minor secondary structures. Nonetheless, these softwares not only specifically provide the minimum free energy (MFE) structure, but ViennaRNA also outputs                               the proportion of this structure compared to the ensemble of all the possible structures.
+Indeed, the structure of a DNA molecule is dynamic: with a certain ΔG, the molecule can change its structure into a new one. As a consequence, there is a non-null probability to find single-stranded probes in the sample:                               the MFE structure indeed accounts only for a fraction of all the different possible secondary structures* and, among the remaining ones, many of the structures will actually be "circular". These include both the structures                               with an open circular shape, as well as all the possible “non-optimal” structures where the binding region for the gRNA is mostly single-stranded (and not the expected double-stranded stem). Therefore, in this case, as the                               probe is complementary to the gRNA, it can activate itself Cas12a by means of the PAM-independent mechanism and then output a fluorescence.
+This is validated when performing the calculations for Probe 1, which we used for the Cas assay. As shown in Figure 8, this probe actually has as MFE structure the expected dumbbell-like shape; nonetheless, the proportion of                               this structure with respect to the ensemble of all the possible structures is only 20.22%. As a consequence, we hypothesized that the proportion of co-existing single-stranded structures (although not easily computable*)                               which could be targeted by a gRNA binding to the stem was high enough to produce a very high background fluorescence signal covering the signal from the amplicon (being the concentration of probe in the solution very high,                               estimated in 5 μM before RCA).
+Figure 8. Minimum Free Energy (MFE) structure and frequency in the ensemble of structures for probe 1, as calculated with ViennaRNA
+Moreover, an additional consideration is that the probes activated in the circular shape upon binding of the miRNA remain in this circular single-stranded form also after RCA, acting as unwanted targets for the gRNA.
+In order to test our hypothesis and potentially overcome non-specific Cas12a triggering, we decided to design new gRNAs having perfect complementarity with the amplicon, but no complementarity with the probe: we achieved this                               by having the binding site on one of the two loops of the amplicon and not on the stem (Figure 9, more details in Detailed Design ).
+Figure 9. Comparison of the interaction between the gRNA and the amplicon for the three different gRNAs we investigated: on the left the original gRNA, on the right two new designs conceived not to target the probe
+Finally, we realized that the proportion of the MFE structure for probe 1 was significantly lower than the proportion obtained for MFE structures of probes from Qiu et al., 2018 (e.g. Probe 2,                               64.82%) or other probes we designed (e.g. Probe 8, 57.47%). Consequently, the proportion of co-existing single-stranded structures is supposed to be reasonably higher for Probe 1 than for Probes 2 and 8: this analysis indicates                               that by exploring our other probes, we can potentially improve on the sensitivity and specificity of our RCA+Cas12a assay.
+*The total number of secondary structures grows exponentially with the sequence length, and can be estimated in approximately 1.8N, with N being the sequence length, not even considering possible tertiary interactions ( SantaLucia Jr and Hicks, 2004 ). Existing software are limited to produce all structures within a given energy range (e.g. RNAsubopt) or only few relevant structures                               (e.g. Mfold) ( Theoretical Biochemistry Group ). Providing the estimate of the effective concentration of ssDNA is our solution is therefore not possible, but we believe                               that the frequency of the MFE structure could still be a valid qualitative indication of the amount of (remaining) unexpected structures of our probes which might cause non-specific activation of Cas12a.
+Conclusions/Improvements
+We were able to understand the reasoning behind the probes for Rolling Circle Amplification of let-7a-5p from Qiu et al., 2018 and to rationally translate their design for Cas9 detection into our probes                       for Cas12a. We then successfully phosphorylated and ligated the oligonucleotides into our actual probes.
+We were able to show amplification with different designs of our probes, both with agarose gels and with real-time fluorescence measurement with SYBR Green I. We also proved that the amplification was specific for our miRNA target,                       and proportional to the original concentration of miRNA.
+Reproducibility of our successful result needs to be improved, and different hypotheses remain open and would need to be investigated to understand the reason for the occasional promiscuous activation of Cas12a in the presence of samples                       with no miRNA.
+The promiscuous activation in the control samples with probe alone might potentially indicate a bottleneck in our detection scheme, with high concentrations of probe triggering unwanted indiscriminate background signal from Cas12a,                       and low concentrations of probe not being sufficient to trigger RCA efficiently.
+However, there are numerous optimization strategies that we will consider in order to improve on our proof-of-concept detection scheme: increase the amount of phi-29 in the RCA reaction, in order for the amplicons to reach a concentration                       significantly higher than that of the probe, and dilute the RCA product before starting the Cas assay, as well as exploring other probe designs.
+In conclusion, we present an innovative proof-of-concept miRNA detection platform based on dumbbell probe RCA-Cas12a, present encouraging preliminary results and believe that further optimization will lead to a sensitive and specific                       assay. Finally, we envision that it will be possible to engineer our assay for point-of-care detection.
+References
+Chen, Janice S., et al. "CRISPR-Cas12a target binding unleashes indiscriminate single-stranded DNase activity." Science, 360.6387 (2018): 436-439.
+Deng, Ruijie, et al. "Toehold-initiated rolling circle amplification for visualizing individual microRNAs in situ in single cells." Angewandte Chemie, 126.9 (2014): 2421-2425.
+Lorenz, Ronny, et al. "ViennaRNA Package 2.0." Algorithms for Molecular Biology, 6.1 (2011): 26.
+Qiu, Xin-Yuan, et al. "Highly Effective and Low-Cost MicroRNA Detection with CRISPR-Cas9." ACS synthetic biology, 7.3 (2018): 807-813.
+SantaLucia Jr, John, and Donald Hicks. "The thermodynamics of DNA structural motifs." Annu. Rev. Biophys. Biomol. Struct., 33 (2004): 415-440.
+“Suboptimal folding” - Theoretical Biochemistry Group. URL: https://www.tbi.univie.ac.at/~ronny/Leere/270038/tutorial/node25.html (Accessed 16/10/2018)
+Takahashi, Hirokazu, et al. "RNase H-assisted RNA-primed rolling circle amplification for targeted RNA sequence detection." Scientific reports, 8.1 (2018): 7770.
+Zadeh, Joseph N., et al. "NUPACK: analysis and design of nucleic acid systems." Journal of computational chemistry, 32.1 (2011): 170-173.
+Zuker, Michael. "Mfold web server for nucleic acid folding and hybridization prediction." Nucleic acids research, 31.13 (2003): 3406-3415.
+Index
+Vaccine monitoring
+Early relapse detection
+Summary: achievements and issues
+Vaccine monitoring
+Overview
+We were inspired by the work done by Li et al., 2018 where they demonstrated that they could detect with high specificity single nucleotide polymorphisms (SNP) sites,                           by coupling Cas12a/crRNA system with PCR amplification, regardless of the presence of the T-rich PAM sequence that is necessary for Cas12a recognition.
+More precisely, we wanted to show that we could apply this technology for the purposes of our project: for this part, this means detecting our targeted neoantigens sequences. We also wanted to bring this technology a step further by detecting these fragments directly in the blood plasma, without the need of any isolation step.
+For experimental purposes, we chose to work with a particular point-mutated fragment that has been highly correlated with melanomagenesis ( Ascierto et al., 2012 ), i.e.                       the BRAF V600E mutation that constitute 90% of all the BRAF V600 mutations in melanoma patients, as well as the original coding sequence for the BRAF protein (Figure 1).
+We want to target two regions on each of our DNA templates: the first one harbors a point mutation that we introduced on purpose on the BRAF mutated gene, in order to test for the introduction of the PAM sequence on the Cas12a efficacy.                       The other one contains the BRAF V600E mutation which is already flanked by such motif.
+Each of the two regions present in both DNA templates used for this experiment (containing the BRAF V600E or synthetic mutation) is targeted by two potential crRNAs with different guide sequences: the first is fully complementary while                       the second presents a single point mismatch corresponding to the respective wild type or mutated sequence.
+During these different experiments, we introduced one or the other (or both) DNA fragments (Figure 1) into plasma and amplified only one of the two regions directly in there so it can act as a ctDNA mimick for a neoantigen coding sequence.                       Finally a Cas12a assay was performed, which would enable us to detect these amplified fragments (more information is available in the Protocols ).
+Figure 1. Schematic representation of the experiment design. We worked with two different DNA sequences ordered as gBlocks gene fragments. Two regions were the object of our study here. First, region 1 contained a point                           mutation that we introduced willingly on the BRAF mutated DNA sequence. This was done in order to test for the introduction of the PAM sequence efficacy. Secondly, region 2 harbors the BRAF V600E mutation (on the mutated template)                           and is already flanked by a PAM sequence. Also shown are the four crRNAs used in this study. Single nucleotide polymorphism (SNP) for each region is indicated in red. CrRNA-N where N represents here the SNP base pair is the crRNA                           complementary to the target strand (TS) of the region containing this SNP.
+Achievements
+Result 1: Characterisation of Cas12a/PCR cleavage specificity
+According to recent studies ( Li et al., 2018 ), the Cas12a/PCR system yielded high cleavage specificity when crRNA guide sequences of reduced length (16-17 bp) were used,                       and they could demonstrate that even a single mismatch between the gRNA/target sequence (activator) resulted in more than two folds decrease in fluorescent signal when FQ reporter molecules were present in the solution.
+Thus, we wanted to demonstrate that we can reproduce these results by first successfully amplifying our target sequences in plasma and use this afterwards as a DNA substrate for the Cas12a assay. In this set of experiments, we worked                       mainly with the second region (Figure 1), since it already contains the PAM sequence and we did not want to accumulate the sources of potential errors. Results of the amplification of 10 pM of either BRAF mutated fragment or the                       original one (region 2) is shown below.
+Figure 2. Agarose gel electrophoresis image taken under a UV transilluminator. 10 pM of either the BRAF mutated sequence or the original one (Figure 1) were amplified (region 1) by PCR
+As can be seen we successfully managed to get a 98 bp amplicon, which is what we expected, demonstrating that our PCR amplification is working correctly in the plasma.
+The next step was to perform a Cas12a assay using both amplified DNA sequences as targets. We performed a dual specificity test, combining each of the targets with either a complementary crRNA, or the crRNA for the other corresponding                       sequence. The results are shown below.
+Figure 3. Results of the Cas12a detection assay performed with both fragments amplified previously (average fluorescence; n=4 replicates after 250 minutes; bars represent the standard error here), i.e. region 2 of                           both BRAF mutated fragment (that contains the BRAF V600E mutation) and BRAF original one (non-mutated). The single nucleotide polymorphism (SNP) target site is indicated between brackets. Both amplified regions were targeted                           by either a complementary crRNA or the crRNA complementary to the same region on the other DNA fragment (mismatch). Controls (negatives) consisted of the treated plasma with no DNA template added in it. Please refer to Figure 1 in order to have an overview of the crRNAs/DNA fragments used for this experiment.
+We can see that a point mutation inducing a mismatch between the guide RNA sequence (gRNA) and the target region resulted in more than 2-fold difference in fluorescent signal, which is coherent with our hypothesis suggesting the high                       cleavage specificity of the Cas12a/crRNA binary complex.
+Besides, it is relevant to notice that the Cas12a system was not activated by any noisy background (i.e. the different cell-free DNA fragments present naturally in the plasma other than the one we poured), which proves once again the                       high specificity of our system.
+Result 2: Characterisation of the sensitivity of the Cas12a/PCR system
+Next, we wanted to investigate the correlation between the concentration of Cas12a target strand and the degree of activation of the protein (fluorescent signal), by lowering the concentration of DNA in our sample reaction mix, and                       testing the sensitivity of our system in the fM range. Amplification of the second region of respectively 10 pM and 10 fM initial concentration of BRAF mutated DNA template was performed.
+Figure 4. Agarose gel electrophoresis image taken under a UV transilluminator after amplifying the second region of the BRAF mutated DNA template. Concentrations before PCR amplification are shown. Negative control contained                           the treated plasma without any target sequence.
+After having encountered some difficulties with the amplification, it turned out that the reduction of the concentration of primers in the reaction (250 nM instead of 500 nM) do increase the specificity, as it has been already demonstrated                       in other Cas-based systems ( Gootenberg et al., 2018 ).
+Indeed, we did not have any amplification in our negative control, which shows that no background DNA present in the plasma has been amplified. The correct sized amplicon was obtained once again, with 10 pM template being amplified                       more than the 10 fM, which is coherent with our hypothesis.
+The Cas12a detection assay was performed afterwards separately using the PCR reactions as DNA substrates (activators). Results are shown in the Figure 5.
+Figure 5. Results of the Cas12a detection assay (average fluorescence; n=4 replicates after 250 minutes; bars represent the standard error here). The assay was performed using as template the amplified region 2 of BRAF mutated                           fragment (that contains the BRAF V600E mutation) for respectively 10 pM and 10 fM before PCR amplification. Binding specificity was tested with two different crRNAs (one complementary, i.e. crRNA T, and one with mismatch). Please                           refer to Figure 1 in order to have an overview of the crRNAs/DNA fragments used for this experiment.
+Again, the specificity of the RNA guiding DNA binding was demonstrated at different sensitivity levels.
+The activation was excellent when our activator (10 pM before amplification) was targeted with the complementary crRNA guide sequence, with more than 4-folds difference in fluorescent signal when targeted with the point mutated one.                       10 fM activator yielded a lower fluorescent signal when targeted with a complementary crRNA (and nearly no signal at all when a single point mismatch was present), which is in agreement with the hypothesis that a higher concentration                       of targeted DNA present in the reaction will significantly increase the Cas12a collateral endonuclease activity, resulting in an overall increase in fluorescence. This is indeed confirmed by the gel (Figure 2) that shows more efficient                       amplification for the 10 pM fragment.
+Result 3: Proof of the introduction of the PAM sequence in our target DNA for the Cas12a assay. Limit of detection for our system.
+We did a titration with different concentrations of mutated BRAF DNA fragment in plasma, in order to have an idea about the limit of detection of our Cas12a system coupled with PCR.
+In the same experiment we wanted also to prove that we can effectively and precisely detect any given target sequence without the need of a nearby PAM sequence. To that end we amplified the first region of our mutated BRAF fragment                       (Figure 1) Titration results (agarose gel electrophoresis) are shown in Figure 6.
+Figure 6. Titration results viewed on an agarose gel. BRAF mutated gene fragment (different concentrations before PCR shown) was used as template for the PCR amplification. Our negative control included treated plasma (addition                           of PBS) without any added DNA template.
+The PCR was done successfully from plasma, with the correct size obtained for the amplicon. We can see that the minimum detectable concentration for PCR amplification directly in the blood was 10 aM in this experiment. The same PCR-amplified                       samples were then used as activators for the Cas12a detection assay (Figure 7).
+Figure 7. Results of the Cas12a detection assay (average fluorescence; n=4 replicates after 250 minutes; bars represent the standard error here). The assay was performed using as template the amplified region 1 of BRAF mutated                           fragment PCR products. One crRNA used here (the complementary one). Please refer to Figure 1 in order to have an overview of the crRNAs/DNA fragments used for this experiment. Negative Control sample contained only plasma without any added DNA template.
+Again here we have a good correlation between the concentration of activator and the level of activation of Cas12a, (although the 100 fM signal is above the 1 fM). This also means that the addition of the PAM sequence through PCR amplification                       worked correctly.
+Finally, these results allow us to say that 1 fM of target DNA is the minimum detectable concentration for the Cas12a/PCR-from-plasma system in this experiment, since we couldn’t detect any signal in the attomolar range.
+Result 4: Our system as a tool for single base pair polymorphisms’ detection
+Here, we wanted to establish a proof of concept for the detection of a particular sequence contained in the same sample as another sequence differing only by an SNP site, in addition to the presence of the natural background of circulating                       DNA contained in the plasma. This makes sense as part of our project, since it’s realistic to imagine that both the sequence coding for the normal peptide and the point-mutated one coding for the derived neoantigen circulate together                       in the bloodstream.
+We tested with 1 fM, 10 fM and 100 fM of the mutated BRAF fragment (region 1 amplified) that we added respectively to 0.1 pM, 1 pM, or 10 pM of background (bg) which would be here the original BRAF gene fragment that we do not want                       to detect. Control samples included those containing the background only and treated plasma (with PBS) that do not contain any activator, so we are expecting to have no fluorescent signal there.
+Figure 8. Our system as a tool for single base pair polymorphisms’ detection. We show that our optimized system was specific enough to detect the target point-mutated DNA region in the presence of 100-folds added background,                           which consists of the same DNA template that differs only by one SNP site (shown in different color here), and the background generated by the plasma itself.
+Agarose gel electrophoresis gel after amplification is shown below.
+Figure 9. Overview of the agarose gel. Mutated BRAF gBlocks gene fragment (different concentrations) was used, from which we amplified target 1 with PCR.
+One interesting thing to say about this result is that there is no way of discriminating SNP between two fragments when these are put together in the same sample. This was however possible to do with the Cas12a assay (Figure 10).
+Figure 10. Results of the Cas12a detection assay (average fluorescence; n=4 replicates after 250 minutes; bars represent the standard error here). The assay was performed using as activator the amplified region 1 of BRAF                           mutated fragment with respectively 1 fM, 10 fM and 100 fM before PCR amplification, with 100-folds more concentration (before amplification) of original BRAF mutated target 1 added as background. CrRNA A used here. Please refer                           to Figure 1 in order to have an overview of the crRNAs/DNA fragments used for this experiment.
+Here we show that our optimized system was specific enough to detect the target DNA region in the presence of 100-folds added background of original fragments and plasma as a background itself. Here again we demonstrated the utility                       of such system down to the fM range.
+Conclusions
+Here we demonstrated that our system effectively worked to detect point mutations with high specificity after an initial amplification from plasma in the case where our target was next to the PAM sequence but also when we introduced                       the PAM sequence during amplification. We conclude that this system has a great potential to be used for the personalized cancer vaccine monitoring. Moreover, this detection scheme can be used for the detection of ctDNA in the case                       of follow-up as explained in the section below.
+Early relapse detection
+In this part we want to detect biomarkers that are found in blood in order to predict relapse emergence. We are interested in chromosomal rearrangements, miRNAs and single point mutations as biomarkers.
+As described in detail in the section above, we were able to detect single nucleotide polymorphism in plasma. Those results can be applied for relapse detection too, by changing the target, i.e. using Ginga to find other SNP characterizing the cancer.
+Chromosomal rearrangements
+Introduction
+The aim of this assay is to have a qualitative readout corresponding to the presence of a specific translocation using our Cas12a assay. This test would allow a doctor to regularly check for the presence of this relapse indicator.
+We decided to base our assay on the very well documented Philadelphia chromosome, which is a classic example of chromosomal rearrangement.
+This translocation is characterized by the transfer of a part of the chromosome 9 on the chromosome 22 ( de Klein et al., 1982 ). This chromosomal rearrangement is often                       called Bcr-Abl, as these are the two genes that are fused together. More specifically, we want to detect a 17-base-pair-long sequence right where those two genes are fused, which is also called “the junction”.
+Figure 11. Representation of the Philadelphia chromosome which we detect in plasma using our Cas12a assay. Here, released by an apoptotic tumor cell.
+We wanted to prove that detection of this junction at low concentration is possible with our system. To do so, after some trials in buffer, we set out to amplify the junction using PCR from plasma followed by our usual Cas12a assay                       (more details in the Protocols ) and observe different fluorescence signals depending on the presence or not of the junction.
+Figure 12. Representation of the Bcr-Abl fragments with the targeted junction in addition to the Abl and Bcr fragments.
+Detection of Bcr-Abl using our Cas12a assay
+Figure 13. Representation of the translocation experiment. Comparison of samples with the mutated gene, Bcr-Abl, versus the negative controls, Bcr and Abl.
+Our aim is to be able to differentiate between a sample with the targeted mutated sequence, Bcr-Abl, and the healthy equivalents, Bcr and Abl separately. (Figure 13)
+Here are the results we obtained amplifying the DNA templates in plasma at 10pM in the PCR.
+Figure 14. PCR amplification (30 cycles) in plasma with generuler 1kb plus ladder.
+Lane 1: Although faint, we can still distinguish a band corresponding to the mutated Bcr-Abl gene of 105 bp.
+Lane 2: Bcr gene on its own acts as a negative control as only one of the primer binds to it. We indeed cannot see any band.
+Lane 3: Abl, like Bcr, acts as a negative control. We also cannot see any band.
+Lane 4: This negative control does not contain any template DNA.
+The gel results are good although not as bright as expected for 30 amplification cycles. We suspect that the loading dye, used at a high concentration, is generating the whitened area above our band making it difficult to see the results.
+Figure 15. Cas12a detection fluorescence (4 replicates) after 250 minutes using as template PCR amplicon performed from plasma. Background-subtracted. The negative control contains DnaseAlert, Cas12a, its gRNA and the negative                           control of the PCR (only primers). Positive control contains DNaseAlert in addition to Dnase I.
+Here we can see that the Cas12a is highly activated by our amplified Bcr-Abl gene. The signal is about 7 times higher in the mutated gene sample than in the sample containing Bcr or Abl. It implies that the amplification step worked                       and did add the required PAM sequence for Cas12a activation.
+Conclusions
+Our goal was to be able to distinguish samples which contained our chromosomal rearrangement compared to the ones whose nucleic acid sequences originate from a healthy genome. We succeeded in differentiating them after amplification                       in plasma.
+Ideally we would have wanted to see how sensitive our system was by lowering the concentration of template DNA added in the plasma. Our plan was to make a multiplex device allowing to test relapse emergence using many different chromosomal                       rearrangements, point mutation and miRNA that could easily be used in smaller clinics and hospitals. The idea is to do a one-pot reaction, i.e. isothermal amplification coupled with the Cas12a detection, with an easy readout, for                       example USB fluorescence microscope.
+We believe that easy and thus frequent relapse detection tests could truly help save lives.
+If you would like to see our experiments in more details, please look at our Notebooks .
+Achievements
+Optimization of Cas12a assay
+Finding Cas12a and gRNA incubation conditions
+Amplification successfully done in plasma
+Successful incorporation of PAM sequence in virtually any sequence
+Detection of SNP in plasma
+Detection of SNP in plasma with additional background
+Detection of translocation in plasma
+What presented issues
+Limiting Cas12a promiscuous activity
+Contamination related problems
+Amplifying small fragments representing ctDNA
+References
+Ascierto, Paolo A., et al. "The role of BRAF V600 mutation in melanoma." Journal of translational medicine, 10.1 (2012): 1.
+Gootenberg, Jonathan S., et al. "Multiplexed and portable nucleic acid detection platform with Cas13, Cas12a, and Csm6." Science, 360.6387 (2018): 439-444.
+de Klein, Annelies, et al. "A cellular oncogene is translocated to the Philadelphia chromosome in chronic myelocytic leukaemia." Nature, 300.5894 (1982): 765.
+Li, Shi-Yuan, et al. "CRISPR-Cas12a-assisted nucleic acid detection." Cell discovery, 4.1 (2018): 20.
+iGEM2018@groupes.epfl.ch
+IGEM EPFL 2018
+Twitter Facebook

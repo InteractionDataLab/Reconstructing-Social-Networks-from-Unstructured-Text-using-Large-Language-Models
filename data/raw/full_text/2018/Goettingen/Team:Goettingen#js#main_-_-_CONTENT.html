@@ -1,0 +1,156 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Goettingen_js_main skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Goettingen/js/main</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*global $, document, window*/
+</P><P>$(window).on(&quot;load&quot;, function () {
+</P><PRE> //restores the currently selected dropdown from cookies
+ restoreMenu();
+</PRE><PRE> //Wiederverwendbare Bezeichner (muss nicht mehr im DOM gesucht werden)
+ var showNav = $(&quot;#show_nav&quot;);
+ var navigation = $(&quot;#navigation&quot;);
+ var contentMenu = $(&quot;#content_menu_wrapper&quot;);
+ var sideMenuTimeout;
+</PRE><PRE> $(&quot;.dropdown_button&quot;)
+   .click(function () {
+</PRE><PRE>     var button = $(this);
+</PRE><PRE>     if (button.hasClass(&quot;is-sidebar-active&quot;)) {
+       button
+         .next()
+         .slideUp({
+           duration: 500,
+         });
+       button
+         .removeClass(&quot;is-sidebar-active&quot;);
+</PRE><PRE>       document.cookie = &quot;button_active=;&quot;
+     } else {
+       $(&quot;.is-sidebar-active&quot;)
+         .removeClass(&quot;is-sidebar-active&quot;);
+       button
+         .next()
+         .slideDown({
+           duration: 500,
+         });
+       button
+         .addClass(&quot;is-sidebar-active&quot;);
+</PRE><PRE>       document.cookie = &quot;button_active=&quot; + button.html() + &quot;;&quot;;
+     }
+   });
+</PRE><PRE> $(&quot;#show_nav&quot;).click(function () {
+   var nav = $(&quot;#navigation&quot;);
+   if (!nav.hasClass(&quot;is-nav-active&quot;)) {
+     nav.fadeIn(500);
+     nav.addClass(&quot;is-nav-active&quot;);
+   }
+ });
+</PRE><PRE> $(document).click(function (event) {
+   var nav = $(&quot;#navigation&quot;);
+   //kleiner Hack, damit wirklich nur ein Anklicken irgendwo außer im Menü dieses verschwidnen lässt
+   if (nav.hasClass(&quot;is-nav-active&quot;) &amp;&amp; nav.find(event.target).length == 0 &amp;&amp; event.target != $(&quot;#show_nav&quot;).get(0)) {
+     nav.fadeOut(500);
+     nav.removeClass(&quot;is-nav-active&quot;);
+   }
+ })
+</PRE><PRE> //Macht die Navigations-Leiste &quot;sticky&quot;, da dies mit CSS nicht möglich ist (zumindest nicht so wie wir es gerne hätten)
+ $(window).scroll(function () {
+   var scrollTop = $(document).scrollTop();
+</PRE><PRE>   var contentOffSet = contentMenu.offset();
+   var footerOffSet = $(&quot;#footer&quot;).offset();
+</PRE><PRE>   var igemMenuHeight = $(&quot;#top_menu_14&quot;).outerHeight(true);
+   var navHeight = navigation.outerHeight(true);
+</PRE><PRE>   //Zeigt den Top-Scroll an oder versteckt ihn
+   calcTopScrollVisibility(scrollTop);
+</PRE><PRE>   /*Bei unter 600px soll das mobile Menü sichtbar sein und sich immer 20px vom content-Rand entfernt befinden*/
+   if ($(window).width() &lt;= 600) {
+     // sobald zum content gescrollt wurde, muss das mobile Menü nach unten bewegt werden
+     moveMobileMenu(scrollTop, contentOffSet[&quot;top&quot;], igemMenuHeight);
+</PRE><PRE>     /* bei über 600px soll das Seiten-Menü sichtbar sein und beim Scrollen mitbewegt werden*/
+   } else {
+</PRE><PRE>     window.clearTimeout(sideMenuTimeout);
+</PRE><PRE>     sideMenuTimeout = window.setTimeout(function () {
+       moveSideMenu(scrollTop, contentOffSet[&quot;top&quot;], igemMenuHeight, navHeight, footerOffSet[&quot;top&quot;]);
+     }, 250);
+</PRE><PRE>   }
+ });
+</PRE><PRE> function calcTopScrollVisibility(scrollTop) {
+   if (scrollTop &gt; 20) {
+     $(&quot;#top-scroll&quot;).fadeIn(500);
+   } else {
+     $(&quot;#top-scroll&quot;).fadeOut(500);
+   }
+ }
+</PRE><PRE> function moveMobileMenu(scrollTop, contentOffsetTop, igemMenuHeight) {
+   if (scrollTop &gt;= contentOffsetTop) {
+     navigation.css(&quot;top&quot;,
+       scrollTop - contentOffsetTop + igemMenuHeight);
+     showNav.css(&quot;top&quot;, scrollTop - contentOffsetTop + igemMenuHeight + 20);
+   }
+</PRE><PRE>   //andernfalls bleibt das menü bei top 0 und der menü-button bei 20
+   else {
+     navigation.css(&quot;top&quot;, 0);
+     showNav.css(&quot;top&quot;, 20);
+   }
+ }
+</PRE><PRE> function moveSideMenu(scrollTop, contentOffsetTop, igemMenuHeight, navHeight, footerOffsetTop) {
+   var navMarginBottom = Number.parseInt(navigation.css(&quot;marginBottom&quot;));
+   var navHeightNoMargin = navigation.outerHeight(false);
+</PRE><PRE>   if (scrollTop &lt;= contentOffsetTop - igemMenuHeight) {
+     navigation.animate({
+       &quot;marginTop&quot;: 0,
+     }, &quot;slow&quot;);
+   } else if (scrollTop + navHeightNoMargin + navMarginBottom &gt; footerOffsetTop) {
+     navigation.animate({
+       &quot;marginTop&quot;: footerOffsetTop - contentOffsetTop - navHeightNoMargin - navMarginBottom,
+     })
+   } else {
+     navigation.animate({
+       &quot;marginTop&quot;: scrollTop - contentOffsetTop + igemMenuHeight
+     }, &quot;slow&quot;);
+   }
+ }
+</PRE><PRE> //ein wenig jQuery magie zum Hochscrollen der Seite
+ $(&quot;#top-scroll&quot;).click(function () {
+   $(&quot;html, body&quot;).animate({
+     scrollTop: 0
+   }, &quot;slow&quot;);
+ });
+</PRE><P>});
+</P><P>//Funktion zum Auslesen eines Cookies, der durch cname spezifiert ist
+function getCookie(cname) {
+</P><PRE> var name = cname + &quot;=&quot;;
+ var decodedCookie = decodeURIComponent(document.cookie);
+ var ca = decodedCookie.split(';');
+ for (var i = 0; i &lt; ca.length; i++) {
+   var c = ca[i];
+   while (c.charAt(0) == ' ') {
+     c = c.substring(1);
+   }
+   if (c.indexOf(name) == 0) {
+     return c.substring(name.length, c.length);
+   }
+ }
+ return &quot;&quot;;
+</PRE><P>}
+</P><P>//Wiederherstellen des angeklickten Menü-Punkts, damit die Übersicht gewahrt ist
+function restoreMenu() {
+</P><PRE> var openDropDown = getCookie(&quot;button_active&quot;);
+</PRE><PRE> //nur wenn es überhaupt einen Cookie gibt, soll dieser genutzt werden
+ if (openDropDown !== &quot;&quot;) {
+   $(&quot;.dropdown_button&quot;).each(function () {
+     var button = $(this);
+     if (button.html() == openDropDown) {
+       button
+         .next()
+         .slideDown({
+           duration: 500,
+         });
+       button
+         .addClass(&quot;is-sidebar-active&quot;);
+     }
+   })
+ }
+</PRE><P>}
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

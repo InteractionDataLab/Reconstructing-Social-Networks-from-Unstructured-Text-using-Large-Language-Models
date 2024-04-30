@@ -1,0 +1,268 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:EPF-Lausanne/Modeling/NamdConf
+From 2009.igem.org
+Home
+Team
+Presentation
+School
+Team Management
+Brainstorming
+Sponsors
+Project
+Abstract
+Theory
+Strategy
+Experimental Setup
+Results
+Parts submitted to the Registry
+Future directions
+References
+Modeling
+Modeling overview
+Analysis Methods
+Results
+References
+Human practices
+Overview
+Talks
+Survey
+Media
+Safety
+Lab
+Last News
+Notebook
+Protocols used
+Contents
+1 Job description
+2 Adjustable parameters
+2.1 First run
+2.2 Resume from .coord, .vel, .xsc
+3 Simulation parameters
+3.1 First run
+3.2 Resume from .coord, .vel, .xsc
+4 Execution script
+4.1 Heating
+4.2 NPT run
+Job description
+This section is needed are we trying to keep track of each run, please put type of simulation, pdb loaded, date, time and your name
+#############################################################
+## JOB DESCRIPTION                                         ##
+#############################################################
+# NPT simul
+# 2v0u in a water box
+# 12.08.09
+# 14:00
+# Nicolas Gobet
+Adjustable parameters
+First run
+This is an example for the heating.
+#############################################################
+## ADJUSTABLE PARAMETERS                                   ##
+#############################################################
+structure          ./2v0up_wb_i.psf
+coordinates        ./2v0up_wb_i.pdb
+set paramfich    ./common/par_all27_prot_lipid-fmn_dark.prm
+set temperature    300
+#initial temperature
+temperature         $temperature
+set outputdir        ./output_eq3
+set outputname       $outputdir/2v0up_wb_i_eq
+set outputmin        $outputdir/min
+set outputheating    $outputdir/heating
+set outputnpt1       $outputdir/NPT_1
+set outputnvt        $outputdir/NVT_1
+set outputnpt2       $outputdir/NPT_2
+Resume from .coord, .vel, .xsc
+This is to resume from .coor, .vel and .xsc files. As we load velocities and positions from a file, we don't have to set initial temperature, load .pdb for postions of the atoms and set parameters such as box size
+#############################################################
+## ADJUSTABLE PARAMETERS                                   ##
+#############################################################
+structure          ./2v0up_wb_i.psf
+set paramfich    ./common/par_all27_prot_lipid-fmn_dark.prm
+set temperature 300
+set inputdir        ./output_eq2
+set inputname       2v0up_wb_i_eq
+coordinates  $inputdir/$inputname.coor
+velocities $inputdir/$inputname.vel
+extendedSystem  $inputdir/$inputname.xsc
+set outputdir        ./output_sim2
+set outputname       $outputdir/2v0up_wb_i_sim
+set outputsim        $outputdir/min
+Simulation parameters
+First run
+This part is from a heating .conf. The size of the box and origin has to be adjusted. PMEGridSize parameters have to be adjusted to be higher than the size of the box and be a multiple of 2, 3 and 5. (please refer to tutorial)
+#############################################################
+## SIMULATION PARAMETERS                                   ##
+#############################################################
+firsttimestep      0
+# Input
+paraTypeCharmm     on
+parameters          $paramfich
+# Force-Field Parameters
+exclude             scaled1-4
+1-4scaling          1.0
+cutoff              12.
+switching           on
+switchdist          10.
+pairlistdist        13.5
+# Integrator Parameters
+# We use timestep of 2.0 only for heating!!!!!! Any other case is 1.0
+timestep 2.0
+rigidBonds          all  ;# needed for 2fs steps
+nonbondedFreq       1
+fullElectFrequency  2
+stepspercycle       10
+# Constant Temperature Control
+langevin            on  ;# do langevin dynamics
+langevinDamping     $temperature  ;# damping coefficient (gamma) of 5/ps
+langevinTemp        $temperature # je viens de changer, foiruex avant
+langevinHydrogen    off  ;# don't couple langevin bath to hydrogens
+# Periodic Boundary Conditions
+cellBasisVector1    63.39    0.   0.
+cellBasisVector2     0.   65.404   0.
+cellBasisVector3     0.    0   69.675
+cellOrigin          14.1049346924   3.42041158676  3.65775823593
+wrapAll             on
+# PME (for full-system periodic electrostatics)
+PME                 yes
+PMEGridSizeX        66
+PMEGridSizeY        66
+PMEGridSizeZ        70
+# Constant Pressure Control (variable volume)
+useGroupPressure      yes ;# needed for rigidBonds
+useFlexibleCell       no ;# no for water box
+useConstantArea       no ;# no for water box
+langevinPiston        on
+langevinPistonTarget  1.01325 ;#  in bar -> 1 atm
+langevinPistonPeriod  200.
+langevinPistonDecay   100.
+langevinPistonTemp    $temperature
+# Output
+outputName          $outputname
+restartfreq         500  ;# 500steps = every 1ps
+dcdfreq             200
+xstFreq             200
+outputEnergies      200
+outputPressure      200
+outputTiming        200
+binaryoutput     off
+Resume from .coord, .vel, .xsc
+The only difference here is that we lower timestep for NPT simulation to copy parameters from Schulten's paper. Then, we don't set the size of the water box as it is loaded from the file and we lower the frequency of output. This is what you have to copy for a NPT simulation.
+#############################################################
+## SIMULATION PARAMETERS                                   ##
+#############################################################
+firsttimestep      0
+# Input
+paraTypeCharmm     on
+parameters          $paramfich
+# Force-Field Parameters
+exclude             scaled1-4
+1-4scaling          1.0
+cutoff              12.
+switching           on
+switchdist          10.
+pairlistdist        13.5
+# Integrator Parameters
+timestep            1.0
+rigidBonds          all  ;# needed for 2fs steps
+nonbondedFreq       1
+fullElectFrequency  2
+stepspercycle       10
+# Constant Temperature Control
+langevin            on  ;# do langevin dynamics
+langevinDamping     $temperature  ;# damping coefficient (gamma) of 5/ps
+langevinTemp        $temperature # je viens de changer, foiruex avant
+langevinHydrogen    off  ;# don't couple langevin bath to hydrogens
+# Periodic Boundary Conditions
+wrapAll             on
+# PME (for full-system periodic electrostatics)
+PME                 yes
+PMEGridSizeX        50
+PMEGridSizeY        54
+PMEGridSizeZ        60
+# Constant Pressure Control (variable volume)
+useGroupPressure      yes ;# needed for rigidBonds
+useFlexibleCell       no ;# no for water box
+useConstantArea       no ;# no for water box
+langevinPiston        on
+langevinPistonTarget  1.01325 ;#  in bar -> 1 atm
+langevinPistonPeriod  200.
+langevinPistonDecay   100.
+langevinPistonTemp    $temperature
+# Output
+outputName          $outputname
+restartfreq         2000  ;# 500steps = every 1ps
+dcdfreq             2000
+xstFreq             2000
+outputEnergies      2000
+outputPressure      2000
+outputTiming        2000
+binaryoutput     off
+Execution script
+Heating
+#############################################################
+## EXECUTION SCRIPT                                        ##
+#############################################################
+# run one step to get into scripting mode
+minimize 0
+# turn off until later
+langevinPiston off
+# Minimization
+minimize            2500
+reinitvels          5
+output $outputmin
+# heating NPT
+# langevin on
+for {set i 5} {$i <= $temperature} {incr i 5} {   ;# i = 5, $i<300, incr i = 5
+set temperaturei $i
+langevinTemp $temperaturei
+langevinPistonTemp $temperaturei
+run 2000      ;# run 2000
+}
+#to be sure we are at the right temperature
+langevinTemp $temperature
+langevinPistonTemp $temperature
+output $outputheating
+# 1st equilibrate pression
+# NPT equilibration
+# langevin on
+langevinPiston on
+run 50000      ;# run 50000
+output $outputnpt1
+# NVT equilibration
+# langevin off
+langevinPiston off
+run 50000      ;# run 50000
+output $outputnvt
+# NPT equilibration
+langevinPiston on
+run 150000      ;# run 150000
+output $outputnpt2
+NPT run
+#############################################################
+## EXECUTION SCRIPT                                        ##
+#############################################################
+# run one step to get into scripting mode
+#minimize 0
+# NPT equilibration
+# langevin on
+#langevinPiston on
+run 1000000      ;# run 1 ns
+output $outputsim
+Retrieved from " http://2009.igem.org/Team:EPF-Lausanne/Modeling/NamdConf "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

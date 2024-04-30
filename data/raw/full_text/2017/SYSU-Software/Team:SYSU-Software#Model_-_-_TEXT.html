@@ -1,0 +1,111 @@
+Team:SYSU-Software/Model
+Page Title
+Project
+Description Applied Design Wet-Lab Validation Demonstrate
+Modeling
+Overview Recommendation System Simulation for General Genetic Circuits References
+Human Practices
+Overview Silver Gold Integrated Human Practice Public Engagement
+Collaborations
+Overview SCUT-CHINA-A NJU-China Hong_Kong_HKUST SYSU-CHINA SCAU-CHINA
+Interlab
+Overview Experiment Design Material and Methods Results
+Safety
+Biosafety in Dry Lab Biosafety in Wet Lab
+Attributions
+Overview Group Structure Attribution in Project Journey Planning and Financing Acknowledgements
+Team
+Biology Group Programmers Modeling Group Designers Advisors Instructors Notebook
+Medal
+Overview Bronze Silver Gold
+Statements
+Term of Use Bio Safety Alerts Privacy Policy Cookie Policy
+Model
+Synbio is just a S-Din away!
+SYSU-Software 2017
+Overview
+What makes S-Din work are the clever algorithms behind it. Our modelling team uses many techniques e.g. Machine Learning, ODE to develop the Recommendation System and the Simulation System which help S-Din achieve state of the art performance.
+Recommendation System
+Introduction
+The users of our software are all innovative researchers on Synthetic Biology, who are interested in many different biological fields. The purpose of our system is to recommend most related genetic parts to the users based on the research interest the users offer to our system.
+The information that we use to make recommendation is a database built by NLP and Random Walk which contains scores between each key word and each genetic part. Formally, it is a n * m matrix A, where n is the number of key words and m is the number of parts. The element at row i, column j is the score between the ith keyword and jth genetic part, which reflects the connection between them(higher score means higher connection).
+The overall strategy of our system is Collaborative Filtering , i.e. we first search the similar key words in our database of the unknown word offered by users and then recommend the genetic parts which are highly related to key words that we found to the users.
+A natural question is how to find the most similar key words in our dataset of a given unknown word in an accurate and efficient way? Here is our general solution : To quantify the semantic similarities between words accurately ,we use technique in Deep Learning to convert words into numerical vectors and the cosine similarities between each vectors can represents the semantic similarities between words. To search the similar key words efficiently, we use the KD Tree Algorithm, a fast algorithm based on binary tree, to implement the K Nearest Neighbors strategy.
+Models used in the system
+Word2Vec Algorithm
+Word2vec is an algorithm that produces word embedding , i.e. it converts a corpus of text into a high dimensional real vector space(in our case , the dimension is 400) and each word in the corpus is assigned to a vector in the vector space. If two words are similar semantically , then they will be close under cosine distance measure.
+In our Recommendation System, we use gensim, an open source Python module focused on Natural Language Processing , to train our word2vec model and the corpus we use to feed the model is wikimedia, which can be downloaded from: https://dumps.wikimedia.org/
+The reason why we use Word2vec is that it can distinguish the semantic meanings of words accurately by Deep Learning technique, which outperforms the traditional semantic analysis methods greatly.
+KD Tree Algorithm
+The KD Tree algorithm is rather efficient when searching for the most similar items with averaged time complexityO(log(n)),thus the users can get recommendation instantly after they enter their interested new word to our system.
+The KD Tree Algorithm consists of the following two parts:
+Construct KD Tree based on the normalized word vectors of the key words in the database which we previously mentioned. (Offline)
+When the user enter a new word , we search the similar key words along the KD Tree that we constructed in step 1) . (Online)
+Note that KD Tree Algorithm is based on Euclidean distance measure , while in our case , we need to calculate the cosine distance of the word vectors. To solve this problem ,we normalize all the word vectors of key words before constructing KD Tree and normalize the word vector of new words offered by users before letting it travel along the constructed KD Tree. The reason behind the method is that by Law of Cosines:           $$|x_1-x_2|=\sqrt{x_1^2+x_2^2-2|x_1||x_2|\cos(x_1,x_2)}\,,\,\,x_1,x_2\in R^n$$
+while since x1,x2 are normalized, we have :           $$|x_1-x_2| = \sqrt{1+1-2\cos(x_1,x_2)}\,,\,\,x_1,x_2\in R^n, |x_1|=|x_2|=1$$
+Now we see that the calculation of cosine distance between normalized vectors can be replaced by the calculation of Euclidean distance since they can determine each other in this normalization context.
+In our Recommendation System , we use the KD Tree implementation in scikit-learn , a simple and efficient open source machine learning module in Python. For more details of KD Tree algorithm, see: wiki page of K-D Tree
+Random Walk with Restart Algorithm
+Random Walk with Restart(RWR) is an algorithm adapted from the PageRank algorithm and it focuses on characterizing the affiliation between each item. We treat the relation between key words and genetic parts as an undirected graph where nodes represent key words or parts and edges represent connection between words and parts. Imagine there is a walker travelling on the graph mentioned above and each time he faces two choices: 1) Randomly travelling along an edge connected to the current node. 2) Teleport to node K. After a long time of random travelling , the frequency the walker reaches each node represents the affiliation between each node and node K , which we use to characterize the relation between key words and parts. For more detailed mathematical formulation of PageRank, see: wiki page of page rank
+Algorithms used in the Recommendation System
+Calculating affiliation between key words and parts
+We used random walk with restart to calculate the affiliation between key words and all parts in the dataset. The calculation is done by updating the probability vector iteratively ,once the probability vector is converged, it can be viewed as the affiliation between various parts and key words. Therefore, the higher the probability is, the closer the key word and part are.
+Here is the Algorithm that we use in our project:
+Define Transition Matrix M
+Let M be the transition matrix of the graph G with size of (n+m)^2where n represents the number of keywords and m represents the number of parts. The entry in row i and column j of M is 1/k if node j of G has degree k, and one of the adjacent node is i. Otherwise the entry is 0
+Note that the first n columns(rows) represent key words and the other m columns(rows) represent the parts.
+Prespecify β
+β is the probability that the walker continues to follow the edges connected to the current node, thus 1-β is the probability the walker will teleport to the initial node
+Iterate over v
+for keyword i in 1 to N
+Define and initialize v
+Let ei be the column vector that has 1 in the row for node i and 0’s elsewhere, i.e.           $$e_{ij}=\delta_{ij}=           \begin{cases}           1, & \text{if $i=j$} \\           0, & \text{if $i\neq j$}            \end{cases}$$
+And ei is the column vector such that each item reflects the probability the walker stays at each node of the graph and the initial v is set to be ei.
+Update v by
+$$v'=\beta M v+(1-\beta)e_N$$
+update code{v} until the terminal condition is satisfied, i.e.           $$|v^{(t)}-v^{(t-1)}|<\epsilon,\,\,\text{for sometime $t$}$$
+Modify v
+Since the first n components of v are the affiliation between key word i and the other key words which we are not interested , therefore we only keep the last m components of v, which reflects the affiliation between key word i and all the parts.
+Build KD Tree of Keywords
+Once the user enter a new word to our system, we need to search for similar key words efficiently , thus we build a KD Tree of key words to implement this function.
+Here is our Algorithm
+Train word vector model
+We feed our word vector model with Wikimedia corpus . After the training process is done, we have a model that can convert words into numerical vectors, i.e.           $$f:\Gamma\rightarrow R^n$$
+where Γ denoted the corpus space
+Convert keywords into normalized vectors
+let T denotes the set of word vectors
+for keyword i in 1 to N:
+T.append \( \frac{f(i)}{|f(i)|_2} \)
+Build KD Tree
+We use the standard construction procedure to build KD Tree of set T. Details will be ignored here. For the people who are interested , we offered a link to wikipedia in section2.
+Collaborative Filtering
+This is the final step to construct our Recommendation System , overall we use collaborative filtering strategy to make prediction.
+Here is the algorithm
+Transform users input
+We get users input word k, we then convert it into normalized word vector v, i.e. $$v=\frac{f(k)}{|f(k)|}$$
+Search K most similar keywords(KNN)
+Let v travel along the KD Tree in a way like binary search , we can end up with K(in our case , K is set to be 5) most similar key words(KNN) to the current word k.
+Make Recommendation
+We have calculated the affiliation between key words and parts which shall be used to guide our final recommendation. Let pi denotes the connection between the ithe part and the current word k , we calculate pi by formula $$p_i=\sum^K_{n=1}\frac{\text{Affiliation}(w_n,p_i)}{\text{distance}(w_n,k)+\text{bias}}$$
+where \( \{w_n|n=1,2,...,K\}\) denotes the k most similar key words
+Affiliation(wn, pi)denotes the connection between wi and the ith part and distance(wi, k) denotes the the Euclidean distance between the normalized word vectors of wn and word k.
+After the computation of \(\{p_i|i=1,2,...,m\}\), we use heap sort algorithm to get R highest pi and recommend to the users the corresponding parts.Besides, we use exactly the same strategy to make recommendation of related projects to the users. For simplicity, we ignore the details here.
+Simulation for General Genetic Circuits
+Introduction
+The users of S-Din are all active and innovative researchers in Synthetic Biology, who come up with many interesting and new ideas in a wide range of fields. Our software helps them achieve their creative goals by allowing them to combine various genetic parts together to form brand-new genetic circuits that may never exist before. To help the researchers have a deeper understanding of how the genetic system that they created works, we construct an ODE system to simulate the dynamic behaviors of the genetic system mathematically. The main challenge of simulation is the uncertainty of genetic circuits since the users can construct them arbitrarily. Therefore, we build a rather general model capable of simulating various genetic circuits.
+Model
+The interaction among the substances in genetic circuits can be characterized by a n * n relation matrix R, where n is number of substances. The entry in row i and column j has 3 possible values for 3 possible relations, i.e. $$           R_{i,j}=           \begin{cases}           1 & \text{if $i$ promotes $j$} \\           -1 & \text{if $i$ inhibits $j$} \\           0 & \text{No effect}           \end{cases}           $$
+Therefore , the jth column records all the impacts the system exerts to the jth substances.
+Let xj(t) denotes the concentration of substance j at time t , then we use the following ODE to characterize xj(t) for \(j\in\{1,2,...n\}\)           $$ \frac{\mathbb{d}x_j(t)}{\mathbb{d}t} = \prod_{i=1}^n\{ \frac{R_{ij}(R_{ij}+1)}{2}f(x_i(t))+\frac{(R_{ij}+1)(R_{ij}-1)}{-1}+\frac{R_{ij}(R_{ij}-1)}{2}g(x_i(t))\}- \beta \times x_j(t)           $$
+where β represents the degradation rate and:           $$ f(x)=1+\frac{1}{1+\mathbb{e}^{-x}}; f(x)=1-\frac{1}{1+\mathbb{e}^{-x}} $$
+Imlementation
+We use Scipy, an efficient open source numerical module in Python, to give the numerical solutions to the ODE system. Specifically, we use the odeint function in Scipy. For more information about odeint function, see documentation of scipy .
+References
+Jure Leskovec, Anand Rajaraman, Jeffrey David Ullman. Mining of Massive Datasets. Second Edition, Cambridge, Nov 2014, 9781107077232.
+Bor-Sen Chen, Yu-Chao Wang. Synthetic Gene Network: Modeling, Analysis and Robust Design Methods. First Edition, CRC press, May 2, 2014, 9781466592698.
+contact
+sysusoftware@126.com
+address
+135# Xin'gang Rd(W.)
+Sun Yat-sen University, Guangzhou, China
+GET IN TOUCH

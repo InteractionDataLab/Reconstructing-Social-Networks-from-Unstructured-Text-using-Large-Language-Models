@@ -1,0 +1,274 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_USTC-Software_js_slider skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:USTC-Software/js/slider</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/* DD Full Screen Slider
+</P><UL><LI> Created: May 20th, 2015 by DynamicDrive.com</LI><LI> Visit <A rel="nofollow" class="external free" href="http://www.dynamicdrive.com/">http://www.dynamicdrive.com/</A> for full source code</LI><LI>/</LI></UL><P>var pageColors = [&quot;#3498db&quot;, &quot;#FFC930&quot;, &quot;white&quot;, &quot;#FF6530&quot;, &quot;#115d8e&quot;]
+</P><P>var ddfullscreenslider = (function($){
+</P><P>	document.createElement('section')
+	document.createElement('article')
+</P><P>	var defaults = {
+		addHash: true,
+		sliderstate: 'open', // reserved for future use
+		keycodeNavigation: [40, 38], // keyCode codes for down and up naivagion, respectively
+		transitionDuration: '0.5s',
+		swipeconfig: {peekamount: 100, mousedrag: true},
+		onslide: function($slide, index){
+			console.log(index)
+</P><PRE>     var nav = document.getElementById(&quot;nav&quot;)
+     var options = document.getElementsByClassName(&quot;navbar-nav&quot;)[0]
+</PRE><P>			nav.style.backgroundColor = pageColors[index]
+			var list = options.classList
+			list.forEach(function (x) {
+					if (x.startsWith(&quot;page-&quot;))
+						list.remove(x)
+			})
+			options.classList.add(&quot;page-&quot; + (index + 1))
+		}
+	}
+</P><P>	var transformprop = <I> // variable to contain browser supported version of &quot;transform&quot; property</I></P><P>	function supportstranslate3d(){ // based on <A rel="nofollow" class="external free" href="http://stackoverflow.com/a/12621264/4360074">http://stackoverflow.com/a/12621264/4360074</A>
+	  if (!window.getComputedStyle) {
+	      return false;
+	  }
+	  var $el = $('&lt;div style=&quot;position:absolute&quot; /&gt;').appendTo(document.body)
+	  var has3d
+		$el.css('transform', 'translate3d(1px,1px,1px)')
+		has3d = $el.css('transform')
+		var findtransformprop = $el.get(0).style.cssText.match(/(\w|\-)*transform/i) // get &quot;-vendor-transform&quot; portion of CSS Text
+		transformprop = (findtransformprop)? findtransformprop[0] : 'transform'
+	  $el.remove()
+</P><P>	  return (has3d !== undefined &amp;&amp; has3d.length &gt; 0 &amp;&amp; has3d !== &quot;none&quot;);
+	}
+</P><P>
+	var $window = $(window)
+	var $root =  $('html')
+</P><P>	function ddfullscreenslider(setting){
+		var translatesupport = supportstranslate3d()
+		var s = $.extend({}, defaults, setting)
+		var $slider = $('#' + s.sliderid)
+		var $wrapper = $slider.find('div.slidewrapper').css({transitionDuration: s.transitionDuration})
+		var $slides = $()
+		var slideslength = 0
+		var $nav = $()
+		var thisslider = this
+		var selectedindx = 0
+		var hasharray = []
+		var mouseslidetimer
+		var swipeevts = {start:&quot;&quot;, move:&quot;&quot;, end:&quot;&quot;}, swipestart = false, dy = 0, bounds = [,], scrollableclass = 'scrollable', bypassdrag = false
+		var initialrun= true // indicate whether this is first time slider has run. After page loads, variable becomes false
+</P><P>		if (!translatesupport){
+			s.transitionDuration = parseFloat(s.transitionDuration) * 1000
+		}
+</P><P>		/** Function to call always after a slide is shown */
+</P><P>		function onslidealways($slide, index){
+			if (!initialrun &amp;&amp; s.addHash){
+				var newhash = $nav.find('li').eq(selectedindx).find('a:eq(0)').attr('href')
+				if (history.replaceState){
+					history.replaceState(null, null, newhash)
+				}
+				else{
+					window.location.hash = newhash
+				}
+			}
+</P><PRE>     s.onslide($slide, index) // user defined event handler
+</PRE><P>		}
+</P><P>		function hashtoselectedslide(hash){
+			for (var i=0; i&lt;hasharray.length; i++){
+				if (hasharray[i][0] == hash){
+					return i
+					break
+				}
+			}
+			return 0
+		}
+</P><P>		function applybounds(val, swipedir){
+			if (swipedir == &quot;down&quot;){
+				return (translatesupport)? Math.max(-parseInt(bounds[1]), val) : Math.max(-bounds[1], val)
+			}
+			else{
+				return (translatesupport)? Math.min(bounds[0], val) : Math.min(bounds[0], val)
+			}
+		}
+</P><P>		function isscrollable($target){ // check element finger is on is contained inside a &quot;scrollable&quot; element that's actually scrollable (scrollHeight exceeds container height)
+			var $scrollel = $target.closest('.' + scrollableclass)
+			var scrollel
+			if ($scrollel.length == 1){
+				scrollel = $scrollel.get(0)
+				if (scrollel.offsetHeight &lt; scrollel.scrollHeight){
+					return true
+				}
+			}
+			return false
+		}
+</P><P>		/** Mousewheel and keyboard scroll related code. Requires jquery.mousewheel.min.js **/
+</P><P>		function mouseslide(deltaY){
+			var targetindx = selectedindx
+			if (deltaY &lt; 0) // mouse down
+				var targetindx = Math.min(slideslength-1, selectedindx+1)
+		  else if (deltaY &gt; 0)
+				var targetindx = Math.max(0, selectedindx-1)
+			if (targetindx != selectedindx)
+				thisslider.slideTo(targetindx)
+		}
+</P><P>		$slider.on('mousewheel', function(event){
+			clearTimeout(mouseslidetimer)
+			var deltaY = event.deltaY
+			mouseslidetimer = setTimeout(function(){
+				mouseslide(deltaY)
+			}, 100)
+			return false
+		})
+</P><P>		$(document).on('keyup', function(e){
+			var targetindx = selectedindx
+			if (e.keyCode == s.keycodeNavigation[0]) // key to go to next slide
+				var targetindx = Math.min(slideslength-1, selectedindx+1)
+			else if (e.keyCode == s.keycodeNavigation[1]) // key to go to previous slide
+				var targetindx = Math.max(0, selectedindx-1)
+			if (targetindx != selectedindx)
+			{
+				thisslider.slideTo(targetindx)
+</P><PRE>     }
+</PRE><P>		})
+</P><P>		/** Swipe/ Mouse Drag scroll related code **/
+</P><P>		swipeevts.start = 'touchstart' + (s.swipeconfig.mousedrag? ' mousedown' : <I>)</I>
+		swipeevts.move = 'touchmove.dragmove' + s.sliderid + (s.swipeconfig.mousedrag? ' mousemove.dragmove' + s.sliderid : <I>)</I>
+		swipeevts.end = 'touchend' + (s.swipeconfig.mousedrag? ' mouseup' : <I>)</I></P><P>		if (s.swipeconfig.mousedrag){
+			$wrapper.bind('click', function(e){
+				if ($wrapper.data('dy') != 0) // if dragging on belt instead of clicking on it
+					e.preventDefault() // prevent default action
+			})
+		}
+</P><PRE> 	$wrapper.bind(swipeevts.start, function(e){
+</PRE><P>			bypassdrag = false
+</P><PRE> 		var e = (e.type.indexOf('touch') != -1)? e.originalEvent.changedTouches[0] : e
+</PRE><P>			if ( isscrollable( $(e.target) ) ){ // if target is contained inside a &quot;scrollable&quot; element
+				bypassdrag = true
+				return
+			}
+			swipestart = true
+			var mousey = e.pageY
+			dy = 0 // reset swipe amount
+			if (translatesupport){
+				$wrapper.css({transition: 'none'})
+			}
+			var initialy = -$window.outerHeight() * selectedindx
+			$wrapper.data({dy: dy})
+</P><PRE> 		$(document).bind(swipeevts.move, function(e){
+</PRE><P>				if (bypassdrag){
+					return
+				}
+</P><PRE> 			var e = (e.type.indexOf('touch') != '-1')? e.originalEvent.changedTouches[0] : e
+ 			dy=e.pageY-mousey //distance to move horizontally
+</PRE><P>				var newy=initialy+dy
+				newy = applybounds(newy, (dy &lt; 0)? 'down' : 'up')
+				if (translatesupport){
+					$wrapper.css('transform', 'translate3d(0, ' + newy + 'px, 0)')
+				}
+				else{
+	  			$wrapper.css('top', newy)
+				}
+				$wrapper.data({dy: dy})
+</P><PRE> 			return false //cancel default drag action
+ 		})
+</PRE><P>			if (e.type == &quot;mousedown&quot;)
+</P><PRE> 			return false //cancel default drag action
+ 	})
+</PRE><PRE> 	$(document).bind(swipeevts.end, function(e){
+ 		$(document).unbind(swipeevts.move)
+</PRE><P>			if (!swipestart || bypassdrag)
+				return
+			if (dy != 0){ // if actual swipe has occured
+				if (dy &lt; 0 &amp;&amp; dy &lt; -s.swipeconfig.peekamount) // if swipe down and more than peek amount
+					var targetindx = Math.min(slideslength-1, selectedindx+1)
+				else if (dy &gt; 0 &amp;&amp; dy &gt; s.swipeconfig.peekamount) // if swipe up and more than peek amount
+					var targetindx = Math.max(0, selectedindx-1)
+				else
+					targetindx = selectedindx
+				thisslider.slideTo(targetindx)
+				if (e.type == &quot;mouseup&quot;)
+					return false
+			}
+			swipestart = false
+</P><PRE> 	})
+</PRE><P>		/** CSS3 transition ontransitionend event  set up */
+</P><P>		$wrapper.on('transitionend webkitTransitionEnd', function(e){
+			if (/transform/i.test(e.originalEvent.propertyName)){ // check event fired on &quot;transform&quot; prop
+				// onslidealways($slides.eq(selectedindx), selectedindx)
+			}
+		})
+</P><P>		/** Public functions **/
+</P><P>		this.reloadSlides = function(){
+			$nav.remove()
+			hasharray = []
+			$nav = $('&lt;ul class=&quot;fssnav&quot; /&gt;')
+			$slides = $('article.slide').each(function(i){
+				var $curslide = $(this)
+				var anchorval = $curslide.attr('id') || 'slide' + (i+1)
+				anchorval = &quot;#&quot; + anchorval
+				hasharray.push([anchorval, i])
+				var title = $curslide.data('title') || anchorval
+</P>
+				var $navli = $('<LI>&lt;a href=&quot;' + anchorval +'&quot; title=&quot;' + title +'&quot;&gt;' + (i + 1) + '&lt;/a&gt;</LI>').appendTo($nav)
+<P>				var $navlink = $navli.find('a:eq(0)')
+				$navli.on('click touchstart', function(e){
+					thisslider.slideTo(i)
+				})
+			})
+			$nav.on('click touchstart touchend', function(e){
+</P><PRE> 			var e = (e.type.indexOf('touch') != '-1')? e.originalEvent.changedTouches[0] : e
+</PRE><P>				return false		
+			}).appendTo($slider)
+			slideslength = $slides.length
+			bounds = [0, $window.outerHeight() * (slideslength-1)]
+		}
+</P><P>		this.openSlider = function(){
+			initialrun = false
+			bypassdrag = false
+			s.sliderstate = 'open'
+			$root.addClass('fssopen')
+			$slider.css('visibility', 'visible')
+		}
+</P><P>		this.closeSlider = function(){
+			s.sliderstate = 'close'
+			bypassdrag = true
+			$root.removeClass('fssopen')
+			$slider.css({visibility:'hidden'})
+		}
+</P><P>		this.slideTo = function(indx, noanimation){
+</P><PRE>     onslidealways($slides.eq(selectedindx), indx)
+</PRE><P>			var newy = $window.outerHeight() * indx
+			$nav.find('li').eq(selectedindx).removeClass('selected')
+			$nav.find('li').eq(indx).addClass('selected')
+			selectedindx = indx
+			if (translatesupport){
+				$wrapper.css({transition: (noanimation)? 'none' : transformprop + ' ' + s.transitionDuration})			
+				$wrapper.css('transform', 'translate3d(0, -' + newy + 'px, 0)')
+				if (noanimation){ // run callback immediately
+					onslidealways($slides.eq(selectedindx), selectedindx)
+				}
+			}
+			else{
+				$wrapper.stop().animate({top: -newy}, (noanimation)? 0 : s.transitionDuration, function(){
+					onslidealways($slides.eq(selectedindx), selectedindx)
+				})
+			}
+		}
+</P><P>		/** Initialize and show slider **/
+</P><P>		this.reloadSlides()
+		selectedindx = hashtoselectedslide(window.location.hash)
+		this.slideTo(selectedindx, true)
+		if (s.sliderstate == 'open'){
+			this.openSlider()
+		}
+</P><P>		$(window).on('resize', function(){
+			thisslider.slideTo(selectedindx, true)
+			bounds = [0, $window.outerHeight() * (slideslength-1)]
+		})
+</P><P>
+	} // end fullscreenslider def
+</P><P>	return ddfullscreenslider
+</P><P>})(jQuery)
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

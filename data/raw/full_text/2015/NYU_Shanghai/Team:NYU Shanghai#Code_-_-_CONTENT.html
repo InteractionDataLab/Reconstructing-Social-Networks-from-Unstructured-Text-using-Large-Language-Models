@@ -1,0 +1,1016 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_NYU_Shanghai_Code skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:NYU Shanghai/Code</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><DIV id="nav" class="scrollable"><UL class="noselect"><LI id="project"><H1 id="project-title" class="noselect" onmouseenter="selectProject()" onmouseleave="deselectProject()" onclick="reset();revealProject()"><FONT color="white">Project</FONT></H1></LI><LI><A href="/Team:NYU_Shanghai/Design">Design</A></LI><LI><A href="/Team:NYU_Shanghai/Parts">Parts</A></LI><LI><A href="/Team:NYU_Shanghai/Code">Code</A></LI><LI><A href="https://igem.org/2015_Judging_Form?id=1756">Judging</A></LI></UL><LI id="team"><H1 id="team-title" class="noselect" onmouseenter="selectTeam()" onmouseleave="deselectTeam()" onclick="reset();revealTeam()"><FONT color="white">Team</FONT></H1></LI><LI><A href="/Team:NYU_Shanghai/Members">Members</A></LI><LI><A href="/Team:NYU_Shanghai/Partners">Partners</A></LI><LI><A href="/Team:NYU_Shanghai/Attributions">Attributions</A></LI><LI id="outreach"><H1 id="outreach-title" class="noselect" onmouseenter="selectOutreach()" onmouseleave="deselectOutreach()" onclick="reset();revealOutreach()"><FONT color="white">Outreach</FONT></H1></LI><LI><A href="/Team:NYU_Shanghai/Collaborations">Collaborations</A></LI><LI><A href="/Team:NYU_Shanghai/Practices">Practices</A></LI><LI><A href="/Team:NYU_Shanghai/VirtualReality">Virtual Reality</A></LI><LI id="notebook"><H1 id="notebook-title" class="noselect" onmouseenter="selectNotebook()" onmouseleave="deselectNotebook()" onclick="reset();revealNotebook()"><FONT color="white">Notebook</FONT></H1></LI><LI><A href="/Team:NYU_Shanghai/DailyNotes">Daily Notes</A></LI><LI><A href="/Team:NYU_Shanghai/Protocols">Protocols</A></LI><LI><A href="/Team:NYU_Shanghai/Bibliography">Bibliography</A></LI></DIV><DIV id="overview"><H3>Code</H3></DIV><DIV id="BMG" class="collapsed"><H5 style="display:inline-block"><SPAN class="noselect" onclick="expandBMG()">Bacterial Music Generator</SPAN></H5><P><FONT face="helveticaNL"><DL id="BMGText" style="display:none">  //main
+//main
+import processing.video.*;
+import arb.soundcipher.*;
+import blobDetection.*;
+
+Capture video_sequencer, video_rack;
+SoundCipher sc = new SoundCipher(this);
+
+int grid_size=20;
+int grid_num=16;
+int window_size;
+int window_height;
+int block_number=3;
+
+int interval=4;
+int margin;
+int n=0;//iterator for play()
+
+boolean[] camera= new boolean[block_number];
+boolean[] music=new boolean[block_number];
+boolean tube=false;
+int[] volume=new int[block_number];
+
+Sequencer[] sequencer= new Sequencer[block_number];
+Sequencer_video sequencer_video;
+Rack rack;
+
+void setup() {
+volume[0]=0;
+volume[1]=0;
+volume[2]=0;
+window_size=displayWidth;
+window_height=displayHeight;
+
+margin=(window_size-(grid_num*(grid_size+interval)+interval)
+ *block_number)/(block_number+1);
+
+size(window_size, window_height);
+
+//empty tracks
+for (int i=0; i &lt; block_number; i++) {
+camera[i]=false;
+music[i]=false;
+}
+
+make_empty();
+
+String[] cameras = Capture.list();
+
+video_sequencer = new Capture(this, cameras[0]); 
+video_sequencer.start(); 
+sequencer_video=new Sequencer_video(video_sequencer, sc, grid_num, grid_size, interval); 
+
+video_rack = new Capture(this, cameras[15]);
+video_rack.start();
+rack=new Rack(video_rack, sc, window_size, window_height, 
+window_height-margin-grid_num*(grid_size+interval));
+
+frameRate(4);
+}
+
+void draw() {
+background(0);
+if (tube) {
+rack.get_color();
+rack.draw_rack();
+rack.glow(n);
+rack.play_sounds(n);
+}
+
+for (int i=0; i &lt; block_number; i++) {
+sequencer[i].draw_grid();
+if (camera[i]&amp;&amp;!music[i]) {
+sequencer_video.position(pos_x(i), margin);
+sequencer_video.grid_off();
+sequencer_video.bd();
+sequencer_video.bd_draw(n);
+} else if (camera[i]&amp;&amp;music[i]) {
+sequencer_video.position(pos_x(i), margin);
+sequencer_video.grid_on();
+sequencer_video.bd();
+sequencer_video.bd_draw(n);
+} else if (!camera[i]&amp;&amp;music[i]) {
+sequencer[i].set_volume(volume[i]);
+sequencer[i].play_sounds(n);
+sequencer[i].glow(n);
+}
+}
+
+n++;
+if (n&gt;=grid_num) {
+n=0;
+}
+}
+
+
+void keyPressed() {
+//track 1
+if (key=='q'||key=='Q') {
+if (camera[0]==false &amp;&amp;camera[1]==false &amp;&amp;camera[2]==false) {
+camera[0]=true;
+}
+} else if (key=='w'||key=='W') {
+camera[0]=false;
+if (music[0]) {
+sequencer[0].get_sequence(sequencer_video.sequence());
+sequencer[0].get_color(sequencer_video.grid_color());
+}
+} else if (key=='e'||key=='E') {
+music[0]=true;
+} else if (key=='r'||key=='R') {
+music[0]=false;
+sequencer[0].delete();} else if (key=='t'||key=='T') {
+if (music[0]) {
+
+if (camera[0]) {
+sequencer_video.set_volume(volume[0]);
+} else {
+sequencer[0].set_volume(volume[0]);
+}
+}
+} else if (key=='y'||key=='Y') {
+if (music[0]) {
+volume[0]=constrain(volume[0]+5, 0, 127);
+if (camera[0]) {
+.set_volume(volume[0]);
+} else {
+sequencer[0].set_volume(volume[0]);
+}
+}
+}
+//track 2
+else if (key=='a'||key=='A') {
+if (camera[0]==false &amp;&amp;camera[1]==false &amp;&amp;camera[2]==false) {
+camera[1]=true;
+}
+} else if (key=='s'||key=='S') {
+camera[1]=false;
+if (music[1]) {
+sequencer[1].get_sequence(sequencer_video.sequence());
+sequencer[1].get_color(sequencer_video.grid_color());
+}
+} else if (key=='d'||key=='D') {
+music[1]=true;
+} else if (key=='f'||key=='F') {
+music[1]=false;
+sequencer[1].delete();
+} else if (key=='g'||key=='G') {
+if (music[1]) {
+volume[1]=constrain(volume[1]-5, 0, 127);
+if (camera[1]) {
+sequencer_video.set_volume(volume[1]);
+} else {
+sequencer[1].set_volume(volume[1]);
+}
+}
+} else if (key=='h'||key=='H') {
+if (music[1]) {
+volume[1]=constrain(volume[1]+5, 0, 127);
+if (camera[1]) {
+sequencer_video.set_volume(volume[1]);
+} else {
+sequencer[1].set_volume(volume[1]);
+}
+}}
+//track 3
+else if (key=='z'||key=='Z') {
+if (camera[0]==false &amp;&amp;camera[1]==false &amp;&amp;camera[2]==false) {
+camera[2]=true;
+}
+} else if (key=='x'||key=='X') {
+camera[2]=false;
+if (music[2]) {
+sequencer[2].get_sequence(sequencer_video.sequence());
+sequencer[2].get_color(sequencer_video.grid_color());
+}
+} else if (key=='c'||key=='C') {
+music[2]=true;
+} else if (key=='v'||key=='V') {
+music[2]=false;
+sequencer[2].delete();
+} else if (key=='b'||key=='B') {
+if (music[2]) {
+volume[2]=constrain(volume[2]-5, 0, 127);
+if (camera[2]) {
+sequencer_video.set_volume(volume[2]);
+} else {
+sequencer[2].set_volume(volume[2]);
+}
+}
+} else if (key=='n'||key=='N') {
+if (music[2]) {
+volume[2]=constrain(volume[2]+5, 0, 127);
+if (camera[2]) {
+sequencer_video.set_volume(volume[2]);
+} else {
+sequencer[2].set_volume(volume[2]);
+}
+}
+} else if (key=='o'||key=='O') {
+tube=true;
+} else if (key=='p'||key=='P') {
+tube=false;
+} else if (key==CODED) {
+if (keyCode==LEFT) {
+sequencer_video.threshold_down();
+} else if (keyCode==RIGHT) {
+sequencer_video.threshold_up();
+} else if (keyCode==UP) {
+rack.volume_up();
+} else if (keyCode==DOWN) {
+rack.volume_down();
+}
+}
+}
+
+
+void make_empty() {
+for (int i=0; i &lt; block_number; i++) {
+int x= pos_x(i);
+int y=margin;
+sequencer[i]=new Sequencer(sc, grid_num, grid_size, interval, x, y);
+}
+}int pos_x(int i) {
+int x=margin+(grid_num*(grid_size+interval)+interval+margin)*i;
+return x;
+}
+
+//tube rack
+class Rack {
+Capture video;
+int tube_number=8;
+int space_height;
+float[][] colors;
+SoundCipher sc;
+int white=150;
+float bright=1.5;
+int volume=100;
+int rack_width;
+int rack_height;
+int window_size;
+int window_height;
+int tube_height;
+int tube_width;
+int rack_x;
+int rack_y;
+int margin;
+
+Rack(Capture _video, SoundCipher _sc, int _window_size, 
+int _window_height, int _space_height) {
+video=_video;
+window_size=_window_size;
+window_height=_window_height;
+space_height=_space_height;
+sc=_sc;
+rack_width=int(window_size*0.75);
+rack_height=space_height/2;
+tube_height=int(space_height*0.6);
+tube_width=int(rack_width/(tube_number*3));
+rack_x=(window_size-rack_width)/2;
+rack_y=int(space_height*0.3);
+margin=(rack_width-tube_number*tube_width)/(tube_number+1);
+}
+
+void play(int n) {
+get_color();
+draw_rack();
+glow(n);
+play_sounds(n);
+}
+
+void get_color() {
+if (video.available()) {
+video.read();
+video.loadPixels();
+colors=new float[tube_number][3];
+float[] loc_x = {0.1,0.215,0.333,0.45,0.569,0.705,0.823,0.941};
+for (int i = 0; i &lt; tube_number; i++) {
+// Begin loop for rows
+
+// Where are we, pixel-wise?
+int x = int(width*loc_x[i]) ;
+int y = int(video.height*0.7);
+int loc = x + y*video.width; 
+
+colors[i][0] = red(video.pixels[loc]);
+colors[i][1]= green(video.pixels[loc]);
+colors[i][2]= blue(video.pixels[loc]);
+}
+}
+}
+
+void draw_rack() {
+if (colors!=null) {
+pushMatrix();
+translate(0, window_height-space_height);
+noFill();
+stroke(255);
+strokeWeight(3);
+rect(rack_x, rack_y, 
+rack_width, rack_height, rack_height/10);
+pushMatrix();
+translate(rack_x, rack_y);
+for (int i = 0; i &lt; tube_number; i++) {
+pushMatrix();
+translate(margin*(i+1)+tube_width*i, -rack_y*0.6);
+if ((colors[i][0]+colors[i][1]+colors[i][2])/3 &lt; white) {
+noStroke();
+fill(constrain(colors[i][0]*1.1,0,255),
+constrain(colors[i][1]*1.1,0,255), 
+constrain(colors[i][2]*1.1,0,255));
+rect(0, 0, tube_width, tube_height,tube_width/2);
+} else {
+noFill();
+stroke(255);
+strokeWeight(3);
+rect(0, 0, tube_width, tube_height,tube_width/2);
+}
+
+popMatrix();
+}
+popMatrix();
+popMatrix();
+}
+}
+
+void glow(int n) {
+n=n%tube_number;
+if (colors!=null) {
+pushMatrix();
+translate(0, window_height-space_height);
+if ((colors[n][0]+colors[n][1]+colors[n][2])/3 &lt; white) {
+pushMatrix();
+translate(rack_x, rack_y);
+pushMatrix();
+translate(margin*(n+1)+tube_width*n, -rack_y*0.6);
+fill(255, 255, 255, 40);
+noStroke();
+rect(0, 0, tube_width, tube_height,tube_width/2);
+popMatrix();
+popMatrix();
+}
+popMatrix();
+}
+}
+
+void play_sounds(int n) {
+n=n%tube_number;
+if (colors!=null) {
+float noteVal;
+float[] noteVals=new float[0];
+boolean play;
+if ((colors[n%tube_number][0]+colors[n%tube_number][1]
++colors[n%tube_number][2])/3 &lt; white) {
+play=true;
+} else {
+play=false;
+}
+if (play) {
+noteVal = noteVal(n);
+noteVals=append(noteVals, noteVal);
+}
+sc.instrument(instrument(n));
+println(instrument(n));
+sc.playChord(noteVals, volume, 0.25);
+}
+}
+
+int instrument(int n){
+int h=int(hue(color(colors[n][0],colors[n][1],
+colors[n][2]))%6);
+if (h==0){return 38;}
+else if (h==1){return 103;}
+else if (h==2){return 112;}
+else if (h==3){return 113;}
+else if (h==4){return 117;}
+else {return 124;}
+}
+
+int noteVal(int n){
+int h=int(hue(color(colors[n][0],colors[n][1],
+colors[n][2]))%6);
+if (h==0){return 14;}
+else if (h==1){return 20;}
+else if (h==2){return 24;}
+else if (h==3){return 60;}
+else if (h==4){return 96;}
+else {return 60;}
+}
+
+void volume_up() {
+volume=constrain(volume+5, 0, 127);
+}
+
+void volume_down() {
+volume=constrain(volume-5, 0, 127);
+}
+}
+
+//step sequencer
+class Sequencer {
+
+boolean[] empty;
+float[] rgb_list;
+int grid_num;
+int grid_size;
+int interval;
+
+SoundCipher sc;
+boolean select=false;
+int a, b;
+int volume=0;
+boolean on=true;
+float red=0;
+float green=0; 
+float blue=0;
+int[] notes = {
+96, 93, 91, 89, 86, 84, 81, 79, 77, 74, 72, 69, 67, 65, 62, 60
+};
+boolean[] sequence;
+
+Sequencer(SoundCipher _sc, 
+int _grid_num, int _grid_size, int _interval, int _a, int _b) {
+sc=_sc;
+grid_num=_grid_num;
+grid_size=_grid_size;
+interval=_interval;
+
+a=_a;
+b=_b;
+
+
+sequence=new boolean[grid_num*grid_num];
+for (int i=0; i &lt; sequence.length; i++) {
+sequence[i]=false;
+}
+
+empty=new boolean[grid_num*grid_num];
+for (int i=0; i &lt; sequence.length; i++) {
+empty[i]=false;
+}
+}
+
+void get_sequence(boolean[] _sequence) {
+sequence=_sequence;
+}
+
+void get_color(float[] _rgb_list) {
+rgb_list=_rgb_list;
+red=rgb_list[0];
+green=rgb_list[1];
+blue=rgb_list[2];
+}
+
+void draw_grid() {
+pushMatrix();
+translate(a, b);
+rectMode(CORNER);
+int x=0;
+int y=0;
+//black background
+noStroke();
+fill(0);
+rect(-interval, -interval, (grid_size+interval)*grid_num+interval*2, 
+(grid_size+interval)*grid_num+interval*2);
+for (int i=0; i &lt; sequence.length; i++) {
+x=(grid_size+interval)*(i%grid_num);
+y=(grid_size+interval)*(i/grid_num);
+if (sequence[i]) {
+fill(red, green, blue);
+} else {
+if (select){fill(100);}
+else {fill(70);}
+}
+rect(x, y, grid_size, grid_size);
+}
+
+
+popMatrix();
+}
+
+void glow(int n) {
+pushMatrix();
+translate(a, b);
+rectMode(CORNER);
+for (int m=0; m &lt; grid_num; m++) {
+if (sequence[m*grid_num+n]) {
+for (int p=-1; p &lt; 2; p++) {
+for (int q=-1; q &lt; 2; q++) {
+if (n+p&gt;=0&amp;&amp;n+p &lt; grid_num&amp;&amp;m+q&gt;=0&amp;&amp;m+q &lt; grid_num) {
+noStroke();
+fill(255, 255, 255, 20);
+rect((n+p)*(interval+grid_size), (m+q)*(interval+grid_size), 
+grid_size, grid_size);
+}
+if (p==0&amp;&amp;q==0){
+fill(red, green, blue);
+rect(n*(interval+grid_size)-interval/2, m*(interval+grid_size)-interval/2, 
+grid_size+interval, grid_size+interval);
+fill(255, 255, 255, 30);
+rect(n*(interval+grid_size)-interval/2, m*(interval+grid_size)-interval/2, 
+grid_size+interval, grid_size+interval);
+}
+}
+}
+}
+}
+popMatrix();
+}
+
+
+void play_sounds(int n) {
+float noteVal;
+float[] noteVals=new float[0];
+
+for (int i=0; i &lt; grid_num; i++) {
+
+// if the data text file has a &quot;1&quot; play note
+if (sequence[i*grid_num+n]) {
+noteVal = float(notes[i]);
+noteVals=append(noteVals, noteVal);
+}
+
+}
+sc.instrument(instrument());
+sc.playChord(noteVals, volume, 0.25);
+}
+
+int instrument(){
+int h=int(hue(color(red,green,blue))%8);
+if (h==0){return 2;}
+else if (h==1){return 3;}
+else if (h==2){return 38;}
+else if (h==3){return 46;}
+else if (h==4){return 47;}
+else if (h==5){return 55;}
+else if (h==6){return 116;}
+else {return 120;}
+}
+
+void select(boolean _select) {
+select=_select;
+}
+
+void set_volume(int _volume) {
+volume=constrain(_volume, 0, 127);
+}
+
+void delete() {
+sequence=empty;
+}
+}
+//step sequencer video
+class Sequencer_video {
+Capture video;
+SoundCipher sc;
+BlobDetection theBlobDetection;
+boolean newFrame=false;
+PImage img;
+int a, b;
+int grid_size;
+int grid_num;
+int interval;
+int block_size;
+int volume=0;
+float[][] blob_color;
+float[] avg_color=new float[3];
+float[][] blobs;
+float[][][] raw_color; 
+float threshold=0.5;
+boolean draw_grid=false;
+boolean[] sequence;
+int[] notes = {
+, 93, 91, 89, 86, 84, 81, 79, 77, 74, 72, 69, 67, 65, 62, 60
+};
+int radius=180;
+
+Sequencer_video(Capture _video, SoundCipher _sc, int _grid_num, 
+int _grid_size,int _interval) {
+colorMode(RGB, 255, 255, 255, 100);
+video=_video;
+sc=_sc;
+grid_num=_grid_num;
+grid_size=_grid_size;
+interval=_interval;
+block_size=(interval+grid_size)*grid_num;
+
+sequence=new boolean[grid_num*grid_num];
+img = new PImage(grid_num*(grid_size+interval)-interval,
+grid_num*(grid_size+interval)-interval);
+theBlobDetection = new BlobDetection(img.width, img.height);
+theBlobDetection.setPosDiscrimination(true);
+}
+
+void threshold_up() {
+threshold=constrain(threshold+0.02, 0, 1);
+println(threshold);
+}
+
+void threshold_down() {
+threshold=constrain(threshold-0.02, 0, 1);
+println(threshold);
+}
+
+void position(int _a, int _b) {
+a=_a;
+b=_b;
+}
+
+void grid_on() {
+draw_grid=true;
+}
+
+void grid_off(){
+draw_grid=false;
+}
+
+void bd() {
+if (video.available()) {
+theBlobDetection.setThreshold(threshold);
+video.read();
+img.copy(video, (video.width-video.height)/2, 0, video.height,
+video.height, 0, 0, img.width, img.height);
+image(img, a, b, img.width+interval, img.height+interval);
+fastblur(img, 2);
+theBlobDetection.computeBlobs(img.pixels);
+save_blob();
+blob_color();
+convert();
+}
+}
+
+void bd_draw(int n) {
+if (draw_grid) {
+draw_grid();
+glow(n);
+play_sounds(n);
+} else {
+drawBlobsAndEdges(true, false);
+}
+}
+
+void blob_color() {
+float red=0;
+float blue=0;
+float green=0;
+int total=theBlobDetection.getBlobNb ();
+for (int n=0; n &lt; total; n++) {
+
+//get the color
+blob_color=new float[total][3];
+int centerX = int(blobs[n][0]+0.5*blobs[n][2]);
+int centerY = int(blobs[n][1]+0.5*blobs[n][3]);
+
+color c = get(centerX+a, centerY+b);
+blob_color[n][0] = red(c);
+blob_color[n][1] = green(c);
+blob_color[n][2] = blue(c);
+
+red+=blob_color[n][0];
+green+=blob_color[n][1];
+blue+=blob_color[n][2];
+
+}
+avg_color[0]=constrain(red/total*1.2,0,255);
+avg_color[1]=constrain(green/total*1.2,0,255);
+avg_color[2]=constrain(blue/total*1.2,0,255);
+
+}
+
+void drawBlobsAndEdges(boolean drawBlobs, boolean drawEdges) {
+pushMatrix();
+translate(a, b);
+noFill();
+rectMode(CORNER);
+Blob b;
+EdgeVertex eA, eB;
+
+for (int n=0; n &lt; theBlobDetection.getBlobNb (); n++)
+{
+b=theBlobDetection.getBlob(n);
+if (b!=null)
+{
+// Edges
+if (drawEdges)
+{
+strokeWeight(3);
+stroke(0, 255, 0);
+for (int m=0; m &lt; b.getEdgeNb (); m++)
+{
+eA = b.getEdgeVertexA(m);
+eB = b.getEdgeVertexB(m);
+if (eA !=null &amp;&amp; eB !=null)
+line(
+eA.x*block_size, eA.y*block_size, 
+eB.x*block_size, eB.y*block_size
+);
+}
+}
+
+// Blobs
+if (dist(block_size/2,block_size/2,b.xMin*block_size,
+b.yMin*block_size) &lt; radius
+&amp;&amp;drawBlobs&amp;&amp;b.w*block_size&gt;5&amp;&amp;b.w*block_size &lt; 25&amp;&amp;b.h*block_size&gt;5&amp;&amp;b.h*block_size &lt; 25)
+{
+strokeWeight(3);
+stroke(255, 0, 0);
+
+rect(
+b.xMin*block_size, b.yMin*block_size, 
+b.w*block_size, b.h*block_size
+);
+}
+}
+}
+popMatrix();
+}
+
+void fastblur(PImage img, int radius)
+{
+if (radius &lt; 1) {
+return;
+}
+int w=img.width;
+int h=img.height;
+int wm=w-1;
+int hm=h-1;
+int wh=w*h;
+int div=radius+radius+1;
+int r[]=new int[wh];
+int g[]=new int[wh];
+int b[]=new int[wh];
+int rsum, gsum, bsum, x, y, i, p, p1, p2, yp, yi, yw;
+int vmin[] = new int[max(w, h)];
+int vmax[] = new int[max(w, h)];
+int[] pix=img.pixels;
+int dv[]=new int[256*div];
+for (i=0; i &lt; 256*div; i++) {
+dv[i]=(i/div);
+}
+
+yw=yi=0;
+
+for (y=0; y &lt; h; y++) {
+rsum=gsum=bsum=0;
+for (i=-radius; i&lt;=radius; i++) {
+p=pix[yi+min(wm, max(i, 0))];
+rsum+=(p &amp; 0xff0000)&gt;&gt;16;
+gsum+=(p &amp; 0x00ff00)&gt;&gt;8;
+bsum+= p &amp; 0x0000ff;
+}
+for (x=0; x &lt; w; x++) {
+
+r[yi]=dv[rsum];
+g[yi]=dv[gsum];
+b[yi]=dv[bsum];
+
+if (y==0) {
+vmin[x]=min(x+radius+1, wm);
+vmax[x]=max(x-radius, 0);
+}
+p1=pix[yw+vmin[x]];
+p2=pix[yw+vmax[x]];
+
+rsum+=((p1 &amp; 0xff0000)-(p2 &amp; 0xff0000))&gt;&gt;16;
+gsum+=((p1 &amp; 0x00ff00)-(p2 &amp; 0x00ff00))&gt;&gt;8;
+bsum+= (p1 &amp; 0x0000ff)-(p2 &amp; 0x0000ff);
+yi++;
+}
+yw+=w;
+  }
+
+for (x=0; x<W>rsum=gsum=bsum=0;
+yp=-radius*w;
+for (i=-radius; i&lt;=radius; i++) {
+yi=max(0, yp)+x;
+rsum+=r[yi];
+gsum+=g[yi];
+bsum+=b[yi];
+yp+=w;
+}
+yi=x;
+for (y=0; y &lt; h; y++) {
+pix[yi]=0xff000000 | (dv[rsum]&lt;&lt; 16) | (dv[gsum]&lt;&lt; 8) | dv[bsum];
+if (x==0) {
+vmin[y]=min(y+radius+1, hm)*w;
+vmax[y]=max(y-radius, 0)*w;
+}
+p1=x+vmin[y];
+p2=x+vmax[y];
+
+\rsum+=r[p1]-r[p2];
+gsum+=g[p1]-g[p2];
+bsum+=b[p1]-b[p2];
+
+yi+=w;
+}
+}
+}
+
+void save_blob() {
+
+Blob b;
+blobs=new float[theBlobDetection.getBlobNb ()][4];
+for (int n=0; n &lt; theBlobDetection.getBlobNb (); n++)
+{
+b=theBlobDetection.getBlob(n);
+if (dist(block_size/2,block_size/2,b.xMin*block_size,
+b.yMin*block_size)&lt; radius
+&amp;&amp;b.w*block_size&gt;5&amp;&amp;b.w*block_size&lt; 25&amp;&amp;b.h*block_size&gt;5&amp;&amp;b.h*block_size&lt; 25){
+blobs[n][0]=b.xMin*block_size;
+blobs[n][1]=b.yMin*block_size;
+blobs[n][2]=b.w*block_size;
+blobs[n][3]=b.h*block_size;
+}
+}
+}
+
+void convert() {
+int row, col, i;
+for (int n=0; n&lt; sequence.length; n++) {
+sequence[n]=false;
+}
+for (int n=0; n&lt; blobs.length; n++) {
+row=int(blobs[n][0]+blobs[n][2]*0.5)/grid_size;
+col=int(blobs[n][1]+blobs[n][3]*0.5)/grid_size;
+i=row+col*grid_num;
+if (i&gt;0&amp;&amp;i&lt; grid_num*grid_num) {
+sequence[i]=true;
+}
+}
+}
+
+void draw_grid() {
+pushMatrix();
+translate(a, b);
+rectMode(CORNER);
+int x=0;
+int y=0;
+noStroke();
+fill(0);
+rect(-interval,-interval,(grid_size+interval)*grid_num+interval*2,
+(grid_size+interval)*grid_num+interval*2);
+for (int i=0; i&lt; sequence.length; i++) {
+x=(grid_size+interval)*(i%grid_num);
+y=(grid_size+interval)*(i/grid_num);
+
+noStroke();
+if (sequence[i]) {
+fill(avg_color[0], avg_color[1], avg_color[2]);
+} else {
+ fill(70);
+}
+rect(x, y, grid_size, grid_size);
+}
+popMatrix();
+}
+
+void glow(int n) {
+pushMatrix();
+translate(a, b);
+rectMode(CORNER);
+for (int m=0; m&lt; grid_num; m++) {
+if (sequence[m*grid_num+n]) {
+for (int p=-1; p&lt; 2; p++) {
+for (int q=-1; q&lt; 2; q++) {
+if (n+p&gt;=0&amp;&amp;n+p&lt; grid_num&amp;&amp;m+q&gt;=0&amp;&amp;m+q&lt; grid_num) {
+noStroke();
+fill(255, 255, 255, 20);
+rect((n+p)*(interval+grid_size), (m+q)*(interval+grid_size), 
+grid_size, grid_size);
+}
+if (p==0&amp;&amp;q==0){
+fill(255, 255, 255, 30);
+rect(n*(interval+grid_size), m*(interval+grid_size), 
+grid_size, grid_size);
+}
+}
+}
+}
+}
+popMatrix();
+}
+
+void play_sounds(int n) {
+float noteVal;
+float[] noteVals=new float[0];
+for (int i=0; i&lt; grid_num; i++) {
+if (sequence[i*grid_num+n]) {
+noteVal = float(notes[i]);
+noteVals=append(noteVals, noteVal);
+}
+}
+ sc.instrument(instrument());
+ sc.playChord(noteVals, volume, 0.25);
+}
+
+float[] grid_color() {
+float[] color_return=new float[3];
+arrayCopy(avg_color, color_return);
+return color_return;
+}
+
+boolean[] sequence() {
+boolean[] to_return=new boolean[sequence.length];
+arrayCopy(sequence, to_return);
+return to_return;
+}
+
+int instrument(){
+int h=int(hue(color(avg_color[0],avg_color[1],
+avg_color[2]))%8);
+if (h==0){return 2;}
+else if (h==1){return 3;}
+else if (h==2){return 38;}
+else if (h==3){return 46;}
+else if (h==4){return 47;}
+else if (h==5){return 55;}
+else if (h==6){return 116;}
+}
+void set_volume(int _volume) {
+volume=constrain(_volume, 0, 127);
+}
+}
+
+Source: blob detection 
+http://www.v3ga.net/processing/BlobDetection/
+
+soundcipher
+http://explodingart.com/soundcipher/
+
+  </W></DL></FONT></P></DIV><DIV id="Button" class="collapsed"><H5 style="display:inline-block" onclick="expandButton()"><SPAN class="noselect">Button Control</SPAN></H5><P id="ButtonText" style="display:none">int slidervolumes[] = {0, 0, 0, 0, 0};
+int lastButtonState[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+void setup() {
+// put your setup code here, to run once:
+Serial.begin(9600);
+Keyboard.begin();
+}
+
+void loop() {
+
+// incomplete code.
+//instructions: pass pin number, up key, down key, to read_slider, for example
+read_slider(0, 't', 'y');
+read_slider(1, 'g', 'h');
+read_slider(2, 'b', 'n');
+read_slider(3, KEY_DOWN_ARROW, KEY_UP_ARROW);
+read_slider(4, KEY_RIGHT_ARROW, KEY_LEFT_ARROW);
+
+//pass pin number, highkey, lowkey to control button
+//for example
+control_button(2, 'q', 'w');
+control_button(3, 'e', 'r');
+control_button(4, 'a', 's');
+control_button(5, 'd', 'f');
+control_button(6, 'z', 'x');
+control_button(7, 'c', 'v');
+control_button(8, 'o', 'p');
+
+// this should all be done in loop
+} 
+
+void read_slider(int slider_number, char upkey, char downkey) {
+int val = analogRead(slider_number);//Read slider value from analog 0
+int newvolume = map(val, 0, 1023, 0, 27); //map slider value to [0,2]
+if (newvolume != slidervolumes[slider_number]) {
+Serial.println(&quot;volume changed!&quot;);
+control_slider(slider_number, slidervolumes[slider_number], newvolume, upkey, downkey);
+slidervolumes[slider_number] = newvolume; //change old value for comparison next time
+}
+}
+
+void control_slider(int slider_number, int original_vol, int new_vol, char upkey, char downkey) {
+int keypress = original_vol - new_vol; //we get the num differences between the two tracks
+if (keypress &lt; 0) {
+for (int i = 0; i &lt; abs(keypress); i++) {
+Keyboard.write(downkey);
+}
+} else {
+for (int i = 0; i &lt; abs(keypress); i++) {
+Keyboard.write(upkey);
+}
+}
+}
+
+
+
+
+void control_button(int button_number, char highkey, char lowkey) {
+int button_state = digitalRead(button_number);
+
+if (button_state != lastButtonState[button_number]) {
+// if the state has changed, increment the counter
+if (button_state == HIGH) {
+Serial.println(&quot;1&quot;);
+Keyboard.write(highkey);
+delay(500);
+}
+else {
+Keyboard.write(lowkey);
+}
+//no pressed = 0
+//pressed = 1
+lastButtonState[button_number] = button_state;
+}
+}
+</P></DIV><DIV id="sponsors"><P><A href="http://igemnyushanghai.tumblr.com/">tumblr</A> | <A href="http://igemnyushanghai.strikingly.com/">strikingly</A> | <A href="https://www.youtube.com/watch?v=hKKjqzkGo3o">igem.nyushanghai@gmail.com</A></P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

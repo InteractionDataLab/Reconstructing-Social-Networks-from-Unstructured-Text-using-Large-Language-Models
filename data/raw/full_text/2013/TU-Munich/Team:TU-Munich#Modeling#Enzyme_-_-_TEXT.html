@@ -1,0 +1,311 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:TU-Munich/Modeling/Enzyme
+From 2013.igem.org
+Home
+Project
+Phytoremediation
+Physcomitrella
+Localization
+BioDegradation
+BioAccumulation
+Kill Switch
+Safety
+Results
+BioBricks
+Effector Studies
+Moss Methods
+Localization
+PhyscoFilter
+Kill Switch
+Implementation
+AutoAnnotator
+Entrepreneurship
+Summary
+Modeling
+Protein Predictions
+Kill Switch
+Enzyme Kinetics
+Filter Model
+Team
+Members
+Sponsors
+Collaborations
+Pictures
+Timeline
+Attributions
+Judging
+Notebook
+Labjournal
+Methods
+Outreach
+Expert Counsel
+GMO release
+Publicity
+Educational Kit
+Tutorials
+Introduction
+To estimate the efficiency of our remediation rafts in detoxification of contaminated water, we saw the need to assess the activity of our target effectors. As in vivo experiments were still to be carried out we, started to analyse data we obtained in in vitro experiments.
+We analysed the data for
+Table 1: Experimental Conditions
+Experiment
+Optimum
+Laccase (Substrate Dependence)
+KM = 0.396 mM
+Erythromycin Esterase B (Substrate Dependence)
+KM = 2.658 E+07 M
+Laccase (pH Dependence)
+pH = 7.5
+Erythromycin Esterase B (pH Dependence)
+highest possible pH before denaturation
+Laccase (NaCl Dependence)
+lowest possible amount of NaCl
+Erythromycin esterase B (NaCl Dependence)
+lowest possible amount of NaCl
+and fitted kinetic parameters for those settings. The obtained parameters were then used to build our Filter Model .
+Laccase (Substrate Dependence)
+Data
+To assess the activity of <partinfo>BBa_K1159002</partinfo> we created an experimental setup with a dilution series for the concentration of the substrate ABTS with 16 different concentrations with a 1:1 dilution ratio resulting in concentrations ranging from 2.429 mM to 74.1 nM in triplicates and added 40.8 nM of purified enzyme. The concentration of the product of the enzymatic reaction was measured via absorption over 5 minutes with time steps of 10 seconds. As absorption measurements for very low substrate concentrations were almost undistinguishable from noise, we decided only to fit the data for the 6 highest concentrations. The data for the 6 highest concentration including standard deviation is shown in Figure 1.
+Figure 1: Experimental data with mean plotted as black circles and standard deviation indicated via black dots.
+Model
+Calibration Curve
+For quantitative modelling it is essential to relate the measured absorption with the concentration of the product of the enzymatic reaction. After initial investigation of the data we realised that the ratio between the absorption in the steady states was not scaling linearly with the dilution ratios. This led us to the conclusion that there was a nonlinear relationship between the concentration of the product of the enzymatic reaction and the absorption. Hence we contacted the wetlab and they measured a calibration curve for us such that we could carry out rigorous quantitative modeling.
+Figure 2: Calibration data indicated by error bars displaying the 1-σ interval in blue and the fitted logarithmic calibration line in red.
+To use this curve later for modelling we fitted a parametric logarithmic curve in accordance with the Beer-Lambert law
+by minimizing the corresponding log-likelihood assuming a normally distributed error. The obtained data and the corresponding fitted logarithmic curve are shown in figure 2, the resulting best fitting parameters are shown in table 1.
+Table 1: Calibration fitting
+Parameter
+Best Fit
+k1
+1.651 a.u.
+k2
+3891 1/M
+Model Specification
+For the Laccase kinetics we used the standard model for enzyme kinetics in reduced form.
+We assumed a normally distributed measurement error which yielded us the following negative log likelihood
+where
+is the mean of the experimental measurements at time point ti for the j-th experiment in the dilution series, σij denotes the corresponding standard deviation and yj is the numerical simulation of system Θ1 for parameters θ = [kf, kr, kcat] with the calibration curve applied to the output P at time ti.
+Fitting
+To obtain the best fitting parameters we used a multistart optimization in logarithmic parameter space with latin hypercube sampling as initialisation. Multistart optimization is employed to be sure that the resulting best fit is not a local optimum but a global one and logarithmisation of the parameter space is well-known to yield better results [ Raue et al., 2013 ]. The parameter boundaries for the hypercube are shown in table 2.
+Table 2: Hypercube parameters
+Parameter
+Lower Bound
+Upper Bound
+kf
+1E-10 1/s
+1E+10 1/s
+kr
+1E-10 1/s
+1E+10 1/s
+kcat
+1E-10 1/s
+1E+10 1/s
+We used 104 initialisations for the multistart. Figure 3 shows the final value for the optimization routine for the different initial values, sorted by the resulting final value.
+Figure 3: Output of the multistart routine. The top left graph shows the log-likelihood of the optimized parameters given the respective intialization, ordered by the value of the log-likelihood. The top right graph shows the a zoom in of the top left graph to better analyse wheter plateaus of values are visible. the bottom graph shows the parameter values for the individual initialisations, colored according to the color given in the top left graph. The red parameters indicates the best fitted parameters amongst all initialisations.
+These results suggest that parameter 3 (kcat) is well identifiable, as all optimization runs yielded approximately the same parameter value. In contrast, the estimation of the two other parameters show strong uncertainties as the different initialisations yielded a range of different parameter values.
+Using the obtained parameters we can also compute KM which is used when Michaelis-Menten kinetics are assumed. The formula for this is
+The obtained parameters for the best fit are shown in Table 3:
+Table 3: Best fit parameters
+Parameter
+Best fit
+kf
+1.606 E+05 1/s
+kr
+3.450 E-08 1/s
+kcat
+63.522 1/s
+KM
+0.396 mM
+The simulation of the resulting parameter compared against the experimental data is shown in Figure 4.
+Figure 4: Experimental data with mean plotted as black circles and standard deviation indicated via black dots. The simulation of the system using fitted parameters is shown as cyan line.
+These results suggest that we have obtained a reliable estimate for some of the parameter values and that the model seems sufficient to explain the experimental data. As there seems to be a certain uncertainty with respect to some of the parameters, we decided to carry out further uncertainty analysis to asses the reliability of the parameter estimates.
+Uncertainty Analysis
+Please note that the uncertainty analysis was carried out in logarithmic space to base e and not in logarithmic space to base 10.
+The uncertainties in measurement can be directly transferred into uncertainties in the parameter estimation with the help of the likelihood function. As the computation of the likelihood includes solving a non-trivial differential equation it is not possible to write down an analytical expression for it that could be used to estimate the parameter distributions. Hence we will have to resort to sampling from the parameter distribution. We did this using the Metropolis-Hastings algorithm implemented in the adaptive MCMC toolbox DRAM [ Haario et al. (2006) ].We used a burn-in of 1,000 samples and then generated 400,000 samples from the distribution. Using these samples we can also generate samples for the parameter KM by computing KM for every sample via the same formula that was used above. For visualization 500 samples out of these 200,000 are shown in Figure 6. Using these samples we used standard kernel density estimation to estimate the marginal densities of single parameters. The resulting approximate marginal distributions are shown in Figure 6.
+Figure 5: Thinned samples and their respective parameter values
+Figure 6: Marginal densities of the individual parameters obtained by using kernel density estimation on the MCMC kernels. The best fit parameters are indicated by red dotted lines.
+In Figure 5 and 6 one can see that all parameters except kr have localized parameter ranges of high probability, which means that we can expect our optimization should yield good results. Figure 6 shows the marginal densities of the parameters, obtained via kernel density estimation using MCMC samples, with the best parameter fits, obtained via optimization, indicated by red lines. As one can see, all fitted parameter except for kf are located in regions of high probability density.
+We can explain this phenomenom by looking at the correlation between parameters. The correlation matrix of the parameter samples obtained via MCMC is presented in Table 4:
+Table 4: Correlation Matrix
+kf
+kr
+kcat
+kf
+1
+0.698
+-0.054
+kr
+0.698
+1
+0.027
+kcat
+-0.054
+0.027
+1
+Investigating the values presented in Table 4 one can see that there is a high correlation between parameters kf and kcat. The joint distribution of the samples in their values for kf and kr is shown in Figure 7. The likelihood of the individual samples is indicated by color. The best fit parameters are again displayed via a red dotted line. One can clearly see that there is a strong nonlinear correlation between the two parameters. Moreover it is evident, that despite having a low marginal likelihood for the obtained value of kf, in the joint distribution the best fit lies in a strongly localised area and we can accept the results with high certainty.
+Figure 7: Correlation between kf and kr
+Erythromycin Esterase B (Substrate Dependence)
+Data
+To assess the activity of <partinfo>BBa_K1159000</partinfo> we created an experimental setup with a dilution series for the concentration of the substrate p-NPB with 16 different concentrations with 1:1 dilution ratio resulting in concentrations ranging from 1.195 mM to 36.469 nM in triplicates and added 5.804 μM of purified enzyme. The concentration of the product of the enzymatic reaction was measured via absorption for the duration of 2 hours with a time steps of 30 seconds. As measurements for very low substrate concentrations were almost undistinguishable from noise, we decided only to fit the data for the 6 highest concentrations.
+Figure 8: Experimental data with mean plotted as black circles and standard deviation indicated via black dots.
+Model
+Calibration Curve
+For quantitative modelling it is essential to set the measured absorption into relationship with the concentration of the product of the enzymatic reaction. For this experimental setup we saw that there was a purely linear relationship between concentration and absorption. Hence we found it sufficient to fit a linear curve to the measured absorption of reference concentrations by minimizing the corresponding log-likelihood assuming a normally distributed error. The best fitting parameters are shown in table 5. The formula for the linear curve was
+Figure 9: Calibration Measurement with fitted linear function.
+Table 5: Calibration fitting
+Parameter
+Best Fit
+k1
+3.005 E+03 a.u./M
+k2
+0.118 a.u.
+Substrate Auto-degradation
+In the negative control for the experiment, where no enzyme was added, we noticed that there was an noticeable autocatalytic degradation of the substrate for sufficiently high substrate concentrations. As this led to significant absorption levels without any enzyme present, we decided to fit this degradation rate and integrate it into our model. Moreover there was a timespan of about 300 seconds missing from the induction of the experiment until the beginning of the measurement. We also used the degradation to get a more reliable estimate of the time between induction and start of measurement.
+Figure 10: For the negative control experimental data is shown as crosses. Fitted data is shown as dotted lines in the same color.
+Model Specification
+For the EreB kinetics we used the standard model for enzyme kinetics in reduced form but added the autocatalytic degradation term γS.
+We assumed a normally distributed measurement error which yielded us the following negative log likelihood
+where
+is the mean of the experimental measurements at time point ti for the j-th experiment in the dilution series, σij denotes the corresponding standard deviation and yj is the numerical simulation of System1 for parameters theta = [kf, kr, kcat] with the calibration curve applied to the output P at time ti.
+Fitting
+To obtain the best fitting parameters we used a multistart optimization in logarithmic parameter space with latin hypercube sampling as initialisation. Multistart optimization is employed to be sure that the resulting best fit is not a local optimum but a global one and logarithmisation of the parameter space is well-known to yield better results [ Raue et al., 2013 ]. The parameter boundaries for the hyper cube are shown in table 6.
+Table 6: Hypercube parameters
+Parameter
+Lower Bound
+Upper Bound
+kf
+1E-10 1/s
+1E+10 1/s
+kr
+1E-10 1/s
+1E+10 1/s
+kcat
+1E-10 1/s
+1E+10 1/s
+We used 104 initialisations for the multistart. Figure 11 shows the final value for the optimization routine for the different initial values, sorted by the resulting final value.
+Figure 11: Output of the multistart routine. The top left graph shows the log-likelihood of the optimized parameters given the respective intialization, ordered by the value of the log-likelihood. The top right graph shows the a zoom in of the top left graph to better analyse wheter plateaus of values are visible. the bottom graph shows the parameter values for the individual initialisations, colored according to the color given in the top left graph. The red parameters indicates the best fitted parameters amongst all initialisations,
+These results suggest that parameter 1 (kf) is relatively well identifiable, while the estimation of the two other parameters show strong uncertainties. Using the obtained parameters we can also compute KM which is used when Michaelis-Menten kinetics are assumed. The formula for this is
+The obtained parameters for the best fit are shown in Table 7:
+Table 7: Best fit parameters
+Parameter
+Best fit
+kf
+25.913 1/s
+kr
+5.800 E-08 1/s
+kcat
+6.887 E+08 1/s
+KM
+2.658 E+07 M
+The simulation with the resulting parameter compared against the experimental data is shown in Figure 12.
+Figure 12: Experimental data with mean plotted as black circles and standard deviation indicated via black dots. The simulation of the system using fitted parameters is shown as cyan line.
+Uncertainty Analysis
+Please note that the uncertainty analysis was carried out in logarithmic space to base e and not in logarithmic space to base 10.
+The uncertainties in measurement can be directly transferred into uncertainties in the parameter estimation with the help of the likelihood funtion. As the computation of the likelihood includes solving a non-trivial differential equation it is not possible to write down an analytical expression for it that could be used to estimate the parameter distributions. Hence we will have to resort to sampling from the parameter distribution. We did this using the Metropolis-Hastings algorithm implemented in the adaptive MCMC toolbox DRAM [ Haario et al. (2006) ]. We used a burn-in of 1,000 samples and then generated 400,000 samples from the distribution. Using these samples we can also generate samples for the parameter KM by computing KM for every sample via the same formula that was used above. As a visualization 500 samples out of those 200,000 are shown in Figure 13. Using these samples we used kernel density estimation to estimate the marginal densities of single parameters. The resulting approximate marginal distributions are shown in Figure 14.
+Figure 13: Samples thinning 500 samples
+Figure 14: Densities
+As one can see in Figure 13 and 14 none of the parameters have localised parameter ranges of high probabilities, which means that we can expect them to perform badly. Moreover we see that the density rapidly drops at the boundaries of the investigated domain, which means that the domain boundaries were badly chosen. Due to the computational intensity of the uncertainty analysis we were not able to repeat this experiment, but this will be done after the Jamboree.
+Comparision to Literature data
+In a recent paper [ Wright et al., 2012 ] characterizing EreB the kinetic properties of EreB were also analyzed using p-NPB. However only kcat and KM were determined, the results of which are shown in table 8.
+Table 8: Comparing our parameters with those from [ Wright et al., 2012 ]
+literature values
+our values
+KM
+1.7 E-03 M
+2.658 E+07 M
+kcat
+2.8 E+00 1/s
+6.887 E+08 1/s
+It can be seen that our estimates of KM and kcat diverge by several magnitudes from the values determined by the Wright group. However this can be attributed to the fact that we saw pronounce uncertainties in the estimation process. Hence the simulations of the system using the best fit parameters nevertheless yields a good approximation to the measured data. Thus these paramters are a valid choice for further analysis.
+Laccase (pH Dependence)
+Data
+The dependence of the activity of laccase on the pH value, the previously described assay was carried out with constant substrate and enzyme concentrations in different buffers. The measured data is shown in Figure 15. Analysing the data, we observed that the main change in behaviour, was in the different levels of the measured absorption of the steady state.
+Figure 15: Measured absorption for assay carried out in buffers with varying pH values. Employed substrate concentration was 0.9 μM ABTS, the employed enzyme concentration was 62.5 nM. Mean value of the triplicate measurements are indicated by black circles, the standard deviation is indicated by black dots.
+Model
+As the employed substrate concentration was the same in all experiments, we decided that the model would need to be extended to explain this behavior. Our first explanation for this behaviour was, that the chromogenic product might degrade to the product, depending on the salt concentrations, which would change the steady state. Unfortunately this explanation of the data is not realistic from a chemical perspective which led us to a second explanation: The salt concentration could also irreversibly inactivate the laccase, leading to a changed state when inactivation of the laccase is faster than the conversion of the substrate.
+Estimation
+For parameter estimation we fitted the parameter for every pH value in a distinct multistart optimization with 20 initialisations. All parameters seemed to be well identifiability. Plots of the multistart optimizations are omitted at this point to avoid redundancies. The resulting fits are shown in Figure 16.
+Figure 16: Experimental data with mean plotted as black circles and standard deviation indicated via black dots. The simulation of the system using fitted parameters is shown as cyan line.
+Analysing the shown fits one can notice that the inactivation of the enzyme can indeed explain the varying steady states. However the model apparently cannot adequately describe the reaction kinetics as the simulated reaction happens much faster than the measured reaction. For better fits, one would probably have to vary kinetic parameters with the pH value. This was also tried, but resulted in pronounce practical non-identifiabilities of parameters.
+Conclusion
+The fitted parameter values with the respective pH value are shown in Figure 17. As we were not able to see any structure in the shown curve, we concluded that it is probable that the employed buffer has a significant influence on the inactivation rate of the Laccase and that the pH value was not the only condition that varied between experiments. Nevertheless, the experiments suggest that a pH of 7.5 might be the optimal.
+Figure 17: Relationship between the inactivation rate of the enzyme depending on the pH value. The shown parameter values were obtained in the previously discribed estimation.
+Erythromycin Esterase B (pH Dependence)
+Data
+The dependence of the activity of erythromycin esterase B on the pH value, the previously described assay was carried out with constant substrate and enzyme concentrations in different buffers. The measured data is shown in Figure 18. Analysing the data, we observed that the main change in behaviour, was in the different times at which the steady state was reached.
+Figure 18: Measured absorption for assay carried out in buffers with varying pH values Employed substrate concentration was 4 mM pNPB, the employed enzyme concentration was 4.4 μM. Mean value of the triplicate measurements are indicated by black circles, the standard deviation is indicated by black dots.
+Substrate Auto-degradation
+In the negative control for the experiment, where no enzyme was added, we noticed that there was an noticeable autocatalytic degradation of the substrate for sufficiently high substrate concentrations. As this led to significant absorption levels without any enzyme present, we decided to fit this degradation rate and integrate it into our model. Moreover there was a timespan of about 300 seconds missing from the induction of the experiment until the beginning of the measurement. We also used the degradation to get a more reliable estimate of the time between induction and start of measurement.
+Figure 19: For the negative control experimental data is shown as colored circles. Fitted data is shown as dashed lines in the same color.
+Model
+As the employed enzyme concentration was the same in all experiments, we decided that the model would need to be extended to explain this behavior. As the previously estimaed kcat was already pretty close to the diffusion level, and first fitting experiments indicated that the activity of the enzyme was enhanced at higher pH values, we decided that it was most reasonable to assume that the association rate of the substrate with the enzyme would increase with increasing pH value.
+Estimation
+For parameter estimation we fitted the parameter for every pH value in a distinct multistart optimization with 20 initialisations. All parameters seemed to be well identifiability. Plots of the multistart optimizations are omitted at this point to avoid redundancies. The resulting fits are shown in Figure 20.
+Figure 20: Experimental data with mean plotted as black circles and standard deviation indicated via black dots. The simulation of the system using fitted parameters is shown as cyan line.
+Analysing the shown fits one can notice that the varying association rate can indeed explain some of the behaviour. Nevertheless the fits for pH 6 and pH 6.5 are not yet completely satisfying as the reaction seems to happen faster in the measured experiment than in the simulation with the fitted parameters. These bad fits could be accounted for by the missing initial measurements of the reaction.
+Conclusion
+The fitted parameter values with the respective pH value are shown in Figure 21. The shown suggest that there could be an exponential relationship between pH value and the association rate between substrate and enzyme. For a more substantial explanation of the observed phenomenon a more thorough analysis of the structural depence of the enzyme on the pH value would be necessary, but this is beyond the scope of this competition.
+Figure 21: Relationship between the association rate of substrate and enzyme depending on the pH value. The shown parameter values were obtained in the previously discribed estimation
+Laccase (NaCl Dependence)
+Data
+The dependence of the activity of laccase on the salt concentration was measured in a dilution series with NaCl. The measured data is shown in Figure 22. Analysing the data, we observed that the main change in behaviour, was in the different levels of the measured absorption of the steady state.
+Figure 22: Measured absorption for the NaCl dilution series. NaCl was diluted at a 1:1 ratio which yielded concentrations between 1.5 M and 0.00078 M. Employed substrate concentration was 0.9 mM ABTS, the employed enzyme concentration was 62.5 nM. Mean value of the triplicate measurements are indicated by black circles, the standard deviation is indicated by black dots.
+Model
+As the employed substrate concentration was the same in all experiments, we decided that the model would need to be extended to explain this behavior. Our first explanation for this behaviour was, that the chromogenic product might degrade to the product, depending on the salt concentrations, which would change the steady state. Unfortunately this explanation of the data is not realistic from a chemical perspective which led us to a second explanation: The salt concentration could also irreversibly inactivate the laccase, leading to a changed state when inactivation of the laccase is faster than the conversion of the substrate.
+Estimation
+For parameter estimation we fitted the parameter for every NaCl concentration in a distinct multistart optimization with 20 initialisations. All parameters seemed to be well identifiability. Plots of the multistart optimizations are omitted at this point to avoid redundancies. The resulting fits are shown in Figure 23.
+Figure 23: Experimental data with mean plotted as black circles and standard deviation indicated via black dots. The simulation of the system using fitted parameters is shown as cyan line.
+Analysing the shown fits one can notice that the inactivation of the enzyme can indeed explain the varying steady states. However the model apparently cannot adequately describe the reaction kinetics as the simulated reaction happens much faster than the measured reaction. In this case these bad fits could be attributed to the fact that the measurement seemingly does not start at the point of induction of the experiment, which can significantly influence the quality of the fit. We tried to account for this by estimating the time between induction and the start of the measurement by hand. Moreover there might also be conformational changes in the enzyme structure that could affect the activity of the enzyme and thereby reduce the speed of reaction, but as in the case before, estimating these parameters ended in profound practical non-identifiabilities.
+Conclusion
+The fitted parameter values with the respective pH value are shown in Figure 24. The shown graph suggest that there could be an linear relationship between NaCl concentration and the inactivation rate of the enzyme.
+Figure 24: Relationship between the inactivation rate of the enzyme depending on NaCl concentration. The shown parameter values were obtained in the previously discribed estimation.
+To use the parameter fits in our Filter Model we assumed a phenomenological law and fitted a linear curve to the graph, given by the formula
+As the residual sum of squares is only 2.1507*10-5, we are confident this is an adequate approximation to make predictions.
+Erythromycin Esterase B (NaCl Dependence)
+Data
+The dependence of the activity of erythromycin esterase B on the salt concentration was measured in a dilution series with NaCl. The measured data is shown in Figure 25. Analysing the data, we observed that the main change in behaviour, was in the different levels of the measured absorption of the steady state.
+Figure 25: Measured absorption for the NaCl dilution series. NaCl was diluted at a 1:1 ratio which yielded concentrations between 1.5 M and 0.00078 M. Employed substrate concentration was 10 mM pNPB, the employed enzyme concentration was 2.75 nM. Mean value of the triplicate measurements are indicated by black circles, the standard deviation is indicated by black dots.
+Substrate Autodegradation
+In the negative control for the experiment, where no enzyme was added, we noticed that there was an noticeable autocatalytic degradation of the substrate for sufficiently high substrate concentrations. As this led to significant absorption levels without any enzyme present, we decided to fit this degradation rate and integrate it into our model.
+Figure 26: For the negative control experimental data is shown as colored circles. Fitted data is shown as dashed lines in the same color.
+Model
+As the employed substrate concentration was the same in all experiments, we decided that the model would need to be extended to explain this behavior. Our first explanation for this behaviour was, that the chromogenic product might degrade to the product, depending on the salt concentrations, which would change the steady state. Unfortunately this explanation of the data is not realistic from a chemical perspective which led us to a second explanation: The salt concentration could also irreversibly inactivate the laccase, leading to a changed state when inactivation of the laccase is faster than the conversion of the substrate.
+Estimation
+For parameter estimation we fitted the parameter for every NaCl concentration in a distinct multistart optimization with 20 initialisations. All parameters seemed to be well identifiability. Plots of the multistart optimizations are omitted at this point to avoid redundancies. The resulting fits are shown in Figure 27.
+Figure 27: Experimental data with mean plotted as black circles and standard deviation indicated via black dots. The simulation of the system using fitted parameters is shown as cyan line.
+Analysing the shown fits one can notice that the inactivation of the enzyme can indeed explain the varying steady states aswell as the kinetics. We are confident to say that this model can indeed explain the measured data.
+Conclusion
+The fitted parameter values with the respective pH value are shown in Figure 28. The shown graph suggest that there could be an linear relationship between NaCl concentration and the inactivation rate of the enzyme.
+Figure 28: Relationship between the inactivation rate of the enzyme depending on NaCl concentration. The shown parameter values were obtained in the previously discribed estimation.
+MatLab Scripts
+File:Laccase.zip
+File:EreB.zip
+References:
+[ Haario et al. (2006) ] H. Haario, M. Laine, A. Mira and E. Saksman, (2006). DRAM: Efficient adaptive MCMC, Statistics and Computing 339-354(16).
+[ Raue et al. (2013) ] A. Raue, M. Schilling, J. Bachmann, A. Matteson, M. Schelke, D. Kaschek, S. Hug, C. Kreutz, B. D. Harms, F. J. Theis, U. Klingmüller, J. Timmer (2013). Lessons Learned from Quantitative Dynamical Modeling in Systems Biology, PLOS ONE
+[ Wright et al., 2012 ] Morar, M., Pengelly, K., Koteva, K. and Wright, D. (2012). Mechanism and Diversity of the Erythromycin Esterase Family of Enzymes. Biochemistry, 51(8): 1740–1751.
+AutoAnnotator:
+or go to the AutoAnnotator page.
+Follow us:
+Address:
+iGEM Team TU-Munich
+Emil-Erlenmeyer-Forum 5
+85354 Freising, Germany
+Email: igem@wzw.tum.de
+Phone: +49 8161 71-4351
+Retrieved from " http://2013.igem.org/Team:TU-Munich/Modeling/Enzyme "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

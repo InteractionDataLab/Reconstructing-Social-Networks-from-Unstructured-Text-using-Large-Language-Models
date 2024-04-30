@@ -1,0 +1,236 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Peking_jium skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Peking/jium</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><OL><LI>/* $begin pipe-all-hcl */
+</LI></OL><LI>    HCL Description of Control for Pipelined Y86-64 Processor     #</LI><LI>    Copyright (C) Randal E. Bryant, David R. O'Hallaron, 2014     #
+</LI><OL><LI> Your task is to modify the design so that conditional branches are</LI><LI> predicted as being taken when backward and not-taken when forward</LI><LI> The code here is nearly identical to that for the normal pipeline.  </LI><LI> Comments starting with keyword &quot;BBTFNT&quot; have been added at places</LI><LI> relevant to the exercise.</LI></OL><LI>    C Include's.  Don't alter these                               #
+</LI><P>quote '#include &lt;stdio.h&gt;'
+quote '#include &quot;isa.h&quot;'
+quote '#include &quot;pipeline.h&quot;'
+quote '#include &quot;stages.h&quot;'
+quote '#include &quot;sim.h&quot;'
+quote 'int sim_main(int argc, char *argv[]);'
+quote 'int main(int argc, char *argv[]){return sim_main(argc,argv);}'
+</P><LI>    Declarations.  Do not change/remove/delete any of these       #
+</LI><OL><LI> Symbolic representation of Y86-64 Instruction Codes #############</LI></OL><P>wordsig INOP 	'I_NOP'
+wordsig IHALT	'I_HALT'
+wordsig IRRMOVQ	'I_RRMOVQ'
+wordsig IIRMOVQ	'I_IRMOVQ'
+wordsig IRMMOVQ	'I_RMMOVQ'
+wordsig IMRMOVQ	'I_MRMOVQ'
+wordsig IOPQ	'I_ALU'
+wordsig IJXX	'I_JMP'
+wordsig ICALL	'I_CALL'
+wordsig IRET	'I_RET'
+wordsig IPUSHQ	'I_PUSHQ'
+wordsig IPOPQ	'I_POPQ'
+</P><OL><LI> Symbolic represenations of Y86-64 function codes            #####</LI></OL><P>wordsig FNONE    'F_NONE'        # Default function code
+</P><OL><LI> Symbolic representation of Y86-64 Registers referenced      #####</LI></OL><P>wordsig RRSP     'REG_RSP'    	     # Stack Pointer
+wordsig RNONE    'REG_NONE'   	     # Special value indicating &quot;no register&quot;
+</P><OL><LI> ALU Functions referenced explicitly ##########################</LI></OL><P>wordsig ALUADD	'A_ADD'		     # ALU should add its arguments
+</P><OL><LI> BBTFNT: For modified branch prediction, need to distinguish</LI><LI> conditional vs. unconditional branches
+</LI><LI> Jump conditions referenced explicitly</LI></OL><P>wordsig UNCOND 'C_YES'       	     # Unconditional transfer
+</P><OL><LI> Possible instruction status values                       #####</LI></OL><P>wordsig SBUB	'STAT_BUB'	# Bubble in stage
+wordsig SAOK	'STAT_AOK'	# Normal execution
+wordsig SADR	'STAT_ADR'	# Invalid memory address
+wordsig SINS	'STAT_INS'	# Invalid instruction
+wordsig SHLT	'STAT_HLT'	# Halt instruction encountered
+</P><OL><LI> Signals that can be referenced by control logic ##############</LI></OL><OL><LI> Pipeline Register F ##########################################</LI></OL><P>wordsig F_predPC 'pc_curr-&gt;pc'	     # Predicted value of PC
+</P><OL><LI> Intermediate Values in Fetch Stage ###########################</LI></OL><P>wordsig imem_icode  'imem_icode'      # icode field from instruction memory
+wordsig imem_ifun   'imem_ifun'       # ifun  field from instruction memory
+wordsig f_icode	'if_id_next-&gt;icode'  # (Possibly modified) instruction code
+wordsig f_ifun	'if_id_next-&gt;ifun'   # Fetched instruction function
+wordsig f_valC	'if_id_next-&gt;valc'   # Constant data of fetched instruction
+wordsig f_valP	'if_id_next-&gt;valp'   # Address of following instruction
+boolsig imem_error 'imem_error'	     # Error signal from instruction memory
+boolsig instr_valid 'instr_valid'    # Is fetched instruction valid?
+</P><OL><LI> Pipeline Register D ##########################################</LI></OL><P>wordsig D_icode 'if_id_curr-&gt;icode'   # Instruction code
+wordsig D_rA 'if_id_curr-&gt;ra'	     # rA field from instruction
+wordsig D_rB 'if_id_curr-&gt;rb'	     # rB field from instruction
+wordsig D_valP 'if_id_curr-&gt;valp'     # Incremented PC
+</P><OL><LI> Intermediate Values in Decode Stage  #########################</LI></OL><P>wordsig d_srcA	 'id_ex_next-&gt;srca'  # srcA from decoded instruction
+wordsig d_srcB	 'id_ex_next-&gt;srcb'  # srcB from decoded instruction
+wordsig d_rvalA 'd_regvala'	     # valA read from register file
+wordsig d_rvalB 'd_regvalb'	     # valB read from register file
+</P><OL><LI> Pipeline Register E ##########################################</LI></OL><P>wordsig E_icode 'id_ex_curr-&gt;icode'   # Instruction code
+wordsig E_ifun  'id_ex_curr-&gt;ifun'    # Instruction function
+wordsig E_valC  'id_ex_curr-&gt;valc'    # Constant data
+wordsig E_srcA  'id_ex_curr-&gt;srca'    # Source A register ID
+wordsig E_valA  'id_ex_curr-&gt;vala'    # Source A value
+wordsig E_srcB  'id_ex_curr-&gt;srcb'    # Source B register ID
+wordsig E_valB  'id_ex_curr-&gt;valb'    # Source B value
+wordsig E_dstE 'id_ex_curr-&gt;deste'    # Destination E register ID
+wordsig E_dstM 'id_ex_curr-&gt;destm'    # Destination M register ID
+</P><OL><LI> Intermediate Values in Execute Stage #########################</LI></OL><P>wordsig e_valE 'ex_mem_next-&gt;vale'	# valE generated by ALU
+boolsig e_Cnd 'ex_mem_next-&gt;takebranch' # Does condition hold?
+wordsig e_dstE 'ex_mem_next-&gt;deste'      # dstE (possibly modified to be RNONE)
+</P><OL><LI> Pipeline Register M                  #########################</LI></OL><P>wordsig M_stat 'ex_mem_curr-&gt;status'     # Instruction status
+wordsig M_icode 'ex_mem_curr-&gt;icode'	# Instruction code
+wordsig M_ifun  'ex_mem_curr-&gt;ifun'	# Instruction function
+wordsig M_valA  'ex_mem_curr-&gt;vala'      # Source A value
+wordsig M_dstE 'ex_mem_curr-&gt;deste'	# Destination E register ID
+wordsig M_valE  'ex_mem_curr-&gt;vale'      # ALU E value
+wordsig M_dstM 'ex_mem_curr-&gt;destm'	# Destination M register ID
+boolsig M_Cnd 'ex_mem_curr-&gt;takebranch'	# Condition flag
+boolsig dmem_error 'dmem_error'	        # Error signal from instruction memory
+</P><OL><LI> Intermediate Values in Memory Stage ##########################</LI></OL><P>wordsig m_valM 'mem_wb_next-&gt;valm'	# valM generated by memory
+wordsig m_stat 'mem_wb_next-&gt;status'	# stat (possibly modified to be SADR)
+</P><OL><LI> Pipeline Register W ##########################################</LI></OL><P>wordsig W_stat 'mem_wb_curr-&gt;status'     # Instruction status
+wordsig W_icode 'mem_wb_curr-&gt;icode'	# Instruction code
+wordsig W_dstE 'mem_wb_curr-&gt;deste'	# Destination E register ID
+wordsig W_valE  'mem_wb_curr-&gt;vale'      # ALU E value
+wordsig W_dstM 'mem_wb_curr-&gt;destm'	# Destination M register ID
+wordsig W_valM  'mem_wb_curr-&gt;valm'	# Memory M value
+</P><LI>    Control Signal Definitions.                                   #
+</LI><OL><LI> Fetch Stage     ###################################</LI></OL><OL><LI> What address should instruction be fetched at</LI></OL><P>word f_pc = [
+	# Mispredicted branch.  Fetch at incremented PC
+	M_icode == IJXX &amp;&amp; !M_Cnd : M_valA;
+	# Completion of RET instruction
+	W_icode == IRET : W_valM;
+	# Default: Use predicted value of PC
+	1 : F_predPC;
+];
+</P><OL><LI> Determine icode of fetched instruction</LI></OL><P>word f_icode = [
+	imem_error : INOP;
+	1: imem_icode;
+];
+</P><OL><LI> Determine ifun</LI></OL><P>word f_ifun = [
+	imem_error : FNONE;
+	1: imem_ifun;
+];
+</P><OL><LI> Is instruction valid?</LI></OL><P>bool instr_valid = f_icode in 
+	{ INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
+	  IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ };
+</P><OL><LI> Determine status code for fetched instruction</LI></OL><P>word f_stat = [
+	imem_error: SADR;
+	!instr_valid : SINS;
+	f_icode == IHALT : SHLT;
+	1 : SAOK;
+];
+</P><OL><LI> Does fetched instruction require a regid byte?</LI></OL><P>bool need_regids =
+	f_icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
+		     IIRMOVQ, IRMMOVQ, IMRMOVQ };
+</P><OL><LI> Does fetched instruction require a constant word?</LI></OL><P>bool need_valC =
+	f_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL };
+</P><OL><LI> Predict next value of PC</LI></OL><P>word f_predPC = [
+	# BBTFNT: This is where you'll change the branch prediction rule
+	f_icode in { IJXX, ICALL } : f_valC;
+	1 : f_valP;
+];
+</P><OL><LI> Decode Stage ######################################</LI></OL><OL><LI> What register should be used as the A source?</LI></OL><P>word d_srcA = [
+	D_icode in { IRRMOVQ, IRMMOVQ, IOPQ, IPUSHQ  } : D_rA;
+	D_icode in { IPOPQ, IRET } : RRSP;
+	1 : RNONE; # Don't need register
+];
+</P><OL><LI> What register should be used as the B source?</LI></OL><P>word d_srcB = [
+	D_icode in { IOPQ, IRMMOVQ, IMRMOVQ  } : D_rB;
+	D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+	1 : RNONE;  # Don't need register
+];
+</P><OL><LI> What register should be used as the E destination?</LI></OL><P>word d_dstE = [
+	D_icode in { IRRMOVQ, IIRMOVQ, IOPQ} : D_rB;
+	D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+	1 : RNONE;  # Don't write any register
+];
+</P><OL><LI> What register should be used as the M destination?</LI></OL><P>word d_dstM = [
+	D_icode in { IMRMOVQ, IPOPQ } : D_rA;
+	1 : RNONE;  # Don't write any register
+];
+</P><OL><LI> What should be the A value?</LI><LI> Forward into decode stage for valA</LI></OL><P>word d_valA = [
+	D_icode in { ICALL, IJXX } : D_valP; # Use incremented PC
+	d_srcA == e_dstE : e_valE;    # Forward valE from execute
+	d_srcA == M_dstM : m_valM;    # Forward valM from memory
+	d_srcA == M_dstE : M_valE;    # Forward valE from memory
+	d_srcA == W_dstM : W_valM;    # Forward valM from write back
+	d_srcA == W_dstE : W_valE;    # Forward valE from write back
+	1 : d_rvalA;  # Use value read from register file
+];
+</P><P>word d_valB = [
+	d_srcB == e_dstE : e_valE;    # Forward valE from execute
+	d_srcB == M_dstM : m_valM;    # Forward valM from memory
+	d_srcB == M_dstE : M_valE;    # Forward valE from memory
+	d_srcB == W_dstM : W_valM;    # Forward valM from write back
+	d_srcB == W_dstE : W_valE;    # Forward valE from write back
+	1 : d_rvalB;  # Use value read from register file
+];
+</P><OL><LI> Execute Stage #####################################</LI></OL><OL><LI> BBTFNT: When some branches are predicted as not-taken, you need some</LI><LI> way to get valC into pipeline register M, so that</LI><LI> you can correct for a mispredicted branch.</LI></OL><OL><LI> Select input A to ALU</LI></OL><P>word aluA = [
+	E_icode in { IRRMOVQ, IOPQ } : E_valA;
+	E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ } : E_valC;
+	E_icode in { ICALL, IPUSHQ } : -8;
+	E_icode in { IRET, IPOPQ } : 8;
+	# Other instructions don't need ALU
+];
+</P><OL><LI> Select input B to ALU</LI></OL><P>word aluB = [
+	E_icode in { IRMMOVQ, IMRMOVQ, IOPQ, ICALL, 
+		     IPUSHQ, IRET, IPOPQ } : E_valB;
+	E_icode in { IRRMOVQ, IIRMOVQ } : 0;
+	# Other instructions don't need ALU
+];
+</P><OL><LI> Set the ALU function</LI></OL><P>word alufun = [
+	E_icode == IOPQ : E_ifun;
+	1 : ALUADD;
+];
+</P><OL><LI> Should the condition codes be updated?</LI></OL><P>bool set_cc = E_icode == IOPQ &amp;&amp;
+	# State changes only during normal operation
+	!m_stat in { SADR, SINS, SHLT } &amp;&amp; !W_stat in { SADR, SINS, SHLT };
+</P><OL><LI> Generate valA in execute stage</LI></OL><P>word e_valA = E_valA;    # Pass valA through stage
+</P><OL><LI> Set dstE to RNONE in event of not-taken conditional move</LI></OL><P>word e_dstE = [
+	E_icode == IRRMOVQ &amp;&amp; !e_Cnd : RNONE;
+	1 : E_dstE;
+];
+</P><OL><LI> Memory Stage ######################################</LI></OL><OL><LI> Select memory address</LI></OL><P>word mem_addr = [
+	M_icode in { IRMMOVQ, IPUSHQ, ICALL, IMRMOVQ } : M_valE;
+	M_icode in { IPOPQ, IRET } : M_valA;
+	# Other instructions don't need address
+];
+</P><OL><LI> Set read control signal</LI></OL><P>bool mem_read = M_icode in { IMRMOVQ, IPOPQ, IRET };
+</P><OL><LI> Set write control signal</LI></OL><P>bool mem_write = M_icode in { IRMMOVQ, IPUSHQ, ICALL };
+</P><OL><LI>/* $begin pipe-m_stat-hcl */
+</LI><LI> Update the status</LI></OL><P>word m_stat = [
+	dmem_error : SADR;
+	1 : M_stat;
+];
+</P><OL><LI>/* $end pipe-m_stat-hcl */</LI></OL><OL><LI> Set E port register ID</LI></OL><P>word w_dstE = W_dstE;
+</P><OL><LI> Set E port value</LI></OL><P>word w_valE = W_valE;
+</P><OL><LI> Set M port register ID</LI></OL><P>word w_dstM = W_dstM;
+</P><OL><LI> Set M port value</LI></OL><P>word w_valM = W_valM;
+</P><OL><LI> Update processor status</LI></OL><P>word Stat = [
+	W_stat == SBUB : SAOK;
+	1 : W_stat;
+];
+</P><OL><LI> Pipeline Register Control #########################</LI></OL><OL><LI> Should I stall or inject a bubble into Pipeline Register F?</LI><LI> At most one of these can be true.</LI></OL><P>bool F_bubble = 0;
+bool F_stall =
+	# Conditions for a load/use hazard
+	E_icode in { IMRMOVQ, IPOPQ } &amp;&amp;
+	 E_dstM in { d_srcA, d_srcB } ||
+	# Stalling at fetch while ret passes through pipeline
+	IRET in { D_icode, E_icode, M_icode };
+</P><OL><LI> Should I stall or inject a bubble into Pipeline Register D?</LI><LI> At most one of these can be true.</LI></OL><P>bool D_stall = 
+	# Conditions for a load/use hazard
+	E_icode in { IMRMOVQ, IPOPQ } &amp;&amp;
+	 E_dstM in { d_srcA, d_srcB };
+</P><P>bool D_bubble =
+	# Mispredicted branch
+	(E_icode == IJXX &amp;&amp; !e_Cnd) ||
+	# BBTFNT: This condition will change
+	# Stalling at fetch while ret passes through pipeline
+	# but not condition for a load/use hazard
+	!(E_icode in { IMRMOVQ, IPOPQ } &amp;&amp; E_dstM in { d_srcA, d_srcB }) &amp;&amp;
+	  IRET in { D_icode, E_icode, M_icode };
+</P><OL><LI> Should I stall or inject a bubble into Pipeline Register E?</LI><LI> At most one of these can be true.</LI></OL><P>bool E_stall = 0;
+bool E_bubble =
+	# Mispredicted branch
+	(E_icode == IJXX &amp;&amp; !e_Cnd) ||
+	# BBTFNT: This condition will change
+	# Conditions for a load/use hazard
+	E_icode in { IMRMOVQ, IPOPQ } &amp;&amp;
+	 E_dstM in { d_srcA, d_srcB};
+</P><OL><LI> Should I stall or inject a bubble into Pipeline Register M?</LI><LI> At most one of these can be true.</LI></OL><P>bool M_stall = 0;
+</P><OL><LI> Start injecting bubbles as soon as exception passes through memory stage</LI></OL><P>bool M_bubble = m_stat in { SADR, SINS, SHLT } || W_stat in { SADR, SINS, SHLT };
+</P><OL><LI> Should I stall or inject a bubble into Pipeline Register W?</LI></OL><P>bool W_stall = W_stat in { SADR, SINS, SHLT };
+bool W_bubble = 0;
+</P><OL><LI>/* $end pipe-all-hcl */</LI></OL></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

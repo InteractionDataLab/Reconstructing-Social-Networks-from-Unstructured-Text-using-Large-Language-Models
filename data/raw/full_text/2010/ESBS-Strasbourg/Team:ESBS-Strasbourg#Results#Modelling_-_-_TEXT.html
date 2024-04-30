@@ -1,0 +1,110 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:ESBS-Strasbourg/Results/Modelling
+From 2010.igem.org
+{|
+ESBS - Strasbourg
+  HOME
+  TEAM
+Overview
+Students
+Advisors
+Instructors
+Strasbourg
+Collaboration
+  PROJECT
+Overview
+Strategy
+Visual Description
+Application
+Acknowledgment
+Reference
+  RESULTS
+Biobricks
+Biobrick Assembly Technique
+Characterization
+Modeling
+  NOTEBOOK
+Synthetic Photoreceptors
+Microfluidics
+Lighting device
+Lab-book
+HUMAN PRACTICE
+Organisation
+Survey
+The ClpX video
+The ClpX game
+Project Safety
+     SPONSORS
+System’s modeling
+1. Introduction
+2. Behavioral model
+3. Signal flow model
+4. Conclusion
+  
+Let me guide you
+System’s modeling
+1. Introduction
+To automate the process of creation of new synthetic bio-systems, it is interesting to develop a specific design flow like the one we use in microelectronics. One of the main assets in microelectronic design ﬂow for digital systems is the ability to describe a system at different levels of abstraction.
+For our system, we focused the modeling on two different level of abstraction. The first one is a high-level model and  the second one is a low-level model. For each model we show the simulation results and, as a conclusion, we discuss the potential of the models we proposed.
+2. Behavioral model
+As in digital electronics, multiple abstraction levels can be deﬁned. The highest one consists in the function of the system. This model, also called logical model, because it is based on logical equations, is a high level model. It is interesting to use high-level models, with fast simulations, to validate the concept of a bio-system.
+The specifications of our system are the followings:
+• At a 730 nm light, the system is in an inactive state and doesn’t degrade the TAG-protein
+• At a 660 nm light, the system is active and degrade the TAG-protein
+Based on these specifications, we deduce a group of logical equations. To create the model we use VHDL language, which is a hardware description language (HDL). The following VHDL code corresponds to our model:
+We simulate this VHDL code with Dolphin SMASH 5.12 and we obtain the followings results:
+We see that when the light has a 730 nm wavelength the TAG-protein is not degraded. When the light reaches 660 nm, the TAG-protein is degraded after a 10 second delay, which corresponds to the time of the phytochrome activation and is arbitrarily fixed in the model. This delay was introduced after the low-level simulation to make this model fit the low-level ones.
+This model uses mathematical tools to calculate the levels of species involved. This has some advantages: fast simulations, use of Boolean algebra and tools existing in electronics, such as logic synthesis or formal checking tools.
+Otherwise, it presents drawbacks. First, concentrations of proteins are not taken into account, which causes accuracy problems. Then, it is too basic compared to the complexity of a bio-system, but it quickly allows us to get an idea of the outcome of such a system without launching slow and complex simulations.
+3. Signal flow model
+a. Principle of this model
+The signal ﬂow model is a low-level model. This kind of model is used to predict its behavior with accuracy and is based on equations to compute different concentrations. All biological mechanisms are based on chemical equations linking the concentration of chemical species involved to each other. These chemical equations can be transformed into ordinary differential equations (ODEs), which are integrated to the model.
+First we will see a presentation of the system and the different interactions between states. Then we will explain the biological equations used to make the model and we will show simulation results for each part of the system.
+b. System's presentation
+Our system is made up of a block named PCC (including the Phytochrome, ClpX and ClpP) and an other block, the DAS_GPF_ PIF chain where GFP is the TAG protein which is used to illustrate the mechanism. This system can be boiled down to the following four states scheme:
+The first state is the state where PCC and DAS_GFP_PIF are free. Then PCC can form a complex with DAS, called PCC_DAS, with k1,0 the coefficient of this complexation, or with PIF, called PCC_PIF, with k0,1 the coefficient of this complexation. The last state is the PCC_DAS_PIF complex which is reached from PCC_DAS state by the complexation coefficient k0,1*c1,1 or from PCC_PIF by k1,0*c1,1, where c1,1 is the the coupling factor between the two sites of complexation.
+The TAG protein can only be degraded in PCC_DAS or PCC_DAS_PIF conformation, because DAS must be linked to launch the protein degradation process. This is why there are single arrows between states PCC and PCC_DAS and between PCC_PIF and PCC_DAS_PIF.
+c. Biological mechanisms
+• Light-sensitive coefficient
+k1,0 is very small so the formation of PCC_DAS is scarce. k0,1 is a coefficient which depends on the light's wavelength and this variance corresponds to the different physical structures of the PIF receptor (active or passive). With a 660 nm red light, PIF receptor is active and this coefficient is high but with a 730 nm infra-red light, PIF receptor is inactive and k0,1 becomes very small. So to model this coefficient we use a Gaussian function centered on 660:
+where μ = 660, σ = 5 and "light" the wavelength of the light. k730 is the constant of complexation at 730 nm and is very small.
+• Complexation reactions
+To find the ODEs for the different reactions of complexation brought into play, we start with a simple complexation between two species, A and B:
+where kon is the coefficient of the complex’s formation and koff the coefficient of the complex’s dissociation. The ODE of this reaction which gives the concentration of the complex AB is the following one:
+kdegr is only the constant of natural degradation of the complex. Using the same principle, we deduced the following equations for our system:
+We insert these equations into our model and we obtained these simulation results:
+• Computed concentrations of present species
+To start, we will see the protein synthesis mechanism. We consider the synthesis of a P protein regulated by a set of protein Xp. We obtain a set of two equations. The transcription of DNA into mRNA is based on Hill’s equation:
+where ktr is the kinetic constant of transcription, Kp the Hill’s constant representing the strength of the activator or repressor, np the Hill’s coefﬁcient (positive for an activator and negative for a repressor) and dmRNA the degradation’s coefﬁcient of mRNA.
+The same way, the synthesis of P protein from mRNA is deﬁned by:
+where ktl is the kinetic constant of translation and dP the degradation coefﬁcient of protein P.
+For each species, PCC, PIF and DAS, we use this mechanism to compute the species concentration produced, respectively PCC_prod, PIF_prod and DAS_prod. We must now compute the effective concentration of these species with these equations:
+where PIF_l and DAS_l are the concentrations of PIF and DAS linked to the DAS_GFP_PIF chain already complexed at the other boundary (respectively DAS and PIF). We obtain the same equation for the different species. This is because we compute separately DAS, PIF and PCC’s concentrations for the complexation mechanism but we do have the same DAS_GFP_PIF free chain concentration as the free phytochrome concentration. So for the simulation results we just show the PCC and the DAS_GFP_PIF concentration because DAS and PIF concentrations are the same:
+• TAG protein degradation
+The last but the most important concentration to show is the TAG protein's (GFP) concentration. First we compute the concentration of GFP produced, GFP_prod, with the same mechanism introduced in the previous part. Then, the concentration of PCC fixed GFP (ready to be degraded), GFP_l, is given by:
+Finally we obtain the effective concentration of GFP with the following equation, including the degradation (with dGFP degradation coefficient) of the fixed GFP:
+The simulation of these equations gives the following result:
+We have seen that this model is accurate but it has some drawbacks too. It is based on ODEs so it requires the use of a numerical solver, leading to slow simulations. It depends on parameters that should be estimated with experiments and the more the parameters are accurate, the more the simulations are close to real cell behavior.
+4. Conclusion
+The ﬁrst simulation we have introduced is made at high-level and is compared to the high-level model previously obtained in the following scheme:
+The delay in the high-level model was included after the low-level simulation to make both models match.
+The modeling part of our system takes advantage of microelectronics knowledge, which has proven itself, and resumes the main steps of the design flow used in this field to design a system.
+Each model has its own interest that we have seen previously, but it is the possibility to use them jointly that may be relevant, in order to simulate systems quickly with different levels of detail depending on the need (sensitive part or not, already validated or not ...).
+We did not have enough time to study the parameters extraction. Using characterization software like IC-CAP on our system, we still have to extract the parameters of the model to make it match with the real biological system.
+Retrieved from " http://2010.igem.org/Team:ESBS-Strasbourg/Results/Modelling "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

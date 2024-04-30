@@ -1,0 +1,139 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Edinburgh/Modelling/Signalling
+From 2010.igem.org
+home
+team - illuminati
+official
+supervisors
+advisors
+students
+environment
+gallery
+genomic BRIDGEs
+the protocol
+submitted parts
+results
+the future
+references
+bacterial BRIDGEs
+the project
+red light
+red sensor
+blue light
+blue sensor
+green light
+green sensor
+submitted parts
+results
+the future
+references
+modelling BRIDGEs
+kappa
+the genomic model
+the bacterial model
+the signalling model
+tools
+results
+the future
+references
+human BRIDGEs
+communication of science
+iGEM survey
+conversations
+the epic
+future applications
+further thoughts
+references
+lab notes   
+collaboration
+attribution
+BRIDGE
+red light
+red sensor
+blue light
+blue sensor
+green light
+green sensor
+modelling
+safety
+protocols
+acknowledgements
+Overview: Modelling intercellular bacterial BRIDGEs
+During the intracellular modelling of bacterial BRIDGEs , it became apparent that perturbations alone would not suffice to demonstrate the interactions of light-based communication between bacteria. What was needed was modelling of entire colonies of bacteria. The goals of this modelling would be to demonstrate in-silico the light-based communication between bacteria that we were trying to develop, and to establish whether light-based communication was feasible given the few in-vitro measurements we were able to make.
+The ideal would be to be able to simulate the spontaneous synchronisation of a colony in a random initial state. Realistically, however, this would be a very difficult problem. The computational complexity of simply replicating the intracellular model for lots of individual cells and simulating them all together was prohibitive (especially given the hardware we had available). Also, there were a lot of unknowns that would have to be dealt with:
+How is the light output from one bacterium converted into signal input by a neighbouring bacterium?
+What is the distribution of the light sensing molecules in the receiving bacterium?
+How is the light attenuated by distance between the bacteria?
+How is the light attenuated by passing through two cell membranes?
+Will motility of the bacteria be an important factor?
+How much light from other bacteria will be required to not be swamped by the light output of the receiving bacterium itself?
+How will a bacterium cope with multiple conflicting signals from neighbouring bacteria?
+Will the light emission within a single bacterium be homogeneous, or will there be multiple different outputs from different regions within the bacterium?
+The Model
+The proposed plan was to simplify the intracellular model. The aim would be to produce a model which replicated the three light outputs and reacted to varying levels of three light inputs in exactly the same way as the full intracellular model . This was a non-trivial task: first, 'exact' is difficult to define with stochastic modelling - no two simulation runs will be the same. The simplest approach would be to run the simulation repeatedly and compute both the mean and standard deviation for the observables (light output), for each of a number of test profiles (light input). Then we would develop a simplified model which matched the output for each of these profiles. Again, 'matching' would need to be defined as some means of scoring.
+The development of this model would be automated, since there was not the time available to redevelop the simplified intercellular model every time the full intracellular model was refined with new experimental data. It was thought that either mathematical analysis or evolutionary model development through genetic algorithms could thus be used to accomplish this; both would entail difficult tasks, but it was thought that genetic algorithms would be within our capabilities.
+With the development of a simplified intracellular model, we would be able to think about intercellular communication. This would involve two elements; how to represent the interaction of neighbouring cells over time, and how to transform the light output of one cell into the light input of its neighbours (and itself), taking into account attenuation, multiple conflicting signals, and other factors.
+Our proposed solution was to create a simulation based on both stochastic modelling and cellular automata. For the initial implementation we would make the simplifying assumptions that the cells were non-motile and regularly packed into a two-dimensional hexagonal mesh. Each cell would receive input from its six nearest neighbours (and itself), as depicted in Figure 1 .
+Figure 1: The two-dimensional hexagonal mesh that forms the underlying structure of our proposed intercellular model.
+The stochastic model would hold a representation of a colony laid out in the above hexagonal mesh. Each cell would have an individual representation of the simplified intracellular model. The model would be run stochastically with each cell effectively operating independently. After the elapsing of every time interval delta-t, the values of each of the three light inputs in a cell would be calculated based on the observed light output at that timepoint of the cell itself and its six closest neighbours:
+inputred = fred(outputcell; (outputneighbour - i : i = 1::6))
+inputgreen = fgreen(outputcell; (outputneighbour - i : i = 1::6))
+inputblue = fblue(outputcell; (outputneighbour - i : i = 1::6))
+The functions fred, fgreen, and fblue have yet to be defined, but would hopefully be based on experimental data.
+After updating the input value of all cells in the mesh, the stochastic simulation would be resumed. The cycle would then repeat after every delta-t time units. This would thus give us a basis for the simulation of bacterial colony synchronisation.
+Implementation
+Due to time constraints, the approach of automated simplification of the intracellular model was put on hold. Instead, an intercellular model of a 2D biofilm of communicating bacteria was constructed based directly upon the intracellular model. This had the advantage of having the behaviour of the optimised intracellular model, at the expense of some heavy computational requirements: a linear factor of the intracellular model, growing with the number of cells being modelled.
+The extension to a full intercellular model was done in iterative stages.
+Creation of unlinked colony of cells
+The intracellular model was extended from a single cell to a colony of 16 (4x4) cells. This was done simply by multiplying the initial values of all complexes by 16, exploiting a feature of the extended spatial Kappa language in that in the absence of alternate direction, the language will distribute complexes evenly among the defined cells of the simulation.
+Running this simulation demonstrated that the intracellular model functioned as part of a larger colony model, and showed the divergence from colony coherence in the absence of light communication. As can be seen from the Figure 2 below the individual cells in the colony each individually exhibit the oscillating behaviour of the intra cellular model, but each cell runs at its own pace through the pattern, with light emission peaks occurring out of phase with its neighbours.
+Figure 2: Colony snapshot showing no cohesion in colony.
+Another way of showing this is the aggregate light emmission graph for the colony. As can be seen below ( Figure 3 ), the oscillation of the individual cells is dampened by the 16 cells not operating in phase.
+Figure 3: Graph view of the unlinked model.
+We can compare this with the graphs of single cells running the same intracellular model over similar timescales ( Figure 4 ):
+Figure 4: Graph view of the intracellular model.
+Conversion to linked colony of cells
+To minimise the interference with the running of the intracellular model, the linked colony model simply adds a set of transport rules for the agents representing light, while leaving the rates of all the other rules as before.
+So for each light production-sensing pathway, we originally had Figure 5 :
+Figure 5: The movement of light in the unlinked model.
+Now the transport of light between cells causes Figure 6 :
+Figure 6: The movement of light in the linked model.
+The agents representing light can travel one or more cells away from their originating cell before being degraded. The average distance away from the source cell is determined by the ratio of the transport rate to the degradation rate.
+Starting with a transport rate equal to degradation rate (i.e. a light 'particle') is equally likely to leave a cell or be degraded. We get the following results shown in Figure 7 .
+Figure 7: Colony snapshot showing cohesion in the colony.
+Again, a more telling way of showing the synchronisation of the colony cells is the aggregate light emmission graph for the colony. As can be seen below in Figure 8 , the oscillation of the individual cells is reinforced by the 16 cells operating more or less in phase.
+Figure 8: Graph view of the linked model.
+While the current results are somewhat inconclusive and open to interpretation, they do look promising and refinement of the model parameters is hoped to improve the clarity of the colony synchronisation.
+Comparison with similar existing work
+There have been numerous papers on the modelling of intercellular communication, particularly in investigations of the properties of quorum sensing. The signalling agent in these cases was a transmitted molecule. Our intercellular model is in part inspired by this work, as we are effectively treating the transmitted light as a short range, rapidly transmitted, rapidly degenerating particle.
+The references section lists some of the related reading to this area of modelling.
+Future work
+There is a wide range of possible extensions to this modelling work, some of which we may even get completed by the event. In terms of the model itself, we can attempt to predict the behaviour of the colony of cells as a whole in response to outside stimulus. We can also do sensitivity analysis to determine the effect of the firing rates of the various intercellular communication related rules. Finally, in common with the intracellular model, characterisation of some of the biological equivalent pathways will allow us to constrain our choice of kinetic rates to in-vitro derived values.
+Aside from the exploration of the existing Kappa model of a static mesh of communicating cells, there are a range of directions we can extend the intercellular model and simulation.
+Varying density of cell colony, and taking into account properties of intercellular media. The current intercellular model takes the light attenuation properties of varying cell-cell distance and absorption effects of the media into account implicitly in the values of the intercellular transmission rates. A more realistic model would allow some variance in the locations and distances apart of the cells in the colony, rather than a regular hexagonal mesh.
+Motility. The effect of a motile colony of bacteria could be investigated. Would the motility of individual bacteria increase or decrease the colony synchronisation behaviour? There exist a number of (computationally intensive) simulators of bacteria motility that could be leveraged here.
+These extensions all increase the complexity of the model, so the original plan of automated simplification of the intracellular model would be of even more benefit. Alternatively, conversion of the simulation to take advantage of parallel computing resources would allow a complex model to be simulated in reasonable time.
+The latest versions of our intracellular models are available here (unlinked) and here (linked) . A sample simulation replay file for the linked model is available here (warning - 3MB zip file!).
+References
+Elowitz, M.B. and Leibler, S. (2000). A synthetic oscillatory network of transcriptional regulators. Nature, Vol. 403, pp.335-338
+Waters, C.M. and Bassler, B.L. (2005). Quorum Sensing: Cell-to-Cell Communication in Bacteria. Annu. Rev. Cell Dev. Biol, Vol. 21, pp.319-346
+Kollmann, M., Lovdok, L., Bartholome, K., Timmer, J., and Sourjik, V. (2005). Design principles of a bacterial signalling network. Nature, Vol. 438, pp.504-507
+Goryachev, A.B., Toh, D.J., Wee, K.B., Lee, T., Zhang, H.B., and Zhang, L.H. (2005). Transition to quorum sensing in an Agrobacterium population: a stochastic model. PLoS Comput Biol, Vol. 1, pp.37
+Throughout this wiki there are words in bold that indicate a relevance to human aspects. It will become obvious that human aspects are a part of almost everything in iGEM.
+Retrieved from " http://2010.igem.org/Team:Edinburgh/Modelling/Signalling "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

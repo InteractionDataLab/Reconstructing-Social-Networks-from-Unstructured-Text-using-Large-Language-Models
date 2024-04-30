@@ -1,0 +1,437 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Paris_Saclay_simbox_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Paris_Saclay/simbox.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Paris_Saclay/simbox.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Saclay/simbox.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Saclay/simbox.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Paris_Saclay/simbox.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Paris Saclay/simbox.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>/* Simulator written by Damir Vodenicarevic for the Paris-Saclay 2013 iGEM team */ 
+</P><P>simulations= new Array();
+</P><P>function simboxes_load()
+{
+</P><PRE>var simboxes= document.getElementsByClassName(&quot;simbox&quot;);
+</PRE><PRE>for(var i=0 ; i &lt; simboxes.length ; ++i)
+ init_simbox(simboxes[i], i);
+</PRE><P>}
+</P><P>function molecule()
+{
+</P><PRE>this.name= undefined;
+this.init_qtty= 0;
+this.quantity= 0;
+this.curve_show= false;
+this.curve_color= &quot;#000000&quot;;
+this.const= false;
+this.adjustable= false;
+this.history= new Array();
+</PRE><P>}
+</P><P>function reaction()
+{
+</P><PRE>this.inputs= new Array();
+this.outputs= new Array();
+this.probability= 0.0;
+this.precomp_probfactor= 0.0;
+this.precomp_n_consumed= new Array();
+this.precomp_n_in= new Array();
+</PRE><P>}
+</P><P>function simulation()
+{
+</P><PRE>this.id= undefined;
+this.volume= undefined;
+this.timestep= 0.0001;
+this.alpha= 7.4e-7;
+this.molecules= new Array();
+this.reactions= new Array();
+this.reac_order= new Array();
+this.running= false;
+this.refresh_run_time= 70;
+this.refresh_interval= 30;
+this.timeout= null;
+this.curtime= 0.0;
+this.curstep= 0;
+</PRE><PRE>this.canv= null;
+this.ctx= null;
+this.draw_min_t= 0.0;
+this.draw_max_t= 100.0;
+this.draw_min_v= 0.0;
+this.draw_max_v= 1000.0;
+</PRE><P>}
+</P><P>function simbox_get_molecule_id(simid, name)
+{
+</P><PRE>for(var i= 0 ; i &lt; simulations[simid].molecules.length ; ++i)
+{
+ if(simulations[simid].molecules[i].name == name)
+  return i;
+}
+return null;
+</PRE><P>}
+</P><P>function init_simbox(sb, id)
+{
+</P><PRE>simulations[id]= new simulation();
+</PRE><PRE>//Get parameters
+var xmlfile= sb.getAttribute('data-load')+'?action=raw&amp;ctype=text/css&amp;ps_tstamp='+new Date().getTime();
+var width= parseInt(sb.getAttribute('data-width'));
+var height= parseInt(sb.getAttribute('data-height'));
+</PRE><PRE>//Open XML data file
+var xmldata= null;
+try
+{
+ var xhr= new XMLHttpRequest();
+ xhr.open(&quot;GET&quot;, xmlfile, false);
+ xhr.send();
+ var parser= new DOMParser();
+ xmldata= parser.parseFromString(xhr.responseText, &quot;application/xml&quot;);
+ if(xmldata.documentElement.nodeName != 'sim')
+  throw 'XML parsing error';
+}
+catch(err)
+{
+ sb.innerHTML='Error : ' + err;
+ return false;
+}
+</PRE><PRE>//Load display parameters
+if(xmldata.getElementsByTagName(&quot;yscale&quot;).length &gt; 0)
+ simulations[id].draw_max_v= parseFloat(xmldata.getElementsByTagName(&quot;yscale&quot;)[0].childNodes[0].nodeValue);
+</PRE><PRE>//Load simulation parameters
+if(xmldata.getElementsByTagName(&quot;volume&quot;).length &gt; 0)
+ simulations[id].volume= parseFloat(xmldata.getElementsByTagName(&quot;volume&quot;)[0].childNodes[0].nodeValue);
+if(xmldata.getElementsByTagName(&quot;timestep&quot;).length &gt; 0)
+ simulations[id].timestep= parseFloat(xmldata.getElementsByTagName(&quot;timestep&quot;)[0].childNodes[0].nodeValue);
+if(xmldata.getElementsByTagName(&quot;alpha&quot;).length &gt; 0)
+ simulations[id].alpha= parseFloat(xmldata.getElementsByTagName(&quot;alpha&quot;)[0].childNodes[0].nodeValue);
+</PRE><PRE>//Load molecules
+var molecule_tags= xmldata.getElementsByTagName(&quot;molecule&quot;);
+for(var i= 0 ; i &lt; molecule_tags.length ; ++i)
+{ 
+ simulations[id].molecules[i]= new molecule();
+ simulations[id].molecules[i].name= molecule_tags[i].getAttribute('name');
+ if(molecule_tags[i].hasAttribute('quantity'))
+ {
+  simulations[id].molecules[i].init_qtty= parseFloat(molecule_tags[i].getAttribute('quantity'));
+  simulations[id].molecules[i].quantity= parseFloat(molecule_tags[i].getAttribute('quantity'));
+ }
+ if(molecule_tags[i].hasAttribute('curve_show'))
+  simulations[id].molecules[i].curve_show= (molecule_tags[i].getAttribute('curve_show') == 'true');
+ if(molecule_tags[i].hasAttribute('curve_color'))
+  simulations[id].molecules[i].curve_color= molecule_tags[i].getAttribute('curve_color');
+ if(molecule_tags[i].hasAttribute('const'))
+  simulations[id].molecules[i].const= (molecule_tags[i].getAttribute('const') == 'true');
+ if(molecule_tags[i].hasAttribute('adjustable'))
+  simulations[id].molecules[i].adjustable= (molecule_tags[i].getAttribute('adjustable') == 'true');
+}
+</PRE><PRE>//Load reactions
+var reaction_tags= xmldata.getElementsByTagName(&quot;reaction&quot;);
+for(var i= 0 ; i &lt; reaction_tags.length ; ++i)
+{
+ simulations[id].reactions[i]= new reaction();
+ if(reaction_tags[i].hasAttribute('probability'))
+  simulations[id].reactions[i].probability= parseFloat(reaction_tags[i].getAttribute('probability'));
+</PRE><PRE> //precomputing
+ simulations[id].reactions[i].precomp_probfactor= simulations[id].reactions[i].probability;
+ 
+ var input_tags= reaction_tags[i].getElementsByTagName(&quot;in&quot;);
+ if(input_tags.length &gt; 2)
+ {
+  sb.innerHTML='Error : reactions with more than 2 reactices are not supported.';
+  return false;
+ }
+ for(var j= 0 ; j &lt; input_tags.length ; ++j)
+ {
+   var tmpid= simbox_get_molecule_id(id, input_tags[j].childNodes[0].nodeValue);
+   if(tmpid == null)
+   {
+    sb.innerHTML='Error : molecule &quot;'+input_tags[j].childNodes[0].nodeValue+'&quot; not defined.';
+    return false;
+   }
+   simulations[id].reactions[i].inputs[j]= tmpid;
+</PRE><PRE>   //precomputing
+   if(!simulations[id].molecules[tmpid].const)
+   {
+    if(simulations[id].reactions[i].precomp_n_in[tmpid] == undefined)
+    {
+     simulations[id].reactions[i].precomp_n_in[tmpid] = 1;
+     simulations[id].reactions[i].precomp_n_consumed[tmpid] = 1;
+    }
+    else
+    {
+     simulations[id].reactions[i].precomp_n_in[tmpid] ++;
+     simulations[id].reactions[i].precomp_n_consumed[tmpid] ++;
+    }
+   }
+ }
+ //precomputing
+ if(input_tags.length == 2)
+ {
+  simulations[id].reactions[i].precomp_probfactor *= (simulations[id].alpha/simulations[id].volume);
+  if(simulations[id].reactions[i].inputs[0] == simulations[id].reactions[i].inputs[1])
+   simulations[id].reactions[i].precomp_probfactor /= 2;
+ }
+</PRE><PRE> var output_tags= reaction_tags[i].getElementsByTagName(&quot;out&quot;);
+ for(var j= 0 ; j &lt; output_tags.length ; ++j)
+ {
+   var tmpid= simbox_get_molecule_id(id, output_tags[j].childNodes[0].nodeValue);
+   if(tmpid == null)
+   {
+    sb.innerHTML='Error : molecule &quot;'+output_tags[j].childNodes[0].nodeValue+'&quot; not defined.';
+    return false;
+   }
+   simulations[id].reactions[i].outputs[j]= tmpid;
+</PRE><PRE>   //precomputing
+   if(simulations[id].reactions[i].precomp_n_consumed[tmpid] != undefined)
+   {
+    simulations[id].reactions[i].precomp_n_consumed[tmpid] --;
+    if(simulations[id].reactions[i].precomp_n_consumed[tmpid] &lt;= 0) //not consuming
+     simulations[id].reactions[i].precomp_n_consumed.splice(tmpid, 1);
+   }
+ }
+</PRE><PRE> //precompute index array for easy shuffling
+ simulations[id].reac_order[i]= i;
+}
+
+//Clear loading text
+sb.innerHTML= <I>;</I></PRE><PRE>//Create canvas
+simulations[id].canv= document.createElement('canvas');
+simulations[id].ctx= simulations[id].canv.getContext(&quot;2d&quot;);
+simulations[id].canv.id= &quot;simbox_canv_&quot;+id;
+simulations[id].canv.width= width;
+simulations[id].canv.height= height;
+sb.appendChild(simulations[id].canv);
+
+//Init param box
+var paramdiv= document.createElement('div');
+sb.appendChild(paramdiv);
+//legend
+var reshtmlparamdiv= <I>;</I>
+for(var i= 0 ; i &lt; simulations[id].molecules.length ; ++i)
+{
+ if(simulations[id].molecules[i].curve_show)
+  reshtmlparamdiv += '<SPAN style="font-weight:bold;padding:0.1em 0.3em;color:#FFFFFF;background-color:'+simulations[id].molecules[i].curve_color+';">'+simulations[id].molecules[i].name+'</SPAN> ';
+}
+reshtmlparamdiv += '<SPAN id="simbox_time_.27.2Bid.2B.27">t = 0</SPAN>';
+//quantity controls
+for(var i= 0 ; i &lt; simulations[id].molecules.length ; ++i)
+{
+ if(simulations[id].molecules[i].adjustable)
+ {
+  reshtmlparamdiv += '';
+  reshtmlparamdiv += simulations[id].molecules[i].name + ' = &lt;input id=&quot;simbox_ctl_'+id+'_'+i+'&quot; type=&quot;number&quot; min=&quot;0&quot; value=&quot;'+simulations[id].molecules[i].quantity+'&quot;/&gt;';
+ }
+}
+reshtmlparamdiv += '';
+//controls
+reshtmlparamdiv += '&lt;button onclick=&quot;simbox_startclick(this,'+id+')&quot; id=&quot;simbox_start_'+id+'&quot;&gt;START&lt;/button&gt;&lt;button onclick=&quot;simbox_resetclick(this,'+id+')&quot; id=&quot;simbox_reset_'+id+'&quot;&gt;RESET&lt;/button&gt;';
+//about
+reshtmlparamdiv += '<SPAN style="font-size:0.8em;">Programmed by Damir Vodenicarevic, based on the work of Patrick Amar and Loïc Paulevé [HSIM: an hybrid stochastic simulation system for systems biology, Electronic Notes in Theoretical Computer Science www.elsevier.nl/locate/entcs]</SPAN>';
+</PRE><PRE>paramdiv.innerHTML= reshtmlparamdiv;
+</PRE><PRE>simbox_update_controls(id);
+</PRE><PRE>return true;
+</PRE><P>}
+</P><P>function is_posint(str)
+{
+</P><PRE> var parsed= parseInt(str);
+ if(isNaN(parsed)) return false;
+ if(!isFinite(parsed)) return false;
+ if(parsed &lt; 0) return false;
+ return true;
+</PRE><P>}
+</P><P>function simbox_startclick(btn, simid)
+{
+</P><PRE>if(simulations[simid].running)
+{
+  window.clearTimeout(simulations[simid].timeout);
+  simulations[simid].running= false;
+  btn.innerHTML= 'START';
+}
+else
+{
+ for(var i= 0 ; i &lt; simulations[simid].molecules.length ; ++i)
+ {
+  if(simulations[simid].molecules[i].adjustable)
+  {
+   var tmpval= document.getElementById('simbox_ctl_'+simid+'_'+i).value;
+   if(!is_posint(tmpval))
+   {
+    alert('Invalid quantity set for molecule &quot;'+simulations[simid].molecules[i].name+'&quot;.');
+    return false;
+   }
+   simulations[simid].molecules[i].quantity= parseInt(tmpval);
+  }
+ }
+ simulations[simid].running= true;
+ btn.innerHTML= 'PAUSE';
+ simbox_refresh(simid);
+}
+simbox_update_controls(simid);
+return true;
+</PRE><P>}
+</P><P>function simbox_resetclick(btn, simid)
+{
+</P><PRE>if(simulations[simid].running)
+{
+ window.clearTimeout(simulations[simid].timeout);
+ simulations[simid].running= false;
+ document.getElementById('simbox_start_'+simid).innerHTML= 'START';
+}
+
+//Reset quantities, clear curves
+simulations[simid].curtime= 0;
+simulations[simid].curstep= 0;
+for(var i= 0 ; i &lt; simulations[simid].molecules.length ; ++i)
+{
+ simulations[simid].molecules[i].quantity= simulations[simid].molecules[i].init_qtty;
+ simulations[simid].molecules[i].history.length= 0;
+}
+</PRE><PRE>//Update controls
+simbox_update_controls(simid);
+</PRE><P>}
+</P><P>function simbox_update_controls(simid)
+{
+</P><PRE>for(var i= 0 ; i &lt; simulations[simid].molecules.length ; ++i)
+{
+ if(simulations[simid].molecules[i].adjustable)
+ {
+  document.getElementById('simbox_ctl_'+simid+'_'+i).value= simulations[simid].molecules[i].quantity;
+  document.getElementById('simbox_ctl_'+simid+'_'+i).disabled= simulations[simid].running;
+ }
+}
+document.getElementById('simbox_time_'+simid).innerHTML= 't = ' + simulations[simid].curtime.toPrecision(5) + ' [step n°'+simulations[simid].curstep+']';
+</PRE><P>}
+</P><P>function simbox_refresh(simid)
+{
+</P><PRE>var tmpdate= new Date();
+var time1= tmpdate.getTime();
+</PRE><PRE>while(tmpdate.getTime() - time1 &lt; simulations[simid].refresh_run_time)
+{
+ simulation_step(simid);
+ tmpdate= new Date();
+}
+
+simulations[simid].draw_min_t= (simulations[simid].curtime - 20 &lt; 0 ? 0 : simulations[simid].curtime - 20);
+simulations[simid].draw_max_t= simulations[simid].curtime;
+simbox_draw_graph(simid);
+simbox_update_controls(simid);
+</PRE><PRE>simulations[simid].timeout= setTimeout(function() {simbox_refresh(simid);}, simulations[simid].refresh_interval);
+</PRE><P>}
+</P><P>function shuffle_array(array)
+{
+</P><PRE>for(var i= array.length-1; i &gt; 0 ; --i)
+{
+ var j= Math.floor(Math.random() * (i + 1));
+ var tmp= array[i];
+ array[i]= array[j];
+ array[j]= tmp;
+}
+</PRE><P>}
+</P><P>function simulation_step(simid)
+{
+</P><PRE>var sim= simulations[simid];
+</PRE><PRE>//Shuffle reaction order
+shuffle_array(sim.reac_order);
+</PRE><PRE>for(var i= 0 ; i &lt; sim.reac_order.length ; ++i)
+{
+ var reac= sim.reactions[sim.reac_order[i]];
+</PRE><PRE> var proba= reac.precomp_probfactor;
+</PRE><PRE> if(reac.inputs.length == 1)
+  proba *= sim.molecules[reac.inputs[0]].quantity;
+ else if(reac.inputs.length == 2)
+ {
+  if(reac.inputs[0] != reac.inputs[1])
+   proba *= sim.molecules[reac.inputs[0]].quantity * sim.molecules[reac.inputs[1]].quantity;
+  else if(sim.molecules[reac.inputs[0]].quantity &gt;= 2)
+   proba *= sim.molecules[reac.inputs[0]].quantity *(sim.molecules[reac.inputs[0]].quantity - 1.0);
+  else
+   proba= 0.0;
+ }
+</PRE><PRE> var n= Math.floor(proba);
+ var frac= proba - n;
+ if(frac &gt; 0)
+ {
+  if(Math.random() &lt; frac)
+   ++n;
+ }
+</PRE><PRE> for(var elt in reac.precomp_n_consumed)
+ {
+  if( n * reac.precomp_n_consumed[elt] &gt;= sim.molecules[elt].quantity )
+  {
+   var tmpe= Math.floor(sim.molecules[elt].quantity / reac.precomp_n_consumed[elt]);
+   if(tmpe &lt; n)
+    n= tmpe;
+  }
+ }
+
+ //check for initial possibility
+ for(var elt in reac.precomp_n_in)
+ {
+  if( sim.molecules[elt].quantity &lt; reac.precomp_n_in[elt] )
+  {
+   n= 0;
+   break;
+  }
+ }
+</PRE><PRE> for(var j= 0 ; j &lt; reac.inputs.length ; ++j)
+ {
+  if(!sim.molecules[reac.inputs[j]].const)
+   sim.molecules[reac.inputs[j]].quantity -= n;
+ }
+ for(var j= 0 ; j &lt; reac.outputs.length ; ++j)
+ {
+  if(!sim.molecules[reac.outputs[j]].const)
+   sim.molecules[reac.outputs[j]].quantity += n;
+ }
+}
+</PRE><PRE>for(var i= 0 ; i &lt; sim.molecules.length ; ++i)
+{
+ if(sim.molecules[i].curve_show)
+  sim.molecules[i].history.push(sim.molecules[i].quantity);
+}
+</PRE><PRE>sim.curtime += sim.timestep;
+sim.curstep++;
+</PRE><P>}
+</P><P>function simbox_drawXcoord(simid, t)
+{
+</P><PRE>var tmin= simulations[simid].draw_min_t;
+var tmax= simulations[simid].draw_max_t;
+return simulations[simid].canv.width*(t-tmin)/(tmax-tmin);
+</PRE><P>}
+function simbox_drawYcoord(simid, v)
+{
+</P><PRE>var vmin= simulations[simid].draw_min_v;
+var vmax= simulations[simid].draw_max_v;
+return simulations[simid].canv.height*(1.0 - (v-vmin)/(vmax-vmin));
+</PRE><P>}
+</P><P>function simbox_draw_graph(simid)
+{
+</P><PRE>var sim= simulations[simid];
+var canv= sim.canv;
+var ctx= sim.ctx;
+</PRE><PRE>ctx.clearRect(0, 0, canv.width, canv.height);
+</PRE><PRE>for(var i= 0 ; i &lt; sim.molecules.length ; ++i)
+{
+ if(sim.molecules[i].curve_show)
+ {
+  var dta= sim.molecules[i].history;
+  var tstart= Math.floor(sim.draw_min_t/sim.timestep);
+  var tend= Math.ceil(sim.draw_max_t/sim.timestep);
+  if(tstart &gt; dta.length)
+   tstart= dta.length;
+  if(tend &gt; dta.length)
+   tend= dta.length;
+ 
+  var step= Math.ceil((tend-tstart)/(200));
+</PRE><PRE>  ctx.beginPath();
+  for(var ti= tstart ; ti &lt; tend ; ti += step)
+  {
+   if(ti &gt; tstart)
+    ctx.lineTo( simbox_drawXcoord(simid, ti*sim.timestep), simbox_drawYcoord(simid, dta[ti]) );
+   else
+    ctx.moveTo( simbox_drawXcoord(simid, ti*sim.timestep), simbox_drawYcoord(simid, dta[ti]) );
+  }
+  ctx.strokeStyle= sim.molecules[i].curve_color;
+  ctx.stroke();
+ }
+}
+</PRE><P>}
+</P><P>
+window.addEventListener(&quot;load&quot;, simboxes_load, false);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:Paris_Saclay/simbox.js">http://2013.igem.org/Team:Paris_Saclay/simbox.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Paris_Saclay/simbox.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Paris_Saclay/simbox.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Paris_Saclay/simbox.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Paris_Saclay/simbox.js&amp;oldid=220731" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

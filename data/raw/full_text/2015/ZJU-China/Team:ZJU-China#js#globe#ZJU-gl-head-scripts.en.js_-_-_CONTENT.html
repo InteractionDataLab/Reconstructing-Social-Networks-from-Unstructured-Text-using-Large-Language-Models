@@ -1,0 +1,347 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_ZJU-China_js_globe_ZJU-gl-head-scripts_en_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:ZJU-China/js/globe/ZJU-gl-head-scripts.en.js</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/* All javascript needed for the global header and footer, and some utility functions.
+</P><PRE>  @file        gl-head-scripts.en.js
+  @author      marionm
+  ========================================================================== */
+</PRE><P>var gl_Wrapper = '#gl-outer-wrapper'; // outer wrapper element selector
+var gl_Header = '#gl-header'; // header element selector
+var gl_HeaderFullHeight = 100; // maximum height of header, should always match height of #gl-header in /common/css/gl-styles.en.css
+var gl_HeaderCompactHeight = 42; // minimum height of header, should always match height of #gl-header.gl-compact in /common/css/gl-styles.en.css
+var gl_HeaderOffset = 60; // clearance needed to properly offset linked elements from the compact header, should always match height of .gl-anchor in /common/css/gl-styles.en.css
+var gl_Footer = '#gl-footer'; // footer element selector
+var gl_FooterLanguages = '#gl-footer-lang'; // footer language menu element selector
+var gl_FooterLangMessages = '#gl-footer-lang-message'; // footer language message element selector
+var gl_FooterLangLinks = '#gl-footer-lang-links'; // footer language link wrapper element selector
+var gl_FooterDifference = '#gl-footer-difference'; // footer difference element selector
+</P><P>/* Return an element's &quot;true&quot; top offset that has been adjusted to account for its margin-top, border-top, and (optionally) the header offset.
+</P><PRE>  @function    gl_GetAdjustedOffset
+  @param       elem {string} [default=false] the element to assess, can be any standard jQuery selector
+  @param       header {boolean} [default=true] optional, if true, subtract gl_HeaderOffset from the offset value
+  @return      {integer} or {float}
+  ========================================================================== */
+</PRE><P>function gl_GetAdjustedOffset(elem, header) {
+</P><PRE>   var elem = elem || false;
+   var header = header || true;
+   if (elem &amp;&amp; $(elem).length &gt; 0) {
+       // element found, calculate its top offset
+       var offset = parseFloat($(elem).offset().top);
+       var difference = parseFloat($(elem).css('margin-top')) + parseFloat($(elem).css('border-top-width'));
+       // difference found, subtract it
+       if (difference &gt; 0) offset -= difference;
+       // header found, subtract its designated offset
+       if (header &amp;&amp; $(gl_Header).length &gt; 0) offset -= gl_HeaderOffset;
+   } else {
+       // element not found
+       offset = 0;
+   }
+   return offset;
+</PRE><P>}
+</P><P>/* Return the height of the header or (optionally) subtract the header offset from a specific value.
+</P><PRE>  @function    gl_GetHeaderHeight
+  @param       top {integer} or {float} [default=0] optional, subtract gl_HeaderOffset from this value and return it
+  @return      {integer} or {float}
+  ========================================================================== */
+</PRE><P>function gl_GetHeaderHeight(top) {
+</P><PRE>   if ($(gl_Header).length &gt; 0) {
+       // header found
+       var top = top || 0;
+       var height = gl_HeaderFullHeight;
+       // top parameter set, subtract the header offset from it
+       if (top &gt; 0 &amp;&amp; top &gt;= height) height = top - gl_HeaderOffset;
+   } else {
+       // header not found
+       height = 0;
+   }
+   return height;
+</PRE><P>}
+</P><P>/* Offset scrollTop on hash urls to compensate for the fixed position header.
+</P><PRE>  @function    gl_SetAnchorOffset
+  @bind        $('a').on('click')
+  @param       href {string} optional, pass an anchor's href attribute
+  @return      nothing
+  ========================================================================== */
+</PRE><P>function gl_SetAnchorOffset(href) {
+</P><PRE>   // determine which url to use; the anchor's href attribute or the current location
+   var url = href || window.location.href;
+</PRE><PRE>   // search the url for a hash, quit if blank or not found
+   var hash = url.indexOf('#');
+   var len = url.slice(hash).length;
+   if (hash == -1 || len &lt; 2) return;
+</PRE><PRE>   // search for identifiers on the page, quit if not found
+   var id = url.slice(hash);
+   var name = 'a[name=' + id.replace('#', <I>) + ']';</I>
+   if ($(id).length == 0 &amp;&amp; $(name).length == 0) return;
+</PRE><PRE>   // determine which element selector to use, quit if no eligible elements found
+   if ($(id).length &gt; 0) {
+       // use element id
+       var select = id;
+   } else if ($(id).length == 0 &amp;&amp; $(name).length &gt; 0) {
+       // use element name (for anchors)
+       var select = name;
+   } else {
+       return;
+   }
+</PRE><PRE>   // insert a dummy span in front of the element so we always get an accurate offset
+   $(select).before('');
+   // get dummy span offset
+   var top = $('.gl-anchor').offset().top;
+   // remove the dummy span now that we have the offset
+   $('.gl-anchor').remove();
+</PRE><PRE>   // scroll to the new offset (the delay makes it more reliable)
+   setTimeout(function() {
+       $(window).scrollTop(top);
+   }, 1);
+</PRE><PRE>   return;
+</PRE><P>}
+</P><P>/* Limit the rate at which a function can trigger, greatly improves performance in some situations.
+</P><PRE>  @function    gl_ThrottleFunction
+  @param       func {function} function to throttle
+  @param       wait {integer} [default=250] maximum rate at which the function is permitted to trigger, in milliseconds
+  @param       immediate {boolean} [default=true] if true, trigger the function before the wait; if false, trigger the function after the wait
+  @return      function
+  ========================================================================== */
+</PRE><P>function gl_ThrottleFunction(func, wait, immediate) {
+</P><PRE>   var timeout;
+   var wait = wait || 250;
+   var immediate = immediate || true;
+   return function() {
+       var context = this;
+       var args = arguments;
+       clearTimeout(timeout);
+       timeout = setTimeout(function() {
+           timeout = null;
+           // trigger after the wait
+           if (!immediate) func.apply(context, args);
+       }, wait);
+       // trigger before the wait
+       if (immediate) func.apply(context, args);
+   };
+</PRE><P>};
+</P><P>/* Move the footer to the bottom of the viewport on short pages.
+</P><PRE>  @variable    gl_SetBodyHeightDifference
+  @bind        $(window).on('load resize')
+  @return      function
+  ========================================================================== */
+</PRE><P>var gl_SetBodyHeightDifference = gl_ThrottleFunction(function() {
+</P><PRE>   if ($(gl_Wrapper).length &gt; 0 &amp;&amp; $(gl_FooterDifference).length &gt; 0) {
+       // remove any existing difference from the calculation
+       $(gl_FooterDifference).hide();
+       // get the height difference between the viewport and the outer wrapper
+       var difference = parseInt($(window).height() - $(gl_Wrapper).height());
+       if (difference &gt; 0) {
+           // difference found, set height on a placeholder div (more reliable than a margin)
+           $(gl_FooterDifference).show().height(difference);
+       } else {
+           // no difference found, hide placeholder div
+           $(gl_FooterDifference).hide().height(0);
+       }
+   }
+</PRE><P>});
+</P><P>/* Prevent javascript errors on this old, obsolete function call.
+</P><PRE>  @function    set_domain
+  @return      nothing
+  ========================================================================== */
+</PRE><P>function set_domain() {};
+</P><P>$(document).ready(function() {
+</P><P>/* header
+</P><PRE>  ========================================================================== */
+</PRE><PRE>   // only run if the header has been included
+   if ($(gl_Header).length &gt; 0) {
+</PRE><PRE>   /* enable fixed header only in js-enabled environments ================== */
+</PRE><PRE>       $('#gl-header, #gl-header-bg, #gl-header-offset').addClass('gl-header-fixed');
+</PRE><PRE>   /* adjust header on page scroll ========================================= */
+</PRE><PRE>       var gl_OffsetLeft = $(gl_Header).offset().left + (0 - $(window).scrollLeft());
+       var gl_FirstRun = true;
+</PRE><PRE>       $(window).on('load scroll resize', gl_ThrottleFunction(function() {
+           // create ability to toggle the compact menu
+           if ($('body.gl-header-nocompact').length &gt; 0) {
+               // don't use the compact header (the rest is done with css)
+               gl_FirstRun = false;
+           } else {
+               // switch to compact mode when page is loaded/reloaded while scrolled down
+               if (gl_FirstRun &amp;&amp; $(window).scrollTop() &gt; gl_HeaderFullHeight - gl_HeaderCompactHeight) {
+                   $('#gl-header, #gl-header-bg, #gl-header-offset').addClass('gl-compact gl-onload');
+                   gl_FirstRun = false;
+                   return;
+               }
+               gl_FirstRun = false;
+</PRE><PRE>               // toggle modes on scroll
+               if ($(window).scrollTop() &gt; gl_HeaderFullHeight - gl_HeaderCompactHeight) {
+                   // switch to compact mode when user scrolls down
+                   $('#gl-header, #gl-header-bg, #gl-header-offset').addClass('gl-compact');
+               } else {
+                   // use full size mode by default and switch to it when user scrolls up
+                   $('#gl-header, #gl-header-bg, #gl-header-offset').removeClass('gl-compact');
+               }
+           }
+</PRE><PRE>           // emulate horizontal scroll effect on fixed position element
+           $(gl_Header).offset({
+               left: gl_OffsetLeft
+           });
+       }));
+</PRE><PRE>   /* adjust header offset on named anchors ================================ */
+</PRE><PRE>       gl_SetAnchorOffset();
+       $('a').on('click', function() {
+</PRE><P>//            gl_SetAnchorOffset($(this).prop('href'));
+</P><PRE>       });
+</PRE><PRE>   /* show submenus ======================================================== */
+</PRE><PRE>       if ($('body.gl-header-no-submenus').length === 0) {
+           var gl_Doctype = document.doctype; // null in IE9 quirks-mode environments, but not html5
+           if (!!(('ontouchstart' in window) || (navigator.MaxTouchPoints &gt; 0) || (navigator.msMaxTouchPoints &gt; 0))) {
+               // only show submenu in js-enabled, non-quirks-mode environments
+               if (typeof gl_LTEIE9 === 'undefined' || (typeof gl_LTEIE9 === 'boolean' &amp;&amp; gl_Doctype !== null)) {
+                   // force touch devices make better use of the :hover and :active pseudo-classes
+                   $('body').attr({
+                       ontouchstart: <I>,</I>
+                       onmouseover: 
+                   });
+</PRE><PRE>      // prevent videos from absorbing click/touch events from the global header
+                   var gl_Clicked = false;
+                   $('#gl-header a').off('click tap hover').on('click tap', function(e) {
+                       if (gl_Clicked === true) {
+                           gl_Clicked = false;
+                           e.preventDefault();
+                           return;
+                       }
+                       gl_Clicked = true;
+                       // add classes to videos, hiding them so they can't steal focus
+                       $('video').addClass('gl-hidden');
+                       // make sure they're hidden before triggering the click event
+                       setTimeout(function() {
+                           $(this).trigger('click tap');
+                       }, 1);
+                   });
+</PRE><PRE>                   // show submenus on click/tap for touch-enabled devices
+                   $('#gl-menu .gl-has-submenu &gt; a').off('click tap hover').on('click tap', function(e) {
+                       // prevent href from triggering
+                       e.preventDefault();
+</PRE><PRE>                       // close submenu when clicked/tapped a 2nd time
+                       if ($(this).parent().hasClass('gl-open')) {
+                           $(this).parent().removeClass('gl-open');
+                           // prevent videos from absorbing click/touch events from the global header
+                           $('video.gl-hidden').removeClass('gl-hidden');
+                           return;
+                       }
+</PRE><PRE>                       // close any other submenus that may be open
+                       var gl_IsOpen = $('#gl-menu').find('.gl-open');
+                       if (gl_IsOpen) $(gl_IsOpen).removeClass('gl-open');
+</PRE><PRE>                       // toggle the submenu
+                       $(this).parent().addClass('gl-open');
+                       if ($(this).parent().attr('id') === 'gl-menu-search') {
+                           // focus on the search input field
+                           $('#gl-search').focus();
+                       } else {
+                           // focus on the submenu
+                           $(this).parent().children('.gl-submenu').focus();
+                       }
+</PRE><PRE>                       // add classes to videos and remove their controls
+                       $('video').addClass('gl-hidden');
+                   });
+               }
+           } else {
+               // convert the search link into a div in submenu-enabled, js-enabled, non-quirks-mode environments
+               if (typeof gl_LTEIE9 === 'undefined' || (typeof gl_LTEIE9 === 'boolean' &amp;&amp; gl_Doctype !== null)) {
+                   // convert search anchor to div so IE9 doesn't try to use it
+                   var gl_SearchWrapper = '#gl-menu-search .gl-submenu-wrapper';
+</PRE>
+                    $(gl_SearchWrapper).replaceWith($('<DIV class="gl-submenu-wrapper">' + $(gl_SearchWrapper).html() + '</DIV>'));
+<PRE>                   // hide all submenus when mouse leaves the menu wrapper
+                   $('#gl-menu').on('mouseleave', function() {
+                       $('#gl-menu.gl-clicked, #gl-menu .gl-open').removeClass('gl-clicked gl-open');
+                       $('body').focus();
+                   });
+</PRE><PRE>                   // enable submenu hover functionality on click
+                   $('#gl-menu .gl-has-submenu .gl-submenu-wrapper').on('click', function(e) {
+                       // prevent href from triggering
+                       e.preventDefault();
+</PRE><PRE>                       // enable hover events on the menu
+                       $('#gl-menu').addClass('gl-clicked');
+                       // show the submenu on this tab on click
+                       $(this).parent().addClass('gl-open');
+                       if ($(this).parent().attr('id') === 'gl-menu-search') {
+                           // focus on the search input field
+                           $('#gl-search').focus();
+                       } else {
+                           // focus on the submenu
+                           $(this).parent().children('.gl-submenu').focus();
+                       }
+                   });
+</PRE><PRE>                   // show submenus on timed hover
+                   var gl_HoverConfig = {
+                       over: function() {
+                           if ($('#gl-menu').hasClass('gl-clicked')) {
+                               // show the submenu on this tab on mouseenter
+                               $(this).addClass('gl-open');
+                               if ($(this).attr('id') === 'gl-menu-search') {
+                                   // focus on the search input field
+                                   $('#gl-search').focus();
+                               } else {
+                                   // focus on the submenu
+                                   $(this).children('.gl-submenu').focus();
+                               }
+                           }
+                       },
+                       out: function() {
+                           if ($('#gl-menu').hasClass('gl-clicked')) {
+                               // hide the submenu on this tab on mouseleave
+                               $('#gl-menu .gl-open').removeClass('gl-open');
+                               $('body').focus();
+                           }
+                       },
+                       interval: 50, // default = 100
+                       timeout: 50, // default = 0
+                       sensitivity: 500 // default = 6
+                   };
+                   $('#gl-menu .gl-has-submenu, #gl-menu #gl-menu-search.gl-has-submenu').hoverIntent(gl_HoverConfig);
+               } else {
+                   // show hover styles instead of submenu in IE9 quirks mode
+                   $('#gl-menu .gl-has-submenu &gt; a').hover(function() {
+                       $(this).parent().addClass('gl-open');
+                   }, function() {
+                       $(this).parent().removeClass('gl-open');
+                   });
+               }
+           }
+</PRE><PRE>   /* search input ========================================================= */
+</PRE><PRE>           // ensure default localized placeholder text is being used
+          // $('#gl-submenu-search form').get(0).reset();
+</PRE><PRE>           var gl_SearchDefault = $('#gl-search').val();
+</PRE><PRE>           // change placeholder text to a blank string on submit
+           $('#gl-submenu-search form').submit(function(e) {
+               var gl_CurrentSearchValue = $('#gl-search').val();
+               if (gl_CurrentSearchValue == gl_SearchDefault || gl_CurrentSearchValue == <I>) e.preventDefault();</I>
+           });
+           $('#gl-search').focus(function() {
+               // deselect input text and change style on focus
+               var gl_SearchCurrent = $(this).val();
+               if (gl_SearchCurrent !== gl_SearchDefault) {
+                   // terms found, un-italicize
+                   $(this).removeClass('italics').addClass('normal active');
+               } else {
+                   // no terms found, italicize
+                   $(this).val(<I>).val(gl_SearchDefault).removeClass('normal active').addClass('italics');</I>
+                   if ($(this)[0].setSelectionRange) $(this)[0].setSelectionRange(0, 0);
+               }
+           }).keydown(function() {
+               // change placeholder text to a blank string and un-italicize on keypress
+               if ($(this).val() == gl_SearchDefault) $(this).val(<I>).removeClass('italics').addClass('normal active');</I>
+           }).focusout(function() {
+               // change everything back to default on focusout when input is blank
+               if ($(this).val() == <I>) {</I>
+                   $(this).val(gl_SearchDefault).removeClass('normal active').addClass('italics');
+                   if ($(this)[0].setSelectionRange) $(this)[0].setSelectionRange(0, 0);
+               }
+           }).click(function() {
+               // refocus on click, fixes bug with flash movies stealing focus in Firefox on OSX
+               $(this).blur().focus();
+           });
+       }
+   }
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

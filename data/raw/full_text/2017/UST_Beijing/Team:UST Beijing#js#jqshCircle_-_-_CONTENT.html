@@ -1,0 +1,180 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_UST_Beijing_js_jqshCircle skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:UST Beijing/js/jqshCircle</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* SunHater Circle Loader v0.2 (2013-12-28)
+* jQuery plugin
+* Copyright (c) 2014 Pavel Tzonkov &lt;sunhater@sunhater.com&gt;
+* Dual licensed under the MIT and GPL licenses.
+* <A rel="nofollow" class="external free" href="http://opensource.org/licenses/MIT">http://opensource.org/licenses/MIT</A>
+* <A rel="nofollow" class="external free" href="http://www.gnu.org/licenses/gpl.html">http://www.gnu.org/licenses/gpl.html</A>
+*/
+</PRE><P>(function($) {
+</P><PRE>   $.fn.shCircleLoader = function(first, second) {
+</PRE><PRE>       var defaultNamespace = &quot;shcl&quot;,
+           id = 1,
+           sel = $(this);
+</PRE><PRE>       // Destroy the loader
+       if (first === &quot;destroy&quot;) {
+           sel.find(&quot;.&quot; + defaultNamespace).detach();
+           return;
+</PRE><PRE>       // Show progress status into the center
+       } else if ((first === &quot;progress&quot;) &amp;&amp; (typeof second !== &quot;undefined&quot;)) {
+           sel.each(function() {
+               var el = $(this),
+                   outer = el.find('.' + defaultNamespace);
+               if (!outer.get(0))
+                   return;
+               if (!el.find('span').get(0))
+                   outer.append(&quot;&quot;);
+               var span = outer.find('span').last();
+               span.html(second).css({
+                   position: &quot;absolute&quot;,
+                   display: &quot;block&quot;,
+                   left: Math.round((outer.width() - span.width()) / 2) + &quot;px&quot;,
+                   top: Math.round((outer.height() - span.height()) / 2) + &quot;px&quot;
+               });
+           });
+           return;
+       }
+</PRE><PRE>       // Default options
+       var o = {
+           namespace: defaultNamespace,
+           radius: &quot;auto&quot;, // &quot;auto&quot; - calculate from selector's width and height
+           dotsRadius: &quot;auto&quot;,
+           color: &quot;auto&quot;, // &quot;auto&quot; - get from selector's color CSS property; null - do not set
+           dots: 12,
+           duration: 1,
+           clockwise: true,
+           externalCss: false, // true - don't apply CSS from the script
+           keyframes: '0%{{prefix}transform:scale(1)}80%{{prefix}transform:scale(.3)}100%{{prefix}transform:scale(1)}',
+           uaPrefixes: ['o', 'ms', 'webkit', 'moz', <I>]</I>
+       };
+</PRE><PRE>       $.extend(o, first);
+</PRE><PRE>       // Usable options (for better YUI compression)
+       var cl = o.color,
+           ns = o.namespace,
+           dots = o.dots,
+           eCss = o.externalCss,
+           ua = o.uaPrefixes,
+</PRE><PRE>       // Helper functions
+       no_px = function(str) {
+           return str.replace(/(.*)px$/i, &quot;$1&quot;);
+       },
+</PRE><PRE>       parseCss = function(text) {
+           var i, prefix, ret = &quot;&quot;;
+           for (i = 0; i &lt; ua.length; i++) {
+               prefix = ua[i].length ? (&quot;-&quot; + ua[i] + &quot;-&quot;) : &quot;&quot;;
+               ret += text.replace(/\{prefix\}/g, prefix);
+           }
+           return ret;
+       },
+</PRE><PRE>       prefixedCss = function(property, value) {
+           var ret = {};
+           if (!property.substr) {
+               $.each(property, function(p, v) {
+                   $.extend(ret, prefixedCss(p, v));
+               });
+           } else {
+               var i, prefix;
+               for (i = 0; i &lt; ua.length; i++) {
+                   prefix = ua[i].length ? (&quot;-&quot; + ua[i] + &quot;-&quot;) : &quot;&quot;;
+                   ret[prefix + property] = value;
+               }
+           }
+           return ret;
+       };
+</PRE><PRE>       // Get unexisting ID
+       while ($('#' + ns + id).get(0)) {id++;}
+</PRE><PRE>       // Create animation CSS
+       if (!eCss) {
+           var kf = o.keyframes.replace(/\s+$/, &quot;&quot;).replace(/^\s+/, &quot;&quot;);
+</PRE><PRE>           // Test if the first keyframe (0% or &quot;from&quot;) has visibility property. If not - add it.
+           if (!/(\;|\{)\s*visibility\s*\:/gi.test(kf))
+               kf = /^(0+\%|from)\s*\{/i.test(kf)
+                   ? kf.replace(/^((0+\%|from)\s*\{)(.*)$/i, &quot;$1visibility:visible;$3&quot;)
+                   : (/\s+(0+\%|from)\s*\{/i.test(kf)
+                       ? kf.replace(/(\s+(0+\%|from)\s*\{)/i, &quot;$1visibility:visible;&quot;)
+                       : (&quot;0%{visibility:visible}&quot; + kf));
+</PRE><PRE>           $($('head').get(0) ? 'head' : 'body').append('&lt;style id=&quot;' + ns + id + '&quot; type=&quot;text/css&quot;&gt;' + parseCss('@{prefix}keyframes ' + ns + id + '_bounce{' + kf + '}') + '&lt;/style&gt;');
+       }
+</PRE><PRE>       // Create loader
+       sel.each(function() {
+           var r, dr, i, dot, rad, x, y, delay, offset, css, cssBase = {}, el = $(this), l = el.find('.' + defaultNamespace);
+</PRE><PRE>           // If loader exists, destroy it before creating new one
+           if (l.get(0))
+               l.shCircleLoader(&quot;destroy&quot;);
+</PRE>
+            el.html('');
+<PRE>           if (eCss)
+               el = el.find('div');
+</PRE><PRE>           x = el.innerWidth() - no_px(el.css('padding-left')) - no_px(el.css('padding-right'));
+           y = el.innerHeight() - no_px(el.css('padding-top')) - no_px(el.css('padding-bottom'));
+</PRE><PRE>           r = (o.radius == &quot;auto&quot;)
+               ? ((x &lt; y) ? (x / 2) : (y / 2))
+               : o.radius;
+</PRE><PRE>           if (!eCss) {
+               r--;
+               if (o.dotsRadius == &quot;auto&quot;) {
+                   dr = Math.abs(Math.sin(Math.PI / (1 * dots))) * r;
+                   dr = (dr * r) / (dr + r) - 1;
+               } else
+                   dr = o.dotsRadius;
+</PRE><PRE>               el = el.find('div');
+</PRE><PRE>               i = Math.ceil(r * 2);
+               css = {
+                   position: &quot;relative&quot;,
+                   width: i + &quot;px&quot;,
+                   height: i + &quot;px&quot;
+               };
+</PRE><PRE>               if (i &lt; x)
+                   css.marginLeft = Math.round((x - i) / 2);
+               if (i &lt; y)
+                   css.marginTop = Math.round((y - i) / 2);
+</PRE><PRE>               el.css(css);
+</PRE><PRE>               i = Math.ceil(dr * 2) + &quot;px&quot;;
+               cssBase = {
+                   position: &quot;absolute&quot;,
+                   visibility: &quot;hidden&quot;,
+                   width: i,
+                   height: i
+               };
+</PRE><PRE>               if (cl !== null)
+                   cssBase.background = (cl == &quot;auto&quot;) ? el.css('color') : cl;
+</PRE><PRE>               $.extend(cssBase, prefixedCss({
+                   'border-radius': Math.ceil(dr) + &quot;px&quot;,
+                   'animation-name': ns + id + &quot;_bounce&quot;,
+                   'animation-duration': o.duration  + &quot;s&quot;,
+                   'animation-iteration-count': &quot;infinite&quot;,
+                   'animation-direction': &quot;normal&quot;
+               }));
+           }
+</PRE><PRE>           for (i = 0; i &lt; dots; i++) {
+</PRE>
+                el.append(&quot;&quot;);
+<PRE>               if (eCss &amp;&amp; (typeof dr === &quot;undefined&quot;))
+                   dr = (no_px(el.find('div').css('width')) / 2);
+               dot = el.find('div').last();
+               delay = (o.duration / dots) * i;
+               rad = (2 * Math.PI * i) / dots;
+               offset = r - dr;
+               x = offset * Math.sin(rad);
+               y = offset * Math.cos(rad);
+</PRE><PRE>               if (o.clockwise) y = -y;
+</PRE><PRE>               css = {
+                   left: Math.round(x + offset) + &quot;px&quot;,
+                   top: Math.round(y + offset) + &quot;px&quot;
+               };
+</PRE><PRE>               if (delay)
+                   $.extend(css, prefixedCss('animation-delay', delay + 's'));
+</PRE><PRE>               $.extend(css, cssBase);
+               dot.css(css);
+           };
+       });
+   }
+</PRE><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

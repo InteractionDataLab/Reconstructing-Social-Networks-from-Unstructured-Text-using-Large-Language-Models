@@ -1,0 +1,223 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Evry_arbor_src_kernel_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Evry/arbor/src/kernel.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Evry/arbor/src/kernel.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/kernel.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/kernel.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Evry/arbor/src/kernel.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Evry/arbor/src/kernel.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>//
+// kernel.js
+//
+// run-loop manager for physics and tween updates
+//
+</P><PRE> var Kernel = function(pSystem){
+   // in chrome, web workers aren't available to pages with file:// urls
+   var chrome_local_file = window.location.protocol == &quot;file:&quot; &amp;&amp;
+                           navigator.userAgent.toLowerCase().indexOf('chrome') &gt; -1;
+   var USE_WORKER = (window.Worker !== undefined &amp;&amp; !chrome_local_file)    
+</PRE><PRE>   var _physics = null
+   var _tween = null
+   var _fpsWindow = [] // for keeping track of the actual frame rate
+   _fpsWindow.last = new Date()
+   var _screenInterval = null
+   var _attached = null
+</PRE><PRE>   var _tickInterval = null
+   var _lastTick = null
+   var _paused = false
+   
+   var that = {
+     system:pSystem,
+     tween:null,
+     nodes:{},
+</PRE><PRE>     init:function(){ 
+       if (typeof(Tween)!='undefined') _tween = Tween()
+       else if (typeof(arbor.Tween)!='undefined') _tween = arbor.Tween()
+       else _tween = {busy:function(){return false},
+                      tick:function(){return true},
+                      to:function(){ trace('Please include arbor-tween.js to enable tweens'); _tween.to=function(){}; return} }
+       that.tween = _tween
+       var params = pSystem.parameters()
+               
+       if(USE_WORKER){
+         trace('using web workers')
+         _screenInterval = setInterval(that.screenUpdate, params.timeout)
+</PRE><PRE>         _physics = new Worker(arbor_path()+'physics/worker.js')
+         _physics.onmessage = that.workerMsg
+         _physics.onerror = function(e){ trace('physics:',e) }
+         _physics.postMessage({type:&quot;physics&quot;, 
+                               physics:objmerge(params, 
+                                               {timeout:Math.ceil(params.timeout)}) })
+       }else{
+         trace(&quot;couldn't use web workers, be careful...&quot;)
+         _physics = Physics(params.dt, params.stiffness, params.repulsion, params.friction, that.system._updateGeometry)
+         that.start()
+       }
+</PRE><PRE>       return that
+     },
+</PRE><PRE>     //
+     // updates from the ParticleSystem
+     graphChanged:function(changes){
+       // a node or edge was added or deleted
+       if (USE_WORKER) _physics.postMessage({type:&quot;changes&quot;,&quot;changes&quot;:changes})
+       else _physics._update(changes)
+       that.start() // &lt;- is this just to kick things off in the non-worker mode? (yes)
+     },
+</PRE><PRE>     particleModified:function(id, mods){
+       // a particle's position or mass is changed
+       // trace('mod',objkeys(mods))
+       if (USE_WORKER) _physics.postMessage({type:&quot;modify&quot;, id:id, mods:mods})
+       else _physics.modifyNode(id, mods)
+       that.start() // &lt;- is this just to kick things off in the non-worker mode? (yes)
+     },
+</PRE><PRE>     physicsModified:function(param){
+</PRE><PRE>       // intercept changes to the framerate in case we're using a worker and
+       // managing our own draw timer
+       if (!isNaN(param.timeout)){
+         if (USE_WORKER){
+           clearInterval(_screenInterval)
+           _screenInterval = setInterval(that.screenUpdate, param.timeout)
+         }else{
+           // clear the old interval then let the call to .start set the new one
+           clearInterval(_tickInterval)
+           _tickInterval=null
+         }
+       }
+</PRE><PRE>       // a change to the physics parameters 
+       if (USE_WORKER) _physics.postMessage({type:'sys',param:param})
+       else _physics.modifyPhysics(param)
+       that.start() // &lt;- is this just to kick things off in the non-worker mode? (yes)
+     },
+     
+     workerMsg:function(e){
+       var type = e.data.type
+       if (type=='geometry'){
+         that.workerUpdate(e.data)
+       }else{
+         trace('physics:',e.data)
+       }
+     },
+     _lastPositions:null,
+     workerUpdate:function(data){
+       that._lastPositions = data
+       that._lastBounds = data.bounds
+     },
+     
+</PRE><PRE>     // 
+     // the main render loop when running in web worker mode
+     _lastFrametime:new Date().valueOf(),
+     _lastBounds:null,
+     _currentRenderer:null,
+     screenUpdate:function(){        
+       var now = new Date().valueOf()
+       
+       var shouldRedraw = false
+       if (that._lastPositions!==null){
+         that.system._updateGeometry(that._lastPositions)
+         that._lastPositions = null
+         shouldRedraw = true
+       }
+       
+       if (_tween &amp;&amp; _tween.busy()) shouldRedraw = true
+</PRE><PRE>       if (that.system._updateBounds(that._lastBounds)) shouldRedraw=true
+       
+</PRE><PRE>       if (shouldRedraw){
+         var render = that.system.renderer
+         if (render!==undefined){
+           if (render !== _attached){
+              render.init(that.system)
+              _attached = render
+           }          
+           
+           if (_tween) _tween.tick()
+           render.redraw()
+</PRE><PRE>           var prevFrame = _fpsWindow.last
+           _fpsWindow.last = new Date()
+           _fpsWindow.push(_fpsWindow.last-prevFrame)
+           if (_fpsWindow.length&gt;50) _fpsWindow.shift()
+         }
+       }
+     },
+</PRE><PRE>     // 
+     // the main render loop when running in non-worker mode
+     physicsUpdate:function(){
+       if (_tween) _tween.tick()
+       _physics.tick()
+</PRE><PRE>       var stillActive = that.system._updateBounds()
+       if (_tween &amp;&amp; _tween.busy()) stillActive = true
+</PRE><PRE>       var render = that.system.renderer
+       var now = new Date()        
+       var render = that.system.renderer
+       if (render!==undefined){
+         if (render !== _attached){
+           render.init(that.system)
+           _attached = render
+         }          
+         render.redraw({timestamp:now})
+       }
+</PRE><PRE>       var prevFrame = _fpsWindow.last
+       _fpsWindow.last = now
+       _fpsWindow.push(_fpsWindow.last-prevFrame)
+       if (_fpsWindow.length&gt;50) _fpsWindow.shift()
+</PRE><PRE>       // but stop the simulation when energy of the system goes below a threshold
+       var sysEnergy = _physics.systemEnergy()
+       if ((sysEnergy.mean + sysEnergy.max)/2 &lt; 0.05){
+         if (_lastTick===null) _lastTick=new Date().valueOf()
+         if (new Date().valueOf()-_lastTick&gt;1000){
+           // trace('stopping')
+           clearInterval(_tickInterval)
+           _tickInterval = null
+         }else{
+           // trace('pausing')
+         }
+       }else{
+         // trace('continuing')
+         _lastTick = null
+       }
+     },
+</PRE><PRE>     fps:function(newTargetFPS){
+       if (newTargetFPS!==undefined){
+         var timeout = 1000/Math.max(1,targetFps)
+         that.physicsModified({timeout:timeout})
+       }
+       
+       var totInterv = 0
+       for (var i=0, j=_fpsWindow.length; i&lt;j; i++) totInterv+=_fpsWindow[i]
+       var meanIntev = totInterv/Math.max(1,_fpsWindow.length)
+       if (!isNaN(meanIntev)) return Math.round(1000/meanIntev)
+       else return 0
+     },
+</PRE><PRE>     // 
+     // start/stop simulation
+     // 
+     start:function(unpause){
+     	if (_tickInterval !== null) return; // already running
+       if (_paused &amp;&amp; !unpause) return; // we've been .stopped before, wait for unpause
+       _paused = false
+       
+       if (USE_WORKER){
+          _physics.postMessage({type:&quot;start&quot;})
+       }else{
+         _lastTick = null
+         _tickInterval = setInterval(that.physicsUpdate, 
+                                     that.system.parameters().timeout)
+       }
+     },
+     stop:function(){
+       _paused = true
+       if (USE_WORKER){
+          _physics.postMessage({type:&quot;stop&quot;})
+       }else{
+         if (_tickInterval!==null){
+           clearInterval(_tickInterval)
+           _tickInterval = null
+         }
+       }
+     
+     }
+   }
+   
+   return that.init()    
+ }
+</PRE><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Evry/arbor/src/kernel.js">http://2012.igem.org/Team:Evry/arbor/src/kernel.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Evry/arbor/src/kernel.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Evry/arbor/src/kernel.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Evry/arbor/src/kernel.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Evry/arbor/src/kernel.js&amp;oldid=124542" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

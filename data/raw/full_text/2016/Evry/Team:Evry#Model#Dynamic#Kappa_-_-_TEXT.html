@@ -1,0 +1,303 @@
+Team:Evry/Model/Dynamic/Kappa
+Homepage
+Visit the iGEM website!
+Feel free to contact us!
+E-mail
+Twitter
+Facebook
+Instagram
+Let's PLAy project - Bioproduction of PLA
+Show menu
+Home
+Project
+Description
+Design
+Modeling
+Experiments
+Notebook
+Improvements
+Achivements
+Parts
+Medal fulfillments
+Results
+Interlab
+Results
+Protocol
+Lab book
+Safety
+Project safety
+Lab safety
+Shipment safety
+Human practices
+Integrated HP
+Engagements
+iGEM events
+Team
+Our team
+iGEM in Evry
+Collaborations
+Campus
+Sponsors
+Attributions
+Home
+Project
+Achivements
+Interlab
+Safety
+Human practices
+Team
+Attributions
+Homepage
+Project
+Modeling
+Dynamic Regulation
+Kappa
+Dynamic Regulation
+Flux Balance Analysis
+Dynamic Regulation
+Kappa
+Circuit
+Kappa model
+Introduction: Kappa rule-based modeling
+In order to model the Dynamical Regulation system, one of the approaches has been rule-based modeling, using Kappa language.
+Kappa rule-based modeling represents stochastic systems where we define agents and their interactions. The presence of agents or their interactions provoke actions, or rules, along iterations and we can study the consequences of these actions by observing variables. The basic actions we can model with Kappa are: modification, binding, unbinding, synthesis and degradation [1] .
+Depending on the purpose, it can provide several advantages to the formalism of ODEs: it represents agents (or species) instead of concentrations, reducing vulnerability to combinatorial explosion; it focuses on distribution and probability of actions, rather than physical time; and the organization of knowledge is clearer.
+In our model, we aimed to study the dynamics that the responsive elements would present if implemented on experimental lab. The objective was to get to know the optimal combination of element variable features (ex. RBS strength) on the feedback loops to optimize PLA production. Because of having several elements to represent (that would be agents in the model), interactions between the elements (that would generate rules) and parameters that could be more easy to approximate if using probabilities, we considered Kappa to be adequate for our model implementation.
+System redesign
+Before starting any code implementation, we thought on our system and redesigned it considering the elements as potential agents and its relations, reactions and influences. Figure 1 shows the plasmids presented on the Dynamic Regulation description, while Figure 2 shows the adaptation of the system. Generally, the elements on the plasmid are genes, that under the influence of promoters can produce mRNA, that in its turn, depending on the presence of RBS can codify the proteins. This proteins can do enzymatic reactions, transforming metabolites, or can influence other processes, for instance the responsive promoters.
+Figure 1. System in plasmids. Distribution of the elements of dynamic regulation in two pSEVA plasmids.
+Click to enlarge
+Figure 2. System redesigned. To model the system, elements are presented as agents that interact or react (black arrows). We can see for each gene, its mRNA and protein represented, regulated by promoters and RBS. There are influences (positive, in green, or negative, in red) between some agents.
+Implementation
+KaMi
+To facilitate the implementation of a biological system into Kappa rules, developers of Kappa have created the executable KaMi. KaMi stands for Knowledge Aggregator and Model Instantiator and it is useful for annotate knowledge representation and translate it into Kappa [2] . The online platform can be found here: KaMi online . We used KaMi for our system and we created the representation shown in Figure 3.
+In the representation, in Figure 3, we can see the agents (dark gray circles) that represent promoters, genes, mRNA and proteins. Each agent has nodes (gray circles) that connect them to actions (lilac rectangles) or states (light gray circles). Actions represent bindings, unbindings (or breakings), synthesis and degradations. They are implemented as paired actions, as bindings are reversible and both synthesis and degradation are key biologically. These actions can have contexts, which are conditions for which actions can happen. States can indicate conditions (ex. active or inactive) and they change their value depending on other contexts. Each action has assigned a rate, or probability, and each agent an initial value.
+Click to enlarge
+Figure 3. KaMi representation. There are agents (dark gray circles), nodes (gray circles), actions (lilac rectangles) and states (light gray circles). Actions represent bindings, breakings, synthesis and degradations.
+Notes: When implementing, we have considered PhaC and Pct enzymes as the same agent to simplify. We have only represented as agents those promoters that are responsive: the strenght of constitutive promoters is implicit on the synthesis rate of the mRNA. Similarly, RBS are not represented because of their strenghts being implicit in synthesis rates of proteins. Genes and promoters have no synthesis nor degradation, their value is constantly 1. Pyruvate is assumed to be a non-limiting factor and thus, it is also constant.
+Parameter definition
+As mentioned, each rule has a rate, which corresponds to a certain probability. For defining our rates, we looked into literature for enzymatic constants of our agents, as well as characterization of promoter and RBS elements. From that, we relativized and approximated the rates of our system. Then, we checked their effect in the model by running some initial simulations and we readjusted some.  Promoter and RBS activity associated rule rates were studied with different values. It is indicated on Table 1. Data on the enzymatic parameters was extracted from BRENDA [3] . Data on promoters was extracted from literature [4] [5] .
+Action
+Protein
+mRNA
+Subs/Prod
+TF/promoter
+Binding
+-
+-
+Km enzyme
+Affinity TF
+Unbinding
+-
+-
+Depending on Km
+Km LldR-lactate; 1/2 Bnd rate McbR
+Synthesis
+Strenght RBS
+Strenght promoter
+Kcat enzyme
+-
+Degradation
+1/10 of Syn rate
+1/2 of Syn rate
+-
+-
+Table 1. Guides for qualitative approximation of rule rates.
+Kappa rules
+KaMi allows the translation of the graph representation into a Kappa code. We used it as a first draft of the code and we modified it. We rearranged and ordered the rules, we introduced some details and we prepared it to be read by the online browser KaSim .
+Box 1 includes the complete code of our model. Rules are divided into modules, corresponding to (1)LDH system, (2)LldR system, (3)Operon system, (4)McbR system. At the beginning, agents are defined. After the rules, variables and parameters are indicated, as well as observables, which are the variables we represented graphically and analysed.
+##### KAPPA MODEL FOR DYNAMIC REGULATION
+# BIOLOGICAL AGENTS
+## module 1
+%agent: n4240_LDH_gene(n4242)
+%agent: n411_LDH_protein(n412)
+%agent: n420_LDH_mRNA()
+%agent: n384_Lactate(n385,n450)
+%agent: n409_Pyr(n410)
+## module 2
+%agent: n398_lldR_mRNA()
+%agent: n382_lldR_protein(n383,n459,n4200)
+## module 3
+%agent: n367_phaCpct_gene(n368)
+%agent: n370_phaCpct_mRNA()
+%agent: n442_phaCpct_protein(n443,n449)
+%agent: n451_PLA(n452)
+## module 4
+%agent: n000_mcbR_gene(n202)
+%agent: n377_mcbR_mRNA()
+%agent: n393_mcbR_protein(n394)
+#### RULES
+## module 1
+#n800:s_ldh_mrna
+n4240_LDH_gene(n4242) -> n4240_LDH_gene(n4242), n420_LDH_mRNA() @ 0.15
+#n800:d_ldh_mrna
+n420_LDH_mRNA() -> @ 0.07
+#n801:s_ldh_prot
+n420_LDH_mRNA() -> n420_LDH_mRNA(), n411_LDH_protein(n412) @ 0.15
+#n10000:d_ldh_prot
+n411_LDH_protein(n412) -> @ 0.015
+#n406:b_ldh_pyr_0
+n411_LDH_protein(n412),n409_Pyr(n410) -> n411_LDH_protein(n412!4),n409_Pyr(n410!4) @ 0.5
+#n413:br_ldh_pyr_0
+n411_LDH_protein(n412!4),n409_Pyr(n410!4) -> n411_LDH_protein(n412),n409_Pyr(n410) @ 0.10
+#n802:s_lac
+n409_Pyr(n410!n412.n411_LDH_protein) -> n409_Pyr(n410!n412.n411_LDH_protein), n384_Lactate(n385,n450) @ 0.9
+#n2000:d_lac
+n384_Lactate(n385,n450) -> @ 0.09
+#n803: s_pyr
+-> n409_Pyr(n410) @ 0.045
+## module 2
+#n404:s_lldR_mrna_0
+-> n398_lldR_mRNA() @ 0.5
+#n900:d_lldR_mrna
+n398_lldR_mRNA() -> @ 0.25
+#n901:s_lldR_prot
+n398_lldR_mRNA() -> n398_lldR_mRNA(), n382_lldR_protein() @ 0.5
+#n3000:d_lldR_prot
+n382_lldR_protein() -> @ 0.05
+#n456:b_dimer_0
+n382_lldR_protein(n459),n382_lldR_protein(n459) -> n382_lldR_protein(n459!8),n382_lldR_protein(n459!8) @ 0.9
+#n463:br_dimer_0
+n382_lldR_protein(n459!8),n382_lldR_protein(n459!8) -> n382_lldR_protein(n459),n382_lldR_protein(n459) @ 0.5
+#n902:b_lac_lldR_0
+n384_Lactate(n385),n382_lldR_protein(n4200) -> n384_Lactate(n385!42),n382_lldR_protein(n4200!42) @ 0.5
+#n379:br_lac_lldR_0
+n384_Lactate(n385!42),n382_lldR_protein(n4200!42) -> n384_Lactate(n385),n382_lldR_protein(n4200) @ 0.4
+#module 3
+#b_lldR_phaCpct (to promoter)
+n382_lldR_protein(n383,n459!_), n367_phaCpct_gene(n368) -> n382_lldR_protein(n383!1,n459!_), n367_phaCpct_gene(n368!1) @ 0.5
+#br_lldR_phaCpct (to promoter)
+n382_lldR_protein(n383!1, n459!_, n4200!_), n367_phaCpct_gene(n368!1) -> n382_lldR_protein(n383,n459!_, n4200!_), n367_phaCpct_gene(n368) @ 0.25
+#n800:s_pha_mrna
+n367_phaCpct_gene(n368) -> n367_phaCpct_gene(n368), n370_phaCpct_mRNA() @ 0.5
+#n8011:d_pha_mrna
+n370_phaCpct_mRNA() -> @ 0.25
+#n901:s_pha_prot
+n370_phaCpct_mRNA() -> n370_phaCpct_mRNA(), n442_phaCpct_protein(n443,n449) @ 0.5
+#n9000:d_pha_prot
+n442_phaCpct_protein(n443,n449) -> @ 0.005
+#n446:b_lac_pha_0
+n384_Lactate(n450),n442_phaCpct_protein(n449) -> n384_Lactate(n450!7),n442_phaCpct_protein(n449!7) @ 0.1
+#n453:br_lac_pha_0
+n384_Lactate(n450!7),n442_phaCpct_protein(n449!7) -> n384_Lactate(n450),n442_phaCpct_protein(n449) @ 0.1
+#n444:s_PLA_0
+n384_Lactate(n450!n449.n442_phaCpct_protein) -> n384_Lactate(n450!n449.n442_phaCpct_protein),n451_PLA(n452) @ 0.1
+#module 4
+#b_lldr_mcbR
+n382_lldR_protein(n383,n459!_), n000_mcbR_gene(n202) -> n382_lldR_protein(n383!1,n459!_), n000_mcbR_gene(n202!1) @ 0.05
+#br_lldr_mcbR
+n382_lldR_protein(n383!1, n459!_, n4200!_), n000_mcbR_gene(n202!1) -> n382_lldR_protein(n383,n459!_, n4200!_), n000_mcbR_gene(n202) @ 0.45
+#n800:s_mcbR_mrna
+n000_mcbR_gene(n202) -> n000_mcbR_gene(n202), n377_mcbR_mRNA() @ 0.6
+#n800:d_mcbR_mrna
+n377_mcbR_mRNA() -> @ 0.3
+#n901:s_mcbR_prot
+n377_mcbR_mRNA() -> n377_mcbR_mRNA(), n393_mcbR_protein(n394) @ 0.7
+#n902:d_mcbR_prot
+n393_mcbR_protein(n394) -> @ 0.07
+#n904:b_mcbR_LDH
+n393_mcbR_protein(n394),n4240_LDH_gene(n4242) -> n393_mcbR_protein(n394!1),n4240_LDH_gene(n4242!1) @ 0.5
+#n905:br_mcbR_LDH
+n393_mcbR_protein(n394!1),n4240_LDH_gene(n4242!1) -> n393_mcbR_protein(n394),n4240_LDH_gene(n4242) @ 0.25
+#### Variables
+%var: 'qtt_50' 0
+%var: 'qtt_70' 0
+%var: 'qtt_40' 0
+%var: 'qtt_80' 1000
+%var: 'qtt_90' 0
+%var: 'qtt_100' 0
+%var: 'qtt_10' 0
+%var: 'qtt_130' 0
+%var: 'qtt_140' 0
+%var: 'qtt_150' 1
+%var: 'qtt_42' 1
+#### Initial conditions
+%init: 'qtt_50' n384_Lactate()
+%init: 'qtt_80' n409_Pyr()
+%init: 'qtt_90' n411_LDH_protein()
+%init: 'qtt_100' n420_LDH_mRNA()
+%init: 'qtt_40' n382_lldR_protein()
+%init: 'qtt_70' n398_lldR_mRNA()
+%init: 'qtt_10' n370_phaCpct_mRNA()
+%init: 'qtt_130' n442_phaCpct_protein()
+%init: 'qtt_140' n451_PLA()
+%init: 'qtt_150' n367_phaCpct_gene()
+%init: 'qtt_42' n000_mcbR_gene()
+## obs
+#%obs: 'pyr' n409_Pyr()
+#%obs: 'pyr_free' n409_Pyr(n410)
+#%obs: 'ldh_p' n411_LDH_protein()
+#%obs: 'ldh_mrna' n420_LDH_mRNA()
+#%obs: 'ldh_pyr' n409_Pyr(n410!n412.n411_LDH_protein)
+#%obs: 'lldR_m' n382_lldR_protein(n383,n459)
+#%obs: 'lldR_d'n382_lldR_protein(n383!_,n459)
+#%obs: 'lldR_mrna' n398_lldR_mRNA()
+#%obs: 'lldR_d_l'n382_lldR_protein(n383!_,n459!_)
+#%obs: 'lldR' n382_lldR_protein()
+#%obs: 'pla' n451_PLA()
+#%obs: 'phaCpct' n442_phaCpct_protein()
+#%obs: 'pha_mrna' n370_phaCpct_mRNA()
+#%obs: 'lldR_bound' n382_lldR_protein(n383!_)
+#%obs: 'lldR_lac' n382_lldR_protein(n383, n459!_, n4200!_)
+#%obs: 'lldR_dim' n382_lldR_protein(n459!_)
+%var: 'qtt_30' 0
+%var: 'qtt_60' 0
+%var: 'qtt_4242' 1
+%init: 'qtt_30' n377_mcbR_mRNA()
+%init: 'qtt_60' n393_mcbR_protein()
+%init: 'qtt_4242' n4240_LDH_gene()
+%obs: 'ldh_p' n411_LDH_protein()
+#%obs: 'ldh_mrna' n420_LDH_mRNA()
+#%obs: 'ldh_g_f' n4240_LDH_gene(n4242)
+#%obs: 'ldh_g_b' n4240_LDH_gene(n4242!_)
+#%obs: 'mcbr_g' n000_mcbR_gene()
+#%obs: 'mcbr_g_f' n000_mcbR_gene(n202)
+#%obs: 'mcbr_g_b' n000_mcbR_gene(n202!_)
+#%obs: 'mcbr_mrna' n377_mcbR_mRNA()
+%obs: 'lldR' n382_lldR_protein()
+%obs: 'lldR_b_prom' n382_lldR_protein(n383!_)
+%obs: 'mcbr_p' n393_mcbR_protein()
+%obs: 'phaCpct_p' n442_phaCpct_protein()
+%obs: 'lac' n384_Lactate()
+%obs: 'pla' n451_PLA()
+#### END OF MODEL
+Box 1.Kappa model code. Rules are divided into 4 modules: (1)LDH system, (2)LldR system, (3)Operon system, (4)McbR system. Agents, rules, variables and observables are defined.
+Results
+Click to enlarge
+Figure A1. Dynamics of McbR,LDH,Lac and PLA. Parameters: lldR mRNA Syn 0.5, Deg 0.25; lldR prot Syn 0.5, Deg 0.005.
+Click to enlarge
+Figure A2. Dynamics of LldR,LDH,Lac and PLA. Parameters: lldR mRNA Syn 0.5, Deg 0.25; lldR prot Syn 0.5, Deg 0.005.
+Click to enlarge
+Figure C.Dynamics of LldR,LDH,Lac and PLA. Parameters: lldR mRNA Syn 0.15, Deg 0.07; lldR prot Syn 0.5, Deg 0.005.
+Click to enlarge
+Figure B1. Dynamics of McbR,LDH,Lac and PLA. Parameters: lldR mRNA Syn 0.5, Deg 0.25; lldR prot Syn 0.5, Deg 0.05.
+Click to enlarge
+Figure B2. Dynamics of LldR,LDH,Lac and PLA. Parameters: lldR mRNA Syn 0.5, Deg 0.25; lldR prot Syn 0.5, Deg 0.05.
+Click to enlarge
+Figure D. Dynamics of LldR,LDH,Lac and PLA. Parameters: lldR mRNA Syn 0.15, Deg 0.07; lldR prot Syn 0.5, Deg 0.005.
+Figures A1 to D show variations along event instantiations of the Kappa model with different parameters. We ran several simulations changing and trying variations in reaction rates and we show here what we found out to be the key factor: LldR system. In Figures A and B we can observe how the variation of 10x in LldR degradation changes radically the ratio PLA/Lactate.  A1 and A2 are settled in a LldR degradation of 0.005, they differ in the variables observed in each case. Besides, B1 and B2 have a LldR degradation of 0.05: between them they also differ in the variables, but interest comes when compared to the dynamics on A1 and A2.
+Degradation is not a parameter that is easily engineerable, but promoter and RBS strenght can be selected as convenient. Thus, figures C and D show how the dynamics observed when degradation of LldR is 0.005 (less convenient case) can be tunned to an optimal ratio PLA/Lactate by modifying mRNA transcription and translation. In C, mRNA transcription is lowered to 0.15: this would correspond to the case of a weak promoter. In D, the ratio is better and corresponds to the case where not only transcription but also translation is lowered to 0.15, so the case where both promoters and RBS are weak.
+Discussion
+Dynamic regulation can help us optimize PLA production through elements that are responsive to the presence or absence of others. Using Kappa language, we have implemented the gene circuit presented in the description and studied its behavior. We have represented of each gene, its mRNA and protein, so the processes of transcription and translation, regulated by promoters and RBS.
+Results have shown that the dynamics change significatively when changing few or single parameters. Thus, it indicates that choosing carefully the elements controlling expression it is key to have an optimal system. Specifically, we have observed that lldR system, the biosensor of lactate, appears to be important. By modifying its expression introducing a weak constitutive promoter and weak RBS, the ratio of PLA/lactate increases, indicating that most of the lactate produced is used for PLA synthesis.
+LldR promoter is inactive when LldR TF binds it. However, with the presence of lactate, the TF looses affinity to the promoter, allowing transcription. If lowering LldR expression, there is less inhibition from the biosensor system. Thus, in optimal predicted conditions there is probably basal expression of PhaC and Pct: they would be further synthetized when lactate increases, to assure its catalyzation to PLA, increasing efficiency.
+Models are representations and they are not repliques of real biological systems. The strategy presented should be proven experimentally on the bench, and contrast its data to be conclusive. However, the in silico prediction can be taken as indicative, and can be useful to redesign the elements of the regulation system, taking into account its characteristics.
+References
+Boutillier P., Feret J., Krivine J., Quyên L.K. KaSim & KaSa reference manual (release 3.90). Retrieved from: http://dev.executableknowledge.org/docs/KaSim-manual-master/KaSim_manual.htm (4/10/2016)
+Basso-Blandin A., Boutillier P. KaMi (Knowledge Aggregator and Model Instantiator): Annoted knowledge representation translation into Kappa. Retrieved from: https://github.com/Kappa-Dev/Kami" target="_blank"> (4/10/2016)
+Brenda: The Comprehensive Enzyme Information System. Retrieved from: BRENDA (31/08/2016)
+Aguilera L., Campos E., Gimenez R., Badia J., Aguilar J. & Baldoma L. Dual Role of LldR in Regulation of the lldPRD Operon, Involved in L-Lactate Metabolism in Escherichia coli. J Bact, 190(8): 2997–3005 (2008)
+Stanton B.C., Nielsen A.A., Tamsir A., Clancy K., Peterson T. & Voigt C.A. Peoples, O. & Sinskey, A.J. Genomic mining of prokaryotic repressors for orthogonal logic gates. Nat Chem Bio, 10: 99-105 (2014)
+Genopole
+IDT
+iSSB
+UEVE
+IBISC
+République Française
+Crous
+New-England Biolab
+Geneinous
+Mathworks
+MIE
+Papeterie GPS
+Evry2016.

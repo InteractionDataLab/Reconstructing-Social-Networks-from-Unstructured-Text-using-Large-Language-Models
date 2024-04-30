@@ -1,0 +1,410 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_UCL_Template_gallery_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:UCL/Template:gallery.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:UCL/Template:gallery.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:UCL/Template:gallery.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:UCL/Template:gallery.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:UCL/Template:gallery.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:UCL/Template:gallery.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/**
+</P><PRE>* photostack.js v1.0.0
+* <A href="http://www.codrops.com" class="external free" rel="nofollow">http://www.codrops.com</A>
+*
+* Licensed under the MIT license.
+* <A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>
+* 
+* Copyright 2014, Codrops
+* <A href="http://www.codrops.com" class="external free" rel="nofollow">http://www.codrops.com</A>
+*/
+</PRE><DL><DT>( function( window ) {
+</DT></DL><P>	'use strict';
+</P><P>	// <A href="https://gist.github.com/edankwan/4389601" class="external free" rel="nofollow">https://gist.github.com/edankwan/4389601</A>
+	Modernizr.addTest('csstransformspreserve3d', function () {
+		var prop = Modernizr.prefixed('transformStyle');
+		var val = 'preserve-3d';
+		var computedStyle;
+		if(!prop) return false;
+</P><P>		prop = prop.replace(/([A-Z])/g, function(str,m1){ return '-' + m1.toLowerCase(); }).replace(/^ms-/,'-ms-');
+</P><P>		Modernizr.testStyles('#modernizr{' + prop + ':' + val + ';}', function (el, rule) {
+			computedStyle = window.getComputedStyle ? getComputedStyle(el, null).getPropertyValue(prop) : <I>;</I>
+		});
+</P><P>		return (computedStyle === val);
+	});
+</P><P>	var support = { 
+			transitions : Modernizr.csstransitions,
+			preserve3d : Modernizr.csstransformspreserve3d
+		},
+		transEndEventNames = {
+			'WebkitTransition': 'webkitTransitionEnd',
+			'MozTransition': 'transitionend',
+			'OTransition': 'oTransitionEnd',
+			'msTransition': 'MSTransitionEnd',
+			'transition': 'transitionend'
+		},
+		transEndEventName = transEndEventNames[ Modernizr.prefixed( 'transition' ) ];
+</P><P>	function extend( a, b ) {
+		for( var key in b ) { 
+			if( b.hasOwnProperty( key ) ) {
+				a[key] = b[key];
+			}
+		}
+		return a;
+	}
+</P><P>	function shuffleMArray( marray ) {
+		var arr = [], marrlen = marray.length, inArrLen = marray[0].length;
+		for(var i = 0; i &lt; marrlen; i++) {
+			arr = arr.concat( marray[i] );
+		}
+		// shuffle 2 d array
+		arr = shuffleArr( arr );
+		// to 2d
+		var newmarr = [], pos = 0;
+		for( var j = 0; j &lt; marrlen; j++ ) {
+			var tmparr = [];
+			for( var k = 0; k &lt; inArrLen; k++ ) {
+				tmparr.push( arr[ pos ] );
+				pos++;
+			}
+			newmarr.push( tmparr );
+		}
+		return newmarr;
+	}
+</P><P>	function shuffleArr( array ) {
+		var m = array.length, t, i;
+		// While there remain elements to shuffle…
+		while (m) {
+			// Pick a remaining element…
+			i = Math.floor(Math.random() * m--);
+			// And swap it with the current element.
+			t = array[m];
+			array[m] = array[i];
+			array[i] = t;
+		}
+		return array;
+	}
+</P><P>	function Photostack( el, options ) {
+		this.el = el;
+		this.inner = this.el.querySelector( 'div' );
+		this.allItems = [].slice.call( this.inner.children );
+		this.allItemsCount = this.allItems.length;
+		if( !this.allItemsCount ) return;
+		this.items = [].slice.call( this.inner.querySelectorAll( 'figure:not([data-dummy])' ) );
+		this.itemsCount = this.items.length;
+		// index of the current photo
+		this.current = 0;
+		this.options = extend( {}, this.options );
+</P><PRE> 		extend( this.options, options );
+ 		this._init();
+</PRE><P>	}
+</P><P>	Photostack.prototype.options = {};
+</P><P>	Photostack.prototype._init = function() {
+		this.currentItem = this.items[ this.current ];
+		this._addNavigation();
+		this._getSizes();
+		this._initEvents();
+	}
+</P><P>	Photostack.prototype._addNavigation = function() {
+		// add nav dots
+		this.nav = document.createElement( 'nav' )
+		var inner = <I>;</I>
+		for( var i = 0; i &lt; this.itemsCount; ++i ) {
+			inner += '';
+		}
+		this.nav.innerHTML = inner;
+		this.el.appendChild( this.nav );
+		this.navDots = [].slice.call( this.nav.children );
+	}
+</P><P>	Photostack.prototype._initEvents = function() {
+		var self = this,
+			beforeStep = classie.hasClass( this.el, 'photostack-start' ),
+			open = function() {
+				var setTransition = function() { 
+					if( support.transitions ) {
+						classie.addClass( self.el, 'photostack-transition' ); 
+					}
+				}
+				if( beforeStep ) {
+					this.removeEventListener( 'click', open ); 
+					classie.removeClass( self.el, 'photostack-start' );
+					setTransition();
+				}
+				else {
+					self.openDefault = true;
+					setTimeout( setTransition, 25 );
+				}
+				self.started = true; 
+				self._showPhoto( self.current );
+			};
+</P><P>		if( beforeStep ) {
+			this._shuffle();
+			this.el.addEventListener( 'click', open );
+		}
+		else {
+			open();
+		}
+</P><P>		this.navDots.forEach( function( dot, idx ) {
+			dot.addEventListener( 'click', function() {
+				// rotate the photo if clicking on the current dot
+				if( idx === self.current ) {
+					self._rotateItem();
+				}
+				else {
+					// if the photo is flipped then rotate it back before shuffling again
+					var callback = function() { self._showPhoto( idx ); }
+					if( self.flipped ) {
+						self._rotateItem( callback );
+					}
+					else {
+						callback();
+					}
+				}
+			} );
+		} );
+</P><P>		window.addEventListener( 'resize', function() { self._resizeHandler(); } );
+	}
+</P><P>	Photostack.prototype._resizeHandler = function() {
+		var self = this;
+		function delayed() {
+			self._resize();
+			self._resizeTimeout = null;
+		}
+		if ( this._resizeTimeout ) {
+			clearTimeout( this._resizeTimeout );
+		}
+		this._resizeTimeout = setTimeout( delayed, 100 );
+	}
+</P><P>	Photostack.prototype._resize = function() {
+		var self = this, callback = function() { self._shuffle( true ); }
+		this._getSizes();
+		if( this.started &amp;&amp; this.flipped ) {
+			this._rotateItem( callback );
+		}
+		else {
+			callback();
+		}
+	}
+</P><P>	Photostack.prototype._showPhoto = function( pos ) {
+		if( this.isShuffling ) {
+			return false;
+		}
+		this.isShuffling = true;
+</P><P>		// if there is something behind..
+		if( classie.hasClass( this.currentItem, 'photostack-flip' ) ) {
+			this._removeItemPerspective();
+			classie.removeClass( this.navDots[ this.current ], 'flippable' );
+		}
+</P><P>		classie.removeClass( this.navDots[ this.current ], 'current' );
+		classie.removeClass( this.currentItem, 'photostack-current' );
+</P><P>		// change current
+		this.current = pos;
+		this.currentItem = this.items[ this.current ];
+</P><P>		classie.addClass( this.navDots[ this.current ], 'current' );
+		// if there is something behind..
+		if( this.currentItem.querySelector( '.photostack-back' ) ) {
+			// nav dot gets class flippable
+			classie.addClass( this.navDots[ pos ], 'flippable' );
+		}
+</P><P>		// shuffle a bit
+		this._shuffle();
+	}
+</P><P>	// display items (randomly)
+	Photostack.prototype._shuffle = function( resize ) {
+		var iter = resize ? 1 : this.currentItem.getAttribute( 'data-shuffle-iteration' ) || 1;
+		if( iter &lt;= 0 || !this.started || this.openDefault ) { iter = 1; }
+		// first item is open by default
+		if( this.openDefault ) {
+			// change transform-origin
+			classie.addClass( this.currentItem, 'photostack-flip' );
+			this.openDefault = false;
+			this.isShuffling = false;
+		}
+</P><P>		var overlapFactor = .5,
+			// lines &amp; columns
+			lines = Math.ceil(this.sizes.inner.width / (this.sizes.item.width * overlapFactor) ),
+			columns = Math.ceil(this.sizes.inner.height / (this.sizes.item.height * overlapFactor) ),
+			// since we are rounding up the previous calcs we need to know how much more we are adding to the calcs for both x and y axis
+			addX = lines * this.sizes.item.width * overlapFactor + this.sizes.item.width/2 - this.sizes.inner.width,
+			addY = columns * this.sizes.item.height * overlapFactor + this.sizes.item.height/2 - this.sizes.inner.height,
+			// we will want to center the grid
+			extraX = addX / 2,
+			extraY = addY / 2,
+			// max and min rotation angles
+			maxrot = 35, minrot = -35,
+			self = this,
+			// translate/rotate items
+			moveItems = function() {
+				--iter;
+				// create a &quot;grid&quot; of possible positions
+				var grid = [];
+				// populate the positions grid
+				for( var i = 0; i &lt; columns; ++i ) {
+					var col = grid[ i ] = [];
+					for( var j = 0; j &lt; lines; ++j ) {
+						var xVal = j * (self.sizes.item.width * overlapFactor) - extraX,
+							yVal = i * (self.sizes.item.height * overlapFactor) - extraY,
+							olx = 0, oly = 0;
+</P><P>						if( self.started &amp;&amp; iter === 0 ) {
+							var ol = self._isOverlapping( { x : xVal, y : yVal } );
+							if( ol.overlapping ) {
+								olx = ol.noOverlap.x;
+								oly = ol.noOverlap.y;
+								var r = Math.floor( Math.random() * 3 );
+								switch(r) {
+									case 0 : olx = 0; break;
+									case 1 : oly = 0; break;
+								}
+							}
+						}
+</P><P>						col[ j ] = { x : xVal + olx, y : yVal + oly };
+					}
+				}
+				// shuffle
+				grid = shuffleMArray(grid);
+</P><P>				var l = 0, c = 0, cntItemsAnim = 0;
+				self.allItems.forEach( function( item, i ) {
+					// pick a random item from the grid
+					if( l === lines - 1 ) {
+						c = c === columns - 1 ? 0 : c + 1;
+						l = 1;
+					}
+					else {
+						++l
+					}
+</P><P>					var randXPos = Math.floor( Math.random() * lines ),
+						randYPos = Math.floor( Math.random() * columns ),
+						gridVal = grid[c][l-1],
+						translation = { x : gridVal.x, y : gridVal.y },
+						onEndTransitionFn = function() {
+							++cntItemsAnim;
+							if( support.transitions ) {
+								this.removeEventListener( transEndEventName, onEndTransitionFn );
+							}
+							if( cntItemsAnim === self.allItemsCount ) {
+								if( iter &gt; 0 ) {
+									moveItems.call();
+								}
+								else {
+									// change transform-origin
+									classie.addClass( self.currentItem, 'photostack-flip' );
+									// all done..
+									self.isShuffling = false;
+									if( typeof self.options.callback === 'function' ) {
+										self.options.callback( self.currentItem );
+									}
+								}
+							}
+						};
+</P><P>					if(self.items.indexOf(item) === self.current &amp;&amp; self.started &amp;&amp; iter === 0) {
+						self.currentItem.style.WebkitTransform = 'translate(' + self.centerItem.x + 'px,' + self.centerItem.y + 'px) rotate(0deg)';
+						self.currentItem.style.msTransform = 'translate(' + self.centerItem.x + 'px,' + self.centerItem.y + 'px) rotate(0deg)';
+						self.currentItem.style.transform = 'translate(' + self.centerItem.x + 'px,' + self.centerItem.y + 'px) rotate(0deg)';
+						// if there is something behind..
+						if( self.currentItem.querySelector( '.photostack-back' ) ) {
+							self._addItemPerspective();
+						}
+						classie.addClass( self.currentItem, 'photostack-current' );
+					}
+					else {
+						item.style.WebkitTransform = 'translate(' + translation.x + 'px,' + translation.y + 'px) rotate(' + Math.floor( Math.random() * (maxrot - minrot + 1) + minrot ) + 'deg)';
+						item.style.msTransform = 'translate(' + translation.x + 'px,' + translation.y + 'px) rotate(' + Math.floor( Math.random() * (maxrot - minrot + 1) + minrot ) + 'deg)';
+						item.style.transform = 'translate(' + translation.x + 'px,' + translation.y + 'px) rotate(' + Math.floor( Math.random() * (maxrot - minrot + 1) + minrot ) + 'deg)';
+					}
+</P><P>					if( self.started ) {
+						if( support.transitions ) {
+							item.addEventListener( transEndEventName, onEndTransitionFn );
+						}
+						else {
+							onEndTransitionFn();
+						}
+					}
+				} );
+			};
+</P><P>		moveItems.call();
+	}
+</P><P>	Photostack.prototype._getSizes = function() {
+		this.sizes = {
+			inner : { width : this.inner.offsetWidth, height : this.inner.offsetHeight },
+			item : { width : this.currentItem.offsetWidth, height : this.currentItem.offsetHeight }
+		};
+</P><P>		// translation values to center an item
+		this.centerItem = { x : this.sizes.inner.width / 2 - this.sizes.item.width / 2, y : this.sizes.inner.height / 2 - this.sizes.item.height / 2 };
+	}
+</P><P>	Photostack.prototype._isOverlapping = function( itemVal ) {
+		var dxArea = this.sizes.item.width + this.sizes.item.width / 3, // adding some extra avoids any rotated item to touch the central area
+			dyArea = this.sizes.item.height + this.sizes.item.height / 3,
+			areaVal = { x : this.sizes.inner.width / 2 - dxArea / 2, y : this.sizes.inner.height / 2 - dyArea / 2 },
+			dxItem = this.sizes.item.width,
+			dyItem = this.sizes.item.height;
+</P><P>		if( !(( itemVal.x + dxItem ) &lt; areaVal.x ||
+			itemVal.x &gt; ( areaVal.x + dxArea ) ||
+			( itemVal.y + dyItem ) &lt; areaVal.y ||
+			itemVal.y &gt; ( areaVal.y + dyArea )) ) {
+				// how much to move so it does not overlap?
+				// move left / or move right
+				var left = Math.random() &lt; 0.5,
+					randExtraX = Math.floor( Math.random() * (dxItem/4 + 1) ),
+					randExtraY = Math.floor( Math.random() * (dyItem/4 + 1) ),
+					noOverlapX = left ? (itemVal.x - areaVal.x + dxItem) * -1 - randExtraX : (areaVal.x + dxArea) - (itemVal.x + dxItem) + dxItem + randExtraX,
+					noOverlapY = left ? (itemVal.y - areaVal.y + dyItem) * -1 - randExtraY : (areaVal.y + dyArea) - (itemVal.y + dyItem) + dyItem + randExtraY;
+</P><P>				return {
+					overlapping : true,
+					noOverlap : { x : noOverlapX, y : noOverlapY }
+				}
+		}
+		return {
+			overlapping : false
+		}
+	}
+</P><P>	Photostack.prototype._addItemPerspective = function() {
+		classie.addClass( this.el, 'photostack-perspective' );
+	}
+</P><P>	Photostack.prototype._removeItemPerspective = function() {
+		classie.removeClass( this.el, 'photostack-perspective' );
+		classie.removeClass( this.currentItem, 'photostack-flip' );
+	}
+</P><P>	Photostack.prototype._rotateItem = function( callback ) {
+		if( classie.hasClass( this.el, 'photostack-perspective' ) &amp;&amp; !this.isRotating &amp;&amp; !this.isShuffling ) {
+			this.isRotating = true;
+</P><P>			var self = this, onEndTransitionFn = function() {
+					if( support.transitions &amp;&amp; support.preserve3d ) {
+						this.removeEventListener( transEndEventName, onEndTransitionFn );
+					}
+					self.isRotating = false;
+					if( typeof callback === 'function' ) {
+						callback();
+					}
+				};
+</P><P>			if( this.flipped ) {
+				classie.removeClass( this.navDots[ this.current ], 'flip' );
+				if( support.preserve3d ) {
+					this.currentItem.style.WebkitTransform = 'translate(' + this.centerItem.x + 'px,' + this.centerItem.y + 'px) rotateY(0deg)';
+					this.currentItem.style.transform = 'translate(' + this.centerItem.x + 'px,' + this.centerItem.y + 'px) rotateY(0deg)';
+				}
+				else {
+					classie.removeClass( this.currentItem, 'photostack-showback' );
+				}
+			}
+			else {
+				classie.addClass( this.navDots[ this.current ], 'flip' );
+				if( support.preserve3d ) {
+					this.currentItem.style.WebkitTransform = 'translate(' + this.centerItem.x + 'px,' + this.centerItem.y + 'px) translate(' + this.sizes.item.width + 'px) rotateY(-179.9deg)';
+					this.currentItem.style.transform = 'translate(' + this.centerItem.x + 'px,' + this.centerItem.y + 'px) translate(' + this.sizes.item.width + 'px) rotateY(-179.9deg)';
+				}
+				else {
+					classie.addClass( this.currentItem, 'photostack-showback' );
+				}
+			}
+</P><P>			this.flipped = !this.flipped;
+			if( support.transitions &amp;&amp; support.preserve3d ) {
+				this.currentItem.addEventListener( transEndEventName, onEndTransitionFn );
+			}
+			else {
+				onEndTransitionFn();
+			}
+		}
+	}
+</P><P>	// add to global namespace
+	window.Photostack = Photostack;
+</P><P>})( window );
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:UCL/Template:gallery.js">http://2014.igem.org/Team:UCL/Template:gallery.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:UCL/Template:gallery.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:UCL/Template:gallery.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:UCL/Template:gallery.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:UCL/Template:gallery.js&amp;oldid=119375" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

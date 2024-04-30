@@ -1,0 +1,285 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tsinghua_Model_LSTMcode skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tsinghua/Model/LSTMcode</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P><TITLE>MATLAB Open source code</TITLE></P><H1>LSTM code for iGEM Tsinghua Team </H1><DIV><H3>MIT LICENSE</H3><PRE><CODE class="html">
+            Copyright &lt;2017&gt; <COPYRIGHT ma="" hongpeng="">
+
+            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+            The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+            THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+        </COPYRIGHT></CODE></PRE></DIV><DIV><PRE><CODE class="lang-python">
+from __future__ import absolute_import, division, print_function
+import re
+import os
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+
+from sklearn.metrics import mean_squared_error
+from sklearn.utils import shuffle
+
+# import logging
+# logging.getLogger(&quot;tensorflow&quot;).setLevel(logging.WARNING)
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
+import tensorflow as tf
+tf.logging.set_verbosity(tf.logging.ERROR)
+from tensorflow.python.framework import dtypes
+from tensorflow.contrib import learn as tflearn
+from tensorflow.contrib import layers as tflayers
+from tensorflow.contrib import learn
+# %matplotlib inline
+'''
+ *************Param set************
+'''
+
+LOG_DIR = './ops_logs/igem-8'
+TIMESTEPS = 3
+RNN_LAYERS = [{'num_units': 10}]
+DENSE_LAYERS = [10, 10]
+TRAINING_STEPS = 1000000
+PRINT_STEPS = TRAINING_STEPS / 10
+BATCH_SIZE = 10
+CYCLE = 30
+PREDICT_SPAN = 30
+global FIGURE
+FIGURE = 1
+LEARNING_RATE = 5e-3
+VAL_SIZE = 0.1
+TEST_SIZE = 0.1
+pattern = re.compile(r' ([A-Z])(\d{2})')
+cond_AFT = [0.2, 0.1, 0.05, 0.025, 0]
+cond_Yeast = [0.1, 0.01, 0.001, 0]
+cond_set = np.zeros((len(cond_AFT), len(cond_Yeast), 4))
+for i in range(len(cond_AFT)):
+    for j in range(len(cond_Yeast)):
+        cond_set[i,j] = np.array([1] + [cond_AFT[i]] + [cond_Yeast[j]] + [1])
+aft_converter={
+    '01': 0.2,
+    '02': 0.1,
+    '03': 0.05,
+    '04': 0.025,
+    '05': 0,
+    '06': 0,
+    '07': 0.2,
+    '08': 0.1,
+    '09': 0.05,
+    '10': 0.025,
+    '11': 0,
+    '12': 0  
+};
+yeast_converter ={
+    'A':0.1,
+    'B':0.01,
+    'C':0.001,
+    'D':0,
+    'E':0.1,
+    'F':0.01,
+    'G':0.001,
+    'H':0
+};
+
+def split_data(data, val_size=0.1, test_size=0.1):
+    &quot;&quot;&quot;
+    splits data to training, validation and testing parts
+    &quot;&quot;&quot;
+    print(type(data))
+    ntest = int(round(data.shape[0] * (1 - test_size)))
+    nval = int(round(data[:ntest].shape[0] * (1 - val_size)))
+    print(type(data[:nval]))
+    df_train, df_val, df_test = data[:nval], data[nval:ntest], data[ntest:]
+
+    return df_train, df_val, df_test
+
+
+
+def lstm_model(num_units, rnn_layers, dense_layers=None, learning_rate=LEARNING_RATE, optimizer='Adagrad'):
+    &quot;&quot;&quot;
+    Creates a deep model based on:
+        * stacked lstm cells
+        * an optional dense layers
+    :param num_units: the size of the cells.
+    :param rnn_layers: list of int or dict
+                         * list of int: the steps used to instantiate the `BasicLSTMCell` cell
+                         * list of dict: [{steps: int, keep_prob: int}, ...]
+    :param dense_layers: list of nodes for each layer
+    :return: the model definition
+    &quot;&quot;&quot;
+
+    def lstm_cells(layers):
+        if isinstance(layers[0], dict):
+            return [tf.contrib.rnn.DropoutWrapper(
+                tf.contrib.rnn.BasicLSTMCell(
+                    layer['num_units'], state_is_tuple=True
+                ),
+                layer['keep_prob']
+            ) if layer.get('keep_prob') else tf.contrib.rnn.BasicLSTMCell(
+                    layer['num_units'],
+                    state_is_tuple=True
+                ) for layer in layers
+            ]
+        return [tf.contrib.rnn.BasicLSTMCell(steps, state_is_tuple=True) for steps in layers]
+
+    def dnn_layers(input_layers, layers):
+        if layers and isinstance(layers, dict):
+            return tflayers.stack(input_layers, tflayers.fully_connected,
+                                  layers['layers'],
+                                  activation=layers.get('activation'),
+                                  dropout=layers.get('dropout'))
+        elif layers:
+            return tflayers.stack(input_layers, tflayers.fully_connected, layers)
+        else:
+            return input_layers
+
+    def _lstm_model(X, y):
+        stacked_lstm = tf.contrib.rnn.MultiRNNCell(lstm_cells(rnn_layers), state_is_tuple=True)
+        x_ = tf.unstack(X, axis=1, num=num_units)
+        output, layers = tf.contrib.rnn.static_rnn(stacked_lstm, x_, dtype=dtypes.float32)
+        output = dnn_layers(output[-1], dense_layers)
+        prediction, loss = tflearn.models.linear_regression(output, y)
+        train_op = tf.contrib.layers.optimize_loss(
+            loss, tf.contrib.framework.get_global_step(), optimizer=optimizer,
+            learning_rate=learning_rate)
+        return prediction, loss, train_op
+
+    return _lstm_model
+def preprocess(data, lags = TIMESTEPS, cycle = 30):
+    length = data.shape[0]
+    width = data.shape[1]
+    new_cycle = cycle - lags
+
+    X = np.zeros((np.int(length * new_cycle/ cycle), lags , width))
+    y = np.zeros((np.int(length * new_cycle/ cycle), 1))
+    
+    for i in range(X.shape[0]):
+        j_span = i2index(i, new_cycle, cycle)
+        for j in range(j_span, j_span + lags):
+            X[i,j%lags] = data[j]
+#             print('i: ', i,'j: ', j)
+#             print('X index',i,j%lags , 'y index',j_span + lags)
+#             print( data[j])
+        y[i] = data[j_span + lags, 3]    
+    return X, y
+def condition_converter(condition):
+    '''
+    convert a [1x4] condition array to [1x3x4] that can fit predict
+    '''
+    condition = condition.astype(np.float32)
+    con = np.zeros((condition.shape[0], TIMESTEPS, condition.shape[1]))
+    for i in range(condition.shape[0]):
+        for j in range(TIMESTEPS):
+            con[i][j] = condition[i].astype(np.float32)
+    return con
+
+def predict(cond, predict_span = PREDICT_SPAN ):
+    &quot;&quot;&quot;
+    output predictions given a condition matrix with 2-d
+    &quot;&quot;&quot;
+    predict = np.zeros((predict_span,cond.shape[0]))
+
+    for i in range(PREDICT_SPAN):
+        predict[i] = np.array(regressor.predict(cond.astype(np.float32)))
+        for j in range(TIMESTEPS - 1):
+            for cond_num in range(cond.shape[0]):
+                cond[cond_num][j][3] = cond[cond_num][j + 1][3]
+                cond[cond_num][j][0] = cond[cond_num][j + 1][0]
+        for cond_num in range(cond.shape[0]):
+            cond[cond_num][TIMESTEPS - 1][3] = predict[i][cond_num]
+            cond[cond_num][TIMESTEPS - 1][0] +=  1
+#         print('******',predict[i])
+    return predict
+
+def plot_figure(init_condition):
+    '''
+    plot and save a group of conditions matrix [number x 4]
+    '''
+    cond2str = lambda cond_arr:'AFT '+str(cond_arr[1]) + ' Yeast '+str(cond_arr[2])
+    cond_num = init_condition.shape[0]
+    pred_points = predict(condition_converter(init_condition))
+    plt.figure(hash(str(cond2str(init_condition[0]))))
+    fig_list = []
+    for i in range(cond_num):
+        fig_list = fig_list + plt.plot(pred_points[:,i], label=cond2str(init_condition[i]))
+    plt.legend(handles=fig_list)
+    plt.savefig(LOG_DIR + '\\fig'+str(hash(str(cond2str(init_condition[0]))))+'.jpg')
+
+'''
+******************************** Data pre-process**********************************
+'''
+print('Existence of data file',os.path.isfile(&quot;D:\\igemweb\\data\\rawdata.txt&quot;))
+data = pd.read_csv('D:\\igemweb\\data\\rawdata.txt', header = 0, sep = '\t')
+
+'''
+    Table of data
+    | time | aft | yeast(start) | yeast(current) |
+    |
+    Number  x 4 matrix
+'''
+
+data_processed = np.zeros((data.shape[0], 4))
+for i in range(len(data)):
+    data_processed[i] = [data.iloc[i,3],
+                         aft_converter[re.match(pattern,data.iloc[i,1]).group(2)],
+                         yeast_converter[re.match(pattern,data.iloc[i,1]).group(1)],
+                         data.iloc[i,2] ];
+i2index = lambda x, y, cycle:int((x - x % y) * cycle / y + x % y);
+for i in range(data_processed.shape[0]):
+    if i % CYCLE == 0:
+        normalizer = data_processed[i][3]
+    data_processed[i][3] /= normalizer
+print('First 60 data after normalized')
+print(data_processed[0:60,3])
+X, y = preprocess(data_processed)
+X_train, X_val, X_test = split_data(X, val_size = VAL_SIZE, test_size = TEST_SIZE)
+y_train, y_val, y_test = split_data(y, val_size = VAL_SIZE, test_size = TEST_SIZE)
+X = dict(train = X_train.astype(np.float32), val = X_val.astype(np.float32), test = X_test.astype(np.float32))
+y = dict(train = y_train.astype(np.float32), val = y_val.astype(np.float32), test = y_test.astype(np.float32))
+
+
+'''
+******************************** Model Initiation **********************************
+'''
+regressor = learn.SKCompat(learn.Estimator(
+    model_fn=lstm_model(
+        TIMESTEPS,
+        RNN_LAYERS,
+        DENSE_LAYERS
+    ),
+    model_dir=LOG_DIR
+))
+
+validation_monitor = learn.monitors.ValidationMonitor(X['val'], y['val'],
+                                                     every_n_steps=int(PRINT_STEPS),
+                                                     early_stopping_rounds=1000)
+print('Validation set shape',X['val'].shape, y['val'].shape)
+
+'''
+******************************** Training &amp; Check **********************************
+'''
+regressor.fit(X['train'], y['train'], 
+              monitors=[validation_monitor], 
+              batch_size=BATCH_SIZE,
+              steps=TRAINING_STEPS)
+predicted = regressor.predict(X['test'])
+rmse = np.sqrt(((predicted - y['test']) ** 2).mean(axis=0))
+score = mean_squared_error(predicted, y['test'])
+print (&quot;MSE: %f&quot; % score)
+plt.figure(1)
+plot_predicted, = plt.plot(predicted, label='predicted')
+plot_test, = plt.plot(y['test'], label='test')
+plt.legend(handles=[plot_predicted, plot_test])
+plt.savefig(LOG_DIR + '\\pred_test'+'_mse_'+str(score)+'.jpg')
+
+
+
+#  PLOT cond_set
+for i in range(cond_set.shape[0]):
+    plot_figure(cond_set[i])
+               
+            </CODE></PRE></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

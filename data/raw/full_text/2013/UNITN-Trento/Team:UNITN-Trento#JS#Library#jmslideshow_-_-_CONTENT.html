@@ -1,0 +1,245 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_UNITN-Trento_JS_Library_jmslideshow"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:UNITN-Trento/JS/Library/jmslideshow">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:UNITN-Trento/JS/Library/jmslideshow&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmslideshow&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmslideshow&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:UNITN-Trento/JS/Library/jmslideshow" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:UNITN-Trento/JS/Library/jmslideshow</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>(function( $, undefined ) {
+</P><P>	/*
+	 * JMSlideshow object
+	 */
+	$.JMSlideshow 				= function( options, element ) {
+</P><P>		// the jms-slideshow
+		this.$el	= $( element );
+</P><P>		this._init( options );
+</P><P>	};
+</P><P>	$.JMSlideshow.defaults 		= {
+		// options for the jmpress plugin.
+		// you can add much more options here. Check <A href="http://shama.github.com/jmpress.js/" class="external free" rel="nofollow">http://shama.github.com/jmpress.js/</A>
+		jmpressOpts	: {
+			// set the viewport
+			viewPort 		: {
+				height	: 400,
+				width	: 1000,
+				maxScale: 1
+			},
+			fullscreen		: false,
+			hash			: { use : false },
+			mouse			: { clickSelects : false },
+			keyboard		: { use : false },
+			animation		: { transitionDuration : '1s' }
+		},
+		// for this specific plugin we will have the following options:
+		// shows/hides navigation arrows
+		arrows		: true,
+		// shows/hides navigation dots/pages
+		dots		: true,
+		// each step's bgcolor transition speed
+		bgColorSpeed: '1s',
+		// slideshow on / off
+		autoplay	: false,
+		// time between transitions for the slideshow
+		interval	: 3500
+</P><PRE>   };
+</PRE><P>	$.JMSlideshow.prototype 	= {
+		_init 				: function( options ) {
+</P><P>			this.options 		= $.extend( true, {}, $.JMSlideshow.defaults, options );
+</P><P>			// each one of the slides
+			this.$slides		= this.$el.children('div');
+			// total number of slides
+			this.slidesCount	= this.$slides.length;
+</P><P>			// step's bgcolor
+			this.colors			= $.map( this.$slides, function( el, i ) { return $( el ).attr( 'data-color' ); } ).join( ' ' );
+			// build the necessary structure to run jmpress
+			this._layout();
+			// initialize the jmpress plugin
+			this._initImpress();
+			// if support (function implemented in jmpress plugin)
+			if( this.support ) {
+</P><P>				// load some events
+				this._loadEvents();
+				// if autoplay is true start the slideshow
+				if( this.options.autoplay ) {
+</P><P>					this._startSlideshow();
+</P><P>				}
+</P><P>			}
+</P><P>		},
+		// wraps all the slides in the jms-wrapper div;
+		// adds the navigation options ( arrows and dots ) if set to true
+		_layout				: function() {
+</P><P>			// adds a specific class to each one of the steps
+			this.$slides.each( function( i ) {
+</P><P>				$(this).addClass( 'jmstep' + ( i + 1 ) );
+</P><P>			} );
+</P><P>			// wrap the slides. This wrapper will be the element on which we will call the jmpress plugin
+			this.$jmsWrapper	= this.$slides.wrapAll( '&lt;div class=&quot;jms-wrapper&quot;/&gt;' ).parent();
+</P><P>			// transition speed for the wrapper bgcolor 
+			this.$jmsWrapper.css( {
+				'-webkit-transition-duration' 	: this.options.bgColorSpeed,
+				'-moz-transition-duration' 		: this.options.bgColorSpeed,
+				'-ms-transition-duration' 		: this.options.bgColorSpeed,
+				'-o-transition-duration' 		: this.options.bgColorSpeed,
+				'transition-duration' 			: this.options.bgColorSpeed
+			} );
+</P><P>			// add navigation arrows
+			if( this.options.arrows ) {
+</P><P>				this.$arrows	= $( '&lt;nav class=&quot;jms-arrows&quot;&gt;&lt;/nav&gt;' );
+</P><P>				if( this.slidesCount &gt; 1 ) {
+</P><P>					this.$arrowPrev	= $( '&lt;span class=&quot;jms-arrows-prev&quot;/&gt;' ).appendTo( this.$arrows );
+					this.$arrowNext	= $( '&lt;span class=&quot;jms-arrows-next&quot;/&gt;' ).appendTo( this.$arrows );
+</P><P>				}
+</P><P>				this.$el.append( this.$arrows )
+</P><P>			}
+</P><P>			// add navigation dots
+			if( this.options.dots ) {
+</P><P>				this.$dots		= $( '&lt;nav class=&quot;jms-dots&quot;&gt;&lt;/nav&gt;' );
+</P><P>				for( var i = this.slidesCount + 1; --i; ) {
+</P><P>					this.$dots.append( ( i === this.slidesCount ) ? '<SPAN class="jms-dots-current">&lt;span/&gt;</SPAN>' : '<SPAN>&lt;span/&gt;</SPAN>' );
+</P><P>				}
+</P><P>				if( this.options.jmpressOpts.start ) {
+</P><P>					this.$start		= this.$jmsWrapper.find( this.options.jmpressOpts.start ), idxSelected = 0;
+</P><P>					( this.$start.length ) ? idxSelected = this.$start.index() : this.options.jmpressOpts.start = null;
+</P><P>					this.$dots.children().removeClass( 'jms-dots-current' ).eq( idxSelected ).addClass( 'jms-dots-current' );
+</P><P>				}
+</P><P>				this.$el.append( this.$dots )
+</P><P>			}
+</P><P>		},
+		// initialize the jmpress plugin
+		_initImpress		: function() {
+</P><P>			var _self = this;
+</P><P>			this.$jmsWrapper.jmpress( this.options.jmpressOpts );
+			// check if supported (function from jmpress.js):
+			// it adds the class not-supported to the wrapper
+			this.support	= !this.$jmsWrapper.hasClass( 'not-supported' );
+</P><P>			// if not supported remove unnecessary elements
+			if( !this.support ) {
+</P><P>				if( this.$arrows ) {
+</P><P>					this.$arrows.remove();
+</P><P>				}
+</P><P>				if( this.$dots ) {
+</P><P>					this.$dots.remove();
+</P><P>				}
+</P><P>				return false;
+</P><P>			}
+</P><P>			// redefine the jmpress setActive method
+			this.$jmsWrapper.jmpress( 'setActive', function( slide, eventData ) {
+</P><P>				// change the pagination dot active class			
+				if( _self.options.dots ) {
+</P><P>					// adds the current class to the current dot/page
+					_self.$dots
+						 .children()
+						 .removeClass( 'jms-dots-current' )
+						 .eq( slide.index() )
+						 .addClass( 'jms-dots-current' );
+</P><P>				}
+</P><P>				// delete all current bg colors
+				this.removeClass( _self.colors );
+				// add bg color class
+				this.addClass( slide.attr( 'data-color' ) );
+</P><P>			} );
+</P><P>			// add step's bg color to the wrapper
+			this.$jmsWrapper.addClass( $( '#' + _self.$el.attr( 'id' )).find('.step:first-child').attr( 'data-color' ) );
+</P><P>		},
+		// start slideshow if autoplay is true
+		_startSlideshow		: function() {
+</P><P>			var _self	= this;
+</P><P>			this.slideshow	= setTimeout( function() {
+</P><P>				_self.$jmsWrapper.jmpress( 'next' );
+</P><P>				if( _self.options.autoplay ) {
+</P><P>					_self._startSlideshow();
+</P><P>				}
+</P><P>			}, this.options.interval );
+</P><P>		},
+		// stops the slideshow
+		_stopSlideshow		: function() {
+</P><P>			if( this.options.autoplay ) {
+</P><P>				clearTimeout( this.slideshow );
+				this.options.autoplay	= false;
+</P><P>			}
+</P><P>		},
+		_loadEvents			: function() {
+</P><P>			var _self = this;
+</P><P>			// navigation arrows
+			if( this.$arrowPrev &amp;&amp; this.$arrowNext ) {
+</P><P>				this.$arrowPrev.bind( 'click.jmslideshow', function( event ) {
+</P><P>					_self._stopSlideshow();
+</P><P>					//_self.$jmsWrapper.jmpress( 'prev' );
+					_self.$jmsWrapper.find( '.step' ).each(function() {
+						if ( $(this).hasClass( 'active' ) ) {
+							ind = $(this).index() + 1;
+						}
+					});
+					if ( ind == 1) {
+						ind = _self.slidesCount + 1;
+					}
+					_self.$jmsWrapper.jmpress( 'goTo', '.jmstep' + ( ind - 1 ) );
+</P><P>
+					return false;
+</P><P>				} );
+</P><P>				this.$arrowNext.bind( 'click.jmslideshow', function( event ) {
+</P><P>					_self._stopSlideshow();
+</P><P>					//_self.$jmsWrapper.jmpress( 'next' );
+					_self.$jmsWrapper.find( '.step' ).each(function() {
+						if ( $(this).hasClass( 'active' ) ) {
+							ind = $(this).index() + 1;
+						}
+					});
+					if ( ind == _self.slidesCount ) {
+						ind = 0;
+					}
+					_self.$jmsWrapper.jmpress( 'goTo', '.jmstep' + ( ind + 1 ) );
+</P><P>					return false;
+</P><P>				} );
+</P><P>			}
+</P><P>			// navigation dots
+			if( this.$dots ) {
+</P><P>				this.$dots.children().bind( 'click.jmslideshow', function( event ) {
+</P><P>					_self._stopSlideshow();
+</P><P>					_self.$jmsWrapper.jmpress( 'goTo', '.jmstep' + ( $(this).index() + 1 ) );
+</P><P>					return false;
+</P><P>				} );
+</P><P>			}
+</P><P>			// the touchend event is already defined in the jmpress plugin.
+			// we just need to make sure the slideshow stops if the event is triggered
+			this.$jmsWrapper.bind( 'touchend.jmslideshow', function() {
+</P><P>				_self._stopSlideshow();
+</P><P>			} );
+</P><P>		}
+	};
+</P><P>	var logError 			= function( message ) {
+		if ( this.console ) {
+			console.error( message );
+		}
+	};
+</P><P>	$.fn.jmslideshow		= function( options ) {
+</P><P>		if ( typeof options === 'string' ) {
+</P><P>			var args = Array.prototype.slice.call( arguments, 1 );
+</P><P>			this.each(function() {
+</P><P>				var instance = $.data( this, 'jmslideshow' );
+</P><P>				if ( !instance ) {
+					logError( &quot;cannot call methods on jmslideshow prior to initialization; &quot; +
+					&quot;attempted to call method '&quot; + options + &quot;'&quot; );
+					return;
+				}
+</P><P>				if ( !$.isFunction( instance[options] ) || options.charAt(0) === &quot;_&quot; ) {
+					logError( &quot;no such method '&quot; + options + &quot;' for jmslideshow instance&quot; );
+					return;
+				}
+</P><P>				instance[ options ].apply( instance, args );
+</P><P>			});
+</P><P>		} 
+		else {
+</P><P>			this.each(function() {
+</P><P>				var instance = $.data( this, 'jmslideshow' );
+				if ( !instance ) {
+					$.data( this, 'jmslideshow', new $.JMSlideshow( options, this ) );
+				}
+			});
+</P><P>		}
+</P><P>		return this;
+</P><P>	};
+</P><P>})( jQuery );
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:UNITN-Trento/JS/Library/jmslideshow">http://2013.igem.org/Team:UNITN-Trento/JS/Library/jmslideshow</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:UNITN-Trento/JS/Library/jmslideshow" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:UNITN-Trento/JS/Library/jmslideshow" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmslideshow&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmslideshow&amp;oldid=66849" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

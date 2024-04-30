@@ -1,0 +1,57 @@
+Team:NUS Singapore/Model
+Interactive Points | Codrops
+iGEM 2016         NUS SINGAPORE
+NUS_SINGAPORE
+Home
+Project
+Overview Modelling
+RIOT Sensor
+Description Proof of Concept Demonstration
+RIOT Responder
+RIOT Invader
+Human Practices
+Survey Business Plan Integration
+Collaborations
+MELBOURNE HONG_KONG_HKUST HONG_KONG_HKU
+Parts Registry
+Safety
+Team
+Notebook
+I. RIOT Sensor II. RIOT Responder III. RIOT Invader
+Attributions
+Medals
+Modeling Overview
+Figure 1: Schematic of the coupled models.
+To facilitate an understanding of how the RIOT System will respond to the high lactate environment, with nearby CD44v6 marker, a highly modular, C-based, simulation system (RIOT Model) was developed. Since the length and time scales of the bacteria’s evolution and the environment’s evolution are completely different, the two environments are simulated using two distinct, but coupled models. The evolution of the environment (outer model) is controlled by purely diffusion-advection dynamics, and the internal environment of the RIOT is controlled by diffusion-reaction dynamics. The two models are coupled to each other via free diffusion across the RIOT bacteria membrane. This model is also highly modular, allowing the user to input their own bacteria substance-interaction module with ease. To envision the models, consider an environment inside a cuboid space. The environmental space is then subdivided into many small cubes (aka, Cartesian grid). If we have N substances involved in our desired process, then there are N concentrations within each cube (outer point). Within each outer point, there also resides a number of bacteria. The motion of these bacteria and the substances are driven by diffusion-advection dynamics:
+where ci is the concentration of the i-th substance or the bacteria population density, Di is the respective diffusion constant, u is the Cartesian fluid velocity vector field of the environment and ∇ is the gradient operator (∇2 is the Laplacian operator). 1 A single small cylinder is then used to represent the average behaviour of the bacteria inside an outer point (the inner model). The cylinder is split into a series of concentric rings of equal vertical width, and radius difference (Figure 2). Within each ring of the inner model (aka, inner ring), there resides the concentrations of the N substances. The dynamics of the inner model are governed purely by diffusion-reaction dynamics:
+where c is a vector containing all the concentrations of the N substances in the bacteria and Ri (c) is a function that returns the rate of change of ci due to interactions between the substances. As the use of a cylindrical bacteria and subdividing rings imply, this system is solved within cylindrical coordinates. 2 Note that it is assumed that the concentration fields and interactions with the cylinder are independent of the cylindrical azimuthal coordinate. The two models are coupled via diffusion across the walls of the inner model. Effectively, we considered the concentration difference within the cylinder and outside the cylinder, and permitted free diffusion. The discretization of Fick’s first law of diffusion was done assuming that the distance between the outermost rings of the cylinder and the outer environment is the interval between each ring within the cylinder. Subsequent inner model diffusion-reaction dynamics then propagate the resulting changes at the edge of the cylinder inward. 3
+1Strictly speaking, the model operates on the volume integral form of the diffusion-advection equation. The presence of divergence operators on both terms on the right of the diffusion-advection equation converts the volume integral into surface integrals (divergence theorem), which are easier to handle. Furthermore, the integral form ensures the conservation of substances and number of bacteria in the absence of other influences. 2The rate of change due to diffusion in the inner model is computed using the integral form of the diffusion equation. Apart from the ease of handling and the conservation of substances under diffusion, this formulation also sidesteps the problem of computing the Laplacian of the concentration field at places where the radial coordinate is zero. The Laplacian involves a reciprocal of the radial coordinate, which will blow up when the coordinate approaches zero. The integral form, however, does not involve that reciprocal, preventing the occurrence of that asymptotic explosion. 3Strictly speaking, the user is free to substitute the diffusion across membrane with their own transfer processes. This is easily controlled from the “user_parameters.c” file.
+RIOT Lactate Sensor
+The RIOT Model was implemented on the lactate sensor system. The full lactate sensor system requires a total of 9 different substances: lactate, pyruvate, LldR with O1O2 promoter, LldR bound to lactate, mRNA of product and product. A series of three reactions are modelled in the system.
+1) Lactate-pyruvate interconversion
+Lactate is constantly being converted into pyruvate and vice versa within the bacteria. According to the work of Hakala, Glaid and Schwert (1995) , the interconversion process can be modelled as follows:
+where [Py], [L], [O] and [OR] refers to the concentrations of pyruvate, lactate, diphosphopyridine nucleotide and reduced diphosphopyridine nucleotide respectively. t stands for time. All of the remaining variables are constants. Hakala, Glaid and Schert (1995) 4determined these parametric constants to be
+Note the assumptions inherent within the constants. By the conservation of particle number, it is clear that:
+2) Lactate interaction with LldR
+LldR represses the production of alanine racemase inside the bacteria when bound to either O1 or O2 promoter sites. However, upon being bound to lactate LldR will cease blocking the O1/O2 promoter sites. This interaction can be modelled by:
+The disassociation constant of the lldR-lactate complex was taken to be 1000 (μM)2. It is believed that the rate reaction constants should be on the order of μM, so all of the relevant constants have been set that.
+3) Production of alanine racemase
+Before the production of the alanine racemase can commence, the mRNA sequence of the alanine racemase must first be transcribed. This reaction is modelled by the following equation
+where [mRNA]  and [P] are the concentrations of the mRNA and freed promoter respectively. kt and kdeg are rate constants of transcription and degradation respectively, both of which are estimated to be 0.1 μM/s. The production of alanine racemase is then modelled via
+where [alr] is the concentration of alanine racemase. kp is the production rate constant and kdeg2 is the alanine racemase degradation rate constant. Both rate constants are also estimated to be 0.1 μM/s. Unfortunately, due to time constraints, a bug remains in the model. The von Neumann numerical instabilities inherent within such models are typically problematic. At this moment, the issue lies with the result of a transient solution – transient states of the model can cause numerical singularities quickly. More work must be devoted to deal with this matter.
+4Hakala, Maire T., Andrew J. Glaid, and George W. Schwert. "Lactic dehydrogenase II. Variation of kinetic and equilibrium constants with temperature." Journal of Biological Chemistry 221.1 (1956): 191-210.
+RIOT Model Collaboration
+Given that diffusion and advection are the primary modes of spatial transport in fluids, our RIOT Model tool is very versatile and can be applied to any system that considers bacteria interacting with the environment. Two collaborations have resulted from this RIOT Model tool: one with the Melbourne iGEM team, and another with the HKUST iGEM team.
+Collaboration with Melbourne iGEM team
+As part of our collaboration with the Melbourne iGEM team, we implemented an earlier version of the outer model 5 on MATLAB, with the architecture to include their own interaction processes. The Melbourne iGEM team aims to increase the reaction kinetics of the mevalonate pathway using their star peptide. The implementation of the outer model gave the Melbourne iGEM team insights into the spatial dynamics of the star peptide augmented mevalonate pathway reaction kinetics. More information of the mevanlonate pathway can be found on the Melbourne iGEM Modelling page. The mevalonate pathway and the star peptide enzymes and processes are as illustrated in Figure 3.
+Figure 3: Mevalonate pathway (left) adapted from https://en.wikipedia.org/wiki/Mevalonate_pathway Enzymes attached to and processes involving the star peptide (right).
+Figure 4: Sample of the simulation obtained from the collaboration. These concentration fields demonstrate the production and consumption of Acetoacetyl-CoA and HMG-CoA at the relevant nodes.
+After the completion of our combined model, the Melbourne team realized that the contour lines of Figure 4 seems to indicate that the products from one enzyme reaction do not show a clear flow towards the node of the other enzyme reaction, where they will be consumed. Otherwise, the contour lines would trace a pattern that contains both nodes (the contour lines surrounding each node will be joined). This flow was an assumption that the Melbourne team made in the formulation of their project. More simulations are needed to verify the accuracy of that assumption.
+Collaboration with Hong_Kong_HKUST iGEM team
+The Hong_Kong_HKUST team worked on the tri-stable switch, which required the full treatment of the RIOT Model system. Their intra-bacterial tri-stable switch responds to inducer concentrations in the bacterial environment. As such, the diffusion of the inducers in the environment were modelled in the outer model, and the inducers enter the bacteria at each outer point via free diffusion through the bacterial membrane. The inner model interaction processes and constants are provided by the HKUST team’s modeller. The three reporter proteins (x,y,z) and the three inducers (i1,i2,i3) interacted through the idealized equations in Figure 5. The implementation of the interaction processes can be found in the “user_bacteria_interactions” function of “user_parameters.c” control script, which can be found in “hkust_collaboration.zip”.
+Figure 5: Interaction equations of the HKUST tri-stable switch system.
+5Basically, the discretized version of Fick’s second law of diffusion in Cartesian coordinates (differential form). Note that the Forward Time Centered Difference method was employed to compute the time evolution of diffusion in the Melbourne system.
+Click to Read Users' Guide
+Click to Download Our Models
+© NUS_Singapore iGEM 2016
+Go To Top

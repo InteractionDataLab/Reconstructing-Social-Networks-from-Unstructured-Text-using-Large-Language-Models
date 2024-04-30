@@ -1,0 +1,81 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Illinois-Tools/Project
+From 2009.igem.org
+Home
+The Team
+The Project
+Demo
+Modeling
+Safety
+Resources
+Notebook
+Overall project
+Synthetic biology is the creation of new functions using existing biological systems. In order to assist synthetic biologists, the 2009 Illinois tools team is trying to create a web-based open source program that outputs a theoretical pathway to synthesize a desired chemical product given an input and an output compound. The ideal network will have known reactions taken from the Kyoto Encyclopedia of Genes and Genomes (KEGG)database, which consists of well-studied organisms. The capabilities of our program will be exemplified by establishing a network for the synthesis of a biofuel and a pharmaceutical from various input compounds, as well as the elimination of a toxin.
+Our program is modular and has 4 major components. The first aspect is obtaining reactions from the KEGG database via KEGG API and creating our own database. The second is using all the reactions from our database to create a network. The third is writing the script to assign the appropriate weight to each edge and determining the path of least weight. The fourth is using the resulting pathway to obtain additional information such as a stoichiometric matrix, enzymes that catalyze a specific reaction, and the genes associated with those enzymes. The final step would be to take a feasible pathway and proceed to the lab to test it.
+Click here to go to IMPtools
+Project Details
+Database
+As mentioned above we used information from the KEGG database to make our metabolic pathway tool. In order to organize the information and be able to retrieve it as desired, we created our own My SQL database with the necessary components for our network. The Kyoto Encyclopedia for Genes and Genomes has his own application programming interface (API) that  can be used to allow other software, such as our own, to interact with it.
+Initially we thought that we would create our network using the API functions each time a request was submitted so that we would have the most up-to-date information. Upon testing that out we determined that it would take way too long for each query. This is due to the time it takes to access the database through the API as well as the limited function calls that are available via the API. To fix this problem, we created out own database that has all the information we need it. By doing this, we decreased runtime exponentially. We explored several options and began with sqlite3.  This was sufficient for our purposes but in order to ensure robustness for future versions, we switched over to MySQL just before launching our program.
+Using the Django web framework, creating a database was fairly straight forward but precise organization of the database was crucial to keeping runtime and update time to a minimum.  After trying several different methods, we settled on creating a database centered on the reaction. Essentially all components can be reached through the reaction model. The picture below depicts the major parts of our database and how they are linked.
+Although we decreased the time it takes for the program to run by creating our own database, there are disadvantages to this method. The biggest disadvantage is that our information will not be as up-to-date as KEGG.  KEGG updates parts of their database monthly, other parts weekly, and still others monthly. We decided that in order to keep our program useful we will update our database to ensure that it matches KEGG every two weeks.
+Network
+Using all the information in our database we have created a large network. Our directed multigraph contains all the compounds and their connections. Compound, compound name, and stoichiometry information is stored at each node. The remaining information is stored on the edge. This includes, reaction, reaction name, reversibility, and weight. From reaction we can also access organism, enzyme, and gene information. A visualization of our graph can be seen below.
+As you can see in the top figure, there are some nodes that are very highly connected and others that are barely connected. There ones that are most highly connected are water, ATP, and H+. These are the nodes that we would refrain from using when calculating a pathway. The next pictures are enlarged versions of the pathway showing the information stored in each part.
+Weighting Scheme
+By default, our algorithm will find the shortest path from the input compound to the output compound. We realize that this path is not always the path that the user is looking for. In order to allow the scientist further flexibility, we have created the option to weight 6 different constraints that we thought would be useful. Listed below is a description of each constraint.
+Fewest  Total Reactants/Products
+Adding weight to this constraint minimizes the number of reactants and products. This allows minimal disturbance of the natural flux of the organism.
+Least ATP Consumption
+This weight minimizes the number of reactions that have ATP as a reactant.  This allows for a more natural flow of events through the pathway. A pathway that consumes large amounts of ATP would be impractical because organisms can only produce a limited amount of ATP.
+Known Enzyme Data
+Using this weight limits the number of reactions which do not have enzyme data listed in the KEGG database. Synthetic biology requires that the enzyme and gene data for the reaction is known. If we do not know that information, then we can’t synthetically create a pathway.
+Fewest Changes to Host
+When creating a new metabolic pathway, it is important to consider the host in which the organism exists. This weight allows for the fewest changes to the host organism. For example, if the host organism is e.coli, and the fewest changes to host organism constraints is heavily weighted, the program will choose as many pathways that already exist in e.coli as possible in order to get from input to output compound.
+Node Order
+This constraint limits the number of nodes that are highly connected. Ideally, we don’t want compounds such as water and ATP, which are in many reactions, appearing in our pathway as primary compounds from the input to the output. By weighting this heavily, a scientist will be able to narrow down the final pathway faster.
+When using the program, the user can define up to six different inputs.  A dot product of these six inputs against six parameters defined by the program will be used to check each edge of the matrix while assigning the weights.  The six parameters defined by the program include:
+1) number of reactants
+2) number of products
+3) net positive ATP consumption
+4) a 1 if there is no enzyme used, a 0 if there are enzymes used
+5) a 1 if its not in organism, a 0 if within organism
+6) 1 for node order.
+Algorithm
+The algorithm we used is the bidirectional dikstra. We took this algorithm from graph theory to handle our large data set. The weights are assigned based on the user-defined parameters. This determines the "length" of the edge. Essentially, this algorithm branches out from both the starting and ending compound taking the smallest step possible after calculating the weight of all possible next steps. When the two paths connect you have found the ideal pathway. Although there can be multiple minimal pathways of equal weight, this algorithm guarantees a minimal total weighted pathway between the compounds.
+Results
+Depending on whether the user specified 1 or 3 pathways, IMPtools will generate and display the top pathway(s).  The way it displays the compounds and reactions is through the use of the KEGG ID names that were assigned to them.  One could even look these up on the KEGG database for more information using these codes if they wanted to. Now suppose you see a compound that you do not want to be involved in the pathway.  Simply click on the "x" button below the compound to tell IMPtools to ignore that compound, and to re-calculate a new pathway. One can also alter the weights that were assigned to the original query and then re-generate a new pathway by clicking update.
+Once you find a path that you like, you are taken to another page in which you will be given the available enzyme and gene data.  With this gene data, ideally you could transfect these genes into a host organism that you would grow colonies of, and your new colonies would essentially be able to convert compound A to compound Z.  Once you have finished looking at the genes and enzyme data, there will also be a stoichiometric matrix that you could look at.  This stoichiometric matrix gives info on what are the costs and products for this pathway.
+To finish up, one can download two different files to keep record and organize their results generated by IMPtools.  The first file is a CSV file that one can open up in Microsoft Excel.  This document will include compound, reaction, enzyme, and gene data as well as the stoichiometric matrix.  Although, this feature is not exactly perfect yet and is still in development.  The second file is a text document cantaining XGMML code which can be imported into Cytoscape, a network graphing program.  Using Cytoscape, one can view a diagram of the artificial pathway that they created using IMPtools (example below).
+Compounds are represented by circles, and reactions are represented by squares.  The pink circles are the main compounds that are involved in the artificial pathway.  The beige circles are the side-products and side-reactants involved in the pathway that are needed for each reaction in addition to the main compounds.  The black arrows represent the main pathway, whereas the blue and red arrow represent the production and consumption of side products and reactants respectively.
+Lastly, out program will be able to take the gene data that you generated with IMPtools and export it as Biobrick(s) (adding necessary primers, etc). These one would then submit to the registry.  This feature is also under development, and it not perfect.
+Future Plans
+Specifications for the next version of IMP tools
+The Illinois software tools team has explored into several new ideas that could potentially become projects for next summer’s team and other future teams.  These ideas have focused on adding several new features that improve the present program and expand on what the current project accomplishes.  There are several options that the team is currently considering.  The user input and feedback that we receive will be taken into much consideration, and based on that, we will decide which changes should be implemented first.  In order of importance, the main focus of expansion will be on incorporating the biobrick database, improving graphical representation of pathways, adding more constraints and improving the weighting system, and adding additional helpful features like displaying pricing information on compounds and biobricks, as well as navigational and aesthetic features such as searching compounds directly by name.
+One of the main areas of focus for the future teams will be the inclusion of biobricks and how to make use of the biobrick registry in a better way.  This year’s team was able to convert the nucleotide sequence for the genes responsible for a particular pathway into standardized biobricks by cleaving restriction sites, and assigning appropriate prefixes and suffixes.  Next year’s team could focus on creating better biobricks that could actually be tested out in an experimental lab.  They could research into dividing the biobricks into genes that code for single proteins and enzymes, and ones that code for a series of enzymes that are used in the same pathway. Then, these biobricks can be put together on a single plasmid that contains the code for an entire pathway.
+Another part of the project that can be improved is the graphical representation of the pathways generated.  The pathway maps can be provided in a variety of different formats and programs.  Some features that could be added are zoom features that could allow users to zoom into pathways and be able to see several alternate paths to a desired compound.  This would involve being able recreate and put entire existing databases into one huge map.  These interactive maps could be designed by members who are proficient at using software programs like Adobe Flash and Cytoscape.
+Furthermore, next year’s team can improve the pathway generating algorithm by adding more constraints and developing a more efficient weighting system.  Global computational studies can be used to evaluate immense numbers of possible input and output combinations.  One new method of weighting can be added by assigning price values.  This could be used to determine what the most economically valuable metabolic transformation is.  Another improvement is picking the right host organism, which contains the highest fraction of the enzymes needed to conduct a transformation.  Enzymes from other organisms can also be added to the initial host organism in order to add the desired functionality (considering from which sources the enzyme engineering challenge in the host is likely to be minimized).
+Moreover, some other helpful features that can be added are assigning price values to all compounds and genes used, and then provide a feature that enables users to calculate the total expenses for ordering the compounds needed for a pathway, and also to order biobricks to carry out the pathway reactions in lab.
+These are some of the additional features that could be added to enhance the project.  Other ideas that will also be considered are; adding a tutorial that shows users how to create a biobrick if it does not already exist, and a way to favor reactions and pathways that have been genetically altered over time to create a specific product.  Another tool that could be added is a flux balance analysis, to balance all the inputs and the outputs of the reaction.  Thus, there are several options that are being looked into, for next summer’s team to work on, in order to enhance the current project.
+Sources
+Pictures:
+http://www.partsregistry.org/Help:An_Introduction_to_BioBricks
+www.biomedcentral.com/1752-0509/2/31
+== The End ==
+Retrieved from " http://2009.igem.org/Team:Illinois-Tools/Project "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

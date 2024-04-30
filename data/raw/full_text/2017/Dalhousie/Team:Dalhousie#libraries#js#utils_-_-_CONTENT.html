@@ -1,0 +1,313 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Dalhousie_libraries_js_utils skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Dalhousie/libraries/js/utils</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>let TetherBase;
+if (typeof TetherBase === 'undefined') {
+</P><PRE> TetherBase = {modules: []};
+</PRE><P>}
+</P><P>let zeroElement = null;
+</P><P>// Same as native getBoundingClientRect, except it takes into account parent &lt;frame&gt; offsets
+// if the element lies within a nested document (&lt;frame&gt; or &lt;iframe&gt;-like).
+function getActualBoundingClientRect(node) {
+</P><PRE> let boundingRect = node.getBoundingClientRect();
+</PRE><PRE> // The original object returned by getBoundingClientRect is immutable, so we clone it
+ // We can't use extend because the properties are not considered part of the object by hasOwnProperty in IE9
+ let rect = {};
+ for (var k in boundingRect) {
+   rect[k] = boundingRect[k];
+ }
+</PRE><PRE> if (node.ownerDocument !== document) {
+   let frameElement = node.ownerDocument.defaultView.frameElement;
+   if (frameElement) {
+     let frameRect = getActualBoundingClientRect(frameElement);
+     rect.top += frameRect.top;
+     rect.bottom += frameRect.top;
+     rect.left += frameRect.left;
+     rect.right += frameRect.left;
+   }
+ }
+</PRE><PRE> return rect;
+</PRE><P>}
+</P><P>function getScrollParents(el) {
+</P><PRE> // In firefox if the el is inside an iframe with display: none; window.getComputedStyle() will return null;
+ // <A rel="nofollow" class="external free" href="https://bugzilla.mozilla.org/show_bug.cgi?id=548397">https://bugzilla.mozilla.org/show_bug.cgi?id=548397</A>
+ const computedStyle = getComputedStyle(el) || {};
+ const position = computedStyle.position;
+ let parents = [];
+</PRE><PRE> if (position === 'fixed') {
+   return [el];
+ }
+</PRE><PRE> let parent = el;
+ while ((parent = parent.parentNode) &amp;&amp; parent &amp;&amp; parent.nodeType === 1) {
+   let style;
+   try {
+     style = getComputedStyle(parent);
+   } catch (err) {}
+</PRE><PRE>   if (typeof style === 'undefined' || style === null) {
+     parents.push(parent);
+     return parents;
+   }
+</PRE><PRE>   const {overflow, overflowX, overflowY} = style;
+   if (/(auto|scroll)/.test(overflow + overflowY + overflowX)) {
+     if (position !== 'absolute' || ['relative', 'absolute', 'fixed'].indexOf(style.position) &gt;= 0) {
+       parents.push(parent)
+     }
+   }
+ }
+</PRE><PRE> parents.push(el.ownerDocument.body);
+ 
+ // If the node is within a frame, account for the parent window scroll
+ if (el.ownerDocument !== document) {
+   parents.push(el.ownerDocument.defaultView);
+ }
+ 
+ return parents;
+</PRE><P>}
+</P><P>const uniqueId = (() =&gt; {
+</P><PRE> let id = 0;
+ return () =&gt; ++id;
+</PRE><P>})();
+</P><P>const zeroPosCache = {};
+const getOrigin = () =&gt; {
+</P><PRE> // getBoundingClientRect is unfortunately too accurate.  It introduces a pixel or two of
+ // jitter as the user scrolls that messes with our ability to detect if two positions
+ // are equivilant or not.  We place an element at the top left of the page that will
+ // get the same jitter, so we can cancel the two out.
+ let node = zeroElement;
+ if (!node) {
+   node = document.createElement('div');
+   node.setAttribute('data-tether-id', uniqueId());
+   extend(node.style, {
+     top: 0,
+     left: 0,
+     position: 'absolute'
+   });
+</PRE><PRE>   document.body.appendChild(node);
+</PRE><PRE>   zeroElement = node;
+ }
+</PRE><PRE> const id = node.getAttribute('data-tether-id');
+ if (typeof zeroPosCache[id] === 'undefined') {
+   zeroPosCache[id] = getActualBoundingClientRect(node);
+</PRE><PRE>   // Clear the cache when this position call is done
+   defer(() =&gt; {
+     delete zeroPosCache[id];
+   });
+ }
+</PRE><PRE> return zeroPosCache[id];
+</PRE><P>};
+</P><P>function removeUtilElements() {
+</P><PRE> if (zeroElement) {
+   document.body.removeChild(zeroElement);
+ }
+ zeroElement = null;
+</PRE><P>};
+</P><P>function getBounds(el) {
+</P><PRE> let doc;
+ if (el === document) {
+   doc = document;
+   el = document.documentElement;
+ } else {
+   doc = el.ownerDocument;
+ }
+</PRE><PRE> const docEl = doc.documentElement;
+</PRE><PRE> const box = getActualBoundingClientRect(el);
+</PRE><PRE> const origin = getOrigin();
+</PRE><PRE> box.top -= origin.top;
+ box.left -= origin.left;
+</PRE><PRE> if (typeof box.width === 'undefined') {
+   box.width = document.body.scrollWidth - box.left - box.right;
+ }
+ if (typeof box.height === 'undefined') {
+   box.height = document.body.scrollHeight - box.top - box.bottom;
+ }
+</PRE><PRE> box.top = box.top - docEl.clientTop;
+ box.left = box.left - docEl.clientLeft;
+ box.right = doc.body.clientWidth - box.width - box.left;
+ box.bottom = doc.body.clientHeight - box.height - box.top;
+</PRE><PRE> return box;
+</PRE><P>}
+</P><P>function getOffsetParent(el) {
+</P><PRE> return el.offsetParent || document.documentElement;
+</PRE><P>}
+</P><P>function getScrollBarSize() {
+</P><PRE> const inner = document.createElement('div');
+ inner.style.width = '100%';
+ inner.style.height = '200px';
+</PRE><PRE> const outer = document.createElement('div');
+ extend(outer.style, {
+   position: 'absolute',
+   top: 0,
+   left: 0,
+   pointerEvents: 'none',
+   visibility: 'hidden',
+   width: '200px',
+   height: '150px',
+   overflow: 'hidden'
+ });
+</PRE><PRE> outer.appendChild(inner);
+</PRE><PRE> document.body.appendChild(outer);
+</PRE><PRE> const widthContained = inner.offsetWidth;
+ outer.style.overflow = 'scroll';
+ let widthScroll = inner.offsetWidth;
+</PRE><PRE> if (widthContained === widthScroll) {
+   widthScroll = outer.clientWidth;
+ }
+</PRE><PRE> document.body.removeChild(outer);
+</PRE><PRE> const width = widthContained - widthScroll;
+</PRE><PRE> return {width, height: width};
+</PRE><P>}
+</P><P>function extend(out={}) {
+</P><PRE> const args = [];
+</PRE><PRE> Array.prototype.push.apply(args, arguments);
+</PRE><PRE> args.slice(1).forEach(obj =&gt; {
+   if (obj) {
+     for (let key in obj) {
+       if ({}.hasOwnProperty.call(obj, key)) {
+         out[key] = obj[key];
+       }
+     }
+   }
+ });
+</PRE><PRE> return out;
+</PRE><P>}
+</P><P>function removeClass(el, name) {
+</P><PRE> if (typeof el.classList !== 'undefined') {
+   name.split(' ').forEach(cls =&gt; {
+     if (cls.trim()) {
+       el.classList.remove(cls);
+     }
+   });
+ } else {
+   const regex = new RegExp(`(^| )${ name.split(' ').join('|') }( |$)`, 'gi');
+   const className = getClassName(el).replace(regex, ' ');
+   setClassName(el, className);
+ }
+</PRE><P>}
+</P><P>function addClass(el, name) {
+</P><PRE> if (typeof el.classList !== 'undefined') {
+   name.split(' ').forEach(cls =&gt; {
+     if (cls.trim()) {
+       el.classList.add(cls);
+     }
+   });
+ } else {
+   removeClass(el, name);
+   const cls = getClassName(el) + ` ${name}`;
+   setClassName(el, cls);
+ }
+</PRE><P>}
+</P><P>function hasClass(el, name) {
+</P><PRE> if (typeof el.classList !== 'undefined') {
+   return el.classList.contains(name);
+ }
+ const className = getClassName(el);
+ return new RegExp(`(^| )${ name }( |$)`, 'gi').test(className);
+</PRE><P>}
+</P><P>function getClassName(el) {
+</P><PRE> // Can't use just SVGAnimatedString here since nodes within a Frame in IE have
+ // completely separately SVGAnimatedString base classes
+ if (el.className instanceof el.ownerDocument.defaultView.SVGAnimatedString) {
+   return el.className.baseVal;
+ }
+ return el.className;
+</PRE><P>}
+</P><P>function setClassName(el, className) {
+</P><PRE> el.setAttribute('class', className);
+</PRE><P>}
+</P><P>
+function updateClasses(el, add, all) {
+</P><PRE> // Of the set of 'all' classes, we need the 'add' classes, and only the
+ // 'add' classes to be set.
+ all.forEach(cls =&gt; {
+   if (add.indexOf(cls) === -1 &amp;&amp; hasClass(el, cls)) {
+     removeClass(el, cls);
+   }
+ });
+</PRE><PRE> add.forEach(cls =&gt; {
+   if (!hasClass(el, cls)) {
+     addClass(el, cls);
+   }
+ });
+</PRE><P>}
+</P><P>const deferred = [];
+</P><P>const defer = (fn) =&gt; {
+</P><PRE> deferred.push(fn);
+</PRE><P>};
+</P><P>const flush = () =&gt; {
+</P><PRE> let fn;
+ while(fn = deferred.pop()) {
+   fn();
+ }
+</PRE><P>};
+</P><P>class Evented {
+</P><PRE> on(event, handler, ctx, once=false) {
+   if (typeof this.bindings === 'undefined') {
+     this.bindings = {};
+   }
+   if (typeof this.bindings[event] === 'undefined') {
+     this.bindings[event] = [];
+   }
+   this.bindings[event].push({handler, ctx, once});
+ }
+</PRE><PRE> once(event, handler, ctx) {
+   this.on(event, handler, ctx, true);
+ }
+</PRE><PRE> off(event, handler) {
+   if (typeof this.bindings === 'undefined' ||
+       typeof this.bindings[event] === 'undefined') {
+     return;
+   }
+</PRE><PRE>   if (typeof handler === 'undefined') {
+     delete this.bindings[event];
+   } else {
+     let i = 0;
+     while (i &lt; this.bindings[event].length) {
+       if (this.bindings[event][i].handler === handler) {
+         this.bindings[event].splice(i, 1);
+       } else {
+         ++i;
+       }
+     }
+   }
+ }
+</PRE><PRE> trigger(event, ...args) {
+   if (typeof this.bindings !== 'undefined' &amp;&amp; this.bindings[event]) {
+     let i = 0;
+     while (i &lt; this.bindings[event].length) {
+       const {handler, ctx, once} = this.bindings[event][i];
+</PRE><PRE>       let context = ctx;
+       if (typeof context === 'undefined') {
+         context = this;
+       }
+</PRE><PRE>       handler.apply(context, args);
+</PRE><PRE>       if (once) {
+         this.bindings[event].splice(i, 1);
+       } else {
+         ++i;
+       }
+     }
+   }
+ }
+</PRE><P>}
+</P><P>TetherBase.Utils = {
+</P><PRE> getActualBoundingClientRect,
+ getScrollParents,
+ getBounds,
+ getOffsetParent,
+ extend,
+ addClass,
+ removeClass,
+ hasClass,
+ updateClasses,
+ defer,
+ flush,
+ uniqueId,
+ Evented,
+ getScrollBarSize,
+ removeUtilElements
+</PRE><P>};
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,221 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_DTU-Denmark_mobile-nav-js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:DTU-Denmark/mobile-nav-js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* jquery.dlmenu.js v1.0.1
+* <A rel="nofollow" class="external free" href="http://www.codrops.com">http://www.codrops.com</A>
+*
+* Licensed under the MIT license.
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>
+* 
+* Copyright 2013, Codrops
+* <A rel="nofollow" class="external free" href="http://www.codrops.com">http://www.codrops.com</A>
+*/
+</PRE><DL><DT>( function( $, window, undefined ) {</DT></DL><P>	'use strict';
+</P><P>	// global
+	var Modernizr = window.Modernizr, $body = $( 'body' );
+</P><P>	$.DLMenu = function( options, element ) {
+		this.$el = $( element );
+		this._init( options );
+	};
+</P><P>	// the options
+	$.DLMenu.defaults = {
+		// classes for the animation effects
+		animationClasses : { classin : 'dl-animate-in-1', classout : 'dl-animate-out-1' },
+		// callback: click a link that has a sub menu
+		// el is the link element (li); name is the level name
+		onLevelClick : function( el, name ) { return false; },
+		// callback: click a link that does not have a sub menu
+		// el is the link element (li); ev is the event obj
+		onLinkClick : function( el, ev ) { return false; }
+	};
+</P><P>	$.DLMenu.prototype = {
+		_init : function( options ) {
+</P><P>			// options
+			this.options = $.extend( true, {}, $.DLMenu.defaults, options );
+			// cache some elements and initialize some variables
+			this._config();
+</P><P>			var animEndEventNames = {
+					'WebkitAnimation' : 'webkitAnimationEnd',
+					'OAnimation' : 'oAnimationEnd',
+					'msAnimation' : 'MSAnimationEnd',
+					'animation' : 'animationend'
+				},
+				transEndEventNames = {
+					'WebkitTransition' : 'webkitTransitionEnd',
+					'MozTransition' : 'transitionend',
+					'OTransition' : 'oTransitionEnd',
+					'msTransition' : 'MSTransitionEnd',
+					'transition' : 'transitionend'
+				};
+			// animation end event name
+			this.animEndEventName = animEndEventNames[ Modernizr.prefixed( 'animation' ) ] + '.dlmenu';
+			// transition end event name
+			this.transEndEventName = transEndEventNames[ Modernizr.prefixed( 'transition' ) ] + '.dlmenu',
+			// support for css animations and css transitions
+			this.supportAnimations = Modernizr.cssanimations,
+			this.supportTransitions = Modernizr.csstransitions;
+</P><P>			this._initEvents();
+</P><P>		},
+		_config : function() {
+			this.open = false;
+			this.$trigger = this.$el.children( '.dl-trigger' );
+			this.$menu = this.$el.children( 'ul.dl-menu' );
+			this.$menuitems = this.$menu.find( 'li:not(.dl-back)' );
+</P>
+			this.$el.find( 'ul.dl-submenu' ).prepend( '<LI class="dl-back">&lt;a href=&quot;#&quot;&gt;back&lt;/a&gt;</LI>' );
+<P>			this.$back = this.$menu.find( 'li.dl-back' );
+		},
+		_initEvents : function() {
+</P><P>			var self = this;
+</P><P>			this.$trigger.on( 'click.dlmenu', function() {
+</P><P>				if( self.open ) {
+					self._closeMenu();
+				} 
+				else {
+					self._openMenu();
+				}
+				return false;
+</P><P>			} );
+</P><P>			this.$menuitems.on( 'click.dlmenu', function( event ) {
+</P><P>				event.stopPropagation();
+</P><P>				var $item = $(this),
+					$submenu = $item.children( 'ul.dl-submenu' );
+</P><P>				if( $submenu.length &gt; 0 ) {
+</P><P>					var $flyin = $submenu.clone().css( 'opacity', 0 ).insertAfter( self.$menu ),
+						onAnimationEndFn = function() {
+							self.$menu.off( self.animEndEventName ).removeClass( self.options.animationClasses.classout ).addClass( 'dl-subview' );
+							$item.addClass( 'dl-subviewopen' ).parents( '.dl-subviewopen:first' ).removeClass( 'dl-subviewopen' ).addClass( 'dl-subview' );
+							$flyin.remove();
+						};
+</P><P>					setTimeout( function() {
+						$flyin.addClass( self.options.animationClasses.classin );
+						self.$menu.addClass( self.options.animationClasses.classout );
+						if( self.supportAnimations ) {
+							self.$menu.on( self.animEndEventName, onAnimationEndFn );
+						}
+						else {
+							onAnimationEndFn.call();
+						}
+</P><P>						self.options.onLevelClick( $item, $item.children( 'a:first' ).text() );
+					} );
+</P><P>					return false;
+</P><P>				}
+				else {
+					self.options.onLinkClick( $item, event );
+				}
+</P><P>			} );
+</P><P>			this.$back.on( 'click.dlmenu', function( event ) {
+</P><P>				var $this = $( this ),
+					$submenu = $this.parents( 'ul.dl-submenu:first' ),
+					$item = $submenu.parent(),
+</P><P>					$flyin = $submenu.clone().insertAfter( self.$menu );
+</P><P>				var onAnimationEndFn = function() {
+					self.$menu.off( self.animEndEventName ).removeClass( self.options.animationClasses.classin );
+					$flyin.remove();
+				};
+</P><P>				setTimeout( function() {
+					$flyin.addClass( self.options.animationClasses.classout );
+					self.$menu.addClass( self.options.animationClasses.classin );
+					if( self.supportAnimations ) {
+						self.$menu.on( self.animEndEventName, onAnimationEndFn );
+					}
+					else {
+						onAnimationEndFn.call();
+					}
+</P><P>					$item.removeClass( 'dl-subviewopen' );
+</P><P>					var $subview = $this.parents( '.dl-subview:first' );
+					if( $subview.is( 'li' ) ) {
+						$subview.addClass( 'dl-subviewopen' );
+					}
+					$subview.removeClass( 'dl-subview' );
+				} );
+</P><P>				return false;
+</P><P>			} );
+</P><P>		},
+		closeMenu : function() {
+			if( this.open ) {
+				this._closeMenu();
+			}
+		},
+		_closeMenu : function() {
+			var self = this,
+				onTransitionEndFn = function() {
+					self.$menu.off( self.transEndEventName );
+					self._resetMenu();
+				};
+</P><P>			this.$menu.removeClass( 'dl-menuopen' );
+			this.$menu.addClass( 'dl-menu-toggle' );
+			this.$trigger.removeClass( 'dl-active' );
+</P><P>			if( this.supportTransitions ) {
+				this.$menu.on( this.transEndEventName, onTransitionEndFn );
+			}
+			else {
+				onTransitionEndFn.call();
+			}
+</P><P>			this.open = false;
+		},
+		openMenu : function() {
+			if( !this.open ) {
+				this._openMenu();
+			}
+		},
+		_openMenu : function() {
+			var self = this;
+			// clicking somewhere else makes the menu close
+			$body.off( 'click' ).on( 'click.dlmenu', function() {
+				self._closeMenu() ;
+			} );
+			this.$menu.addClass( 'dl-menuopen dl-menu-toggle' ).on( this.transEndEventName, function() {
+				$( this ).removeClass( 'dl-menu-toggle' );
+			} );
+			this.$trigger.addClass( 'dl-active' );
+			this.open = true;
+		},
+		// resets the menu to its original state (first level of options)
+		_resetMenu : function() {
+			this.$menu.removeClass( 'dl-subview' );
+			this.$menuitems.removeClass( 'dl-subview dl-subviewopen' );
+		}
+	};
+</P><P>	var logError = function( message ) {
+		if ( window.console ) {
+			window.console.error( message );
+		}
+	};
+</P><P>	$.fn.dlmenu = function( options ) {
+		if ( typeof options === 'string' ) {
+			var args = Array.prototype.slice.call( arguments, 1 );
+			this.each(function() {
+				var instance = $.data( this, 'dlmenu' );
+				if ( !instance ) {
+					logError( &quot;cannot call methods on dlmenu prior to initialization; &quot; +
+					&quot;attempted to call method '&quot; + options + &quot;'&quot; );
+					return;
+				}
+				if ( !$.isFunction( instance[options] ) || options.charAt(0) === &quot;_&quot; ) {
+					logError( &quot;no such method '&quot; + options + &quot;' for dlmenu instance&quot; );
+					return;
+				}
+				instance[ options ].apply( instance, args );
+			});
+		} 
+		else {
+			this.each(function() {	
+				var instance = $.data( this, 'dlmenu' );
+				if ( instance ) {
+					instance._init();
+				}
+				else {
+					instance = $.data( this, 'dlmenu', new $.DLMenu( options, this ) );
+				}
+			});
+		}
+		return this;
+	};
+</P><P>} )( jQuery, window );
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

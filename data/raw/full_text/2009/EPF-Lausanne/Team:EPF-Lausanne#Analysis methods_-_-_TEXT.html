@@ -1,0 +1,279 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:EPF-Lausanne/Analysis methods
+From 2009.igem.org
+Home
+Team
+Presentation
+School
+Team Management
+Brainstorming
+Sponsors
+Project
+Abstract
+Theory
+Strategy
+Experimental Setup
+Results
+Parts submitted to the Registry
+Future directions
+References
+Modeling
+Modeling overview
+Analysis Methods
+Results
+References
+Human practices
+Overview
+Talks
+Survey
+Media
+Safety
+Lab
+Last News
+Notebook
+Protocols used
+Contents
+1 Softwares used
+1.1 VMD
+1.2 NAMD
+2 Information needed
+2.1 Generating input files
+2.2 Launch a simulation
+2.3 Namd .conf parameters
+2.4 Scripts used
+3 Step by step analysis
+3.1 Maxwell-Boltzmann Energy Distribution
+3.2 Energies
+3.3 Temperature distribution
+3.4 Density
+3.5 Pressure as a function of simulation time
+3.6 RMSD for individual residues
+3.7 RMSD of selected atoms compared to initial position along time
+3.8 Salt bridges
+3.9 RMSF
+3.10 Angles
+3.11 H bonds and distance measurments
+3.12 Dihedral angles
+3.13 PCA Analysis
+               
+               
+               
+Analysis Methods
+Softwares used
+VMD
+VMD is a molecular visualization program for displaying, animating, and analyzing biomolecular systems using 3-D graphics and built-in scripting. It provides a wide range of molecular representations, and includes tools for working with volumetric data, sequence data, and arbitrary graphics objects. You can have more information on their webpage .
+NAMD
+NAMD is a molecular dynamics code designed for simulation of large biomolecular systems. It is based on Charm++ parallel programming model, and uses VMD for simulation setup and trajectory analysis. See their website here .
+Information needed
+Generating input files
+In this section, we explain all the steps to create needed files for NAMD, except the .conf file, which is just below . We need a compatible .pdb in addition to parameter and topology files to go through. Steps to generate all the input files are explained in detail on this page: How to generate input files . This is a kind of summary of the tutorial.
+Launch a simulation
+We start from .pdb, .psf, .rtf generated in the previous sections and we explain how to launch NAMD on both clusters we have access to. Complete process is on a separate page How to launch a simulation .
+Namd .conf parameters
+Namd can run different kind of simulations, from minimization to MD simulations. Here are the .conf file we used. NamdConf
+Scripts used
+We stored all our scripts, which were highly modified compared to the original ones, in order to fit our needs. You can find them on this page .
+Step by step analysis
+The following section is a kind of tutorial, which describes step by step how to obtain our different results.
+This analysis will check whether the minimization, the heating and the equilibration took place correctly and whether the protein did not explode.
+Maxwell-Boltzmann Energy Distribution
+Here we will conﬁrm that the kinetic energy distribution of the atoms in a system corresponds to the Maxwell distribution for a given temperature.
+         Click here to expand
+1. In VMD, load the .psf file. Browse for the restart velocity file (in our case, it was 2v0w_hydr_wb_i_eq.restart.vel), the type of ﬁle need this time to be selected. In the Determine ﬁle type: pull-down menu, choose NAMD Binary Coordinates, and load again.
+The molecule looks terrible! That is because VMD is reading the velocities as if they were coordinates, but how it looks doesn't matter: we just need VMD to make a file containing the masses and velocities for every atom.
+2. We create a selection with all the atoms in the system, by typing in the TkCon window:
+      set all [atomselect top all]
+Open a ﬁle energy.dat for writing:
+      set fil [open energy.dat w]
+3. For each atom in the system, calculate the kinetic energy, and write it to a ﬁle :
+      foreach m [$all get mass] v [$all get {x y z}] {
+      puts $fil [expr 0.5 * $m * [vecdot $v $v] ]
+      }
+Close the ﬁle:
+      close $fil
+All these steps can be avoided by typing in the Terminal Window:
+      vmd -dispdev text -e get energy.tcl
+We now have a ﬁle of raw data that can be used to ﬁt the obtained energy distribution to the Maxwell-Boltzmann distribution. The temperature of the distribution can be obtained from that ﬁt.
+1. In a Terminal window, type xmgrace. In the xmgrace window, choose the Data → Import → ASCI I menu item. In the Files box, select the ﬁle energy.dat. Click on the OK button. You should see a black trace which correspond to the raw data.
+2. To look at the distribution of points, we will make a histogram of this data. Choose the Data → Transformations → Histograms menu item. In the Source → Set window, click on the ﬁrst line, in order to make a histogram of the data just loaded.
+Click on the Normalize option.
+Fill in Start: 0, Stop at: 10, and # of bins: 100, and Apply.
+3. The plot has been created, but cannot be seen yet. Use the right button of the mouse to click on the ﬁrst set (in the Source → Set window).
+Click on Hide. Now, go to the main Grace window and click on the button labeled AS: it will resize the plot to ﬁt the existing values. This is the distribution of energies.
+Now, we will ﬁt a Maxwell-Boltzmann distribution to this plot and ﬁnd out the temperature that the distribution corresponds to.
+4. Choose the Data → Transformations → Non-linear curve ﬁtting menu item. In the Source → Set window, click on the last line, which corresponds to the histogram you created.
+In the Main tab, type in the Formula window:
+      y = (2/ sqrt(Pi * a0 ∧3 )) * sqrt(x) * exp (-x / a0)
+This will ﬁt the curve and get a ﬁt for the parameter a0, which corresponds to kB T in units of kcal/mol.
+5. In the Parameters drop-down menu, choose 1.  You can give an initial value to A0, so that the iterations will look for a value in the vicinity of your initial guess. In the A0 window, type 0.6, which in kcal/mol corresponds to a temperature of ∼ 300K.
+Click on the Apply button. This will open a window with the new value for a0, as well as some statistical measures, including the Correlation Coefficient, which is a measure of the ﬁt.
+The value of a0 obtained corresponds to kBT . Obtain the temperature T for this distribution with kB = 0.00198657 kcal  /mol /K.
+Energies
+Here we will calculate the average of various energies such as kinetic energy and different internal ones so called bonded energies (bonds,  angles and dihedrals). Moreover, we will calculate non-bonded energy (electrostatic, van der Waals)) over the course of the equilibration.
+         Click here to expand
+1. We start with a file obtained from NAMD:
+http://www.ks.uiuc.edu/Research/namd/utilities/ and download namdstats.tcl
+2. In the VMD TkCon window, type :
+     source namdstats.tcl
+     data avg ../namd_log 101 last
+The second line will call a procedure which will calculate the average for all output variables in the log ﬁle from the ﬁrst logged timestep after 101 to the end of the simulation.
+Temperature distribution
+Here we will analyze the temperature distribution over the simulation. The temperature might increase linearly during the heating step and then it might remain stable.
+We obtained the expected results .
+         Click here to expand
+In order to obtain the data for the temperature from the log ﬁle we will again use the script namdstats.tcl, which was already sourced. Type in a terminal window:
+      data_time TEMP namd_log
+It will store each timestep and its corresponding temperature in the file TEMP.dat.
+Density
+Here we will analyze the behavior of the protein density over the simulation. Normally during the equilibration step density might remain more or less stable. Particularly during the NVT equilibration the density might remain constant.
+We obtained the expected results .
+         Click here to expand
+In order to obtain the data for the volume from the log ﬁle we will again use the script namdstats.tcl, which was already sourced. Type in a terminal window:
+      data_time VOLUME namd_log
+It will store each timestep and its corresponding volume in the file VOLUME.dat.
+Pressure as a function of simulation time
+Here we will analyze the pressure behavior along the minimization and the equilibration. This quantity might stabilize after the heating and remain more or less stable during the equilibration. Particularly during the NPT steps the pressure might be strictly constant.
+We obtained the expected results .
+         Click here to expand
+In order to obtain the data for the pressure from the log ﬁle we will again use the script namdstats.tcl, which has been updated for the occasion.
+The file can be found here . Please rename to namdstats.tcl after download.
+Here are the steps to use this script:
+      source namdstats.tcl
+      data_time DATA_NAME LOG_FILE
+It will extract data from LOG_FILE, creating a DATA_NAME.dat containing values and time informations.
+Available DATA_NAME can be: BOND, ANGLE, DIHED, IMPRP, ELECT, VDW, BOUNDARY, MISC, KINETIC, TOTAL, TEMP, TOTAL2, TOTAL3, TEMPAVG, PRESSURE, GPRESSURE, VOLUME, PRESSAVG, GPRESSAVG.
+So, to extract pressure from our first simulation, the command is: data_time PRESSURE namd_log
+RMSD for individual residues
+Here we will calculate the RMSD for each residue to determine which residue move the most. This analysis will help us to see which residue is more or less stable. After that we will try after that to select the amino acids to mutate in order to stabilize the light activated state of our LOV domain.
+Click here to see the results.
+         Click here to expand
+We aim at finding the average RMSD over time for each residue in the protein using VMD.
+1. We load the .psf and .dcd files obtained after the first round of simulation.
+2. In the TkCon window type:
+      source residue_rmsd.tcl
+      set sel_resid [[atomselect top "protein and alpha"] get resid]
+This will get all the residues number of all alpha-carbons in the protein. Since there is just one and only one α-carbon per residue, it is a good option.
+3. Now we will calculate the RMSD values of all atoms in the newly created selection:
+      rmsd_residue_over_time top $sel_resid
+At the end of the calculation, we have a list of the avergae RMSD per residue (in the file residue_rmsd.dat)
+Remark: we updated the script residue_rmsd.tcl to be able to specify on which frames the rsmd has to be computed. Please have a look on this wiki for a more up-to-date version of the file... Command is:
+      rmsd_residue_over_time top $sel resid FIRST_FRAME LAST_FRAME
+4. In VMD, in Graphics → Representations, do the following actions:
+create two replicates: protein and resname FMN in selected atoms
+for the FMN, choose CPK as a drawing method
+for the protein, choose tube as drawing method, and user as coloring method. Now click on the Trajectory tab, and in the Color Scale Data Range, type 0.40 and 1.00.
+The protein is colored according to its average RMSD values. The residues displayed in blue are more mobile while the ones in red move less.
+Here is a movie with the protein colored according to average RMSD values: video
+5. Now we can plot the RMSD value per residue by typing in a Terminal window :
+      xmgrace residue rmsd.dat
+RMSD of selected atoms compared to initial position along time
+Here we will analyze the RMSD of each atom to check whether the protein remains more or less stable during the equilibration.
+Click here to see the results for the dark state simulation.
+Click here to see the results for the light state simulation.
+         Click here to expand
+This script was highly updated, please go to the script page if you encounter a problem!!!
+Selections are not precise here!
+We made a small TCL script to calculate RMSD from selected atoms compared to their initial position along timestep. The file can be found here . Please rename to Residue_rmsd_igem09.tcl after download.
+Example to run the script:
+     load ''.dcd'' + ''.psf'' on VMD
+     source residue_rmsd_igem09.tcl
+     set sel_resid [[atomselect top "protein and alpha"] get resid]
+     rmsd_residue_over_time top $sel_resid 0 0
+We tried to select only backbone from protein + FMN → change
+     set sel_resid [[atomselect top "backbone"] get resid]
+The script was updated to be able to define reference frame and first frame were RMSD will be calculated. We usually don't need to compute RMSD during heating, for instance. RMSD takes a lot of time. In our first run 1 frame = 100 timesteps * 2 fs*timesteps^-1 = 200 fs
+complete form for run is:
+      rmsd_residue_over_time top $sel_resid FIRST_FRAME REFERENCE_FRAME
+For our first run, if we want to select only the 295°K NPT plateau, and set its first frame as reference, we have to launch:
+     rmsd_residue_over_time top $sel_resid 1115 1115
+Here is how the script processes:
+calculate how many frames are in .dcd
+for each timestep, the script aligns (best fit) the backbone of the protein to the eference position to minimize RMDS. (Test: "and not mass 1,008000" == and noh was added in selection to remove hydrogen)
+for each residue (selected by sel_resid), RMSD is computed and the sum of all RMSD (one for each residue) is stored for current timestep
+script's output is data_rmsd.dat
+Salt bridges
+Salt bridges are non-bonded interactions between charged residues.
+Here we will analyze the evolution of these interactions over the equilibration in order to check how these interactions change over the equilibration.
+Click here to see the results.
+         Click here to expand
+As we wanted to redo the analysis from Schulten's article, we looked for salt bridges. VMD can easily compute this, it even propose an easy GUI. Standard configuration is just fine for now. You'll have a log file containing the list of nitrogen-oxygen susceptible of forming a salt bridge. You'll also get a file for each bridge containing the distance between both atoms along the simulation.
+In the light state, we have 9 salt bridges witin the protein and 12 if we consider the protein and the flavin (use "protein or resname FMN" as selection).
+     ASP471-ARG467
+     GLU409-ARG442
+     FMN450-FMN450
+     ASP540-LYS544
+     ASP432-ARG442
+     FMN450-ARG451
+     GLU457-LYS489
+     GLU444-LYS485
+     ASP522-ARG521
+     ASP424-ARG451
+     GLU475-LYS533
+     FMN450-ARG467
+RMSF
+This is quite similar to the RMSD analysis. Here we will analyze how the RMSF vary for each residues.
+Click here to see the results for the dark state simulation.
+Click here to see the results for the light state simulation.
+         Click here to expand
+After changing the script [see here ], we perform an interesting analysis from these 2 files. First, we have to correct the RMSF, that can be linked to beta factor using this equation:
+If you plot beta factor and RMSF, you get such a thing.
+Angles
+This part is made to measure the angle between two chains. The procedure is described below.
+Click here to see the results for the dark state simulation.
+Click here to see the results for the light state simulation.
+         Click here to expand
+open vmd and load the trajectory
+go to extensions and choose Tk console
+write :
+source fit_angle.tcl
+to analyse the trajectory tip the following
+sel_angle_frames 0 "resid 522 to 543 and protein" {1 0 0}
+sel_sel_angle_frames 0 "resid 522 to 543 and protein" "resid 493 to 498 and protein"
+You will obtain a file called angle.dat that contains the angle between the 2 objects that you selected to calculate the angle.
+H bonds and distance measurments
+This part aim at finding characteristic distances, in particular for H-bonds.
+Click here to see the results for the dark state simulation.
+         Click here to expand
+The Jα helix is anchored to the β structure by two H-bond networks involving:
+first Lys533 (in the Jα) and the couple Glu475, Gln497 (β structure)
+the second involving Lys413 (Jα) and Thr535 (β structure)
+Here we explain how to plot the relevant H-bond distances (two in the former and one in the latter) for both ‘dark’ and ‘light’ state.
+We first load the .psf and .dcd in VMD. Now we will consider the distance between the α carbon of Lysine 533 and of the C carbon of Glu475 and Gln497.
+By typing in the Tk Console window :
+     set sel [atomselect top "resid 533 475 and name CA"]
+     $sel get index
+This gives the indices 533 and 475, and by typing in the Representations window on VMD:
+      resid 533
+the Lysine in position 533 should appear. Do the same for the other residue.
+Now that the two residues are visible, choose the Mouse → Label → Bonds menu item from the VMD Main menu. Click on each atom one after the other.
+In VMD Main menu, select Graphics → Labels. By chosing Bonds we select the distance labeled. The graph tab will create a plot of the distance between these two atoms over time.
+Dihedral angles
+Dihedral angles measure angle between four atoms.
+Click here to see the results for the dark state simulation.
+Click here to see the results for the light state simulation.
+         Click here to expand
+The calculation of dihedral angles is very similar to the distance measurement. We first load the .psf and .dcd in VMD.
+In the window which displays the protein, zoom on the region of interest, press "4" on your keyboard and select the four atoms within which you would like to calculate the dihedral angle.
+Then, open the VMD window "label", select dihedral, click on the created dihedral, click on the tab "Graph" and finally save the calculated data.
+PCA Analysis
+PCA is a useful technique used for compression and data classification.
+         Click here to expand
+The aim is to reduce the dimensionality (number of dimensions) of a data ensemble (sample), by finding a new set of variables with a smaller size than the original set of variables. However, this new set must contain the main part of the information: most of the information is kept in a smaller number of variables.
+Information means variation in the sample, et given by the correlation between the original variables. The new variables are called principal components (PC), and are not correlated. They are given by splitting the total information contained in each one.
+Retrieved from " http://2009.igem.org/Team:EPF-Lausanne/Analysis_methods "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

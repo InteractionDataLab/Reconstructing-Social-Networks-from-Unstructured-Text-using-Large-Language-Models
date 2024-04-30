@@ -1,0 +1,98 @@
+Team:UESTC-software/Design
+三级页面
+HOME
+PROJECT
+Description
+Design
+Features
+Modeling
+Proof
+Results
+Future
+Parts
+Extra Work—Bio2048
+JUDGING
+Medal Requirements
+Safety
+TEAM
+Team
+Collaborations
+Notebooks
+HUMAN PRACTICES
+Silver
+Gold
+Integrated Practices
+Engagement
+DOCUMENTS
+ATTRIBUTIONS
+Design
+The design of Bio101 involves two aspects, the algorithm for encoding information in DNA sequences and the software implementation of the algorithm.
+System Design
+Workflow
+The overall workflow of Bio101:DNA Information Storage System is shown below (Fig. 1). Given a computer file, we compress it first, and then encrypt the file with the ISAAC algorithm [1]. The resulting binary file is converted to a nucleotide (NT) stream through a direct map between two bits and one base. The long NT stream is then fragmentized into short sequences and file indexing and error checking NTs are added to the ends of the sequences.
+Fig.1.Workflow for encoding and decoding processes.
+When the encoding process is finished, the resulting DNA sequences file can be delivered to a DNA synthesis company for the physical write-in.
+The decoding process involves the physical read-out through sequencing the DNA sample and the reverse steps of the encoding steps.
+Compression is the First Step
+Before the file is transformed to DNA sequences, a compression step is applied in order to achieve higher information storage density [2]. Instead of designing a new compression algorithm of our own, we choose the well-known, bzip2, algorithm for this purpose to avoid reinventing the wheel [3]. Shorter file length corresponds to fewer DNA sequences which means less cost for synthesis and sequencing.
+Encryption is the Key
+The purpose of the encryption step is two-fold.
+First, for a good information storage system, data safety is essential. Encryption ensures that one who obtains the physical DNA samples and knows the encoding protocol still cannot crack the information without the correct password.
+Second, the encoded DNA sequences should be as artificial and random as possible. This means that the sequences should be devoid of long homopolymers, such as GGGGGG, or repeated base patterns, such as AGTCAGTCAGTC, which are difficult to synthesize and sequence, and the sequences should not possess any biological functions so that the DNA samples are safe to people and environment.
+The ISAAC encryption algorithm [1] is chosen for this step. Pseudo-random bit sequences are generated while the original information is encrypted.  The possibility to produce homopolymers, repeated base patterns or fragments with biological functions  is extremely low.
+Bits to Nucleotides
+The randomized bits stream is converted into nucleotides (NT) stream using the straightforward map between two bits and one NT, 00 -> A, 01 -> C, 10 ->G, 11 -> T [4].
+Indexing is Essential for Data Integrity
+DNA in nature is a long one-dimensional molecule. However, the current technology only allows us to synthesize short oligonucleotides while the long DNA molecule with billions of nucleotides is still nature’s privilege.  In order to store a large piece of information, we have to fragmentize a long DNA sequence into oligonucleotides with a few hundreds of bases. However, simply fragmentizing the sequence would destroy all the data, since the order of these fragments is unknown.
+To overcome this problem, indexing the fragments is necessary. We add sequence address code and error check code to the original fragments. The address code tells the position of one sequence in the file, while the check code acts as a ‘parity NT’ [5] to check for errors in the encoded information, including length, address code, etc. Further scrambling is applied to the sequences to avoid homopolymers.
+In order to address the possible errors introduced in the synthesis, storage or sequencing, four-fold redundancy is used.
+DNA File Editing
+Workflow
+Random access, which means reading and writing a piece of information at arbitrary position in a file, is an important requirement for DNA-based information processing and computing system.  Although much effort has been invested to ensure the information integrity in the above design scheme, it is not suitable for the file editing purpose: many DNA fragments need to be replaced even just one bit is changed in the middle of a file.
+To address this need, we design an alternative encoding scheme as shown below (Fig. 2). In the scheme, the original file is fragmentized first. Then the fragment bit sequences are encrypted and randomized using the ISAAC algorithm followed by the conversion into NT sequences and the indexing step.
+Fig.2.Workflow for DNA File Editing.
+DNA File Editing Operation
+To edit a particular part of the file, we need to locate the DNA fragment where the to-be-modified information is located. To replace the information, two operations are needed. (1) The original fragment needs to be broken. (2) The new information needs to be encoded with the same procedure and compatible indexing information with the original sequence.
+The second step is not an issue since each piece of information is encoded independently in this new scheme and only the index needs special care.
+To degrade the original fragment, we propose to use the CRISPR/Cas9 system which has general editing ability through a recognition step using the single-guide RNA (sgRNA). For this purpose, the GG nucleotide pairs are included in the encoded sequences to ensure that there is a PAM site. Bio101 additionally provides a BioBrick part,  a sgRNA expression cassette to work with the Cas9 system to guide the degradation of the targeted DNA sequences.
+Fig.3.DNA file editing process.
+Front-end
+Web-based
+Due to the rapid development of Internet, web is now used extensively throughout the whole world. Meanwhile, a web application can be used without any installation hassle. More importantly, a web application can be accessed from many different devices from conventional computers to smart phones running with all kinds of operating systems. Therefore, we developed our software based on a web application model for a wider audience. All the computational work is done on our server while the results are provided as a hyperlink for users to download.
+User-friendly Interface
+The interface of our webpage is concise. There are five pages in total: one home page for the description on the software, one encoding page for a user to upload a file to encode it, one decoding page for a user to upload a DNA sequences file to extract the information, one about page to describe the background and algorithm of the software and one edit page to modify segment.  Users can get familiar with the web-app very quickly.
+To develop a cross-platform software, HTML, CSS, bootstrap [6],  Owl carousel [7] and jQuery are integrated into the web framework. The webpage is designed with a modern visualization standard and compatible with smart phones and other mobile devices, as well as quick in response.
+Fig.4.The interface of Bio101.
+Clear operation flow
+Our website has a clear operation flow as the following figure (Fig.5). When a user starts to encode a file, he or she will submit a file and a code as token to encrypt the file. The file will be compressed and encrypted after stored in our server. After that, process goes to encode it and user will go to the ‘Download’ page after the encoding process. User can choose txt, fasta or SBOL-xml [8] format to download the final DNA sequences. As for decoding, user will submit a file with DNA sequences which are encoded by our software and a code which is set when encoding the file. Decoding will start after the file being stored in our server. Then, the file will be decrypted by token and decompressed. After that, website will skip to ‘Download’ page, so user can download the decoded file.
+Fig.5.Design process of Bio101.
+Back-end
+Different file formats supported
+Our software supports the transforming of all formats of files, including jpg, pdf, mp3, etc. So users can store virtually all kinds of computer files in DNA. On the other hand, we provide different formats of DNA sequences for users to download, including Text, FASTA and SBOL.
+C and Python Combined
+C language has high execution efficiency, crossing platform application, etc. Whereas Python holds a great promise for conciseness, extensibility, abundant library, etc. So, the two are combined in Bio101 to form an ideal environment. The encryption and bit2nt parts are handled in C language while the rest is in Python, to guarantee the efficiency and the extensibility of the program.
+Fig.6.Bio101 combines Python and C programming language.
+Web Framework
+Web Programming with Django
+The front-end and back-end are separated, which are connected with Django web framework. Django is a high-level Python web framework that facilitates rapid development and clean, pragmatic design [9]. It is also free and open source. When users upload a file to the server-side interface, the back-end works, and then a DNA sequences file will be returned for the users to download. Developers can easily improve the codes in the back-end without worrying about any conflict with present front-end codes.
+References
+[1] Robert J. Jenkins Jr. (1996) ISAAC: a fast cryptographic random number generator FSE 1996: 41-49. Available from: http://burtleburtle.net/bob/rand/isaacafa.html
+[2] CUHK IGEM (2010) Bioencryption [online]. Available from: https://2010.igem.org/Team:Hong_Kong-CUHK
+[3]bzip2 [online] Available from: http://www.bzip.org/
+[4] Yim AK-Y, Yu AC-S, LiJ-W, Wong AI-C, Loo JFC, Chan KM, Kong SK, Yip KY and Chan T-F (2014) The essential component in DNA-based information storage system: robust error-tolerating module. Front. Bioeng. Biotechnol. 2:49. doi: 10.3389/fbioe.2014.00049
+[5] Tabatabaei Yazdi, S. M. H. et al (2015) A Rewritable, Random-Access DNA-BasedStorage System. Sci. Rep. 5, 14138; doi: 10.1038/srep14138
+[6] Bootstrap is the most popular HTML, CSS, and JS framework for developing responsive, mobile first projects on the web. [online] Available from: http://getbootstrap.com/
+[7] OWL Carousel Touch enabled jQuery plugin that lets you create beautiful responsive carousel slider. [online] Available from: http://owlgraphic.com/owlcarousel/
+[8] Synthetic Biology Open Language (SBOL) [online] Available from: http://sbolstandard.org/
+[9] Django: The web framework for perfectionists with deadlines. [online] Available from: https://www.djangoproject.com/
+FOLLOW US：
+UESTC-SOFTWARE
+© 2016 University of Electronic Science and Technology of China
+CATALOGUE
+CATALOGUE
+System Design
+DNA File Editing
+Front-end
+Back-end
+Web Framework
+References

@@ -1,0 +1,264 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+---
+title: "Performance Evaluation of Intra-team extraction"
+output: html_notebook
+---
+
+  
+1. Load the necessary datafiles (and libraries)
+
+```{r, message=FALSE, warning=FALSE}
+
+library(igraph)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+
+source("custom_functions.R")
+
+version = "specific"
+model = "gpt-4-turbo"
+temperature_curation = "0-3"
+temperature_matching = "0-3"
+
+meta = read.csv("../data/raw/team_meta.csv", stringsAsFactors = FALSE)
+roster = read.csv("../data/raw/teams_info_members_db.tsv", sep = "\t", stringsAsFactors = FALSE)
+roster$edited_name = trimws((iconv(roster$UserName,from="UTF-8",to="ASCII//TRANSLIT")))
+
+
+```
+
+
+Load Manual Curation
+
+```{r}
+
+manual = read.csv("../data/processed/manually_curated/random_per_year_intra_team/intra-team_manual_annotated_new.csv", stringsAsFactors = FALSE)[,c("Year", "Team", "UserName", "MemberType", "activities", "category")]
+
+manual$category = lapply(manual$category, FUN = function(x) trimws(strsplit(x, ",")[[1]])) 
+manual$UserName = trimws((iconv(manual$UserName,from="UTF-8",to="ASCII//TRANSLIT")))
+
+manual = tidyr::unnest(manual, cols = "category")
+manual$activities = tolower(manual$activities)
+
+```
+
+Confusion Matrix (with gpt-4-turbo)
+
+```{r}
+
+match = read.csv("../data/processed/gpt_curated/intra-team/relationship_matching_manual.csv", stringsAsFactors = FALSE)
+
+temp = merge(match, manual, by.x = c("year", "Activity"), by.y = c("Year", "activities"), all.y = TRUE)
+
+temp = temp %>% group_by(Matching, category) %>% summarise(count = n())
+colnames(temp) = c("category_gpt", "category_manual", "count")
+
+temp = temp[!is.na(temp$category_gpt),] %>% group_by(category_gpt) %>% mutate(proportion = count/sum(count), zscore = (count-mean(count))/sd(count))
+
+plt = ggplot(temp, aes(y = category_gpt, x = category_manual, fill = zscore)) + geom_tile(lwd = 1.5, linetype = 1) + theme_bw(base_size = 20) + 
+  #scale_x_discrete(position = "top") +
+  geom_text(aes(x = category_manual, y = category_gpt, label = count), color = "white") + 
+  ggtitle("") + 
+  scale_fill_gradient(low = "yellow", high = "blue", na.value = "white") +
+  theme_bw(base_size = 20) + xlab("") + ylab("") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank())
+
+ggsave(plt, filename = "../figures/confusion_matrix_intra_manual_gpt.png", width= 12, height = 10)
+
+```
+
+Heatmap with Dendogram
+
+```{r}
+
+temp_resh <- reshape2::acast(temp[!temp$category_manual == "Other" & !temp$category_gpt == "Other",], formula = category_gpt~category_manual, value.var = "proportion")
+
+temp_resh[is.na(temp_resh)] = 0
+
+dist_mat <- dist(temp_resh, method = 'euclidean')
+hc = hclust(dist_mat)
+ord = hc$labels[hc$order]
+
+temp = temp[!temp$category_manual == "Other" & !temp$category_gpt == "Other",]
+temp$category_gpt = factor(temp$category_gpt, levels = rev(ord))
+temp$category_manual = factor(temp$category_manual, levels = (ord))
+
+plt = ggplot(temp, aes(y = category_gpt, x = category_manual, fill = zscore)) + geom_tile(lwd = 1.5, linetype = 1) + theme_bw(base_size = 20) + 
+  #scale_x_discrete(position = "top") +
+  geom_text(aes(x = category_manual, y = category_gpt, label = count), color = "white") + 
+  ggtitle("") + 
+  scale_fill_gradient(low = "yellow", high = "blue", na.value = "white") +
+  theme_bw(base_size = 20) + xlab("") + ylab("") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none")
+
+
+ggsave(plt, filename = "../figures/confusion_matrix_intra_manual_gpt_dend_ordered.png", width= 12, height = 10)
+
+
+```
+
+Plot Dendrogram
+
+```{r}
+
+png(filename = "../figures/intra-team_categories_dendrogram.png")
+
+plot(hc)
+
+dev.off()
+
+```
+
+
+Load for specified models
+
+```{r}
+
+models = c("gpt-3.5-turbo-16k", "gpt-4-0125-preview", "gpt-4-turbo")
+
+all_models_df = data.frame()
+
+for (model in models)
+{
+  df = read.csv(paste("../data/processed/gpt_curated/intra-team/intra-team_merged_", version, "_", model, "_", temperature_matching, "_", temperature_curation, ".csv", sep = ""), stringsAsFactors = FALSE)
+  
+  df$model = model
+  
+  all_models_df = rbind(all_models_df, df)
+  
+}
+
+
+```
+
+At the team-level
+At team-level only student members
+
+
+```{r}
+
+all_models_df = merge(all_models_df, roster[,c("Team", "Year", "edited_name", "MemberType")], by.x = c("team", "year", "member"), by.y = c("Team", "Year", "edited_name"), all.x = TRUE)
+
+df_11 = all_models_df %>% group_by(team, year, model) %>% summarise(measure = "precision", value = sum(in_gpt == TRUE & in_manual == TRUE, na.rm = TRUE)/sum(in_gpt == TRUE, na.rm = TRUE))
+
+df_12 = all_models_df %>% group_by(team, year, model) %>% summarise(measure = "recall", value = sum(in_gpt == TRUE & in_manual == TRUE, na.rm = TRUE)/sum(in_manual == TRUE, na.rm = TRUE))
+
+df_1 = rbind(df_11, df_12)
+
+df_1$type = "all members"
+
+
+df_21 = all_models_df[all_models_df$MemberType %in% c("Student Leaders", "Student Members"),] %>% group_by(team, year, model) %>% summarise(measure = "precision", value = sum(in_gpt == TRUE & in_manual == TRUE, na.rm = TRUE)/sum(in_gpt == TRUE, na.rm = TRUE))
+
+df_22 = all_models_df[all_models_df$MemberType %in% c("Student Leaders", "Student Members"),] %>% group_by(team, year, model) %>% summarise(measure = "recall", value = sum(in_gpt == TRUE & in_manual == TRUE, na.rm = TRUE)/sum(in_manual == TRUE, na.rm = TRUE))
+
+df_2 = rbind(df_21, df_22)
+
+df_2$type = "only students"
+
+df_stats = rbind(df_1, df_2)
+
+```
+
+Precision/Recall Bar plots
+
+```{r}
+
+pr = df_stats %>% group_by(model, type, measure) %>% summarise(mean = mean(value, na.rm = TRUE), se = se(value))
+
+vir = viridis::viridis(6)
+color_palette = c("grey", vir[2:6])
+
+#Plot
+
+plt = ggplot(pr[pr$type == "all members",]) + 
+    geom_bar(aes(fill = model, y=mean, x=measure), position="dodge", stat="identity") +
+    scale_fill_manual(breaks =  c("gpt-3.5-turbo-16k", "gpt-4-0125-preview", "gpt-4-turbo"), values = (color_palette[c(3,4,5)])) +
+    geom_errorbar(aes(fill = model, ymin = mean-se, ymax = mean+se, x = measure), width = 0.1, position = position_dodge(0.9)) +
+    ggtitle("") +
+#    facet_wrap(~type) + 
+    theme_bw(base_size = 25) + coord_cartesian(ylim = c(0.0, 1)) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none")
+
+
+ggsave(plt, filename = "../figures/prec_recall_intra_team_models.png", width = 5, height = 5)
+
+```
+
+
+#At category level
+
+```{r}
+
+df_stats_pc = all_models_df %>% group_by(category, model, team) %>% summarise(precision = sum(in_gpt == TRUE & in_manual == TRUE, na.rm = TRUE)/sum(in_gpt == TRUE, na.rm = TRUE), recall = sum(in_gpt == TRUE & in_manual == TRUE, na.rm = TRUE)/sum(in_manual == TRUE, na.rm = TRUE))
+
+pr = df_stats_pc %>% group_by(model, category) %>% summarise(mean_recall = mean(recall, na.rm = TRUE), se_recall = se(recall))
+
+```
+
+
+Plot
+
+```{r}
+
+plt = ggplot(pr[pr$category %in% unique(manual$category),]) + 
+    geom_bar(aes(fill = model, x=mean_recall, y=category), position="dodge", stat="identity") +
+    scale_fill_manual(breaks =  c("gpt-3.5-turbo-16k", "gpt-4-0125-preview", "gpt-4-turbo"), values = (color_palette[c(3,4,5)])) +
+    geom_errorbar(aes(fill = model, xmin = mean_recall-se_recall, xmax = mean_recall+se_recall, y = category), width = 0.1, position = position_dodge(1)) +
+    ggtitle("") +
+    theme_bw(base_size = 25) + coord_cartesian(xlim = c(0.0, 1)) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none")
+
+
+ggsave(plt, filename = "../figures/recall_intra_team_categories.png", width = 8, height = 24)
+
+pr = df_stats_pc %>% group_by(model, category) %>% summarise(mean_precision = mean(precision, na.rm = TRUE), se_precision = se(precision))
+
+plt = ggplot(pr[pr$category %in% unique(manual$category),]) + 
+    geom_bar(aes(fill = model, x=mean_precision, y=category), position="dodge", stat="identity") +
+    scale_fill_manual(breaks =  c("gpt-3.5-turbo-16k", "gpt-4-0125-preview", "gpt-4-turbo"), values = (color_palette[c(3,4,5)])) +
+    geom_errorbar(aes(fill = model, xmin = mean_precision-se_precision, xmax = mean_precision+se_precision, y = category), width = 0.1, position = position_dodge(1)) +
+    ggtitle("") +
+    theme_bw(base_size = 25) + coord_cartesian(xlim = c(0.0, 1)) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none")
+
+
+ggsave(plt, filename = "../figures/precision_intra_team_categories.png", width = 8, height = 24)
+
+
+```
+
+Plot by Team
+
+```{r}
+
+t = df_stats[df_stats$type == "all members",]
+t$value = round(t$value, digits = 2)
+t$id = paste(t$team, t$year, sep = "-")
+
+t$team[t$team == "Edinburgh_UG"] = t$id[t$team == "Edinburgh_UG"]
+
+plt = ggplot(t[t$measure == "recall",]) + 
+    geom_tile(aes(fill = value, x=model, y=team), stat="identity") +
+      scale_fill_gradient(low = "yellow", high = "blue", na.value = "white") +
+#    geom_errorbar(aes(fill = model, xmin = mean_precision-se_precision, xmax = mean_precision+se_precision, y = category), width = 0.1, position = position_dodge(1)) +
+    ggtitle("") + geom_text(aes(label = value, x=model, y=team), color = "white") + 
+    theme_bw(base_size = 25) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  
+  ggsave(plt, filename = "../figures/intra_by_team_recall.png", height = 15, width = 5)
+
+```
+

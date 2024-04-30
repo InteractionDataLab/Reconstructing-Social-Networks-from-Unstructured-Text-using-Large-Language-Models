@@ -1,0 +1,250 @@
+Team:ETH Zurich/Model/In Vivo
+Project Idea
+Story of CATE
+CATE in Action
+Circuit
+Design
+Engineering
+Dry Lab
+Overview
+Tumor Sensor
+Heat Sensor
+3D Model
+Final Integration
+Wet Lab
+Experiments
+Lab Journal
+Protocols
+Safety
+Sequences
+Achievements
+Results
+Parts
+Medal Criteria
+InterLab
+Collaborations
+Human Practices
+Overview
+Integrated Practices
+Public Engagement
+Our Team
+Attributions
+Members
+Sponsors
+Modelling the Behavior of CATE inside a Tumor
+We developed a more refined model to gauge the behavior of our circuit in the real life conditions of solid tumor colonization.
+This page gives details about the 3D model we developed to simulate the behavior of CATE inside the tumor and healthy tissue with different colonization patterns. This section presents details about the following:
+The Geometry used in our 3D model.
+The domain-wise Partial Differential Equations used for modelling the Growth, AND-gate Tumor sensing Switch and the Lysis & Diffusion effects.
+Values of the Parameters used
+Simulation Results for the AND-Gate tumor sensing switch in the different environmental conditions to validate its functioning in context of the intended application.
+The 3D model presented here is used to model the behavior in conditions as close as possible to real-life scenario of tumor colonization by including the partial differential equations for diffusion of AHL and Azuin, which also helps validate the assumptions and simplifications used in the in-vitro model . Since in experiments, there is no diffusion, our 3D model helps us model scenarios that CATE will encounter, as close as possible to reality. We are also able to test the behavior of our tumor sensor in the different environmental conditions using the parameters obtained by fitting our experimental data and also finally integrating our self-designed hybrid promoter . Finally we are also able to estimate the killing area and to test the robustness of our circuit, we also simulated different colonization patterns.
+Go to RESULTS: Initial Test of our 3D Model .
+Go to RESULTS: AND-Gate Tumor Sensor Characterization .
+Go to RESULTS: Estimation of the Killing Area .
+Go to RESULTS: Bacterial Colonization Patterns .
+Go to RESULTS: Final Conclusions .
+Geometry
+Our model structure consists of 2 domains - Tumor and Layer.
+As mentioned in system specifications , the tumour has been chosen as a solid sphere of radius 20 mm and the bactierial colonization pattern as a homogenous distribution in a spherical shell-shaped 0.5 mm thick layer in the tumour at a distance of 10 mm from the centre of the tumor, as shown in Figure 1.
+Figure 1: Geometry of the tumor and bacteria colony (green area: colonized by E. coli Nissle)
+Details about the geometry
+Due to the spherical symmetry of the system, a 2D axisymmetric COMSOL model was used as shown in Figure 2 - a semicircle of radius 20 mm represents the tumor and the 0.5 mm thick layer at a distance of 10 mm from the center of the tumor represents the bacteria colonization pattern as explained in the system specifications . COMSOL then sweeps the semi-circle between 0° and 360 ° to simulate the entire 3D problem. The symmetry helps decrease the computational time and space requirements, without having to apply simplifications based on assumptions.
+Figure 2: Geometry of the COMSOL Model - 2D Axisymmetric; Coordinate system: (r,z); axes in mm; Tumor is a solid sphere of radius 20 mm located at (0,0), Bacterial colonization is in a spherical layer of thickness 0.5 mm at a distance of 10 mm from the center of the tumor.
+Equations
+Transport of Diluted Species physics was used in COMSOL to integrate diffusion into our model. The partial differential equation for diffusion of a species C with reaction source rate RC is \[\frac{\partial \text{[C]}}{\partial t} + \nabla \cdot (-D_{\text{C}} \nabla \text{[C]})= R_{\text{C}}\]. The reaction rates of the species depends on the domain – tumor: no production and only extracellular degradation, and bacterial layer: production and intracellular degradation.
+Expand the sections below for more details about the domain-wise reaction rates for each species (AHL, LuxI and azurin) and equations used.
+The concentration of LuxI, LuxR and LuxR-AHL modelled above represents the intracellular concentration i.e. the concentration at a point had a bacteria been there.
+However, since AHL diffuses everywhere rapidly and freely through the cell-memberane, a rapid equilibrium between the intercellular and extracellular concentration of AHL is reached, and thus we multiply the LuxI controlled AHL production rate by dcell, since the layer has all the bacteria colonizing the tumor.
+Similarly, since we are interested in the azurin concentration after lysis, we have a dcell multiplication factor in its reaction rate, as after lysis azurin from all the cells diffused out of the layer. This is also then used to find the effective killing area to estimate the percentage of volume of the tumor treated.
+Growth Model
+An exponential growth model is used, as shown below.
+\[\begin{aligned}                      \frac{\mathrm{d} d_{\text{cell}}}{\mathrm{d} t} &= \frac{1}{\tau} d_{\text{cell}} \left ( 1-\frac{d_{\text{cell}}}{d_{\text{cell,ss}}} \right ) \\                     \Rightarrow d_{\text{cell}} &= \frac{ d_{\text{cell,0}} \, e^{\frac{t}{\tau}}}{1 - \frac{d_{\text{cell,0}}}{d_{\text{cell,ss}}} + \frac{d_{\text{cell,0}}}{d_{\text{cell,ss}}}e^{\frac{t}{\tau}}}                      \end{aligned}\]
+Diffusion Model
+Transport of Diluted Species physics of COMSOL was used to model the diffusion of AHL and azurin. The equations below represent the diffusion models in both the Tumor and Layer domains. For simulating the effect of lysis, the diffusion of azurin is triggered when temperature reaches 42°C, while AHL diffuses all the time. The value of the diffusion coefficients of AHL, D and azurin, DAzu are given in the parameter list below.
+\[\begin{aligned}                     \frac{\partial \text{[AHL]}}{\partial t} + \nabla \cdot (-D_{\text{AHL}} \nabla\text{[AHL]}) &= R_{\text{AHL}} \\                     \frac{\partial \text{[Azu]}}{\partial t} + \nabla \cdot (-D_{\text{Azu}} \nabla\text{[Azu]}) &= R_{\text{Azu}}                     \end{aligned}\]
+Reaction Rates, RC = d[C]/dt
+Inside the Layer domain: AHL, LuxI and azurin are both produced and degraded. This is modelled as:
+\[\begin{aligned}                      R_{\text{AHL}} &= d_{\text{cell}}(t)\, a_{\text{AHL}} \text{[LuxI]} - d_{\text{AHL,out}}\text{[AHL]} \\                      R_{\text{LuxI}} &= a_{\text{LuxI}} \, [k_{\text{LuxI}}+(1-k_{\text{LuxI}})P_{\text{Lux-}\text{Lac}}] - d_{\text{LuxI}}\text{[LuxI]} \\                      R_{\text{Azu}} &= d_{\text{cell}}(t)\, k_{\text{Azu-LuxI}}\,(R_{\text{LuxI}}+d_{\text{LuxI}}\text{[LuxI]}-d_{\text{Azu}}\text{[Azu]} ) \\                       \end{aligned}\]
+where PLux-Lac is given by:
+\[\begin{aligned}                     P_{\text{Lux-}\text{Lac}} &= P_{\text{Lux}}P_{\text{Lac}} \\                      \text{where }                      P_{\text{Lux}} &= \frac{\left(\frac{[\text{LuxR-AHL}]}{K_{\text{LuxR}}} \right)^{n_{\text{LuxR}}}}{1 + \left(\frac{[\text{LuxR-AHL}]}{K_{\text{LuxR}}} \right)^{n_{\text{LuxR}}}} \\                      \text{and }                      P_{\text{Lac}} &= \frac{\left(\frac{\text{[Lac]}}{K_{\text{Lac}}} \right)^{n_{\text{Lac}}}}{1 + \left(\frac{[\text{Lac}]}{K_{\text{Lac}}} \right)^{n_{\text{Lac}}}}                      \end{aligned}\]
+where [Lac] is 1 mM in a healthy tissue and 5 mM in a tumor, as already mentioned in the system specifications .
+[LuxR-AHL] is obtained by soliving the following 2 equations:
+\[\begin{aligned}                      \text{[LuxR-AHL]} &= K_{\text{LuxR-AHL}} [\text{LuxR}]^2 [\text{AHL}]^2 &\text{(rapid binding equilibrium)} \\                      \text{[LuxR]} &= [\text{LuxR}]_0 - 2 [\text{LuxR-AHL}] &\text{(mass conservation)}                      \end{aligned}                      \]
+Inside the Tumor domain: AHL, LuxI and azurin are not produced and only degraded. This is modelled as:
+\[\begin{aligned}                      R_{\text{AHL}} &= - \, d_{\text{AHL,out}}\text{[AHL]} \\                      R_{\text{LuxI}} &= 0 \\                      R_{\text{Azu}} &= - \, d_{\text{Azu}}\text{[Azu]} ) \\                       \end{aligned}\]
+Parameters
+The parameters that were used in our 3D model were obtained partly from literature, partly from characterizations of previous iGEM teams and finally the most important ones were estimated by fitting our experimental data and tuning the fitted-results in the context of the intended applciation, as explained in detail by the Functional Parameter Search .
+Expand the details section to read more about the different parameters and their values used.
+Learn more about the parameters in the Functional Parameter Search .
+The steady state cell density for growth, dcell,ss is chosen to be 0.05 in colonized tumor and 0.0005 in healthy tissue, based on the conclusions derived in the System Specifications . Also, [Lac] is chosen to be 1 mM for a healthy tissue and 5 mM for a tumor, and the initial cell density dcell,0 is taken to be a very small non-zero value.
+Parameters fitted to our experimental data and tuned with respect to the context of the intended application
+Symbol
+Description
+Value
+Reference
+aLuxR
+Maximum expression of LuxR
+1x102 nM min-1
+iGEM ETH 2014
+aLuxI
+Maximum expression of LuxI
+1x104 nM min-1
+[3]
+KLac
+Half-activation [Lac] of the hybrid promoter, PLux-Lac
+2 mM
+Characterized lactate sensing part on which our AND-gate is based
+kLuxI
+Leakiness of the hybrid promoter
+0.01
+Characterized lactate sensing part on which our AND-gate is based
+KLuxR
+Half-activation [LuxR-AHL] of the hybrid promoter PLux-Lac
+10 nM
+iGEM ETH 2013
+nLuxR
+Hill coefficient of the hybrid promoter, PLux-Lac regarding [LuxR-AHL]
+1.7
+iGEM ETH 2015
+nLac
+Hill coefficient of the hybrid promoter, PLux-Lac regarding [Lac]
+1.7
+iGEM ETH 2015
+τ
+Doubling time of E. coli Nissle
+80 min
+Fitted from our growth experiments
+kAzu-LuxI
+Relative expression of azurin compared to LuxR
+4
+estimated
+Fixed parameters - well known
+Symbol
+Description
+Value
+Reference
+aAHL
+AHL synthesis rate by LuxI
+0.01 min-1
+[1]
+dAHL,out
+AHL extracellular degradation rate
+5x10-4 min-1
+[2]
+DAHL
+AHL diffusion coefficient in water
+3x10-8 m2min-1
+[2]
+KLuxR-AHL
+LuxR-AHL quadrimer binding constant
+5x10-10 nM-3
+[3]
+Fixed parameters - not very well known but redundant with respect to other parameters
+Symbol
+Description
+Value
+Reference
+dLuxI
+LuxI degradation rate
+0.0167 min-1
+[2]
+dLuxR
+LuxR degradation rate
+0.023 min-1
+[2]
+dAzu
+azurin degradation rate
+0.046 min-1
+estimated
+DAzu
+Diffusion coefficient of azurin
+1x10-6 cm2s-1
+estimated
+[LuxR]0
+Total initial concentration of LuxR
+aLuxR/dLuxR
+chosen same as steady state value
+RESULTS: Initial Test of our 3D Model
+To test our model, we simulated it for a given set of parameters that describe the conditions of tumor colonization as close as possible to a reality. This is given bsy the relative criteria for azurin production. The 3D model enabled us to use exact partial differential equations to model diffusion of the different species and helped us bridge the gap between experiments and reality, as it was not feasible to conduct experiments for tumor colonization in the lab. This also helped us to validate the assumptions used in the in-vitro model.
+Our 3D model helped us to simulate the three main phases of the CATE treatment: Growth, AND-Gate Switching (Environment sensing) and finally Lysis & azurin Diffusion. For details see CATE in Action .
+Phase 1: Growth
+The growth is modelled using the exponential growth rate \[\frac{\mathrm{d} d_{\text{cell}}}{\mathrm{d} t} = \frac{1}{\tau} d_{\text{cell}} \left ( 1-\frac{d_{\text{cell}}}{d_{\text{cell,ss}}} \right )\], where τ is the doubling time, that we obtained by fitting E. coli Nissle growth curves from our lab experiments. Read more in details for the equations .
+Phase 2: AND-Gate Tumor Sensing Switch
+The AND gate Switch senses the environment based on Quorum sensing (dcell) and Lactatae concentration ([Lac]), as explained in detail in the description of the Tumor Sensing circuit . Based on the different combinations of dcell and [Lac], as mentioned in the system specifications , the AND gate switches 'ON' or 'OFF'. For detailed equations see the equation details .
+ON state:
+Rapid and high-fold increase in [LuxI] or [Azu]
+OFF state:
+Slow and negligible-fold increase in LuxI] or [Azu]
+Phase 3: Lysis and azurin Diffusion
+The effect of lysis is simulated by a temperature controlled trigger of the diffusion of azurin that is produced in the cells. The temperature is increased from 0 to 42°C as a step function and when the temperature reaches 42°C, the production of azurin and AHL stops, since the cells are lysed, and diffusion of azurin begins which depletes azurin out of the cell into the tumor, effectively inducing apoptosis of the tumor cells.
+We simulated our model to test the working of the Tumor Sensing circuit for the case of tumor colonization i.e. High dcell AND High [Lac]. The three phases, as described above were simulated and the results for the case of bacteria colonization of tumor are shown in Figures 3, 4 and 5. In Figure 6, dcell shows the growth of the cell density inside the layer and PLux-Lac shows the switching based on the environmental conditions of dcell and lactate.
+During the growth phase, our sensing circuit is OFF (visible in Figure 3), and is triggered to turn ON once the desired cell density for quorum sensing is reached at around 48 hr, as shown in Figure 6 and 2. Then once steady state is reached, the temperature step triggers the cell-lysis and stops the production of azurin and AHL. Finally as is visible in Figure 5, all the azurin diffuses out of the layer very rapidly, thus completing the last phase of the treatment.
+Figure 3: Growth phase: 0 hr to 48 hr; Colonization of the tumor by bacteria.
+Figure 4: AND-Gate Switch Sensing phase: 48 hr to 70 hr; The rapid increase in [Azu] shows the switch ON of the AND-gate tumor sensor.
+Figure 5: Cell Lysis and azurin Diffusion phase: 70 hr to 80 hr
+Figure 6: Normalized concentration of AHL and azurin, Cell density (as a ratio of its steady state value), PLux-Lac and Temperature (as a ratio of its steady state value 42°C) probe plots at a point inside the layer of bacterial colonization in the tumor.
+Conclusions: From this simulation, we can conclude that our model simulates the functioning of our circuit as expected and intended. We use the parameters that we obtained from fitting of our experimental data and tuning them with regards to the intended application context. The above results verify the functioning of the Tumor Sensing circuit and thus validate CATE's behavior in a tumor.
+Since now we have confirmed that our circuit works as expected, we do an AND-Gate Sensor Characterization, by gauging the behavior of CATE in different environmental conditions, to verify its functioning in the context of the intended application.
+RESULTS: AND-Gate Tumor Sensor Characterization
+To test the specificity and functionality of our tumour sensing AND-Gate switch in all the possible real-life scenarios that CATE might encounter in context of the intended application, we use the relative criteria set in the system specifications for evaluation: since our AND-Gate switch has 2 inputs for environment sensing viz. dcell and [Lac], there are 4 possible binary combinations that CATE can encounter in real-life scenario, viz.:
+Case 'Tumor Colonization'
+High dcell AND High [Lac] → Switch FULLY ON.
+Case 'Healthy tissue Colonization'
+High dcell AND Low [Lac] → Switch FULLY OFF (in the ideal case).
+Case 'Tumor NOT fully colonized'
+Low dcell AND High [Lac] → Switch FULLY OFF.
+Case 'Healthy tissue NOT fully colonized'
+Low dcell AND Low [Lac] → Switch FULLY OFF
+The simulation results between 45 hr and 75 hr for all the 4 possible scenarios that CATE can encounter, are shown below. Around 48 hr, the quorum sensing triggers the switch ON of the AND-gate when in tumor, after which azurin concentration rises rapidly and once it reaches steady state, a temperature step signal is used to trigger lysis at around 70 hr.
+Figure 7: Case: 'Healthy tissue Colonization': High dcell AND Low [Lac]; AND-gate Switch is PARTIALLY ON.
+Figure 8: Case 'Tumor Colonization': High dcell AND High [Lac]; AND-gate Switch is FULLY ON.
+Figure 10: Case: 'Healthy tissue NOT fully colonized' - Low dcell AND Low [Lac]; AND-gate Switch is FULLY OFF.
+Figure 9: Case: 'Tumor NOT fully colonized': Low dcell AND High [Lac]; AND-gate Switch is FULLY OFF..
+As is clear from the Figures 7-10, the AND-gate switch is FULLY ON for the case of tumor colonization with steady state azurin concentration reaching around 7000 nM (shown in Figure 11). For the case of colonization of healthy tissue, the AND-gate switch is PARTIALLY ON with steady state azurin concentration at about 2500 nM. This is about 3.5 times lower than when the switch is FULLY ON, however in the ideal case it should be FULLY OFF, to avoid any off-target effects from CATE-treatment. In the case of tumor and healthy tissue not colonized, the steady state azurin concentrations are around 8 nM and 4 nM, respectively, which represent a FULLY OFF AND-gate switch.
+Figure 11: [Azu] vs Time; Shows the behavior of our tumor sensing circuit in the different dcell and [Lac] conditions and thus verifying the correct functioning of the tumor sensing circuit .
+Conclusions: From these simulation results, we can conclude that our circuit works as expected in the real-life scenario of tumor colonization and is specific enough to avoid any off-target effects. Moreover, these results validate the assumptions made in our in-vitro model, which was used for fitting our experimental data to obtain the parameters used.
+In the next step, we try to estimate the killing area that we can achieve using CATE as a bacteria cancer-therapy.
+RESULTS: Estimation of the Killing Area
+To simulate the effect of lysis, our 3D model stops the production of azurin and starts its diffusion when temperature reaches 42°C. This simulates the effect of increase in temperature with FUS to cause cell lysis. Using our own experimental quantitative determinations of the amount of azurin that can be produced by our bacteria (ie an intracellular concentration of 140 µM) as well as the killing curve performed on tumor cell (we observed an effective killing at a concentration of 1.8 nM), we were able to estimate the killing area and the time duration of the treatment.
+For this simulation, we assumed that every point in the tumor that has been in contact with a concentration of azurin greater than 1.8 nM at some time point during the diffusion of azurin (which follow the cell lysis). Thus, we determined the temporal-maximum concentrations of azurin at each point in the tumor, and deduced the area of the tumor that gets treated with effective amount of azurin from the obtained maximum concentration over time profile .
+Using the data obtained from our simulation results as shown in Figure 12, the maximum azurin concentration over time was found for every point in the system, as shown in Figure 13a using which then we could estimate the effective killing area (points where temporal-maximum azurin concentration > 1.8 nM) as shown in Figure 13b.
+Figure 12: Diffusion of [Azu] (nM) with 1.8 nM contour.
+Figure 13a: Maximum [Azu] (nM) over time at all points.
+Figure 13b: Killing Area: Points where maximum [Azu] over time exceeds 1.8 nM.
+The effective killing area can be estimated from our experimental data in combination with our most advanced model. By choosing the points in the (r,z) plane that have [Azu]max|t > 1.8 µM. Figure 13b shows that the maximum effective killing area is between r = 6 and 13 mm at z = 0. This amounts to approximately 25 % (by vol.) of the tumor being treated. We can therefore conclude that our bacterial system can have a very significant impact on the tumor and bring an effective treatment.
+Bacterial colonization patterns
+The next step was to test the robustness of our system. For this, we tested the environment sensing AND-gate switching circuit in different colonization patterns. Although any possible colonization pattern can be simulated, we simulated the following ones:
+Case 1: Homogeneous distribution in a Single spherical shell layer in tumour
+already simulated as shown in previous results
+Case 2: Heterogeneous distribution (Partitions) in a Single spherical shell layer in tumour
+another possible feasible scenario
+Case 3: Heterogeneous distribution (Partitions) in Double spherical shell layer in tumour
+introducing some more heterogenity in the system
+Case 4: Homogeneous distribution throughout Healthy tissue
+with dcell = 0.0005, as in this geometry the AND-gate is more easily activated as comparaed to other geometries, since difusion can not occur within the inner region where bacteria colonize, and thus this colonized inner region acts as a huge source, with no diffusion between the cells, as shown in the Figure 17.
+The simulation results between 45 hr and 70 hr for all the 4 possible scenarios, are shown below.
+Figure 14: Case 1: Tumor colonized in a single spherical shell-shaped layer; AND-gate Switch is FULLY ON.
+Figure 15: Case 2: Tumor is colonized in partitions in the shape of a single shell-shaped layer; AND-gate Switch is FULLY ON.
+Figure 16: Case 3: Tumor is colonized in alternative paritions in two spherical shell-shaped layers; AND-gate Switch is FULLY ON.
+Figure 17: Case 4: Homogeneous colonization (dcell) of a healthy tissue; AND-gate switch is PARTIALLY ON (practically OFF).
+The above figures show that our Tumor sensing circuit functions properly in the different colonization patterns simulated. According to Figure 17, in case of colonization of a healthy tissue, the switch is only slightly-partially triggered i.e. slower rise and lesser final steady state [Azu], and thus can be considered practically OFF, when compared to Figure 14, that has a FULLY ON switch indicated by the rapid rise and approximately 6 times higher-fold increase in [Azu]
+VOILÀ! : Final Conclusions
+Our model finally helped us to implement a comprehensive in-silico test to prove that our system already exhibits an excellent performance for the clinical application it has been designed for. This helped us to take into account the fitting of the parameters using our experimental data and integrate our own hybrid promoter which was tuned in reference to the intended application context, to verify the functioning of our environment sensing function .
+Limitations of our Model
+Our model has some limitations. We do not model protein E production and cell lysis caused by it. Instead lysis is just simulated in effect as the end of production of AHL and azurin and start of diffusion of azurin: a step signal is used as a trigger for the lysis. Also, the exact killing mechanism of azurin has not been precisely modeled, thus the assessment of the effectivity of the delivered treatment could be improved.
+Tools used
+COMSOL Multiphysics 5.2a by COMSOL Inc.
+MATLAB R2016b by MathWorks
+References
+Jordi Garcia-Ojalvo, Michael B. Elowitz, and Steven H. Strogatz Modeling a synthetic multicellular clock: Repressilators coupled by quorum sensing
+PNAS
+2004 101 (30) 10955-10960 | doi:10.1073/pnas.0307095101
+A.B. Goryachev, D.J. Toh T.Lee, Systems analysis of a quorum sensing network: Design constraints imposed by the functional requirements, network topology and kinetic constants
+Biosystems
+, Volume 83, Issues 2–3, February–March 2006, Pages 178-187 | doi:10.1016/j.biosystems.2005.04.006
+A synthetic multicellular system for programmed pattern formation Subhayu Basu, Yoram Gerchman, Cynthia H. Collins, Frances H. Arnold & Ron Weiss
+Nature
+434, 1130-1134 (28 April 2005) | doi:10.1038/nature03461
+Top
+Sponsors

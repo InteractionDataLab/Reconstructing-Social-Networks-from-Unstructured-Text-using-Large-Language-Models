@@ -1,0 +1,1065 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_AHUT_China_jquery_form_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:AHUT China/jquery.form js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* jQuery Form Plugin
+* version: 3.32.0-2013.04.09
+* @requires jQuery v1.5 or later
+* Copyright (c) 2013 M. Alsup
+* Examples and documentation at: <A rel="nofollow" class="external free" href="http://malsup.com/jquery/form/">http://malsup.com/jquery/form/</A>
+* Project repository: <A rel="nofollow" class="external free" href="https://github.com/malsup/form">https://github.com/malsup/form</A>
+* Dual licensed under the MIT and GPL licenses.
+* <A rel="nofollow" class="external free" href="https://github.com/malsup/form#copyright-and-license">https://github.com/malsup/form#copyright-and-license</A>
+*/
+</PRE><P>/*global ActiveXObject */
+</P><DL><DT>(function($) {</DT></DL><P>&quot;use strict&quot;;
+</P><P>/*
+</P><PRE>   Usage Note:
+   -----------
+   Do not use both ajaxSubmit and ajaxForm on the same form.  These
+   functions are mutually exclusive.  Use ajaxSubmit if you want
+   to bind your own submit handler to the form.  For example,
+</PRE><PRE>   $(document).ready(function() {
+       $('#myForm').on('submit', function(e) {
+           e.preventDefault(); // &lt;-- important
+           $(this).ajaxSubmit({
+               target: '#output'
+           });
+       });
+   });
+</PRE><PRE>   Use ajaxForm when you want the plugin to manage all the event binding
+   for you.  For example,
+</PRE><PRE>   $(document).ready(function() {
+       $('#myForm').ajaxForm({
+           target: '#output'
+       });
+   });
+</PRE><PRE>   You can also use ajaxForm with delegation (requires jQuery v1.7+), so the
+   form does not have to exist when you invoke ajaxForm:
+</PRE><PRE>   $('#myForm').ajaxForm({
+       delegation: true,
+       target: '#output'
+   });
+</PRE><PRE>   When using ajaxForm, the ajaxSubmit function will be invoked for you
+   at the appropriate time.
+</PRE><UL><LI>/</LI></UL><P>/**
+</P><PRE>* Feature detection
+*/
+</PRE><P>var feature = {};
+feature.fileapi = $(&quot;&lt;input type='file'/&gt;&quot;).get(0).files !== undefined;
+feature.formdata = window.FormData !== undefined;
+</P><P>var hasProp = !!$.fn.prop;
+</P><P>// attr2 uses prop when it can but checks the return type for
+// an expected string.  this accounts for the case where a form 
+// contains inputs with names like &quot;action&quot; or &quot;method&quot;; in those
+// cases &quot;prop&quot; returns the element
+$.fn.attr2 = function() {
+</P><PRE>   if ( ! hasProp )
+       return this.attr.apply(this, arguments);
+   var val = this.prop.apply(this, arguments);
+   if ( ( val &amp;&amp; val.jquery ) || typeof val === 'string' )
+       return val;
+   return this.attr.apply(this, arguments);
+</PRE><P>};
+</P><P>/**
+</P><PRE>* ajaxSubmit() provides a mechanism for immediately submitting
+* an HTML form using AJAX.
+*/
+</PRE><P>$.fn.ajaxSubmit = function(options) {
+</P><PRE>   /*jshint scripturl:true */
+</PRE><PRE>   // fast fail if nothing selected (<A rel="nofollow" class="external free" href="http://dev.jquery.com/ticket/2752">http://dev.jquery.com/ticket/2752</A>)
+   if (!this.length) {
+       log('ajaxSubmit: skipping submit process - no element selected');
+       return this;
+   }
+</PRE><PRE>   var method, action, url, $form = this;
+</PRE><PRE>   if (typeof options == 'function') {
+       options = { success: options };
+   }
+</PRE><PRE>   method = this.attr2('method');
+   action = this.attr2('action');
+</PRE><PRE>   url = (typeof action === 'string') ? $.trim(action) : <I>;</I>
+   url = url || window.location.href || <I>;</I>
+   if (url) {
+       // clean url (don't include hash vaue)
+       url = (url.match(/^([^#]+)/)||[])[1];
+   }
+</PRE><PRE>   options = $.extend(true, {
+       url:  url,
+       success: $.ajaxSettings.success,
+       type: method || 'GET',
+       iframeSrc: /^https/i.test(window.location.href || <I>) ? 'javascript:false' : 'about:blank'</I>
+   }, options);
+</PRE><PRE>   // hook for manipulating the form data before it is extracted;
+   // convenient for use with rich editors like tinyMCE or FCKEditor
+   var veto = {};
+   this.trigger('form-pre-serialize', [this, options, veto]);
+   if (veto.veto) {
+       log('ajaxSubmit: submit vetoed via form-pre-serialize trigger');
+       return this;
+   }
+</PRE><PRE>   // provide opportunity to alter form data before it is serialized
+   if (options.beforeSerialize &amp;&amp; options.beforeSerialize(this, options) === false) {
+       log('ajaxSubmit: submit aborted via beforeSerialize callback');
+       return this;
+   }
+</PRE><PRE>   var traditional = options.traditional;
+   if ( traditional === undefined ) {
+       traditional = $.ajaxSettings.traditional;
+   }
+</PRE><PRE>   var elements = [];
+   var qx, a = this.formToArray(options.semantic, elements);
+   if (options.data) {
+       options.extraData = options.data;
+       qx = $.param(options.data, traditional);
+   }
+</PRE><PRE>   // give pre-submit callback an opportunity to abort the submit
+   if (options.beforeSubmit &amp;&amp; options.beforeSubmit(a, this, options) === false) {
+       log('ajaxSubmit: submit aborted via beforeSubmit callback');
+       return this;
+   }
+</PRE><PRE>   // fire vetoable 'validate' event
+   this.trigger('form-submit-validate', [a, this, options, veto]);
+   if (veto.veto) {
+       log('ajaxSubmit: submit vetoed via form-submit-validate trigger');
+       return this;
+   }
+</PRE><PRE>   var q = $.param(a, traditional);
+   if (qx) {
+       q = ( q ? (q + '&amp;' + qx) : qx );
+   }
+   if (options.type.toUpperCase() == 'GET') {
+       options.url += (options.url.indexOf('?') &gt;= 0 ? '&amp;' : '?') + q;
+       options.data = null;  // data is null for 'get'
+   }
+   else {
+       options.data = q; // data is the query string for 'post'
+   }
+</PRE><PRE>   var callbacks = [];
+   if (options.resetForm) {
+       callbacks.push(function() { $form.resetForm(); });
+   }
+   if (options.clearForm) {
+       callbacks.push(function() { $form.clearForm(options.includeHidden); });
+   }
+</PRE><PRE>   // perform a load on the target only if dataType is not provided
+   if (!options.dataType &amp;&amp; options.target) {
+       var oldSuccess = options.success || function(){};
+       callbacks.push(function(data) {
+           var fn = options.replaceTarget ? 'replaceWith' : 'html';
+           $(options.target)[fn](data).each(oldSuccess, arguments);
+       });
+   }
+   else if (options.success) {
+       callbacks.push(options.success);
+   }
+</PRE><PRE>   options.success = function(data, status, xhr) { // jQuery 1.4+ passes xhr as 3rd arg
+       var context = options.context || this ;    // jQuery 1.4+ supports scope context
+       for (var i=0, max=callbacks.length; i &lt; max; i++) {
+           callbacks[i].apply(context, [data, status, xhr || $form, $form]);
+       }
+   };
+</PRE><PRE>   // are there files to upload?
+</PRE><PRE>   // [value] (issue #113), also see comment:
+   // <A rel="nofollow" class="external free" href="https://github.com/malsup/form/commit/588306aedba1de01388032d5f42a60159eea9228#commitcomment-2180219">https://github.com/malsup/form/commit/588306aedba1de01388032d5f42a60159eea9228#commitcomment-2180219</A>
+   var fileInputs = $('input[type=file]:enabled[value!=&quot;&quot;]', this);
+</PRE><PRE>   var hasFileInputs = fileInputs.length &gt; 0;
+   var mp = 'multipart/form-data';
+   var multipart = ($form.attr('enctype') == mp || $form.attr('encoding') == mp);
+</PRE><PRE>   var fileAPI = feature.fileapi &amp;&amp; feature.formdata;
+   log(&quot;fileAPI :&quot; + fileAPI);
+   var shouldUseFrame = (hasFileInputs || multipart) &amp;&amp; !fileAPI;
+</PRE><PRE>   var jqxhr;
+</PRE><PRE>   // options.iframe allows user to force iframe mode
+   // 06-NOV-09: now defaulting to iframe mode if file input is detected
+   if (options.iframe !== false &amp;&amp; (options.iframe || shouldUseFrame)) {
+       // hack to fix Safari hang (thanks to Tim Molendijk for this)
+       // see:  <A rel="nofollow" class="external free" href="http://groups.google.com/group/jquery-dev/browse_thread/thread/36395b7ab510dd5d">http://groups.google.com/group/jquery-dev/browse_thread/thread/36395b7ab510dd5d</A>
+       if (options.closeKeepAlive) {
+           $.get(options.closeKeepAlive, function() {
+               jqxhr = fileUploadIframe(a);
+           });
+       }
+       else {
+           jqxhr = fileUploadIframe(a);
+       }
+   }
+   else if ((hasFileInputs || multipart) &amp;&amp; fileAPI) {
+       jqxhr = fileUploadXhr(a);
+   }
+   else {
+       jqxhr = $.ajax(options);
+   }
+</PRE><PRE>   $form.removeData('jqxhr').data('jqxhr', jqxhr);
+</PRE><PRE>   // clear element array
+   for (var k=0; k &lt; elements.length; k++)
+       elements[k] = null;
+</PRE><PRE>   // fire 'notify' event
+   this.trigger('form-submit-notify', [this, options]);
+   return this;
+</PRE><PRE>   // utility fn for deep serialization
+   function deepSerialize(extraData){
+       var serialized = $.param(extraData).split('&amp;');
+       var len = serialized.length;
+       var result = [];
+       var i, part;
+       for (i=0; i &lt; len; i++) {
+           // #252; undo param space replacement
+           serialized[i] = serialized[i].replace(/\+/g,' ');
+           part = serialized[i].split('=');
+           // #278; use array instead of object storage, favoring array serializations
+           result.push([decodeURIComponent(part[0]), decodeURIComponent(part[1])]);
+       }
+       return result;
+   }
+</PRE><PRE>    // XMLHttpRequest Level 2 file uploads (big hat tip to francois2metz)
+   function fileUploadXhr(a) {
+       var formdata = new FormData();
+</PRE><PRE>       for (var i=0; i &lt; a.length; i++) {
+           formdata.append(a[i].name, a[i].value);
+       }
+</PRE><PRE>       if (options.extraData) {
+           var serializedData = deepSerialize(options.extraData);
+           for (i=0; i &lt; serializedData.length; i++)
+               if (serializedData[i])
+                   formdata.append(serializedData[i][0], serializedData[i][1]);
+       }
+</PRE><PRE>       options.data = null;
+</PRE><PRE>       var s = $.extend(true, {}, $.ajaxSettings, options, {
+           contentType: false,
+           processData: false,
+           cache: false,
+           type: method || 'POST'
+       });
+</PRE><PRE>       if (options.uploadProgress) {
+           // workaround because jqXHR does not expose upload property
+           s.xhr = function() {
+               var xhr = jQuery.ajaxSettings.xhr();
+               if (xhr.upload) {
+                   xhr.upload.addEventListener('progress', function(event) {
+                       var percent = 0;
+                       var position = event.loaded || event.position; /*event.position is deprecated*/
+                       var total = event.total;
+                       if (event.lengthComputable) {
+                           percent = Math.ceil(position / total * 100);
+                       }
+                       options.uploadProgress(event, position, total, percent);
+                   }, false);
+               }
+               return xhr;
+           };
+       }
+</PRE><PRE>       s.data = null;
+           var beforeSend = s.beforeSend;
+           s.beforeSend = function(xhr, o) {
+               o.data = formdata;
+               if(beforeSend)
+                   beforeSend.call(this, xhr, o);
+       };
+       return $.ajax(s);
+   }
+</PRE><PRE>   // private function for handling file uploads (hat tip to YAHOO!)
+   function fileUploadIframe(a) {
+       var form = $form[0], el, i, s, g, id, $io, io, xhr, sub, n, timedOut, timeoutHandle;
+       var deferred = $.Deferred();
+</PRE><PRE>       if (a) {
+           // ensure that every serialized input is still enabled
+           for (i=0; i &lt; elements.length; i++) {
+               el = $(elements[i]);
+               if ( hasProp )
+                   el.prop('disabled', false);
+               else
+                   el.removeAttr('disabled');
+           }
+       }
+</PRE><PRE>       s = $.extend(true, {}, $.ajaxSettings, options);
+       s.context = s.context || s;
+       id = 'jqFormIO' + (new Date().getTime());
+       if (s.iframeTarget) {
+           $io = $(s.iframeTarget);
+           n = $io.attr2('name');
+           if (!n)
+                $io.attr2('name', id);
+           else
+               id = n;
+       }
+       else {
+           $io = $('&lt;iframe name=&quot;' + id + '&quot; src=&quot;'+ s.iframeSrc +'&quot; /&gt;');
+           $io.css({ position: 'absolute', top: '-1000px', left: '-1000px' });
+       }
+       io = $io[0];
+</PRE><PRE>       xhr = { // mock object
+           aborted: 0,
+           responseText: null,
+           responseXML: null,
+           status: 0,
+           statusText: 'n/a',
+           getAllResponseHeaders: function() {},
+           getResponseHeader: function() {},
+           setRequestHeader: function() {},
+           abort: function(status) {
+               var e = (status === 'timeout' ? 'timeout' : 'aborted');
+               log('aborting upload... ' + e);
+               this.aborted = 1;
+</PRE><PRE>               try { // #214, #257
+                   if (io.contentWindow.document.execCommand) {
+                       io.contentWindow.document.execCommand('Stop');
+                   }
+               }
+               catch(ignore) {}
+</PRE><PRE>               $io.attr('src', s.iframeSrc); // abort op in progress
+               xhr.error = e;
+               if (s.error)
+                   s.error.call(s.context, xhr, e, status);
+               if (g)
+                   $.event.trigger(&quot;ajaxError&quot;, [xhr, s, e]);
+               if (s.complete)
+                   s.complete.call(s.context, xhr, e);
+           }
+       };
+</PRE><PRE>       g = s.global;
+       // trigger ajax global events so that activity/block indicators work like normal
+       if (g &amp;&amp; 0 === $.active++) {
+           $.event.trigger(&quot;ajaxStart&quot;);
+       }
+       if (g) {
+           $.event.trigger(&quot;ajaxSend&quot;, [xhr, s]);
+       }
+</PRE><PRE>       if (s.beforeSend &amp;&amp; s.beforeSend.call(s.context, xhr, s) === false) {
+           if (s.global) {
+               $.active--;
+           }
+           deferred.reject();
+           return deferred;
+       }
+       if (xhr.aborted) {
+           deferred.reject();
+           return deferred;
+       }
+</PRE><PRE>       // add submitting element to data if we know it
+       sub = form.clk;
+       if (sub) {
+           n = sub.name;
+           if (n &amp;&amp; !sub.disabled) {
+               s.extraData = s.extraData || {};
+               s.extraData[n] = sub.value;
+               if (sub.type == &quot;image&quot;) {
+                   s.extraData[n+'.x'] = form.clk_x;
+                   s.extraData[n+'.y'] = form.clk_y;
+               }
+           }
+       }
+</PRE><PRE>       var CLIENT_TIMEOUT_ABORT = 1;
+       var SERVER_ABORT = 2;
+               
+       function getDoc(frame) {
+           /* it looks like contentWindow or contentDocument do not
+            * carry the protocol property in ie8, when running under ssl
+            * frame.document is the only valid response document, since
+            * the protocol is know but not on the other two objects. strange?
+            * &quot;Same origin policy&quot; <A rel="nofollow" class="external free" href="http://en.wikipedia.org/wiki/Same_origin_policy">http://en.wikipedia.org/wiki/Same_origin_policy</A>
+            */
+           
+           var doc = null;
+           
+           // IE8 cascading access check
+           try {
+               if (frame.contentWindow) {
+                   doc = frame.contentWindow.document;
+               }
+           } catch(err) {
+               // IE8 access denied under ssl &amp; missing protocol
+               log('cannot get iframe.contentWindow document: ' + err);
+           }
+</PRE><PRE>           if (doc) { // successful getting content
+               return doc;
+           }
+</PRE><PRE>           try { // simply checking may throw in ie8 under ssl or mismatched protocol
+               doc = frame.contentDocument ? frame.contentDocument : frame.document;
+           } catch(err) {
+               // last attempt
+               log('cannot get iframe.contentDocument: ' + err);
+               doc = frame.document;
+           }
+           return doc;
+       }
+</PRE><PRE>       // Rails CSRF hack (thanks to Yvan Barthelemy)
+       var csrf_token = $('meta[name=csrf-token]').attr('content');
+       var csrf_param = $('meta[name=csrf-param]').attr('content');
+       if (csrf_param &amp;&amp; csrf_token) {
+           s.extraData = s.extraData || {};
+           s.extraData[csrf_param] = csrf_token;
+       }
+</PRE><PRE>       // take a breath so that pending repaints get some cpu time before the upload starts
+       function doSubmit() {
+           // make sure form attrs are set
+           var t = $form.attr2('target'), a = $form.attr2('action');
+</PRE><PRE>           // update form attrs in IE friendly way
+           form.setAttribute('target',id);
+           if (!method) {
+               form.setAttribute('method', 'POST');
+           }
+           if (a != s.url) {
+               form.setAttribute('action', s.url);
+           }
+</PRE><PRE>           // ie borks in some cases when setting encoding
+           if (! s.skipEncodingOverride &amp;&amp; (!method || /post/i.test(method))) {
+               $form.attr({
+                   encoding: 'multipart/form-data',
+                   enctype:  'multipart/form-data'
+               });
+           }
+</PRE><PRE>           // support timout
+           if (s.timeout) {
+               timeoutHandle = setTimeout(function() { timedOut = true; cb(CLIENT_TIMEOUT_ABORT); }, s.timeout);
+           }
+</PRE><PRE>           // look for server aborts
+           function checkState() {
+               try {
+                   var state = getDoc(io).readyState;
+                   log('state = ' + state);
+                   if (state &amp;&amp; state.toLowerCase() == 'uninitialized')
+                       setTimeout(checkState,50);
+               }
+               catch(e) {
+                   log('Server abort: ' , e, ' (', e.name, ')');
+                   cb(SERVER_ABORT);
+                   if (timeoutHandle)
+                       clearTimeout(timeoutHandle);
+                   timeoutHandle = undefined;
+               }
+           }
+</PRE><PRE>           // add &quot;extra&quot; data to form if provided in options
+           var extraInputs = [];
+           try {
+               if (s.extraData) {
+                   for (var n in s.extraData) {
+                       if (s.extraData.hasOwnProperty(n)) {
+                          // if using the $.param format that allows for multiple values with the same name
+                          if($.isPlainObject(s.extraData[n]) &amp;&amp; s.extraData[n].hasOwnProperty('name') &amp;&amp; s.extraData[n].hasOwnProperty('value')) {
+                              extraInputs.push(
+                              $('&lt;input type=&quot;hidden&quot; name=&quot;'+s.extraData[n].name+'&quot;&gt;').val(s.extraData[n].value)
+                                  .appendTo(form)[0]);
+                          } else {
+                              extraInputs.push(
+                              $('&lt;input type=&quot;hidden&quot; name=&quot;'+n+'&quot;&gt;').val(s.extraData[n])
+                                  .appendTo(form)[0]);
+                          }
+                       }
+                   }
+               }
+</PRE><PRE>               if (!s.iframeTarget) {
+                   // add iframe to doc and submit the form
+                   $io.appendTo('body');
+                   if (io.attachEvent)
+                       io.attachEvent('onload', cb);
+                   else
+                       io.addEventListener('load', cb, false);
+               }
+               setTimeout(checkState,15);
+</PRE><PRE>               try {
+                   form.submit();
+               } catch(err) {
+                   // just in case form has element with name/id of 'submit'
+                   var submitFn = document.createElement('form').submit;
+                   submitFn.apply(form);
+               }
+           }
+           finally {
+               // reset attrs and remove &quot;extra&quot; input elements
+               form.setAttribute('action',a);
+               if(t) {
+                   form.setAttribute('target', t);
+               } else {
+                   $form.removeAttr('target');
+               }
+               $(extraInputs).remove();
+           }
+       }
+</PRE><PRE>       if (s.forceSync) {
+           doSubmit();
+       }
+       else {
+           setTimeout(doSubmit, 10); // this lets dom updates render
+       }
+</PRE><PRE>       var data, doc, domCheckCount = 50, callbackProcessed;
+</PRE><PRE>       function cb(e) {
+           if (xhr.aborted || callbackProcessed) {
+               return;
+           }
+           
+           doc = getDoc(io);
+           if(!doc) {
+               log('cannot access response document');
+               e = SERVER_ABORT;
+           }
+           if (e === CLIENT_TIMEOUT_ABORT &amp;&amp; xhr) {
+               xhr.abort('timeout');
+               deferred.reject(xhr, 'timeout');
+               return;
+           }
+           else if (e == SERVER_ABORT &amp;&amp; xhr) {
+               xhr.abort('server abort');
+               deferred.reject(xhr, 'error', 'server abort');
+               return;
+           }
+</PRE><PRE>           if (!doc || doc.location.href == s.iframeSrc) {
+               // response not received yet
+               if (!timedOut)
+                   return;
+           }
+           if (io.detachEvent)
+               io.detachEvent('onload', cb);
+           else
+               io.removeEventListener('load', cb, false);
+</PRE><PRE>           var status = 'success', errMsg;
+           try {
+               if (timedOut) {
+                   throw 'timeout';
+               }
+</PRE><PRE>               var isXml = s.dataType == 'xml' || doc.XMLDocument || $.isXMLDoc(doc);
+               log('isXml='+isXml);
+               if (!isXml &amp;&amp; window.opera &amp;&amp; (doc.body === null || !doc.body.innerHTML)) {
+                   if (--domCheckCount) {
+                       // in some browsers (Opera) the iframe DOM is not always traversable when
+                       // the onload callback fires, so we loop a bit to accommodate
+                       log('requeing onLoad callback, DOM not available');
+                       setTimeout(cb, 250);
+                       return;
+                   }
+                   // let this fall through because server response could be an empty document
+                   //log('Could not access iframe DOM after mutiple tries.');
+                   //throw 'DOMException: not available';
+               }
+</PRE><PRE>               //log('response detected');
+               var docRoot = doc.body ? doc.body : doc.documentElement;
+               xhr.responseText = docRoot ? docRoot.innerHTML : null;
+               xhr.responseXML = doc.XMLDocument ? doc.XMLDocument : doc;
+               if (isXml)
+                   s.dataType = 'xml';
+               xhr.getResponseHeader = function(header){
+                   var headers = {'content-type': s.dataType};
+                   return headers[header];
+               };
+               // support for XHR 'status' &amp; 'statusText' emulation :
+               if (docRoot) {
+                   xhr.status = Number( docRoot.getAttribute('status') ) || xhr.status;
+                   xhr.statusText = docRoot.getAttribute('statusText') || xhr.statusText;
+               }
+</PRE><PRE>               var dt = (s.dataType || <I>).toLowerCase();</I>
+               var scr = /(json|script|text)/.test(dt);
+               if (scr || s.textarea) {
+                   // see if user embedded response in textarea
+                   var ta = doc.getElementsByTagName('textarea')[0];
+                   if (ta) {
+                       xhr.responseText = ta.value;
+                       // support for XHR 'status' &amp; 'statusText' emulation :
+                       xhr.status = Number( ta.getAttribute('status') ) || xhr.status;
+                       xhr.statusText = ta.getAttribute('statusText') || xhr.statusText;
+                   }
+                   else if (scr) {
+                       // account for browsers injecting pre around json response
+                       var pre = doc.getElementsByTagName('pre')[0];
+                       var b = doc.getElementsByTagName('body')[0];
+                       if (pre) {
+                           xhr.responseText = pre.textContent ? pre.textContent : pre.innerText;
+                       }
+                       else if (b) {
+                           xhr.responseText = b.textContent ? b.textContent : b.innerText;
+                       }
+                   }
+               }
+               else if (dt == 'xml' &amp;&amp; !xhr.responseXML &amp;&amp; xhr.responseText) {
+                   xhr.responseXML = toXml(xhr.responseText);
+               }
+</PRE><PRE>               try {
+                   data = httpData(xhr, dt, s);
+               }
+               catch (err) {
+                   status = 'parsererror';
+                   xhr.error = errMsg = (err || status);
+               }
+           }
+           catch (err) {
+               log('error caught: ',err);
+               status = 'error';
+               xhr.error = errMsg = (err || status);
+           }
+</PRE><PRE>           if (xhr.aborted) {
+               log('upload aborted');
+               status = null;
+           }
+</PRE><PRE>           if (xhr.status) { // we've set xhr.status
+               status = (xhr.status &gt;= 200 &amp;&amp; xhr.status &lt; 300 || xhr.status === 304) ? 'success' : 'error';
+           }
+</PRE><PRE>           // ordering of these callbacks/triggers is odd, but that's how $.ajax does it
+           if (status === 'success') {
+               if (s.success)
+                   s.success.call(s.context, data, 'success', xhr);
+               deferred.resolve(xhr.responseText, 'success', xhr);
+               if (g)
+                   $.event.trigger(&quot;ajaxSuccess&quot;, [xhr, s]);
+           }
+           else if (status) {
+               if (errMsg === undefined)
+                   errMsg = xhr.statusText;
+               if (s.error)
+                   s.error.call(s.context, xhr, status, errMsg);
+               deferred.reject(xhr, 'error', errMsg);
+               if (g)
+                   $.event.trigger(&quot;ajaxError&quot;, [xhr, s, errMsg]);
+           }
+</PRE><PRE>           if (g)
+               $.event.trigger(&quot;ajaxComplete&quot;, [xhr, s]);
+</PRE><PRE>           if (g &amp;&amp; ! --$.active) {
+               $.event.trigger(&quot;ajaxStop&quot;);
+           }
+</PRE><PRE>           if (s.complete)
+               s.complete.call(s.context, xhr, status);
+</PRE><PRE>           callbackProcessed = true;
+           if (s.timeout)
+               clearTimeout(timeoutHandle);
+</PRE><PRE>           // clean up
+           setTimeout(function() {
+               if (!s.iframeTarget)
+                   $io.remove();
+               xhr.responseXML = null;
+           }, 100);
+       }
+</PRE><PRE>       var toXml = $.parseXML || function(s, doc) { // use parseXML if available (jQuery 1.5+)
+           if (window.ActiveXObject) {
+               doc = new ActiveXObject('Microsoft.XMLDOM');
+               doc.async = 'false';
+               doc.loadXML(s);
+           }
+           else {
+               doc = (new DOMParser()).parseFromString(s, 'text/xml');
+           }
+           return (doc &amp;&amp; doc.documentElement &amp;&amp; doc.documentElement.nodeName != 'parsererror') ? doc : null;
+       };
+       var parseJSON = $.parseJSON || function(s) {
+           /*jslint evil:true */
+           return window['eval']('(' + s + ')');
+       };
+</PRE><PRE>       var httpData = function( xhr, type, s ) { // mostly lifted from jq1.4.4
+</PRE><PRE>           var ct = xhr.getResponseHeader('content-type') || <I>,</I>
+               xml = type === 'xml' || !type &amp;&amp; ct.indexOf('xml') &gt;= 0,
+               data = xml ? xhr.responseXML : xhr.responseText;
+</PRE><PRE>           if (xml &amp;&amp; data.documentElement.nodeName === 'parsererror') {
+               if ($.error)
+                   $.error('parsererror');
+           }
+           if (s &amp;&amp; s.dataFilter) {
+               data = s.dataFilter(data, type);
+           }
+           if (typeof data === 'string') {
+               if (type === 'json' || !type &amp;&amp; ct.indexOf('json') &gt;= 0) {
+                   data = parseJSON(data);
+               } else if (type === &quot;script&quot; || !type &amp;&amp; ct.indexOf(&quot;javascript&quot;) &gt;= 0) {
+                   $.globalEval(data);
+               }
+           }
+           return data;
+       };
+</PRE><PRE>       return deferred;
+   }
+</PRE><P>};
+</P><P>/**
+</P><PRE>* ajaxForm() provides a mechanism for fully automating form submission.
+*
+* The advantages of using this method instead of ajaxSubmit() are:
+*
+* 1: This method will include coordinates for &lt;input type=&quot;image&quot; /&gt; elements (if the element
+*    is used to submit the form).
+* 2. This method will include the submit element's name/value data (for the element that was
+*    used to submit the form).
+* 3. This method binds the submit() method to the form for you.
+*
+* The options argument for ajaxForm works exactly as it does for ajaxSubmit.  ajaxForm merely
+* passes the options argument along after properly binding events for submit elements and
+* the form itself.
+*/
+</PRE><P>$.fn.ajaxForm = function(options) {
+</P><PRE>   options = options || {};
+   options.delegation = options.delegation &amp;&amp; $.isFunction($.fn.on);
+</PRE><PRE>   // in jQuery 1.3+ we can fix mistakes with the ready state
+   if (!options.delegation &amp;&amp; this.length === 0) {
+       var o = { s: this.selector, c: this.context };
+       if (!$.isReady &amp;&amp; o.s) {
+           log('DOM not ready, queuing ajaxForm');
+           $(function() {
+               $(o.s,o.c).ajaxForm(options);
+           });
+           return this;
+       }
+       // is your DOM ready?  <A rel="nofollow" class="external free" href="http://docs.jquery.com/Tutorials:Introducing_$(document).ready()">http://docs.jquery.com/Tutorials:Introducing_$(document).ready()</A>
+       log('terminating; zero elements found by selector' + ($.isReady ? <I> : ' (DOM not ready)'));</I>
+       return this;
+   }
+</PRE><PRE>   if ( options.delegation ) {
+       $(document)
+           .off('submit.form-plugin', this.selector, doAjaxSubmit)
+           .off('click.form-plugin', this.selector, captureSubmittingElement)
+           .on('submit.form-plugin', this.selector, options, doAjaxSubmit)
+           .on('click.form-plugin', this.selector, options, captureSubmittingElement);
+       return this;
+   }
+</PRE><PRE>   return this.ajaxFormUnbind()
+       .bind('submit.form-plugin', options, doAjaxSubmit)
+       .bind('click.form-plugin', options, captureSubmittingElement);
+</PRE><P>};
+</P><P>// private event handlers
+function doAjaxSubmit(e) {
+</P><PRE>   /*jshint validthis:true */
+   var options = e.data;
+   if (!e.isDefaultPrevented()) { // if event has been canceled, don't proceed
+       e.preventDefault();
+       $(this).ajaxSubmit(options);
+   }
+</PRE><P>}
+</P><P>function captureSubmittingElement(e) {
+</P><PRE>   /*jshint validthis:true */
+   var target = e.target;
+   var $el = $(target);
+   if (!($el.is(&quot;[type=submit],[type=image]&quot;))) {
+       // is this a child element of the submit el?  (ex: a span within a button)
+       var t = $el.closest('[type=submit]');
+       if (t.length === 0) {
+           return;
+       }
+       target = t[0];
+   }
+   var form = this;
+   form.clk = target;
+   if (target.type == 'image') {
+       if (e.offsetX !== undefined) {
+           form.clk_x = e.offsetX;
+           form.clk_y = e.offsetY;
+       } else if (typeof $.fn.offset == 'function') {
+           var offset = $el.offset();
+           form.clk_x = e.pageX - offset.left;
+           form.clk_y = e.pageY - offset.top;
+       } else {
+           form.clk_x = e.pageX - target.offsetLeft;
+           form.clk_y = e.pageY - target.offsetTop;
+       }
+   }
+   // clear form vars
+   setTimeout(function() { form.clk = form.clk_x = form.clk_y = null; }, 100);
+</PRE><P>}
+</P><P>
+// ajaxFormUnbind unbinds the event handlers that were bound by ajaxForm
+$.fn.ajaxFormUnbind = function() {
+</P><PRE>   return this.unbind('submit.form-plugin click.form-plugin');
+</PRE><P>};
+</P><P>/**
+</P><PRE>* formToArray() gathers form element data into an array of objects that can
+* be passed to any of the following ajax functions: $.get, $.post, or load.
+* Each object in the array has both a 'name' and 'value' property.  An example of
+* an array for a simple login form might be:
+*
+* [ { name: 'username', value: 'jresig' }, { name: 'password', value: 'secret' } ]
+*
+* It is this array that is passed to pre-submit callback functions provided to the
+* ajaxSubmit() and ajaxForm() methods.
+*/
+</PRE><P>$.fn.formToArray = function(semantic, elements) {
+</P><PRE>   var a = [];
+   if (this.length === 0) {
+       return a;
+   }
+</PRE><PRE>   var form = this[0];
+   var els = semantic ? form.getElementsByTagName('*') : form.elements;
+   if (!els) {
+       return a;
+   }
+</PRE><PRE>   var i,j,n,v,el,max,jmax;
+   for(i=0, max=els.length; i &lt; max; i++) {
+       el = els[i];
+       n = el.name;
+       if (!n || el.disabled) {
+           continue;
+       }
+</PRE><PRE>       if (semantic &amp;&amp; form.clk &amp;&amp; el.type == &quot;image&quot;) {
+           // handle image inputs on the fly when semantic == true
+           if(form.clk == el) {
+               a.push({name: n, value: $(el).val(), type: el.type });
+               a.push({name: n+'.x', value: form.clk_x}, {name: n+'.y', value: form.clk_y});
+           }
+           continue;
+       }
+</PRE><PRE>       v = $.fieldValue(el, true);
+       if (v &amp;&amp; v.constructor == Array) {
+           if (elements)
+               elements.push(el);
+           for(j=0, jmax=v.length; j &lt; jmax; j++) {
+               a.push({name: n, value: v[j]});
+           }
+       }
+       else if (feature.fileapi &amp;&amp; el.type == 'file') {
+           if (elements)
+               elements.push(el);
+           var files = el.files;
+           if (files.length) {
+               for (j=0; j &lt; files.length; j++) {
+                   a.push({name: n, value: files[j], type: el.type});
+               }
+           }
+           else {
+               // #180
+               a.push({ name: n, value: <I>, type: el.type });</I>
+           }
+       }
+       else if (v !== null &amp;&amp; typeof v != 'undefined') {
+           if (elements)
+               elements.push(el);
+           a.push({name: n, value: v, type: el.type, required: el.required});
+       }
+   }
+</PRE><PRE>   if (!semantic &amp;&amp; form.clk) {
+       // input type=='image' are not found in elements array! handle it here
+       var $input = $(form.clk), input = $input[0];
+       n = input.name;
+       if (n &amp;&amp; !input.disabled &amp;&amp; input.type == 'image') {
+           a.push({name: n, value: $input.val()});
+           a.push({name: n+'.x', value: form.clk_x}, {name: n+'.y', value: form.clk_y});
+       }
+   }
+   return a;
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Serializes form data into a 'submittable' string. This method will return a string
+* in the format: name1=value1&amp;name2=value2
+*/
+</PRE><P>$.fn.formSerialize = function(semantic) {
+</P><PRE>   //hand off to jQuery.param for proper encoding
+   return $.param(this.formToArray(semantic));
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Serializes all field elements in the jQuery object into a query string.
+* This method will return a string in the format: name1=value1&amp;name2=value2
+*/
+</PRE><P>$.fn.fieldSerialize = function(successful) {
+</P><PRE>   var a = [];
+   this.each(function() {
+       var n = this.name;
+       if (!n) {
+           return;
+       }
+       var v = $.fieldValue(this, successful);
+       if (v &amp;&amp; v.constructor == Array) {
+           for (var i=0,max=v.length; i &lt; max; i++) {
+               a.push({name: n, value: v[i]});
+           }
+       }
+       else if (v !== null &amp;&amp; typeof v != 'undefined') {
+           a.push({name: this.name, value: v});
+       }
+   });
+   //hand off to jQuery.param for proper encoding
+   return $.param(a);
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Returns the value(s) of the element in the matched set.  For example, consider the following form:
+*
+*  &lt;form&gt;&lt;fieldset&gt;
+*      &lt;input name=&quot;A&quot; type=&quot;text&quot; /&gt;
+*      &lt;input name=&quot;A&quot; type=&quot;text&quot; /&gt;
+*      &lt;input name=&quot;B&quot; type=&quot;checkbox&quot; value=&quot;B1&quot; /&gt;
+*      &lt;input name=&quot;B&quot; type=&quot;checkbox&quot; value=&quot;B2&quot;/&gt;
+*      &lt;input name=&quot;C&quot; type=&quot;radio&quot; value=&quot;C1&quot; /&gt;
+*      &lt;input name=&quot;C&quot; type=&quot;radio&quot; value=&quot;C2&quot; /&gt;
+*  &lt;/fieldset&gt;&lt;/form&gt;
+*
+*  var v = $('input[type=text]').fieldValue();
+*  // if no values are entered into the text inputs
+*  v == [<I>,</I>]
+*  // if values entered into the text inputs are 'foo' and 'bar'
+*  v == ['foo','bar']
+*
+*  var v = $('input[type=checkbox]').fieldValue();
+*  // if neither checkbox is checked
+*  v === undefined
+*  // if both checkboxes are checked
+*  v == ['B1', 'B2']
+*
+*  var v = $('input[type=radio]').fieldValue();
+*  // if neither radio is checked
+*  v === undefined
+*  // if first radio is checked
+*  v == ['C1']
+*
+* The successful argument controls whether or not the field element must be 'successful'
+* (per <A rel="nofollow" class="external free" href="http://www.w3.org/TR/html4/interact/forms.html#successful-controls">http://www.w3.org/TR/html4/interact/forms.html#successful-controls</A>).
+* The default value of the successful argument is true.  If this value is false the value(s)
+* for each element is returned.
+*
+* Note: This method *always* returns an array.  If no valid value can be determined the
+*    array will be empty, otherwise it will contain one or more values.
+*/
+</PRE><P>$.fn.fieldValue = function(successful) {
+</P><PRE>   for (var val=[], i=0, max=this.length; i &lt; max; i++) {
+       var el = this[i];
+       var v = $.fieldValue(el, successful);
+       if (v === null || typeof v == 'undefined' || (v.constructor == Array &amp;&amp; !v.length)) {
+           continue;
+       }
+       if (v.constructor == Array)
+           $.merge(val, v);
+       else
+           val.push(v);
+   }
+   return val;
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Returns the value of the field element.
+*/
+</PRE><P>$.fieldValue = function(el, successful) {
+</P><PRE>   var n = el.name, t = el.type, tag = el.tagName.toLowerCase();
+   if (successful === undefined) {
+       successful = true;
+   }
+</PRE><PRE>   if (successful &amp;&amp; (!n || el.disabled || t == 'reset' || t == 'button' ||
+       (t == 'checkbox' || t == 'radio') &amp;&amp; !el.checked ||
+       (t == 'submit' || t == 'image') &amp;&amp; el.form &amp;&amp; el.form.clk != el ||
+       tag == 'select' &amp;&amp; el.selectedIndex == -1)) {
+           return null;
+   }
+</PRE><PRE>   if (tag == 'select') {
+       var index = el.selectedIndex;
+       if (index &lt; 0) {
+           return null;
+       }
+       var a = [], ops = el.options;
+       var one = (t == 'select-one');
+       var max = (one ? index+1 : ops.length);
+       for(var i=(one ? index : 0); i &lt; max; i++) {
+           var op = ops[i];
+           if (op.selected) {
+               var v = op.value;
+               if (!v) { // extra pain for IE...
+                   v = (op.attributes &amp;&amp; op.attributes['value'] &amp;&amp; !(op.attributes['value'].specified)) ? op.text : op.value;
+               }
+               if (one) {
+                   return v;
+               }
+               a.push(v);
+           }
+       }
+       return a;
+   }
+   return $(el).val();
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Clears the form data.  Takes the following actions on the form's input fields:
+*  - input text fields will have their 'value' property set to the empty string
+*  - select elements will have their 'selectedIndex' property set to -1
+*  - checkbox and radio inputs will have their 'checked' property set to false
+*  - inputs of type submit, button, reset, and hidden will *not* be effected
+*  - button elements will *not* be effected
+*/
+</PRE><P>$.fn.clearForm = function(includeHidden) {
+</P><PRE>   return this.each(function() {
+       $('input,select,textarea', this).clearFields(includeHidden);
+   });
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Clears the selected form elements.
+*/
+</PRE><P>$.fn.clearFields = $.fn.clearInputs = function(includeHidden) {
+</P><PRE>   var re = /^(?:color|date|datetime|email|month|number|password|range|search|tel|text|time|url|week)$/i; // 'hidden' is not in this list
+   return this.each(function() {
+       var t = this.type, tag = this.tagName.toLowerCase();
+       if (re.test(t) || tag == 'textarea') {
+           this.value = <I>;</I>
+       }
+       else if (t == 'checkbox' || t == 'radio') {
+           this.checked = false;
+       }
+       else if (tag == 'select') {
+           this.selectedIndex = -1;
+       }
+</PRE><P>		else if (t == &quot;file&quot;) {
+			if (/MSIE/.test(navigator.userAgent)) {
+				$(this).replaceWith($(this).clone(true));
+			} else {
+				$(this).val(<I>);</I>
+			}
+		}
+</P><PRE>       else if (includeHidden) {
+           // includeHidden can be the value true, or it can be a selector string
+           // indicating a special test; for example:
+           //  $('#myForm').clearForm('.special:hidden')
+           // the above would clean hidden inputs that have the class of 'special'
+           if ( (includeHidden === true &amp;&amp; /hidden/.test(t)) ||
+                (typeof includeHidden == 'string' &amp;&amp; $(this).is(includeHidden)) )
+               this.value = <I>;</I>
+       }
+   });
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Resets the form data.  Causes all form elements to be reset to their original value.
+*/
+</PRE><P>$.fn.resetForm = function() {
+</P><PRE>   return this.each(function() {
+       // guard against an input with the name of 'reset'
+       // note that IE reports the reset function as an 'object'
+       if (typeof this.reset == 'function' || (typeof this.reset == 'object' &amp;&amp; !this.reset.nodeType)) {
+           this.reset();
+       }
+   });
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Enables or disables any matching elements.
+*/
+</PRE><P>$.fn.enable = function(b) {
+</P><PRE>   if (b === undefined) {
+       b = true;
+   }
+   return this.each(function() {
+       this.disabled = !b;
+   });
+</PRE><P>};
+</P><P>/**
+</P><PRE>* Checks/unchecks any matching checkboxes or radio buttons and
+* selects/deselects and matching option elements.
+*/
+</PRE><P>$.fn.selected = function(select) {
+</P><PRE>   if (select === undefined) {
+       select = true;
+   }
+   return this.each(function() {
+       var t = this.type;
+       if (t == 'checkbox' || t == 'radio') {
+           this.checked = select;
+       }
+       else if (this.tagName.toLowerCase() == 'option') {
+           var $sel = $(this).parent('select');
+           if (select &amp;&amp; $sel[0] &amp;&amp; $sel[0].type == 'select-one') {
+               // deselect all other options
+               $sel.find('option').selected(false);
+           }
+           this.selected = select;
+       }
+   });
+</PRE><P>};
+</P><P>// expose debug var
+$.fn.ajaxSubmit.debug = false;
+</P><P>// helper fn for console logging
+function log() {
+</P><PRE>   if (!$.fn.ajaxSubmit.debug)
+       return;
+   var msg = '[jquery.form] ' + Array.prototype.join.call(arguments,<I>);</I>
+   if (window.console &amp;&amp; window.console.log) {
+       window.console.log(msg);
+   }
+   else if (window.opera &amp;&amp; window.opera.postError) {
+       window.opera.postError(msg);
+   }
+</PRE><P>}
+</P><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

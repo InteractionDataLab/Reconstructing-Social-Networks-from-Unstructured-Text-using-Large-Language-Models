@@ -1,0 +1,952 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Amsterdam_maarten_toolscripts"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Amsterdam/maarten/toolscripts">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Amsterdam/maarten/toolscripts&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Amsterdam/maarten/toolscripts&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Amsterdam/maarten/toolscripts&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Amsterdam/maarten/toolscripts" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Amsterdam/maarten/toolscripts</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>(function() {
+</P><PRE> var ua = navigator.userAgent,
+     iStuff = ua.match(/iPhone/i) || ua.match(/iPad/i),
+     typeOfCanvas = typeof HTMLCanvasElement,
+     nativeCanvasSupport = (typeOfCanvas == 'object' || typeOfCanvas == 'function'),
+     textSupport = nativeCanvasSupport 
+       &amp;&amp; (typeof document.createElement('canvas').getContext('2d').fillText == 'function');
+ //I'm setting this based on the fact that ExCanvas provides text support for IE
+ //and that as of today iPhone/iPad current text support is lame
+ labelType = (!nativeCanvasSupport || (textSupport &amp;&amp; !iStuff))? 'Native' : 'HTML';
+ nativeTextSupport = labelType == 'Native';
+ useGradients = nativeCanvasSupport;
+ animate = !(iStuff || !nativeCanvasSupport);
+</PRE><P>})();
+</P><P>var Log = {
+</P><PRE> elem: false,
+ write: function(text){
+   if (!this.elem) 
+     this.elem = document.getElementById('log');
+   this.elem.innerHTML = text;
+   this.elem.style.left = (500 - this.elem.offsetWidth / 2) + 'px';
+ }
+</PRE><P>};
+</P><P>function visualization(number){
+	$('#readout').empty()
+	$('#inner-details').empty()
+	$('#infovis').empty()
+</P><PRE>       $('#genbankInfo').empty()
+</PRE><P>	json = JSON.parse(unescape($(':input[name=json'+number+']').val()))
+</P><PRE>   //init data
+   //init Sunburst
+   var sb = new $jit.Sunburst({
+       //id container for the visualization
+       injectInto: 'infovis',
+       //Distance between levels
+       levelDistance: 90,
+       //Change node and edge styles such as
+       //color, width and dimensions.
+       Node: {
+         overridable: true,
+         type: useGradients? 'gradient-multipie' : 'multipie'
+       },
+       //Select canvas labels
+       //'HTML', 'SVG' and 'Native' are possible options
+       Label: {
+         type: labelType
+       },
+       //Change styles when hovering and clicking nodes
+       NodeStyles: {
+         enable: true,
+         type: 'Native',
+         stylesClick: {
+           'color': '#000000'
+         },
+       },
+       //Add tooltips
+       Tips: {
+         enable: true,
+         onShow: function(tip, node) {
+</PRE>
+            var html = &quot;<DIV>&quot; + node.data.description + &quot;</DIV>&quot;; 
+<PRE>           var data = node.data;
+           if(&quot;length&quot; in data) {
+             html += &quot;<B>Length of feature:</B> &quot; + data.length + &quot;bp&quot;;
+           }
+</PRE><P>			if(&quot;type&quot; in data){
+				html += &quot;<B>Type of feature:</B> &quot; + data.type;
+			}
+</P><PRE>           tip.innerHTML = html;
+         }
+       },
+       //implement event handlers
+       Events: {
+         enable: true,
+         onClick: function(node) {
+           if(!node) return;
+           //Build detailed information about the file/folder
+           //and place it in the right column.
+</PRE>
+            var html = &quot;<H4><SPAN class="mw-headline" id=".22_.2B_node.name_.2B_.22">&quot; + node.name + &quot;</SPAN></H4>&quot;, data = node.data;
+<PRE>           if(&quot;dna&quot; in data) {
+</PRE>
+              html += &quot;<B>Sequence:</B><PRE>&quot; + data.dna + &quot;</PRE>&quot;;
+<PRE>           }
+           $jit.id('inner-details').innerHTML = html;
+           //hide tip
+           sb.tips.hide();
+           //rotate
+           //sb.rotate(node, animate? 'animate' : 'replot', {
+             //duration: 1000,
+             //transition: $jit.Trans.Quart.easeInOut
+           //});
+         }
+       },
+       // Only used when Label type is 'HTML' or 'SVG'
+       // Add text to the labels. 
+       // This method is only triggered on label creation
+       onCreateLabel: function(domElement, node){
+         var labels = sb.config.Label.type,
+             aw = node.getData('length');
+         if (labels === 'HTML' &amp;&amp; (node._depth &lt; 2 || aw &gt; 2000)) {
+           domElement.innerHTML = node.name;
+         } else if (labels === 'SVG' &amp;&amp; (node._depth &lt; 2 || aw &gt; 2000)) {
+           domElement.firstChild.appendChild(document.createTextNode(node.name));
+         }
+       },
+       // Only used when Label type is 'HTML' or 'SVG'
+       // Change node styles when labels are placed
+       // or moved.
+       onPlaceLabel: function(domElement, node){
+         var labels = sb.config.Label.type;
+         if (labels === 'SVG') {
+           var fch = domElement.firstChild;
+           var style = fch.style;
+           style.display = <I>;</I>
+           style.cursor = 'pointer';
+           style.fontSize = &quot;0.8em&quot;;
+           fch.setAttribute('fill', &quot;#fff&quot;);
+         } else if (labels === 'HTML') {
+           var style = domElement.style;
+           style.display = <I>;</I>
+           style.cursor = 'pointer';
+           style.fontSize = &quot;0.8em&quot;;
+           style.color = &quot;#ddd&quot;;
+           var left = parseInt(style.left);
+           var w = domElement.offsetWidth;
+           style.left = (left - w / 2) + 'px';
+         }
+       }
+  });
+   //load JSON data.
+   sb.loadJSON(json);
+   //compute positions and plot.
+   sb.refresh();
+   //end
+</PRE><P>}
+</P><P>function addForbiddenSequences(){
+	forbiddenSequences.addSite('Forbidden-EcoRI','GAATTC')
+	forbiddenSequences.addSite('Forbidden-XbaI','GAATTC')
+	forbiddenSequences.addSite('Forbidden-SpeI','ACTAGT')
+	forbiddenSequences.addSite('Forbidden-PstI','CTGCAG')
+	forbiddenSequences.addSite('Forbidden-NotI','GCGGCCGC')
+}
+</P><P>var forbiddenSequences = {
+</P><PRE>   forbiddenSequencesArray : {},
+</PRE><P>	addSite : function(name,sequence){
+		forbiddenSequences.forbiddenSequencesArray[name] = sequence
+	},
+}
+</P><P>function checkOccurrence(target,sequence){
+	if (sequence.length &gt; target.length){
+</P><PRE>       if (sequence.indexOf(target) == -1){
+           return false
+       } else{
+           return true
+       }
+</PRE><P>	} else{
+		if (target.indexOf(sequence) == -1){
+</P><PRE>           return false
+       } else{
+           return true
+       }
+</PRE><P>	}
+}
+</P><P>function randomDNA(length){
+	chars = 'atgc'
+	inForbiddenSite = true
+	while (inForbiddenSite === true){
+		sequence = 
+		inForbiddenSite = false
+		for (k=0; k&lt;length; k++) {
+			rnum = Math.floor(Math.random() * chars.length);
+			sequence += chars.substring(rnum,rnum+1);
+		}
+		for (item in forbiddenSequences.forbiddenSequencesArray){
+			if (checkOccurrence(sequence,forbiddenSequences.forbiddenSequencesArray[item].toLowerCase()) === false){
+				continue
+			} else{
+				inForbiddenSite = true
+				break
+			}
+		}
+	}
+	return sequence
+}
+</P><P>function getMethyltransferases(){
+</P><PRE>   methyltransferases = new Array()
+   sca1 = new Object()
+   sca1.target = &quot;AGTACT&quot;
+   sca1.sequence = &quot;tccgggcgggactttggatatgtgatacagtcgtccgctgcactatggaatcgactctctacattctcacagagaggaaaagccttggacaccaggcttgcagacatcaagaaggccctggggaagccgtactacgaaacctcggatgtccttctttaccacggcgacagtcttgagctgctcaagtcaatgcctcagcagattttcgaccttaccgtaactagcccaccttacaatattggcaaagagtacgagggtgtactgtcgatcgaggaatacatttcctggtgcgagacatggatgtcgcgcgttcatagggcgaccagcgcaggcggcgcattttggctcaatgttgggtacgtccctgtcccgaaccaaggaaaagcagtcccgattccttacctcttgtgggacaagagtccgttctacatgatccaggaagttgtctggaattacggggcgggagtggcgtctcgaaaatcgttttccccgcgcaatgaaaagtttctctggtatgtgcgcgacccgctgaattattacttcgacctcgattcggtgcgcgacccaaatgtgaaataccccaaccagaaaaagaatgggaagctcaaatgcaacccgttggggaaaaatcccactgacgtttggcagttccccaaggttacgtcgggcgcgaagagatcaagcgtggagcgcaccgcccatccggcacaattcccgtctgctgtcattgaacgggtcatcaaggcgtgcagcccttccgacggcgtcatcctggacccattcctcggttccggaacgacctcgctgaccgccagaaagcaaggccggtgcagcgtcggtatcgaaatccgcgaagactacctcgacatcgcggtgggacgcctggaggcggaggcgcaatccctcttctag&quot;
+   sca1.description = &quot;M.Sca1&quot;
+</PRE><P>	methyltransferases[0] = sca1
+	addForbiddenSequence(methyltransferases,'hasTarget')
+</P><PRE>   return methyltransferases 
+</PRE><P>}
+</P><P>function getZincFingers(){
+</P><PRE>   zincFingers = new Array()
+   rawData = document.plasmidForm.zf.value
+   rawData = rawData.split('&gt;')
+   rawData.reverse().pop()
+   rawData.reverse()
+   for (zf in rawData){
+       zfFormatted = rawData[zf].split('\n')
+       zfDescription = zfFormatted[0]
+       zfTarget = zfDescription.split('|')[5]
+       zfSequence = 
+       for (i=1;i&lt;zfFormatted.length;i++){
+           zfSequence+=zfFormatted[i]
+       }
+       zfObject = new Object()
+       zfObject.target = zfTarget
+       zfObject.sequence = zfSequence
+       zfObject.description = zfDescription
+       zincFingers[zf] = zfObject
+   }
+   addForbiddenSequence(zincFingers,'hasTarget')
+   return zincFingers
+</PRE><P>}
+</P><P>function getLinkers(){
+</P><PRE>   linkers = new Array()
+   linker1 = new Object()
+   linker1.sequence = &quot;gcacccggc&quot;
+   linker1.description = &quot;Linker 1&quot;
+   linkers[0] = linker1
+</PRE><P>	addForbiddenSequence(linkers,'noTarget')
+</P><PRE>   return linkers
+</PRE><P>}
+</P><P>function getMycTags(){
+</P><PRE>   mycTags = new Array()
+   mycTag1 = new Object()
+   mycTag1.sequence = &quot;gaacagaaactcatctctgaagaggatctg&quot;
+   mycTag1.description = &quot;Myc Tag 1&quot;
+   mycTags[0] = mycTag1
+   addForbiddenSequence(mycTags,'noTarget')
+   return mycTags
+</PRE><P>}
+</P><P>function getTerminators(){
+</P><PRE>   terminators = new Array()
+   terminator1 = new Object()
+   terminator1.sequence = &quot;tcacactggctcaccttcgggtgggcctttctgcgtttatatactagagagagaatataaaaagccagattattaatccggcttttttattattt&quot;
+   terminator1.description = &quot;B0014 containing BOO12 and BOO11 terminators&quot;
+</PRE><P>	terminators[0] = terminator1
+	addForbiddenSequence(terminators,'noTarget')
+</P><PRE>   return terminators
+</PRE><P>}
+</P><P>function getRBS(){
+</P><PRE>   rbs = new Array()
+   rbs1 = new Object()
+   rbs1.sequence = &quot;tcacacaggaaag&quot;
+   rbs1.description = &quot;BBa_B0032&quot;
+   rbs[0] = rbs1
+</PRE><P>	addForbiddenSequence(rbs,'noTarget')
+</P><PRE>   return rbs
+</PRE><P>}
+</P><P>function addForbiddenSequence(array,type){
+	if (type == 'hasTarget'){
+		for (item in array){
+			forbiddenSequences.addSite(array[item].description,array[item].target)
+		}
+	} else{
+		for (item in array){
+			forbiddenSequences.addSite(array[item].description,array[item].sequence)
+		}
+	}
+</P><P>}
+</P><P>function getDate(){
+</P><PRE>   today = new Date()
+   dd = today.getDate()
+   mm = today.getMonth()+1
+   yyyy = today.getFullYear()
+   if(dd&lt;10){
+       dd='0'+dd
+   } 
+   if(mm&lt;10){
+       mm='0'+mm
+   } 
+   today = dd+'-'+mm.substring(0,2)+'-'+yyyy;
+   return today
+</PRE><P>}
+</P><P>function generateWhiteSpace(amount){
+</P><PRE>       output = 
+       for (i=0;i&lt;amount;i++){
+           output += ' '
+       }
+       return output
+</PRE><P>}
+</P><P>function staticGenbank(name){
+		output = 'LOCUS'
+</P><PRE>       output += generateWhiteSpace(16)
+       output += name
+       output += generateWhiteSpace(8)
+       output += memoryPlasmid.dna.length+' bp DNA '
+       output += generateWhiteSpace(3)
+       output += 'linear'
+       output += generateWhiteSpace(7)
+       output += getDate()+'\n'
+       output += 'DEFINITION\n'
+       output += 'ACCESSION\n'
+       output += 'VERSION\n'
+       output += 'SOURCE\n'
+       output += '  ORGANISM\n'
+       output += 'COMMENT\n'
+       output += 'FEATURES'
+       output += generateWhiteSpace(13)
+       output += 'Location/Qualifiers\n'
+</PRE><P>		return output
+}
+</P><P>function genbankRestriction(targetSites){
+		restrictionPlasmidOutput = staticGenbank('restriction_plasmid')
+		restrictionOrigin = memoryPlasmid.features[1].sequence
+		for (key in targetSites){
+		    restrictionOrigin += randomDNA(120)
+		    restrictionPlasmidOutput += generateWhiteSpace(5)
+			restrictionPlasmidOutput += 'misc_feature'
+			restrictionPlasmidOutput += generateWhiteSpace(5)
+			restrictionPlasmidOutput += restrictionOrigin.length+1+'...'
+			restrictionOrigin += targetSites[key].zincFinger
+			restrictionPlasmidOutput += restrictionOrigin.length+'\n'
+			restrictionPlasmidOutput += generateWhiteSpace(10)
+			restrictionPlasmidOutput += '/label=Zinc Finger '+targetSites[key].zincFingerDescription.split('|')[0]+' target site\n'
+			restrictionOrigin += randomDNA(120)
+			restrictionPlasmidOutput += generateWhiteSpace(5)
+			restrictionPlasmidOutput += 'misc_feature'
+			restrictionPlasmidOutput += generateWhiteSpace(5)
+			restrictionPlasmidOutput += restrictionOrigin.length+1+'...'
+		    restrictionOrigin += targetSites[key].methyltransferase
+			restrictionPlasmidOutput += restrictionOrigin.length+'\n'
+			restrictionPlasmidOutput += generateWhiteSpace(10)
+			restrictionPlasmidOutput += '/label='+targetSites[key].methyltransferaseDescription+'\n'
+			restrictionOrigin += targetSites[key].methyltransferase
+			restrictionOrigin += randomDNA(120)
+		    restrictionPlasmidOutput += generateWhiteSpace(5)
+			restrictionPlasmidOutput += 'misc_feature'
+			restrictionPlasmidOutput += generateWhiteSpace(5)
+			restrictionPlasmidOutput += restrictionOrigin.length+1+'...'+restrictionOrigin.length+'\n'
+			restrictionPlasmidOutput += generateWhiteSpace(10)
+			restrictionPlasmidOutput += '/label=Zinc Finger '+targetSites[key].zincFingerDescription.split('|')[0]+' target site\n'
+</P><P>		}
+		restrictionOrigin = restrictionOrigin.toLowerCase()
+</P><PRE>       restrictionOrigin = restrictionOrigin.replace(/[atgc]{10}/g,'$&amp; ').replace(/amp;/g,<I>).split(' ')</I>
+       pos = 1
+       newString = 
+       restrictionPlasmidOutput += 'ORIGIN\n'
+       for (i=0;i&lt;restrictionOrigin.length;i++){
+           newString = newString+' '+restrictionOrigin[i]
+           if ((i+1)%6===0){
+                whiteSpace = 
+                for (j=0;j&lt;9-pos.toString().length;j++){
+                    whiteSpace+= ' '
+                }
+                newString = whiteSpace+pos + ' ' + newString
+                restrictionPlasmidOutput+=newString+'\n'
+                newString = 
+           } else if ((i+1)%6==1){
+                 if (i!=0){
+                     pos+=60
+                 }
+             }
+       }
+       if (restrictionOrigin.length%6 != 0){
+           newString = 
+           whiteSpace = 
+           for (j=0;j&lt;9-pos.toString().length;j++){
+               whiteSpace+= ' '
+           }
+           newString+=whiteSpace+pos
+           for (i=0;i&lt;(restrictionOrigin.length%6);i++){
+               newString+=' '+restrictionOrigin[restrictionOrigin.length-restrictionOrigin.length%6+i]
+           }
+           restrictionPlasmidOutput+=newString+'\n'
+       }
+</PRE><P>		$('#genbankButtons').append('&lt;input type=&quot;hidden&quot; name=&quot;genbank-1&quot; value=&quot;'+restrictionPlasmidOutput+'&quot;/&gt;&lt;input class=&quot;submit&quot; type=&quot;submit&quot; value=&quot;Restriction Plasmid Genbank&quot; onclick=&quot;genbankOut(-1);return false&quot;/&gt;');
+}
+function genbankOut(number){
+	$('#readout').empty()
+	$('#inner-details').empty()
+	$('#infovis').empty()
+</P><PRE>       $('#genbankInfo').empty()
+</PRE><P>	outString = $(':input[name=genbank'+number+']').val()
+</P>
+	$('#genbankInfo').append('Genbank file<DIV class="field" align="center">&lt;textarea name=&quot;genbankTextField&quot; type=&quot;text&quot; width=&quot;50%&quot;&gt;'+outString+'&lt;/textarea&gt;</DIV>')
+<P>}
+function genbankMemory(number){
+</P><PRE>       memoryPlasmidOutput = staticGenbank('memory_plasmid')
+       for (item in memoryPlasmid.memoryObjects){
+</PRE><P>		    for (key in memoryPlasmid.memoryObjects[item]){
+				memoryPlasmidOutput += generateWhiteSpace(5)
+				memoryPlasmidOutput += 'misc_feature'
+				memoryPlasmidOutput += generateWhiteSpace(5)
+				memoryPlasmidOutput += memoryPlasmid.memoryObjects[item][key].start+'...'+memoryPlasmid.memoryObjects[item][key].end+'\n'
+				memoryPlasmidOutput += generateWhiteSpace(10)
+				memoryPlasmidOutput += '/label='+memoryPlasmid.memoryObjects[item][key].description+'\n'
+			}
+</P><PRE>       }
+       origin = memoryPlasmid.dna
+       origin = origin.replace(/[atgc]{10}/g,'$&amp; ').replace(/amp;/g,<I>).split(' ')</I>
+       pos = 1
+       newString = 
+       memoryPlasmidOutput += 'ORIGIN\n'
+       for (i=0;i&lt;origin.length;i++){
+           newString = newString+' '+origin[i]
+           if ((i+1)%6===0){
+                whiteSpace = 
+                for (j=0;j&lt;9-pos.toString().length;j++){
+                    whiteSpace+= ' '
+                }
+                newString = whiteSpace+pos + ' ' + newString
+                memoryPlasmidOutput+=newString+'\n'
+                newString = 
+           } else if ((i+1)%6==1){
+                 if (i!=0){
+                     pos+=60
+                 }
+             }
+       }
+       if (origin.length%6 != 0){
+           newString = 
+           whiteSpace = 
+           for (j=0;j&lt;9-pos.toString().length;j++){
+               whiteSpace+= ' '
+           }
+           newString+=whiteSpace+pos
+           for (i=0;i&lt;(origin.length%6);i++){
+               newString+=' '+origin[origin.length-origin.length%6+i]
+           }
+           memoryPlasmidOutput+=newString+'\n'
+       }
+</PRE><PRE>       $('#genbankButtons').append('&lt;input type=&quot;hidden&quot; name=&quot;genbank'+number+'&quot; value=&quot;'+memoryPlasmidOutput+'&quot;/&gt;&lt;input class=&quot;submit&quot; type=&quot;submit&quot; value=&quot;Sensory Plasmid Genbank '+(number+1)+'&quot; onclick=&quot;genbankOut('+number+');return false&quot;/&gt;');		
+</PRE><P>}
+</P><P>function formatPlasmidInput(backbone){
+</P><PRE>       backbone = backbone.split('\n')
+       originBoolean = false
+       backboneName = 
+       sequence = 
+       if (backbone[0].toLowerCase().indexOf('locus') != -1){
+           for (i=0;i&lt;backbone.length;i++){
+               if (originBoolean === true){
+                   if (backbone[i].indexOf('//') == -1){
+                     appendThis = backbone[i].replace(/[0-9]|\s|\n|\t/g,<I>)</I>
+                     sequence = sequence+appendThis
+                   } else{
+                       originalBoolean = false
+                   }
+               }
+               if (backbone[i].indexOf('locus') != -1){
+                   backboneName = backbone[i].split(/\s+|\t+/g)[1]
+               }
+               if (backbone[i].indexOf('origin') != -1){
+                   originBoolean = true
+               }
+           }
+       } else if (backbone[0][0] == '&gt;'){
+               for (i=0;i&lt;backbone.length;i++){
+                   if (backbone[i][0] != '&gt;'){
+                       appendThis = backbone[i].replace(/[0-9]|\s|\n|\t/g,<I>)</I>
+                       sequence = sequence+appendThis
+                   } else{
+                       backboneName = backbone[i].replace('&gt;',<I>)</I>
+                   }
+               }
+       }
+       memoryPlasmid.addFeature(1,sequence.length,'Backbone',sequence,backboneName,<I>)</I>
+       return sequence
+</PRE><P>}
+</P><P>function feature(start,end,type,sequence,description,featureObject){
+	this.start = start;
+	this.end = end;
+	this.type = type;
+</P><PRE>   this.sequence = sequence;
+   this.description = description;
+</PRE><P>	this.featureObject = featureObject
+}
+</P><P>var restrictionPlasmid = {
+	backboneName : <I>,</I>
+	dna : <I>,</I>
+	features : {},
+</P><PRE>   setBackboneName : function(backboneName){
+       restrictionlasmid.backboneName = backboneName
+   },
+</PRE><P>	setDNA : function(dna){
+		restrictionPlasmid.dna = dna
+	},	
+	addFeature : function(start,end,type,sequence,description){
+		restrictionPlasmid.features[start] = new feature(start,end,type,sequence,description)
+	},
+	addRecognitionAreaObject : function(zfTarget,mtaseTarget){
+</P><P>		recognitionPlasmid.zfTarget = zfTarget
+		recognitionPlasmid.mtaseTarget = mtaseTarget
+	}
+}
+</P><P>var memoryPlasmid = {
+</P><PRE>   backboneName : <I>,</I></PRE><P>	dna : <I>,</I>
+	features : {},
+	memoryObjects : {},
+</P><PRE>   setBackboneName : function(backboneName){
+       memoryPlasmid.backboneName = backboneName
+   },
+</PRE><P>	setDNA : function(dna){
+		memoryPlasmid.dna = dna
+	},	
+	addMemoryObject : function(sensor,rbs,zincFinger,linker,mycTag,methyltransferase,terminator){
+		memoryObject = new Object()
+		memoryObject.sensor = sensor
+		memoryObject.rbs = rbs
+		memoryObject.zincFinger = zincFinger
+		memoryObject.linker = linker
+		memoryObject.mycTag = mycTag
+		memoryObject.methyltransferase = methyltransferase
+		memoryObject.terminator = terminator
+	    memoryPlasmid.memoryObjects[sensor.start] = memoryObject
+	},
+	addFeature : function(start,end,type,sequence,description){
+		memoryPlasmid.features[start] = new feature(start,end,type,sequence,description)
+	}
+}
+</P><P>function sensorObject(name,sequence){
+</P><PRE>       this.name = name
+       this.sequence = sequence
+</PRE><P>}
+</P><P>function formatSensors(sensors){
+</P><PRE>       sensorArray = new Array()
+       if (sensors.indexOf('LOCUS') != -1){
+           sensors = sensors.split('LOCUS')
+           sensors.reverse().pop()
+           for (i=0;i&lt;sensors.length;i++){
+               originBoolean = false
+               sensorName = 
+               sequence = 
+               sensor = sensors[i].split('\n')
+               for (j=0;j&lt;sensor.length;j++){
+                   if (j===0){
+                       sensorName = sensor[j]
+                   }
+                   if (originBoolean === true){
+                       if (sensor[j].indexOf('//') == -1){
+                           appendThis = sensor[j].replace(/[0-9]|\s|\n|\t/g,<I>)</I>
+                           sequence += appendThis
+                       } else {
+                           originBoolean = false
+                       }
+                   }
+                   if (sensor[j].indexOf('ORIGIN') != -1){
+                       originBoolean = true
+                   }
+               }
+               sensorArray[i] = new sensorObject(sensorName,sequence)
+           }
+       } else if (sensors[0] == '&gt;'){
+           sensors = sensors.split('//')
+           sensors.pop()
+           sensorName = 
+           for (i=0;i&lt;sensors.length;i++){
+               sensor = sensors[i].split('\n')
+               sequence = 
+               for (j=0;j&lt;sensor.length;j++){
+                   if (sensor[j][0] != '&gt;'){
+                       appendThis = sensor[j].replace(/[0-9]|\s|\n|\t/g,<I>)</I>
+                       sequence = sequence+appendThis
+                   } else if (sensor[j][0] == '&gt;'){
+                       sensorName = sensor[j].replace('&gt;',<I>)</I>
+                   }  
+               }
+               sensorArray[i] = new sensorObject(sensorName,sequence)
+           }
+       }
+       return sensorArray 
+</PRE><P>}
+</P><P>function reset(){
+</P><PRE>       $('#readout').empty()
+</PRE><P>	$('#inner-details').empty()
+	$('#infovis').empty()
+</P><PRE>       $('#genbankInfo').empty()
+       $('#genbankButtons').empty()
+       $('#visualizationButtons').empty()
+       $('input[type=checkbox]').each(function() { 
+           this.checked = false; 
+       }); 
+</PRE><P>}
+function formatPartsregistryPromoters(){
+</P><PRE>       promoters = new Array()
+       $(&quot;input:checkbox[name=promoter]:checked&quot;).each(function(){
+           promoter = $(this).val().split(':')
+           promoters.push(new sensorObject(promoter[0],promoter[2]))
+       })
+       return promoters
+</PRE><P>}
+</P><P>function configuratePlasmid(sensorArray,number){
+		memoryPlasmid.features = {}
+		memoryPlasmid.memoryObjects = {}
+</P><PRE>       backbone = document.plasmidForm.plasmid.value.toLowerCase()
+       methyltransferases = getMethyltransferases()
+       zincFingers = getZincFingers()
+       linkers = getLinkers()
+       mycTags = getMycTags()
+       rbs = getRBS()
+       terminators = getTerminators()
+       plasmidSequence = formatPlasmidInput(backbone)
+       memoryPlasmid.setDNA(plasmidSequence)
+       for (i=0;i&lt;sensorArray.length;i++){
+</PRE><P>		    featureArray = new Array()
+			featureArray[0] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+sensorArray[i].sequence.length,'Sensor',sensorArray[i].sequence,sensorArray[i].name,sensorArray[i])
+</P><PRE>           memoryPlasmid.setDNA(memoryPlasmid.dna+sensorArray[i].sequence)
+           j = Math.floor((Math.random()*rbs.length))
+           featureArray[1] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+rbs[j].sequence.length,'RBS',rbs[j].sequence,rbs[j].description,rbs[j])
+           memoryPlasmid.setDNA(memoryPlasmid.dna+rbs[j].sequence+randomDNA(3))	
+           memoryPlasmid.setDNA(memoryPlasmid.dna+'atg'+randomDNA(10))
+           for (j=0;j&lt;zincFingers.length;j++){
+               if (checkOccurrence(zincFingers[j].target.toLowerCase(),memoryPlasmid.dna) === true || checkOccurrence(zincFingers[j].sequence.toLowerCase(),memoryPlasmid.dna) === true){
+                   continue
+               } else{
+                   featureArray[2] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+zincFingers[j].sequence.length,'Zinc Finger',zincFingers[j].sequence,'Zinc Finger '+zincFingers[j].description.split('|')[0],zincFingers[j])		
+                   memoryPlasmid.setDNA(memoryPlasmid.dna+zincFingers[j].sequence)
+                   break
+               }
+           }
+           j = Math.floor((Math.random()*linkers.length))
+           featureArray[3] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+linkers[j].sequence.length,'Linker',linkers[j].sequence,linkers[j].description,linkers[j])
+</PRE><P>	    memoryPlasmid.setDNA(memoryPlasmid.dna+linkers[j].sequence)
+</P><PRE>           j = Math.floor((Math.random()*mycTags.length))
+           featureArray[4] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+mycTags[j].sequence.length,'Myc Tag',mycTags[j].sequence,mycTags[j].description,mycTags[j])
+</PRE><P>	    memoryPlasmid.setDNA(memoryPlasmid.dna+mycTags[j].sequence)
+</P><PRE>           j = Math.floor((Math.random()*methyltransferases.length))	
+</PRE><P>	    featureArray[5] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+methyltransferases[j].sequence.length,'Methyltransferase',methyltransferases[j].sequence,methyltransferases[j].description,methyltransferases[j])
+</P><PRE>           memoryPlasmid.setDNA(memoryPlasmid.dna+methyltransferases[j].sequence)
+           j = Math.floor((Math.random()*terminators.length))
+           featureArray[6] = new feature(memoryPlasmid.dna.length+1,memoryPlasmid.dna.length+terminators[j].sequence.length,'Terminator',terminators[j].sequence,terminators[j].description,terminators[j])
+</PRE><P>	    memoryPlasmid.setDNA(memoryPlasmid.dna+terminators[j].sequence+randomDNA(10))
+</P><PRE>           memoryPlasmid.addMemoryObject(featureArray[0],featureArray[1],featureArray[2],featureArray[3],featureArray[4],featureArray[5],featureArray[6])
+</PRE><P>		}
+		restrictionPlasmid.setDNA(memoryPlasmid.features[1].sequence)
+		for (item in memoryPlasmid.memoryObjects){
+			featureArray = new Array()
+			mtaseStart = restrictionPlasmid.dna.length+1
+			mtaseEnd = restrictionPlasmid.dna.length+memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.target.length
+			mtaseType = 'Restriction Site'
+			mtaseTarget = memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.target.toLowerCase()
+			mtaseDescription = memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.description+' restriction site'
+			featureArray[0] = new feature(mtaseStart,mtaseEnd,mtaseType,mtaseTarget,mtaseDescription)
+			restrictionPlasmid.setDNA(restrictionPlasmid.dna+mtaseTarget)
+			zfStart = restrictionPlasmid.dna.length+1
+			zfEnd = restrictionPlasmid.dna.length+memoryPlasmid.memoryObjects[item].zincFinger.featureObject.target.length
+			zfType = 'Restriction Site'
+			zfTarget = memoryPlasmid.memoryObjects[item].zincFinger.featureObject.target
+			zfDescription = memoryPlasmid.memoryObjects[item].zincFinger.featureObject.description+' restriction site'
+			featureArray[1] = new feature(zfStart,zfEnd,zfType,zfTarget,zfDescription)
+			restrictionPlasmid.setDNA(restrictionPlasmid.dna+mtaseTarget)
+			restrictionPlasmid.mtaseTarget = featureArray[0]
+			restrictionPlasmid.zfTarget = featureArray[1]
+		}
+		json = createJSONMemory(number)
+		genbankMemory(number)
+		$('#visualizationButtons').append('&lt;input type=&quot;hidden&quot; name=&quot;json'+number+'&quot; value=&quot;'+escape(JSON.stringify(json))+'&quot;/&gt;&lt;input class=&quot;submit&quot; type=&quot;submit&quot; value=&quot;Sensory Plasmid Visualization '+(number+1)+'&quot; onclick=&quot;visualization('+number+');return false&quot;/&gt;');
+		}
+</P><P>function setup(){
+		$('#visualizationButtons').empty()
+		$('#infovis').empty()
+		$('#readout').empty()
+		$('#genbankButtons').empty()
+		$('#inner-details').empty()
+</P><PRE>               $('#genbankInfo').empty()
+</PRE><P>		addForbiddenSequences()
+		sensors = document.plasmidForm.sensors.value.toLowerCase()
+		sensorArray = formatSensors(sensors)
+</P><PRE>       promoters = formatPartsregistryPromoters()
+       sensorArray = promoters.concat(sensorArray)
+</PRE><P>		tempArray = new Array()
+		j = 0
+		number = 0
+		targetSites = new Array()
+		for (sensor in sensorArray){
+			tempArray[j] = sensorArray[sensor]
+			j++
+			if (j%5 === 0 &amp;&amp; j !== 0){
+</P><P>				configuratePlasmid(tempArray,number)
+				number++
+				tempArray = new Array()
+				j = 0
+				for (item in memoryPlasmid.memoryObjects){
+					site = new Object()
+					site.zincFingerDescription = memoryPlasmid.memoryObjects[item].zincFinger.featureObject.description
+					site.zincFinger = memoryPlasmid.memoryObjects[item].zincFinger.featureObject.target
+					site.zincFingerLength = site.zincFinger.length
+					site.methyltransferaseDescription = memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.description
+					site.methyltransferase = memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.target
+					site.methyltransferaseLength = site.methyltransferase.length
+					site.sensor = memoryPlasmid.memoryObjects[item].sensor.description
+					targetSites.push(site)
+</P><P>				}
+</P><P>			}
+		}
+		if (j%5 !== 0){
+			configuratePlasmid(tempArray,number)
+			for (item in memoryPlasmid.memoryObjects){
+				site = new Object()
+				site.zincFingerDescription = memoryPlasmid.memoryObjects[item].zincFinger.featureObject.description
+				site.zincFinger = memoryPlasmid.memoryObjects[item].zincFinger.featureObject.target
+				site.zincFingerLength = site.zincFinger.length
+				site.methyltransferaseDescription = memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.description
+				site.methyltransferase = memoryPlasmid.memoryObjects[item].methyltransferase.featureObject.target
+				site.methyltransferaseLength = site.methyltransferase.length
+				site.sensor = memoryPlasmid.memoryObjects[item].sensor.description
+				targetSites.push(site)
+			}
+		}
+		genbankRestriction(targetSites)
+		json = createJSONRestriction(targetSites)
+		$('#visualizationButtons').append('&lt;input type=&quot;hidden&quot; name=&quot;json-1&quot; value=&quot;'+escape(JSON.stringify(json))+'&quot;/&gt;&lt;input class=&quot;submit&quot; type=&quot;submit&quot; value=&quot;Restriction Plasmid Visualization&quot; onclick=&quot;visualization(-1);return false&quot;/&gt;');
+		$('#visualizationButtons').append('Fill in the underlying form with your band sizes, seperated by a comma, to see which sensor-specific methyltransferases have been cut&lt;input type=&quot;textfield&quot; name=&quot;readout&quot; value=&quot;&quot;/&gt;&lt;input class=&quot;submit&quot; type=&quot;submit&quot; value=&quot;Readout&quot; onClick=&quot;getReadout();return false&quot;/&gt;');
+}
+</P><P>function getReadout(){
+	$('#readout').empty()
+	$('#inner-details').empty()
+	$('#infovis').empty()
+</P><PRE>       $('#genbankInfo').empty()
+</PRE><P>	inputArray = new Array()
+	json = JSON.parse(unescape($(':input[name=json-1]').val()))
+	inputs = $(':input[name=readout]').val()
+	inputArray = inputs.split(',')
+	totalLength = json.children[0].data.length
+	uncutArray = new Array()
+	i = 0
+	for (child in json.children){
+	    if (child != 0){
+			totalLength+=json.children[child].data.length
+			if (json.children[child].data.description.indexOf('Methyltransferase') != -1){
+				uncutArray[i] = [json.children[child].id,totalLength]
+				i++
+			}
+	    }
+	}
+	bandsArray = new Array ()
+	j = 0
+	for (item in uncutArray){
+		i = 0
+		tempBandArray = new Array()
+		tempBandArray[i] = [uncutArray[item][1],uncutArray[item][0]]
+</P><P>		i++
+		for (bandArray in bandsArray){
+			for (band in bandsArray[bandArray]){
+				tempBandArray[i] = [uncutArray[item][1] - bandsArray[bandArray][band][0],uncutArray[item][0]]
+				i++
+			}
+		}
+		bandsArray[j] = tempBandArray
+		j++
+	}
+	matchingBands = new Array()
+	i = 0
+	for (input in inputArray){
+		difference = 100000000000
+		bandSize = inputArray[input]
+		for (bandArray in bandsArray){
+			for (band in bandsArray[bandArray]){
+				if (bandSize &gt; bandsArray[bandArray][band][0]){
+					tempDifference = bandSize - bandsArray[bandArray][band][0]
+				} else{
+					tempDifference = bandsArray[bandArray][band][0] - bandSize
+				}
+				if (tempDifference &lt; difference){
+					matchingBand = bandsArray[bandArray][band][1]
+					difference = tempDifference
+				}
+			}
+		}
+		matchingBands[i] = matchingBand
+		i++
+	}
+	i = 0
+	sensedSignals = new Array()
+	for (matchingBand in matchingBands){
+			for (child in json.children){
+				if (json.children[child].id == matchingBands[matchingBand]){
+					sensedSignals[i] = json.children[child].data.sensor
+					i++
+				}
+			}
+</P><P>	}
+	outString = 
+	for (signal in sensedSignals){
+		outString += sensedSignals[signal]+''
+	}
+	if (outString != <I>){</I></P>
+		$('#readout').append('The bands belong to these signals (in order of input)<PRE>&lt;font size=&quot;3&quot;&gt;'+outString+'&lt;/font&gt;</PRE>')
+<P>	}
+</P><P>}
+</P><P>function createJSONRestriction(targetSites){
+	json = {
+</P><PRE>     &quot;children&quot;: [], 
+     &quot;data&quot;: {
+       &quot;$type&quot;: &quot;none&quot;,
+     }, 
+     &quot;id&quot;: &quot;Source&quot;, 
+     &quot;name&quot;: &quot;Memory Plasmid&quot;
+   };
+</PRE><P>	json.children[0] = {}
+	json.children[0].data = {}
+	json.children[0].data.description = memoryPlasmid.features[1].description
+	json.children[0].data.$color = '#B2ABF4'
+	json.children[0].data.length = memoryPlasmid.features[1].end - memoryPlasmid.features[1].start
+	json.children[0].data.$angularWidth = 10000
+	json.children[0].data.type = memoryPlasmid.features[1].type
+	json.children[0].data.dna = memoryPlasmid.dna
+	json.children[0].children = []
+	json.children[0].name = memoryPlasmid.features[1].description
+	json.children[0].id = memoryPlasmid.features[1].description
+	totalLength = memoryPlasmid.dna.length
+	i = 1
+	for (item in targetSites){
+		site = targetSites[item]
+		json.children[i] = {}
+		json.children[i].data = {}
+		json.children[i].children = []
+		json.children[i].data.description = '120bp random DNA'
+		json.children[i].data.$color = '#FFFF00'
+		json.children[i].data.length = 120
+		json.children[i].data.$angularWidth = 1000
+		json.children[i].data.dna = randomDNA(120+i*10)
+		json.children[i].name = '120bp DNA'
+		json.children[i].id = i
+		i++
+		json.children[i] = {}
+		json.children[i].data = {}
+		json.children[i].children = []
+		json.children[i].data.description = site.zincFingerDescription
+		json.children[i].data.$color = '#FF0000'
+		json.children[i].data.length = site.zincFingerLength
+		json.children[i].data.$angularWidth = 1000
+		json.children[i].data.dna = site.zincFinger
+		json.children[i].name = site.zincFingerDescription.split('|')[0]+'|'+site.zincFingerDescription.split('|')[1]
+		json.children[i].id = i
+		i++
+		json.children[i] = {}
+		json.children[i].data = {}
+		json.children[i].children = []
+		json.children[i].data.description = '120bp random DNA'
+		json.children[i].data.$color = '#FFFF00'
+		json.children[i].data.length = 120
+		json.children[i].data.$angularWidth = 1000
+		json.children[i].data.dna = randomDNA(120)
+		json.children[i].name = '120bp DNA'
+		json.children[i].id = i
+		i++
+		json.children[i] = {}
+		json.children[i].data = {}
+		json.children[i].children = []
+		json.children[i].data.description = 'Methyltransferase: '+site.methyltransferaseDescription
+		json.children[i].data.$color = '#0000CD'
+		json.children[i].data.length = site.methyltransferaseLength
+		json.children[i].data.$angularWidth = 1000
+		json.children[i].data.dna = site.methyltransferase
+		json.children[i].data.sensor = site.sensor
+		json.children[i].name = site.methyltransferaseDescription.split('|')[0]
+		json.children[i].id = i
+		i++
+		json.children[i] = {}
+		json.children[i].data = {}
+		json.children[i].children = []
+		json.children[i].data.description = '120bp random DNA'
+		json.children[i].data.$color = '#FFFF00'
+		json.children[i].data.length = 120
+		json.children[i].data.$angularWidth = 1000
+		json.children[i].data.dna = randomDNA(120)
+		json.children[i].name = '120bp DNA'
+		json.children[i].id = i
+		i++
+		json.children[i] = {}
+		json.children[i].data = {}
+		json.children[i].children = []
+		json.children[i].data.description = site.zincFingerDescription
+		json.children[i].data.$color = '#FF0000'
+		json.children[i].data.length = site.zincFingerLength
+		json.children[i].data.$angularWidth = 1000
+		json.children[i].data.dna = site.zincFinger
+		json.children[i].name = site.zincFingerDescription.split('|')[0]+'|'+site.zincFingerDescription.split('|')[1]
+		json.children[i].id = i
+		i++
+	}
+	return json
+}
+</P><P>function createJSONMemory(number){
+	var json = {}
+	json = {
+</P><PRE>     &quot;children&quot;: [], 
+     &quot;data&quot;: {
+       &quot;$type&quot;: &quot;none&quot;,
+     }, 
+     &quot;id&quot;: &quot;Source&quot;, 
+     &quot;name&quot;: &quot;Sensory Plasmid&quot;
+   };
+</PRE><P>	json.children[0] = {}
+	json.children[0].data = {}
+	json.children[0].data.description = memoryPlasmid.features[1].description
+	json.children[0].data.$color = '#B2ABF4'
+	json.children[0].data.length = memoryPlasmid.features[1].end - memoryPlasmid.features[1].start
+	json.children[0].data.$angularWidth = 10000
+	json.children[0].data.type = memoryPlasmid.features[1].type
+	json.children[0].data.dna = memoryPlasmid.dna
+	json.children[0].children = []
+	json.children[0].name = memoryPlasmid.features[1].description
+	json.children[0].id = memoryPlasmid.features[1].description
+</P><PRE>   i = 1
+   for (memoryObject in memoryPlasmid.memoryObjects){
+</PRE><P>		for (item in memoryPlasmid.memoryObjects[memoryObject]){
+			json.children[i] = {}
+			json.children[i].children = []
+			json.children[i].data = {}			
+			json.children[i].data.description = memoryPlasmid.memoryObjects[memoryObject][item].description
+			type = memoryPlasmid.memoryObjects[memoryObject][item].type
+			if (type == 'Sensor'){
+				color = '#00FFFF'
+			} else if (type == 'RBS'){
+				color = '#FFFF00'
+			} else if (type == 'Zinc Finger'){
+				color = '#800080'
+			} else if (type == 'Linker'){
+				color = '#00FF00'
+			} else if (type == 'Myc Tag'){
+				color = '#FF00FF'
+			} else if (type == 'Methyltransferase'){
+				color = '#FFA500'
+			} else if (type == 'Terminator'){
+				color = '#FF0000'
+			} else{
+				color = '#B2ABF4'
+			}
+			json.children[i].data.$color = color
+			json.children[i].data.length = memoryPlasmid.memoryObjects[memoryObject][item].end - memoryPlasmid.memoryObjects[memoryObject][item].start
+			json.children[i].data.$angularWidth = 1000
+			json.children[i].data.type = type
+			json.children[i].data.dna = memoryPlasmid.memoryObjects[memoryObject][item].sequence
+			json.children[i].id = i
+			if (memoryPlasmid.memoryObjects[memoryObject][item].description.length &gt; 14){
+				json.children[i].name = memoryPlasmid.memoryObjects[memoryObject][item].description.substring(0,14)
+			} else{
+				json.children[i].name = memoryPlasmid.memoryObjects[memoryObject][item].description
+			}
+			i++
+		}
+	}
+	return json
+</P><PRE>   //end
+</PRE><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Amsterdam/maarten/toolscripts">http://2012.igem.org/Team:Amsterdam/maarten/toolscripts</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Amsterdam/maarten/toolscripts" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Amsterdam/maarten/toolscripts" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Amsterdam/maarten/toolscripts&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Amsterdam/maarten/toolscripts&amp;oldid=184783" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

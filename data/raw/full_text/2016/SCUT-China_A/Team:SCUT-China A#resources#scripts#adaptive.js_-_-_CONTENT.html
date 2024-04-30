@@ -1,0 +1,435 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_adaptive_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/adaptive.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>$axure.internal(function($ax) {
+</P><PRE>   $ax.adaptive = {};</PRE><PRE>   $axure.utils.makeBindable($ax.adaptive, [&quot;viewChanged&quot;]);
+</PRE><PRE>   var _auto = true;
+   var _autoIsHandledBySidebar = false;
+</PRE><PRE>   var _views;
+   var _idToView;
+   var _enabledViews = [];
+</PRE><PRE>   var _initialViewToLoad;
+   var _initialViewSizeToLoad;
+</PRE><PRE>   var _loadFinished = false;
+   $ax.adaptive.loadFinished = function() {
+       if(_loadFinished) return;
+       _loadFinished = true;
+       if($ax.adaptive.currentViewId) $ax.viewChangePageAndMasters();
+       else $ax.postAdaptiveViewChanged();
+   };
+</PRE><PRE>   var _handleResize = function(forceSwitchTo) {
+       if(!_auto) return;
+       if(_auto &amp;&amp; _autoIsHandledBySidebar &amp;&amp; !forceSwitchTo) return;
+</PRE><PRE>       var $window = $(window);
+       var height = $window.height();
+       var width = $window.width();
+</PRE><PRE>       var toView = _getAdaptiveView(width, height);
+       var toViewId = toView &amp;&amp; toView.id;
+</PRE><PRE>       _switchView(toViewId, forceSwitchTo);
+   };
+</PRE><PRE>   var _setAuto = $ax.adaptive.setAuto = function(val) {
+       if(_auto != val) {
+           _auto = Boolean(val);
+       }
+   };
+</PRE><PRE>   var _setLineImage = function(id, imageUrl) {
+       var imageQuery = $jobj(id).attr('src', imageUrl);
+       if(imageUrl.indexOf(&quot;.png&quot;) &gt; -1) $ax.utils.fixPng(imageQuery[0]);
+   };
+</PRE><PRE>   var _switchView = function (viewId, forceSwitchTo) {
+       if(!$ax.pageData.isAdaptiveEnabled) return;
+</PRE><PRE>       var previousViewId = $ax.adaptive.currentViewId;
+       if(typeof previousViewId == 'undefined') previousViewId = <I>;</I>
+       if(typeof viewId == 'undefined') viewId = <I>;</I>
+       if (viewId == previousViewId) {
+           if(forceSwitchTo) $ax.postAdaptiveViewChanged(forceSwitchTo);
+           return;
+       }
+</PRE><PRE>       $ax('*').each(function(obj, elementId) {
+           if (!$ax.public.fn.IsTreeNodeObject(obj.type)) return;
+           if(!obj.hasOwnProperty('isExpanded')) return;
+</PRE><PRE>           var query = $ax('#' + elementId);
+           var defaultExpanded = obj.isExpanded;
+</PRE><PRE>           query.expanded(defaultExpanded);
+       });
+</PRE><PRE>       // reset all the positioning on the style tags, including size and transformation
+       $axure('*').each(function(diagramObject, elementId) {
+           var element = document.getElementById(elementId);
+           if(element &amp;&amp; !diagramObject.isContained) {
+               var resetCss = {
+                   top: &quot;&quot;, left: &quot;&quot;, width: &quot;&quot;, height: &quot;&quot;, opacity: &quot;&quot;,
+                   transform: &quot;&quot;, webkitTransform: &quot;&quot;, MozTransform: &quot;&quot;, msTransform: &quot;&quot;, OTransform: &quot;&quot;
+               };
+               var query = $(element);
+               var children = query.children();
+               var sketchyImage = $('#' + $ax.repeater.applySuffixToElementId(elementId, '_image_sketch'));
+               var textChildren = query.children('div.text');
+</PRE><PRE>               query.css(resetCss);
+               if(children) children.css(resetCss);
+               if(sketchyImage) sketchyImage.css(resetCss);
+               if(textChildren) textChildren.css(resetCss);
+</PRE><PRE>               $ax.dynamicPanelManager.resetFixedPanel(diagramObject, element);
+               $ax.dynamicPanelManager.resetAdaptivePercentPanel(diagramObject, element);
+           }
+       });
+</PRE><PRE>       $ax.adaptive.currentViewId = viewId; // we need to set this so the enabled and selected styles will apply properly
+       if(previousViewId) {
+           $ax.style.clearAdaptiveStyles();
+           $('*').removeClass(previousViewId);
+       } else {
+           $ax.style.reselectElements();
+       }
+</PRE><PRE>       $axure('*').each(function(obj, elementId) {
+           $ax.style.updateElementIdImageStyle(elementId); // When image override exists, fix styling/borders
+       });
+</PRE><PRE>       // reset all the images only if we're going back to the default view
+       if(!viewId) {
+           _updateInputVisibility(<I>, $axure('*'));</I>
+           $axure('*').each(function(diagramObject, elementId) {
+               $ax.placeholderManager.refreshPlaceholder(elementId);
+</PRE><PRE>               var images = diagramObject.images;
+               if(diagramObject.type == 'horizontalLine' || diagramObject.type == 'verticalLine') {
+                   var startImg = images['start~'];
+                   _setLineImage(elementId + &quot;_start&quot;, startImg);
+                   var endImg = images['end~'];
+                   _setLineImage(elementId + &quot;_end&quot;, endImg);
+                   var lineImg = images['line~'];
+                   _setLineImage(elementId + &quot;_line&quot;, lineImg);
+               } else if(diagramObject.type == $ax.constants.CONNECTOR_TYPE) {
+                   _setAdaptiveConnectorImages(elementId, images, <I>);</I>
+               } else if(images) {
+                   if (diagramObject.generateCompound) {
+</PRE><PRE>                       if($ax.style.IsWidgetDisabled(elementId)) {
+                           disabledImage = _getImageWithTag(images, 'disabled~');
+                           if(disabledImage) $ax.style.applyImage(elementId, disabledImage, 'disabled');
+                           return;
+                       }
+                       if($ax.style.IsWidgetSelected(elementId)) {
+                           selectedImage = _getImageWithTag(images, 'selected~');
+                           if(selectedImage) $ax.style.applyImage(elementId, selectedImage, 'selected');
+                           return;
+                       }
+                       $ax.style.applyImage(elementId, _getImageWithTag(images, 'normal~'));
+                   } else {
+                       if ($ax.style.IsWidgetDisabled(elementId)) {
+                           var disabledImage = $ax.style.getElementImageOverride(elementId, 'disabled') || images['disabled~'];
+                           if (disabledImage) $ax.style.applyImage(elementId, disabledImage, 'disabled');
+                           return;
+                       }
+                       if ($ax.style.IsWidgetSelected(elementId)) {
+                           var selectedImage = $ax.style.getElementImageOverride(elementId, 'selected') || images['selected~'];
+                           if (selectedImage) $ax.style.applyImage(elementId, selectedImage, 'selected');
+                           return;
+                       }
+                       $ax.style.applyImage(elementId, $ax.style.getElementImageOverride(elementId, 'normal') || images['normal~']);
+                   }
+               }
+</PRE><PRE>               var child = $jobj(elementId).children('.text');
+               if(child.length) $ax.style.transformTextWithVerticalAlignment(child[0].id, function() { });
+           });
+           // we have to reset visibility if we aren't applying a new view
+           $ax.visibility.resetLimboAndHiddenToDefaults();
+           $ax.repeater.refreshAllRepeaters();
+           $ax.dynamicPanelManager.updateAllFitPanels();
+           $ax.dynamicPanelManager.updatePercentPanelCache($ax('*'));
+       } else {
+           $ax.visibility.clearLimboAndHidden();
+           _applyView(viewId);
+           $ax.repeater.refreshAllRepeaters();
+       }
+</PRE><PRE>       $ax.adaptive.triggerEvent('viewChanged', {});
+       if(_loadFinished) $ax.viewChangePageAndMasters(forceSwitchTo);
+   };
+</PRE><PRE>   var _getImageWithTag  = function(image, tag) {
+       var flattened = {};
+       for (var component in image) {
+           var componentImage = image[component][tag];
+           if(componentImage) flattened[component] = componentImage;
+       }
+       return flattened;
+   }
+</PRE><PRE>   // gets if input is hidden due to sketch
+   var BORDER_WIDTH = &quot;borderWidth&quot;;
+   var COLOR_STYLE = &quot;colorStyle&quot;;
+   var SKETCH_FACTOR = &quot;sketchFactor&quot;;
+   var _areInputsHidden = function(viewId) {
+       var chain = _getAdaptiveIdChain(viewId);
+       var page = $ax.pageData.page;
+       var adaptiveStyles = page.adaptiveStyles;
+       // keep track of props that are not sketchy, as you continue to climb up your parents;
+       var notSketch = [];
+       for(var i = chain.length - 1; i &gt;= -1; i--) {
+           var style = i == -1 ? page.style : adaptiveStyles[chain[i]];
+           if(notSketch.indexOf(BORDER_WIDTH) == -1 &amp;&amp; style.hasOwnProperty(BORDER_WIDTH)) {
+               if(style[BORDER_WIDTH] != 0) return true;
+               notSketch.push(BORDER_WIDTH);
+           }
+           if(notSketch.indexOf(COLOR_STYLE) == -1 &amp;&amp; style.hasOwnProperty(COLOR_STYLE)) {
+               if(style[COLOR_STYLE] != 'appliedColor') return true;
+               notSketch.push(COLOR_STYLE);
+           }
+           if(notSketch.indexOf(SKETCH_FACTOR) == -1 &amp;&amp; style.hasOwnProperty(SKETCH_FACTOR)) {
+               if(style[SKETCH_FACTOR] != 0) return true;
+               notSketch.push(SKETCH_FACTOR);
+           }
+       }
+       return false;
+   };
+</PRE><PRE>   var _updateInputVisibility = function(viewId, query) {
+       var func = _areInputsHidden(viewId) ? 'addClass' : 'removeClass';
+       query.each(function(obj, elementId) {
+           var input = $jobj($ax.repeater.applySuffixToElementId(elementId, '_input'));
+           if(input.length == 0) return;
+           input[func]('form_sketch');
+       });
+   };
+</PRE><PRE>   // gets the inheritance chain of a particular view.
+   var _getAdaptiveIdChain = $ax.adaptive.getAdaptiveIdChain = function(viewId) {
+       if(!viewId) return [];
+       var view = _idToView[viewId];
+       var chain = [];
+       var current = view;
+       while(current) {
+           chain[chain.length] = current.id;
+           current = _idToView[current.baseViewId];
+       }
+       return chain.reverse();
+   };
+</PRE><PRE>   var _getPageStyle = $ax.adaptive.getPageStyle = function() {
+       var currentViewId = $ax.adaptive.currentViewId;
+       var adaptiveChain = _getAdaptiveIdChain(currentViewId);
+</PRE><PRE>       var currentStyle = $.extend({}, $ax.pageData.page.style);
+       for(var i = 0; i &lt; adaptiveChain.length; i++) {
+           var viewId = adaptiveChain[i];
+           $.extend(currentStyle, $ax.pageData.page.adaptiveStyles[viewId]);
+       }
+</PRE><PRE>       return currentStyle;
+   };
+</PRE><PRE>   var _setAdaptiveLineImages = function(elementId, images, viewIdChain) {
+       for(var i = viewIdChain.length - 1; i &gt;= 0; i--) {
+           var viewId = viewIdChain[i];
+           var startImg = images['start~' + viewId];
+           if(startImg) {
+               _setLineImage(elementId + &quot;_start&quot;, startImg);
+               var endImg = images['end~' + viewId];
+               _setLineImage(elementId + &quot;_end&quot;, endImg);
+               var lineImg = images['line~' + viewId];
+               _setLineImage(elementId + &quot;_line&quot;, lineImg);
+               break;
+           }
+       }
+   };
+</PRE><PRE>   var _setAdaptiveConnectorImages = function (elementId, images, view) {
+       var conn = $jobj(elementId);
+       var count = conn.children().length-1; // -1 for rich text panel
+       for(var i = 0; i &lt; count; i++) {
+           var img = images[<I> + i + '~' + view];</I>
+           $jobj(elementId + '_seg' + i).attr('src', img);
+       }
+   };
+</PRE><PRE>   var _applyView = $ax.adaptive.applyView = function(viewId, query) {
+       var limboIds = {};
+       var hiddenIds = {};
+</PRE><PRE>       var jquery;
+       if(query) {
+           jquery = query.jQuery();
+           jquery = jquery.add(jquery.find('*'));
+           var jqueryAnn = $ax.annotation.jQueryAnn(query);
+           jquery = jquery.add(jqueryAnn);
+       } else {
+           jquery = $('*');
+           query = $ax('*');
+       }
+       jquery.addClass(viewId);
+       _updateInputVisibility(viewId, query);
+       var viewIdChain = _getAdaptiveIdChain(viewId);
+       // this could be made more efficient by computing it only once per object
+       query.each(function(diagramObject, elementId) {
+           _applyAdaptiveViewOnObject(diagramObject, elementId, viewIdChain, viewId, limboIds, hiddenIds);
+       });
+</PRE><PRE>       $ax.visibility.addLimboAndHiddenIds(limboIds, hiddenIds, query);
+       $ax.dynamicPanelManager.updateAllFitPanels();
+       $ax.dynamicPanelManager.updatePercentPanelCache(query);
+   };
+</PRE><PRE>   var _applyAdaptiveViewOnObject = function(diagramObject, elementId, viewIdChain, viewId, limboIds, hiddenIds) {
+       var adaptiveChain = [];
+       for(var i = 0; i &lt; viewIdChain.length; i++) {
+           var viewId = viewIdChain[i];
+           var viewStyle = diagramObject.adaptiveStyles[viewId];
+           if(viewStyle) {
+               adaptiveChain[adaptiveChain.length] = viewStyle;
+               if (viewStyle.size) $ax.public.fn.convertToSingleImage($jobj(elementId));
+           }
+       }
+</PRE><PRE>       var state = $ax.style.generateState(elementId);
+</PRE><PRE>       // set the image
+       var images = diagramObject.images;
+       if(images) {
+           if(diagramObject.type == 'horizontalLine' || diagramObject.type == 'verticalLine') {
+               _setAdaptiveLineImages(elementId, images, viewIdChain);
+           } else if (diagramObject.type == $ax.constants.CONNECTOR_TYPE) {
+               _setAdaptiveConnectorImages(elementId, images, viewId);
+           } else if (diagramObject.generateCompound) {
+               var compoundUrl = _matchImageCompound(diagramObject, elementId, viewIdChain, state);
+               if (compoundUrl) $ax.style.applyImage(elementId, compoundUrl, state);
+           }else {
+               var imgUrl = _matchImage(elementId, images, viewIdChain, state);
+               if(imgUrl) $ax.style.applyImage(elementId, imgUrl, state);
+           }
+           //                for(var i = viewIdChain.length - 1; i &gt;= 0; i--) {
+           //                    var viewId = viewIdChain[i];
+           //                    var imgUrl = $ax.style.getElementImageOverride(elementId, state) || images[state + '~' + viewId] || images['normal~' + viewId];
+           //                    if(imgUrl) {
+           //                        $ax.style.applyImage(elementId, imgUrl, state);
+           //                        break;
+           //                    }
+           //                }
+</PRE><PRE>           //            }
+       }
+       // addaptive override style (not including default style props)
+       var adaptiveStyle = $ax.style.computeAllOverrides(elementId, undefined, state, viewId);
+</PRE><PRE>       // this style INCLUDES the object's my style
+       var compoundStyle = $.extend({}, diagramObject.style, adaptiveStyle);
+</PRE><PRE>       //$ax.style.setAdaptiveStyle(elementId, adaptiveStyle);
+       if(!diagramObject.isContained) {
+           $ax.style.setAdaptiveStyle(elementId, adaptiveStyle);
+       }
+</PRE><PRE>       var scriptId = $ax.repeater.getScriptIdFromElementId(elementId);
+       if(compoundStyle.limbo &amp;&amp; !diagramObject.isContained) limboIds[scriptId] = true;
+       // sigh, javascript. we need the === here because undefined means not overriden
+       if(compoundStyle.visible === false) hiddenIds[scriptId] = true;
+   };
+</PRE><PRE>   var _matchImage = function(id, images, viewIdChain, state) {
+       var override = $ax.style.getElementImageOverride(id, state);
+       if(override) return override;
+</PRE><PRE>       if(!images) return undefined;
+</PRE><PRE>       // first check all the images for this state
+       for(var i = viewIdChain.length - 1; i &gt;= 0; i--) {
+           var viewId = viewIdChain[i];
+           var img = images[state + &quot;~&quot; + viewId];
+           if(img) return img;
+       }
+       // check for the default state style
+       var defaultStateImage = images[state + '~'];
+       if(defaultStateImage) return defaultStateImage;
+</PRE><PRE>       state = $ax.style.progessState(state);
+       if(state) return _matchImage(id, images, viewIdChain, state);
+</PRE><PRE>       // SHOULD NOT REACH HERE! NORMAL SHOULD ALWAYS CATCH AT THE DEFAULT!
+       return images['normal~']; // this is the default
+   };
+</PRE><PRE>   var _matchImageCompound = function(diagramObject, id, viewIdChain, state) {
+       var images = [];
+       for(var i = 0; i &lt; diagramObject.compoundChildren.length; i++) {
+           var component = diagramObject.compoundChildren[i];
+           images[component] = _matchImage(id, diagramObject.images[component], viewIdChain, state);
+       }
+       return images;
+   };
+</PRE><PRE>   $ax.adaptive.getImageForStateAndView = function(id, state) {
+       var viewIdChain = _getAdaptiveIdChain($ax.adaptive.currentViewId);
+       var diagramObject = $ax.getObjectFromElementId(id);
+       if (diagramObject.generateCompound) return _matchImageCompound(diagramObject, id, viewIdChain, state);
+       else return _matchImage(id, diagramObject.images, viewIdChain, state);
+   };
+</PRE><PRE>   var _getAdaptiveView = function(winWidth, winHeight) {
+       var _isViewOneGreaterThanTwo = function(view1, view2) {
+           return view1.size.width &gt; view2.size.width || (view1.size.width == view2.size.width &amp;&amp; view1.size.height &gt; view2.size.height);
+       };
+</PRE><PRE>       var _isViewOneLessThanTwo = function(view1, view2) {
+           var width2 = view2.size.width || 1000000; // artificially large number
+           var height2 = view2.size.height || 1000000;
+</PRE><PRE>           var width1 = view1.size.width || 1000000;
+           var height1 = view1.size.height || 1000000;
+</PRE><PRE>           return width1 &lt; width2 || (width1 == width2 &amp;&amp; height1 &lt; height2);
+       };
+</PRE><PRE>       var _isWindowGreaterThanView = function(view, width, height) {
+           return width &gt;= view.size.width &amp;&amp; height &gt;= view.size.height;
+       };
+</PRE><PRE>       var _isWindowLessThanView = function(view1, width, height) {
+           var viewWidth = view1.size.width || 1000000;
+           var viewHeight = view1.size.height || 1000000;
+</PRE><PRE>           return width &lt;= viewWidth &amp;&amp; height &lt;= viewHeight;
+       };
+</PRE><PRE>       var greater = undefined;
+       var less = undefined;
+</PRE><PRE>       for(var i = 0; i &lt; _enabledViews.length; i++) {
+           var view = _enabledViews[i];
+           if(view.condition == &quot;&gt;=&quot;) {
+               if(_isWindowGreaterThanView(view, winWidth, winHeight)) {
+                   if(!greater || _isViewOneGreaterThanTwo(view, greater)) greater = view;
+               }
+           } else {
+               if(_isWindowLessThanView(view, winWidth, winHeight)) {
+                   if(!less || _isViewOneLessThanTwo(view, less)) less = view;
+               }
+           }
+       }
+       return less || greater;
+   };
+</PRE><PRE>   var _isAdaptiveInitialized = function() {
+       return typeof _idToView != 'undefined';
+   };
+</PRE><PRE>   $ax.messageCenter.addMessageListener(function(message, data) {
+       //If the adaptive plugin hasn't been initialized yet then 
+       //save the view to load so that it can get set when initialize occurs
+       if(message == 'switchAdaptiveView') {
+           var href = window.location.href.split('#')[0];
+           var lastSlash = href.lastIndexOf('/');
+           href = href.substring(lastSlash + 1);
+           if(href != data.src) return;
+</PRE><PRE>           var view = data.view == 'auto' ? undefined : (data.view == 'default' ? <I> : data.view);</I></PRE><PRE>           if(!_isAdaptiveInitialized()) {
+               _initialViewToLoad = view;
+           } else _handleLoadViewId(view);
+       } else if(message == 'setAdaptiveViewForSize') {
+           _autoIsHandledBySidebar = true;
+           if(!_isAdaptiveInitialized()) {
+               _initialViewSizeToLoad = data;
+           } else _handleSetViewForSize(data.width, data.height);
+       }
+   });
+</PRE><PRE>   $ax.adaptive.setAdaptiveView = function(view) {
+       var viewIdForSitemapToUnderstand = view == 'auto' ? undefined : (view == 'default' ? <I> : view);</I></PRE><PRE>       if(!_isAdaptiveInitialized()) {
+           _initialViewToLoad = viewIdForSitemapToUnderstand;
+       } else _handleLoadViewId(viewIdForSitemapToUnderstand);
+   };
+</PRE><PRE>   $ax.adaptive.initialize = function() {
+       _views = $ax.document.adaptiveViews;
+       _idToView = {};
+</PRE><PRE>       if(_views &amp;&amp; _views.length &gt; 0) {
+           for(var i = 0; i &lt; _views.length; i++) {
+               var view = _views[i];
+               _idToView[view.id] = view;
+           }
+</PRE><PRE>           var enabledViewIds = $ax.document.configuration.enabledViewIds;
+           for(var i = 0; i &lt; enabledViewIds.length; i++) {
+               _enabledViews[_enabledViews.length] = _idToView[enabledViewIds[i]];
+           }
+</PRE><PRE>           if(_autoIsHandledBySidebar &amp;&amp; _initialViewSizeToLoad) _handleSetViewForSize(_initialViewSizeToLoad.width, _initialViewSizeToLoad.height);
+           else _handleLoadViewId(_initialViewToLoad);
+       }
+</PRE><PRE>       $axure.resize(function(e) {
+           _handleResize();
+           $ax.postResize(e); //window resize fires after view changed
+       });
+   };
+</PRE><PRE>   var _handleLoadViewId = function (loadViewId, forceSwitchTo) {
+       if(typeof loadViewId != 'undefined') {
+           _setAuto(false);
+           _switchView(loadViewId != 'default' ? loadViewId : <I>, forceSwitchTo);</I>
+       } else {
+           _setAuto(true);
+           _handleResize(forceSwitchTo);
+       }
+   };
+</PRE><PRE>   var _handleSetViewForSize = function (width, height) {
+       if(!_auto) return;
+</PRE><PRE>       var toView = _getAdaptiveView(width, height);
+       var toViewId = toView &amp;&amp; toView.id;
+       _switchView(toViewId);
+   };
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

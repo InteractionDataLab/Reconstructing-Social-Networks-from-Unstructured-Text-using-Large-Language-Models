@@ -1,0 +1,28 @@
+Team:Newcastle/libs/synthesis-js
+var SYNTHESIS_SIM_CONSTS = {  C : 0.1,  degr : 0.2,  translational_constant : 0.2,  degp : 0.1,  tmax : 50,  sigmas : [],  ps : [], rs : [],  sigma2mRNA_tick : 0.25,  sigma_production_tick : 2 }
+var PSIM_OUT = {  p : 0,  r : 0,  sigma : 5,  elapsedt: 0 }
+var PROMOTER = {  STRONG: 0.1,  MEDIUM: 0.03,  WEAK: 0.0058 }
+var BIONUMBERS = {  CELLS_PER_ML: 1 * Math.pow(10, 9) }
+var STD_CONSTS = {  k_transcription: PROMOTER.STRONG,  k_translation: 0.1,  kdeg_rna: 0.0058,  kdeg_protein: 0.0012, }
+var ION_BINDING_CONSTS = {  k_ion_binding: 0.9 } var STD_OUT = {
+}
+// Determined from trend fitted to the data in CRC Chemistry Handbook. function zinc_conductivity(num_zinc_molecules) {  var m = 3 * Math.pow(10, -23);  var c = 2 * Math.pow(10, -15);
+return (m * num_zinc_molecules) + c; }
+// Simulator with positive feedback :) function sim_tick(dt, out, consts) {  // Sigma32
+out.r = out.r + (consts.sigma2mRNA_tick * out.sigma);    out.sigma = out.sigma - (consts.sigma2mRNA_tick * out.sigma);    // Compute change in quantity.    var dr = ((consts.C*out.p) - (consts.degr * out.r)) * dt;    var dp = ((consts.translational_constant * out.r) - (consts.degp * out.p)) * dt;    // Change quantities    out.p = out.p + dp;    out.r = out.r + dr;
+out.elapsedt += dt; }
+// Standard Simulator // Refer to the original MATLAB code...
+function std_sim_tick(dt, out, consts) {
+var dMRNA = ((consts.k_transcription - consts.kdeg_rna * out.r) * dt); out.r = out.r + dMRNA; var dProtein = ((consts.k_translation * out.r - consts.kdeg_protein * out.p) * dt); out.p = out.p + dProtein; out.elapsedt += dt;
+}
+function pulse_sim_tick(dt, out, consts) {  var dMRNA = ((consts.k_transcription - consts.kdeg_rna * out.r) * dt);  out.r = out.r + dMRNA;  var dRep = ((consts.k_translation * out.r - consts.kdeg_protein * out.repressor) * dt);  out.repressor = out.repressor + (2 * dRep);  var dInd = ((consts.k_translation * out.r - consts.kdeg_protein * out.inducer) * dt);  out.inducer = out.inducer + dInd;
+var out_translation = 0.1;  if (out.repressor > out.inducer)  {   out_translation = 0.001;  }  var dOut = ((out_translation * out.r - consts.kdeg_protein * out.p) * dt);  out.p = out.p + dOut;  out.elapsedt += dt; }
+// Ion Uptake Xtra // Tracks Ion uptake for a cell population. function ion_uptake_pop(per_protein, k_ion_binding, out, consts, CELL_COUNT, dt)  {  var dBoundIon = ((per_protein * k_ion_binding * out.p) - (per_protein * consts.kdeg_protein * out.p)) * dt;  out.boundIon = out.boundIon + (dBoundIon * CELL_COUNT); }
+var SECONDS = 1000; var TICK_C = 1; var TIME_RATIO = 1; // 1sec = nsec (1ms).
+// Post function is to do anything after the update, like log the new values for a graph. function registerSimulator(id, out, consts, post, sim_tick) {  // Call once so that t=0 values are in the graph.  post(id, out);  return setInterval(function()   {    for (var i = 0; i < Math.floor(TIME_RATIO/TICK_C); i++)   {    sim_tick(TICK_C, out, consts);   }   // console.log(out.p + "," + out.r);   post(id, out)  }, 1 * SECONDS); }
+// var SIM_INTERVAL_HANDLE = registerSimulator(PSIM_OUT, SYNTHESIS_SIM_CONSTS);
+function stopPSimulator() {  clearInterval(SIM_INTERVAL_HANDLE); }
+function promoter_step(strength) {  // x = -b +/- sqrt(b^2 - 4ac)/2a  var c = -strength;  var l = Math.sqrt(0.0018*0.0018 - 4 * 0.0008 * c);  l /= (2*0.0008);  var a1 = -0.0018 + l;  var a2 = -0.0018 - l;  var ans = Math.floor(Math.max(a1, a2));  return ans > 10 ? 10: ans; } // Converts a 10-point scale into a promoter strength. function promoter_strength(step) {  // Equation represents trend from standard promoter values STRONG/MED/WEAK used in models.  return (0.0008 * (step*step)) + (0.0018 * step); }
+$(function () {
+$("#timeratio").on(/*change*/ "input",
+// This is the function that is invoked.  function()  {   TIME_RATIO = $('#timeratio').val();   $('#timesliderval').text(TIME_RATIO);  }); });

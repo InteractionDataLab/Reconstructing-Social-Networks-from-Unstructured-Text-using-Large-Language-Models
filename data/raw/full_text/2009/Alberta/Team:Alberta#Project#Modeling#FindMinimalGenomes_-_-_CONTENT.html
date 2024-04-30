@@ -1,0 +1,191 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Alberta_Project_Modeling_FindMinimalGenomes"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu"><UL><LI class="selected"><A href="/Team:Alberta/Project/Modeling/FindMinimalGenomes">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Alberta/Project/Modeling/FindMinimalGenomes&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Alberta/Project/Modeling/FindMinimalGenomes&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Alberta/Project/Modeling/FindMinimalGenomes&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Alberta/Project/Modeling/FindMinimalGenomes" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Alberta/Project/Modeling/FindMinimalGenomes</H1><DIV id="bodyContent"><H3 id="siteSub">From 2009.igem.org</H3><PRE>function [MinimalGenomes, UnEssentialGeneLists, Models] = FindMinimalGenomes(TheModel, NumberOfMinGenomes, FinalGrowthRate, IterationsPerList, FirstThreshold)
+%NumberOfMinGenomes: Number of minimal genomes you want the code to find (since there are many possible minimal genomes)
+%FinalGrowthRate: is what the final growth rate will apporximately be.  Lower values result in a lower final
+%growth rate, but this allows for more genes to be deleted (resulting in a smaller allowable minimal genome).
+%FirstThreshold: This is the threshold growth rate for the first iteration of gene deletions.
+
+disp('May take 5 mins per NumberOfMinGenomes (default is 1 list)')
+solutionI = optimizeCbModel(TheModel);
+InitialGrowthRate = solutionI.f;
+
+%Input/Output Error Checking
+
+if nargout == 0
+    error('You must have at least 1 output argument! For example: MinGenomes = FindMinimalGenomes(model)')
+end
+if nargin &gt;=3
+   if FinalGrowthRate &gt; InitialGrowthRate
+       disp(['FinalGrowthRate (set by you): ' num2str(FinalGrowthRate)]);
+       error('The FinalGrowthRate must be less than the InitialGrowthRate')
+   end
+end
+if nargin &gt;=4
+   if IterationsPerList &lt; 1
+       error('IterationsPerList must be greater than or equal to 1!')
+   end
+end
+if nargin == 5
+   if FirstThreshold &gt;= InitialGrowthRate
+       error('FirstThreshold must be less than the InitialGrowthRate')
+   end
+end
+
+%Initialization of variables
+
+switch nargin
+    case 1
+        FinalGrowthRate = 0.2;
+        FirstThreshold = ((InitialGrowthRate-FinalGrowthRate)*0.87)+FinalGrowthRate;
+        n = 2; IterationsPerList = n+1 ; % n = 2 results in 3 iterations of gene filtering.       
+        NumberOfMinGenomes = 1;
+    case 2
+        FinalGrowthRate = 0.2;
+        FirstThreshold = ((InitialGrowthRate-FinalGrowthRate)*0.87)+FinalGrowthRate;
+        n = 2; IterationsPerList = n+1 ;                   
+    case 3
+        FinalGrowthRate;
+        FirstThreshold = ((InitialGrowthRate-FinalGrowthRate)*0.87)+FinalGrowthRate;
+        n = 2; IterationsPerList = n+1;                 
+    case 4
+        if rem(IterationsPerList,1) ~= 0
+            error('IterationsPerList must be an integer')
+        end
+        FinalGrowthRate;
+        FirstThreshold = ((InitialGrowthRate-FinalGrowthRate)*0.87)+FinalGrowthRate;
+        if IterationsPerList == 1
+            n = 0.000000001; %Causes only 1 iteration &amp; prevents division by 0 (which only Chuck Norris can do).
+        else
+        n = IterationsPerList-1;
+        end
+    case 5
+        if rem(IterationsPerList,1) ~= 0
+            error('IterationsPerList must be an integer')
+        end
+        FinalGrowthRate;
+        FirstThreshold;
+        if IterationsPerList == 1
+            n = 0.000000001; %to cause only 1 iteration &amp; to prevent division by 0
+        else
+        n = IterationsPerList-1;
+        if FirstThreshold &lt; FinalGrowthRate
+                error('FirstThreshold must be greater than FinalGrowthRate')
+        end
+        end
+    otherwise
+        error('Too many input arguments! Sorry, try again!')
+end
+
+ThreshDrop = (FirstThreshold-(FinalGrowthRate)-0.0001)/n;  
+MinimalGenomes = cell(1,NumberOfMinGenomes);
+UnEssentialGeneLists = cell(1,NumberOfMinGenomes);
+TheModelOriginal = TheModel;
+Models = cell(1);
+
+disp(['Initial Growth Rate is ' num2str(InitialGrowthRate)])
+disp(['Final Growth Rate will be ~ ' num2str(FinalGrowthRate)])
+disp(['First of ' num2str(IterationsPerList) ' growth rate thresholds is ' num2str(FirstThreshold)])
+disp(['The growth rate threshold will drop by this amount for every iteration: ' num2str(ThreshDrop)])
+disp(['Number of iterations for every list is ' num2str(IterationsPerList)])
+w = 1;
+
+%Algorithm to find minimal genomes.
+
+while w&lt;=NumberOfMinGenomes
+    disp(['FINDING MINIMAL GENOME LIST: ' num2str(w) ' of ' num2str(NumberOfMinGenomes)]);
+    
+    geneList = cell(1);
+    geneListTEST = cell(1);
+    d = 1;
+    k = 1;
+    f = FirstThreshold;
+
+    %this part shuffles the TheModel list for randomization
+    
+    RandomGeneList = cell(1,length(TheModelOriginal.genes));
+    random = randperm(length(TheModel.genes))';
+    
+    for x = (1:length(TheModel.genes))
+        RandomGeneList(x) = TheModelOriginal.genes(random(x));
+    end
+ 
+    while f &gt;= FinalGrowthRate
+        disp(['Performing iteration #' num2str(k) '. Threshold growth rate for this iteration of deletions is  ' num2str(f) ' ...']);
+        for c = (1:length(RandomGeneList))   
+            match = zeros(length(RandomGeneList));
+            for a = (1:length(geneList))  %check if gene already on geneList. if so, skip analysis
+                if strcmp(geneList(a),RandomGeneList(c)) == 1 
+                    match(a) = 1;
+                else
+                    match(a) = 0;
+                end
+            end
+            
+          %This part decides whether or not to permanently knockout a gene
+            
+            if sum(match) == 0  %if gene does not exist in geneList yet, test its deletion
+                geneListTEST(d) = RandomGeneList(c);
+                
+                deltamodel = deleteModelGenes(TheModelOriginal,geneListTEST); 
+                solution = optimizeCbModel(deltamodel);
+            
+                if solution.f &gt; f %&quot;if the deletion causes satisfactory growth, commit gene to geneList
+                    geneList(d) = geneListTEST(d);  
+       %F(d) = solution.f; 
+                    d = d+1;
+                end 
+            end
+        end
+        disp(['Genes Deleted So Far for this List is: ' num2str(length(geneList))])
+        f = f-ThreshDrop;
+        k = k+1;
+    end
+    
+    UnEssentialGeneLists{w} = geneList';
+
+    %This part &quot;inverts&quot; the unessential list of genes to obtain the essential list (the minimal genome).
+    
+    InvertThis = UnEssentialGeneLists{w};
+    WithThis = TheModel.genes;
+    InvertedList = cell(1); 
+
+    Match=zeros(length(WithThis));
+    for a = (1:length(InvertThis))
+        for b = (1:length(WithThis))
+            if strcmp(InvertThis(a), WithThis(b)) == 1
+                Match(b) = 1;
+            end
+        end
+    end
+    
+    d = 1;    
+    for c=(1:length(WithThis))
+        if Match(c) == 0
+            InvertedList(d) = WithThis(c);
+            d = d+1;
+        end
+    end
+    MinimalGenomes{w} = InvertedList'
+    
+    if nargout &gt; 2
+        Models{w} = deleteModelGenes(TheModelOriginal, geneList);
+    end
+    w = w+1;
+end
+
+if nargout &gt; 2
+    disp('Reassign a model of interest like this: modelMinimal = Models{3}, except replace &quot;Models&quot; with your 3rd output  argument.')
+end
+
+%University of Alberta 2009 iGEM Team
+%Project BioBytes
+%EricB
+</PRE><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2009.igem.org/Team:Alberta/Project/Modeling/FindMinimalGenomes">http://2009.igem.org/Team:Alberta/Project/Modeling/FindMinimalGenomes</A>&quot;</DIV></DIV></DIV><DIV id="footer-box"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Alberta/Project/Modeling/FindMinimalGenomes" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Alberta/Project/Modeling/FindMinimalGenomes" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Alberta/Project/Modeling/FindMinimalGenomes&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Alberta/Project/Modeling/FindMinimalGenomes&amp;oldid=161999" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2009.igem.org:Privacy_policy" title="2009.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2009.igem.org:General_disclaimer" title="2009.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,668 @@
+Team:Greece/Model
+PROJECT
+MODELING
+HUMAN PRACTICES
+ACHIEVEMENTS
+TEAM
+QUORUM
+SENSING
+RNAi
+CLASSIFIER
+DESIGN
+PROTEIN
+STRUCTURE
+PREDICTION
+COLON
+CANCER
+FLUID
+DYNAMICS
+Quorum​ ​Sensing
+Motivation
+Can we predict if and when our engineered bacteria will invade their surrounding tissue in order to transfer the classifier plasmids? Tumor invasion is mediated by a quorum sensing mechanism controlling the production of invasin and listeriolysin, the machinery that actuates it. It is a critical module of the integrated system. This basic safety- and efficacy -minded question motivates a closer examination of the system we call “quorum sensing”. It has been thoroughly examined in the literature [ 1 ] and by previous iGEM teams (ETH 2014, KU Leuven 2015, etc.), but with the assumption of spatial equilibrium -- for example, bacteria growing in a well-stirred bioreactor. But what happens with bacteria growing on top of a surface, such as the colon epithelium? Are the existing models adequate to describe this phenomenon emerging at the population level -- or does the distinctly different diffusive environment lead to unexpected phenomena? To answer these questions, we’ve produced a modular matlab code that can serve future iGEM teams concerned with how diffusion can interact with other biological mechanisms.
+Overview
+Quorum sensing (QS) is the phenomenon of coordinated behaviour triggered by high bacterial population density. The Lux operon, responsible for quorum sensing, is a leaky switch. When it’s turned off, LuxR and LuxI are produced very slowly. LuxI produces a small signalling molecule in the homoserine lactone family (simply called “AHL” hereafter). LuxR is activated by it and in turn induces the Lux operon, in a positive feedback loop. The entire system thus functions as a latch-on switch; once the concentration of AHL enters a critical area, it increases rapidly and reaches a much higher equilibrium. The name “Quorum sensing” is most often used to describe the Lux operon’s regulatory system - but does the operon itself always function as implied by that name? Does it turn on only when the bacterial population density is high? To answer this question, let’s first imagine a thought experiment. In the shady forest underbrush, on top of a wax-covered leaf there is a minuscule water droplet. Measuring no more that 0.1 nL in size, it has carried with it a few nutrients and a few bacterial cells happen to grow inside it, let’s say 10. Even though the bacterial density is not very high, the limited space could “fill up” with the AHL produced by only a handful of bacteria. In that case, the Lux operon wouldn’t be triggered by the bacterial density per se, but by the restrictive diffusive environment -- thus giving merit to such a term as “Diffusive sensing” [ 3 , 4 , 5 ]. These alternate hypotheses provide extra reasons to explore the system through simulation. Our modelling starts with a closer look on previous work. We reimplement the deterministic model described in [ 1 ] and play with different parameters and with adding extensions such as diffusive losses and growth models [ 2 ] to get a better grasp of the phenomenon. This model describes continuous liquid cultures, where the bacteria are kept in a constant exponential growth phase by continuous dilution of the culture medium. Arguably these conditions, amenable though they may be to experimental validation, do not reflect the natural conditions in the colon nor the conditions our experiment entails. The most significant deviations arise from two facts of the natural environment we want to simulate: the microbial community originates from a small initial population colonizing a new environment (thus requiring a custom growth model) and instead of developing in the full volume of a liquid medium, it colonizes the solid, permeable surface of the colon epithelium (thus requiring the simulation of diffusion). This model therefore comprises 3 parts:
+1. A​ ​network​ ​of​ ​chemical​ ​reactions​ ​in​ ​fixed-volume​,​​ ​well-stirred​ ​conditions​ ​that​ ​model​ ​the​ ​production​ ​and​ ​consumption​ ​of​ ​AHL​ ​as​ ​well​ ​as​ ​the​ ​systems regulatory​ ​elements.
+2. A​ ​custom​ ​growth​ ​model​ ​that​ ​evolves​ ​an​ ​initial​ ​inoculation​ ​to​ ​the​ ​environment's​ ​assumed​ ​carrying​ ​capacity.
+3. A​ ​diffusive​ ​model​ ​for​ ​the​ ​evolution​ ​of​ ​AHL​ ​spatial​ ​distribution.
+The “spatial equilibrium model” is built of the first 2 parts, while the “diffusive model” incorporates the last. Previous models of quorum sensing that we have studied only supply the first part.
+Availability
+The​ ​accompanying​ ​code​ ​is​ ​available​ ​on ​GitHub​: https://github.com/igem-greece-2017
+Spatial equilibrium model
+Chemical reaction model description
+Figure 1: Quorum sensing network. The arrows imply chemical reactions.
+This model takes the form of a network of chemical reactions that simulate intracellular processes at the population level. Although the same processes seem anything but deterministic upon a closer look at the single cell, the individual variations can be assumed to be independent and identically distributed for each cell and their averaging eliminates the variability at the population level. Consequently, these chemical reactions are simulated as ordinary differential equations.
+The centerpiece is AHL. AHL is the small, freely-diffusing molecule that mediates cell-to-cell communication: when AHL levels are low, the quorum sensing switch is turned off; when they’re high, the switch is turned on. The rest of the interactions concern the protein LuxI, which produces AHL, and LuxR, which binds it and then, activated, goes on to induce the “DNA”. The “DNA” species refers to plasmids carrying the Lux regulatory system. Its induction by (LuxR.AHL)2 marks the off->on transition; when most of the DNA is in the (uninduced) “DNA’ form, the switch is off; when most of it is in the “DNA.(LuxR.AHL)2” form, the switch is on.
+Figure 2: Dilution mechanism that keeps the growth rate and the cell density constant. These are the conditions modelled in [ 1 ](Adapted from [ 1 ]).
+Supplementary to the core QS functionality, DNA undergoes duplication and AHL undergoes diffusion between 2 spaces: the “internal” (intracellular) and the “external”. To understand the latter process, consider all the bacterial cytoplasms conjoined in a single volume separated by a membrane from the outside.
+This model has originally been built to simulate an entire bacterial population living in constant exponential growth conditions in a constant volume with continuous dilution.. We consider these conditions not to influence the cell’s internal mechanisms significantly though and expand their approach to other living conditions, only adjusting the DNA duplication and AHL diffusion processes.
+We built this first model to better understand the constraints and basic properties of the physical system, before going into greater depth in the following sections. A caveat to our extrapolation is that cellular metabolism could be significantly altered when cells enter a stationary growth phase, impacting the core QS functionality. We keep this in mind, but have found no way to account for it.
+In the following section, we present exploratory simulations of the system's behaviour.
+Results (no custom growth model)
+Figure 3: Evolution of the QS dynamics when the dilution protocol described in [ 1 ] is implemented. Dividing bacteria constantly dilute their cytoplasm, severely slowing down QS. Culture volume: 0.2nL
+Figure 4: Same culture volume (0.2nL), but without the dilution protocol and with the bacteria in the stationary phase
+First, we simulate the system exactly as specified in the source material ( figure 3 ), with the cells in a constant exponential growth phase and their density ($\Rightarrow$ their number) maintained. This implies constant dilution, which affects all chemical species apart from the DNA, which exactly compensates with replication. Because there are only 100 bacteria with a total cytoplasmic volume of 1.7e-4 nL in a 0.2 nL culture, AHL increases very slowly and QS toggling doesn’t happen within 25 hours.
+Without growing, and therefore without diluting to keep the bacteria at a constant density, the quorum sensing transition is triggered at 15 hours ( figure 4 ) (t=0 refers to the time when the bacteria have adapted to their environment and begin producing AHL). This is evident by the beginning of the sharp drop in uninduced “DNA”, as well as by a wrinkle on the AHL graph. This wrinkle is telltale: as the DNA is induced, the production rate of LuxI & LuxR is increased. LuxI increases more slowly than LuxR however, resulting in a transient drop in AHL, as more of it is captured by LuxR. A little later, LuxI catches up and AHL levels increase faster.
+Figure 5: Same conditions as in figure 4 , changing only the culture volume. Left: 0.1nL Right: 0.4nL
+Keeping all the conditions the same as in figure 4 and only tweaking the culture volume, its effect on QS becomes evident ( figure 5 ). When the total volume is reduced by half (0.1nL), QS occurs at 10 hours. When it is doubled (0.4nL), QS occurs at 23 hours (but the transition is more gradual). The QS triggering time in these conditions depends linearly on the total volume.
+Growth model description
+How does a bacterial population colonize a solid surface? Are the dynamics similar to the liquid media?
+According to [ 2 ], the growth dynamics are indeed very similar, the greatest difference being a more gradual transition between the exponential and stationary phases. We use the growth model III from [ 2 ]:
+d
+N
+d
+t
+=
+r
+N
+(
+1
+−
+(
+N
+N
+m
+a
+x
+)
+m
+)
+(
+1
+−
+(
+N
+m
+i
+n
+N
+)
+n
+)
+Figure 6: Population growth on an agar surface. The population grows exponentially from a small inoculum to the environment’s carrying capacity after a short lag period. This is the full growth model, but in the simulations we disregard the lag phase. Its duration can’t be modelled precisely and, more importantly, we don’t expect the bacteria to actively express the Lux operon at that phase.
+The model can be seen as a transition function between 2 population levels. The steepness of the transition, $r$, depends primarily on temperature and to a smaller extent to nutritional levels; $m$ and $n$ are mostly fixed and $N_0$ is a parameter without a clear significance which only affects the duration of the lag phase. Here we ignore the lag phase, so $N_0=0$. In our simulations, we use the best estimates of these parameters for T=30oC and an environment with relatively few resources (agar with 1/25 the usual nutrient levels) based on [ 2 ]: r=1.5 [1/h], m=0.52, n=3.5.
+The new equation is concatenated to the system that expresses the chemical reactions and supplies a variable dilution loss, dependent on the variable growth rate. The simulations with the growth model keep a constant culture volume, like the previous ones, but allow the bacterial density to increase, without any external dilution of the entire culture. However, the bacterial equations experience the same dilution term, which is a result of the cytoplasm constantly expanding during the growth phase. As the population transits into the stationary phase, the dilution, following the growth rate, slows down as well, allowing the concentrations to increase freely.
+Results (with growth model)
+Figure 7: QS curves with growth for increasing culture volume. The final time is larger for the last plots. Culture volume left to right: 4μL,16μL,64μL,512μL,1024μL
+Figure 8: QS curves with a reduced growth rate. Culture volume: 4μL. Compared to figure 7 , QS is indeed triggered later (since here there are fewer bacteria at equal times), but at an earlier growth phase, before the transition to the stationary phase.
+Figure 9: QS curves at an extreme colony volume: 5000μL. This volume is about the same as the agar in a small petri dish, which will become a useful reference for the diffusive model.
+The growth model impacts the QS system greatly. As is evident in figure 7 vs 8 , while the growth rate is high (r=1.5) quorum sensing is difficult to achieve. This corroborates the result in figure 3 . As the volumes increase and the growth curve remains the same, more AHL has to be produced to achieve the same concentration, which takes more time. At an extreme volume of 5mL, in figure 9 QS still happens, but much later, at 40 hours. This volume is significant, because it is the volume of a small petri dish, which we would like to simulate with the diffusive model to compare the results.
+Diffusive model
+We’ve modelled a bacterial population in a well-stirred liquid culture so far. Without the “growth model”, we either model a stationary population or one that grows at a steady rate, its density maintained constant by compensating dilution. With the growth model, an initial inoculation grows to the environment’s carrying capacity, modelling a bacterial colonization of a new environment.
+Bacteria growing on a surface are packed very closely together, but the AHL they produce is free to leave their immediate surroundings and diffuse into the surrounding area. Diffusion is a well-described physical phenomenon and this model aims to couple the diffusive process with the chemical reactions of AHL inside millions of independent bacterial cells that are geometrically defined. There doesn’t seem to be any case of electrochemical l gradients affecting AHL diffusion, therefore our model is concerned only with its concentration.
+The primary goal was to simulate bacteria growing on the surface of an agar plate, as these conditions are easy to recreate experimentally and thus provide verification to our model and afterwards expand it to growth on a cell line monolayer we use in our experiments as a colorectal cancer model. Our collaboration with iGEM Columbia was meant to enable these experiments, but unfortunately material shortages only allowed us to experiment in liquid cultures.
+Model Description
+We start with Fick’s laws of diffusion. In the simplest case of isotropic media without mass transport phenomena or external potentials, the driving force of diffusion is the concentration gradient and the diffusion coefficient is a constant real number. Thus, the general diffusion equation takes the form of the simpler heat equation:
+∂
+[
+A
+H
+L
+]
+∂
+t
+=
+D
+∇
+2
+[
+A
+H
+L
+]
+It is a parabolic partial differential equation (PDE) in space and time. To specify a solvable problem based on such an equation, many more ingredients are needed:
+a geometry
+initial conditions
+boundary conditions
+To actually solve it, we furthermore need to select a solution algorithm, which requires its own ingredients.
+If we allowed the diffusion coefficient to vary in space, we’d have a more general form of diffusion. Adding a production term $q$ to the right side, it becomes:
+∂
+[
+A
+H
+L
+]
+∂
+t
+=
+∇
+⋅
+(
+D
+∇
+[
+A
+H
+L
+]
+)
++
+q
+Geometry
+The first design decision is to express the problem’s geometry. At a first glance at the task at hand, to model bacteria growing on an agar plate, one might assume a top-down 2D perspective, with the AHL diffusing across the surface away from the bacteria. The diffusion of AHL is inherently a 3D phenomenon though, and this perspective couldn’t easily incorporate the effects of diffusion along the height of the agar gel. In the end, we decided to model the entire 3D volume of an agar plate, with the bacteria at the top of the agar. The agar forms a short cylinder (a disk), surrounded by plastic on 3 sides and air on top. The cylinder is in the order of millimetres in height and centimetres across. An E. Coli cell is about 1μm -- a huge difference in scale! This difference makes the problem quite difficult to solve in practice.
+An important simplification at this point is to assume axial symmetry around the axis of the cylinder, thus making the problem tractable. We express the PDE in cylindrical coordinates;  after eliminating the angular coefficients of the derivatives, we are left with:
+$$\rho \frac{\partial{\mathit{[AHL]}}}{\partial{t}} = D \left(\frac{\partial}{\partial{\rho}}\left(\rho \frac{\partial{\mathit{[AHL]}}}{\partial{\rho}}\right) + \frac{\partial}{\partial{z}}\left(\rho \frac{\partial{\mathit{[AHL]}}}{\partial{z}}\right)\right) + \rho q$$
+If we now transform $\rho \mapsto x$ & $z \mapsto y$, thus having:
+$$x \frac{\partial{\mathit{[AHL]}}}{\partial{t}} = \nabla \cdot \left(xD \nabla \mathit{[AHL]} \right) + x q$$
+This is identical to the diffusion equation above, where the time coefficient is $x$, the diffusion coefficient $xD$ and the production coefficient $xq$. Therefore, we’ll solve this problem on a 2D vertical cross-section of the cylinder, whose solutions are the same as the initial equation on the full 3D cylinder. The final geometry is shown in figure 10 . The bacteria are the small red rectangles shown in the zoomed-in image.
+Figure 10 left: The geometry on which the diffusion PDE is solved. It represents an axisymmetric 3D cylindrical geometry: an agar plate. The left side is the cylinder’s axis, the right side is the rim. The top is the cylinder’s surface. On the top near the axis there are some bacteria. Since this perspective is a cross-section of the agar plate, the bacteria actually occupy a small disk on the surface of the agar near the axis (every shape in this geometry should be rotated around the axis to imagine its 3D representation).
+Figure 10 right: Each red rectangle represents an E. Coli cell. The bacteria are organized in orderly rings and layers with no spaces between them (maximum density). In this case, there are 600 rings of bacteria and 4 layers**. The blue lines are the mesh, the solver’s spatial discretization. Observe how the mesh around the bacteria is very orderly, but also rather coarse (compared to the feature size). The loss in accuracy in this area is intentional: our model inherently can’t resolve concentration differences inside each bacterium’s cytoplasm, therefore a finer mesh would not provide extra information, only modelling artifacts -- and much more computation time! ** Due to constraints with the mesh generation, this isn’t exactly the case. The reality is more complicated, but it simulates bacteria packed closely together. Notice that each red rectangle has a blue rectangle next to it. Only 1 in 3 red rectangles actually interacts with the AHL, the rest is inert geometry. Thus, 1 cell covers the space of 6 rectangles on the same layer, plus 6 more on the layer below. The cell’s AHL output is multiplied by the number of bacteria it replaces, thus in fact concentrating the production of this entire region on 1 cell. This should be a slight source of error though, because the diffusion coefficient is large.
+Boundary and initial conditions
+Boundary conditions specify what happens to the concentration (Dirichlet BC), or to its gradient (Neumann BC), at the geometric boundaries. There’s a lot of those: the edges of the agar, as well as the edges of the rectangles that represent a ring of bacteria. A Neumann BC takes the form $\nabla \mathit{[AHL]} \cdot \hat{n} = q$, where $q$ is the flux through the boundary. $\hat{n}$ is the unit vector normal to the boundary.
+The edges of an agar plate are all reflecting boundaries, because AHL can’t diffuse through them: plastic walls at the sides and bottom, air at the top. Thus, at the boundary $q=0$: no AHL goes through.
+A boundary condition on the edge of the bacteria could simulate the semipermeable cell membrane, but unfortunately the current version of Matlab doesn’t accommodate conditions on internal boundaries. To evaluate the significance of this restriction we’ve run a test simulation ( figure 11 ).
+The initial conditions are described by the [AHL] at each point in the geometry at $t=0$. Here, they are 0.
+Solution algorithm
+We solve the PDE with the finite element method (FEM). This method discretizes the continuous space into small elements by overlaying a mesh ( figure 10 ) and transforming the continuous geometry into a graph. Each node is a dependent variable. The time-dependent PDE is transformed in this manner into a large system of ODEs, with 1 equation for each node (because the boundary conditions are Neumann).
+Coupling AHL diffusion and localized chemical interactions
+By and large the most interesting piece of this puzzle is how to couple the spatially-oblivious chemical reaction network described above with the diffusion. [AHL] has become a spatial field. Each ring/layer of bacteria (see footnote in figure 10 ) is an autonomous agent that interacts with the locally available AHL. A few things are evident: AHL concentrations at points on cytoplasms depend both on diffusion and on chemical interactions, and many more dependent variables are required, to store the concentration of every species at every bacterium.
+A bacterium can be thought of as a dynamical system with all the other chemical species as its state and local AHL as its input signal. The dynamical system can be seen as a function of the input and the previous state. Multiple dynamical systems can also be seen as a single function, because the function takes a point in space as input and knows which individual system to feed the input to. Since it can be seen as a function, it can readily be plugged into the equation above as the production coefficient - problem solved!
+… solved, but for the ODE solver which fails miserably at such a convoluted, nested system of equations! The alternative that has been successfully implemented is to augment the system of node equations. To the equations produced by the spatial discretization a new set of equations for every bacterium involved is added.
+The bacteria expect a single value for the concentration of AHL in the cytoplasm, but as can be seen in figure 10 to each bacterium correspond 6 mesh nodes. For simplicity, the value of [AHL] that the bacteria see is the mean of those nodes.
+The d[AHL] (change in [AHL]) produced from the bacterial equations also has to be distributed correctly on the mesh nodes. What we want to simulate when distributing the bacterial output is a constant source on the entire cytoplasm. There is a certain complexity in how the finite element method formulates the node equations and the nodes are not all equivalent, so we can’t simply split the d[AHL] into many parts and give one to each node. Instead, we rely on the FEM algorithm to solve the spatial distribution problem for us by assigning to the bacterial geometries a constant production coefficient of 1, then hijack it by multiplying the resulting node increment coefficients by the d[AHL] produced by the bacteria.
+Much is assumed or reverse-engineered in order to arrive at this coupling mechanism. To verify that the model is still on track, we run test simulations with a single bacterium and a small surrounding space. The results should be similar to (but not exactly the same with) the non-diffusive model. Indeed, there is close agreement ( figure 11 ).
+Figure 11:
+A: The spatial equilibrium model for 1 bacterium in a 2.12E-4 nL volume.
+B: Same conditions, but simulated with the diffusive model. A diffusive barrier simulates the cell wall. Good agreement with the equilibrium model.
+C: Diffusive model without the cell wall. Again, quite similar to the case with the wall, but much simpler to scale up. This bacterial model is used in the larger geometries.
+Implementing Growth
+Growth requires adding new bacteria to the geometry, but the finite element method doesn’t accommodate such changes. Consequently, the solution has to be stopped and restarted every time a new bacterium is added. This would be computationally prohibitive.
+Instead, the complete growth curve is precalculated and then quantized adaptively to levels corresponding to adding many rings of bacteria at the same time, possibly adding millions of new bacteria at each growth step ( figure 12 ). The final number of bacteria generally depends on the nutrients provided by the growth medium and, for an agar plate with few added nutrients, is expected to be around $10^{8.9}$ bacteria [ 2 ]. To further mimic the way bacterial colonies grow, once there are enough bacteria the older cells in the center die.
+Bacterial growth constantly dilutes the cytoplasm - a process which heavily affects QS ( figure 3 ). Here, the growth model is implemented in large discrete steps. In each step, the ratio of existing to new bacteria is calculated and a dilution performed on the existing ones, in order to keep the quantity of every chemical species constant during the growth step, apart from the DNA, which cancels its dilution with replication. This discrete dilution event creates minor artifacts on the simulations that manifest as discontinuities on the graphs.
+Figure 12 left: The growth curve (blue) of a bacterial colony on a tiny agar disk (3.4mm across) without the lag phase. The simulation follows the quantized version of the growth curve (red).
+Figure 12 right: Quantized growth curve for a small agar disk 34mm across. Notice the much higher final population. It simulates growth on agar with few added nutrients as described in [ 2 ]. Mean relative quantization error: 4.9%
+Results
+The basic question that we want to answer at this point is if and when will the bacterial colony exhibit QS behavior on an agar plate - faster or later than in a liquid culture with the same number of bacteria? We present 2 simulations that differ in scale. The first is a tiny agar plate measuring 3.4mm across and .551mm in depth, for a volume of 5μL ( figure 13 ). The second is much larger in scope and computational effort: agar in a small petri dish 34mm in diameter and 5.51mm in depth. The larger scope allows direct experimental evaluation of the model, but to make it more computationally friendly the growth happens in a more spread-out fashion than normal and the colony appears to “walk” across the agar.
+Progression of [AHL] dynamics on the tiny agar plate of simulation 1. Left: spatial distribution of [AHL] on the agar cylinder as it evolves in time. Same geometry as on [figure 13a][here] (cylinder axis on the left, rim on the right, surface on top). During the first 6sec (video time), the dynamics are dominated by the colony’s outwards growth. This expansion phase prevents AHL from reaching critical concentrations and delays QS. After the colony growth slows down, the spatial maximum in [AHL] stops moving and the QS transition quickly follows. Right top: total amount of AHL in the agar plate. Right bottom: maximum [AHL] from the left graph at each time step.
+The tiny disk is inoculated with 7e4 bacteria, which gradually grow to a final size of 8.12e6 bacteria over 11 growth steps ( video ). Quorum sensing is indeed triggered early under these conditions, at 11 hours ( figure 14 ).
+The small agar plate (which, despite its name, is the large simulation!) is inoculated with 8.2e4 bacteria that grow over the course of 15 hours to become 5.1e8. They achieve quorum sensing at 20 hours, after filling a 5mL agar disk with 1.6pmol AHL (see video ). This is a huge amount in comparison to the previous simulation.
+Conclusions
+A comparison between the two simulations at 5mL volumes is telling. The growth curve is the same in both by design: same inoculations, same growth rates and same final populations. In the surface growth case however, as AHL diffuses slowly from the bacteria to the rest of the agar plate, it has the chance to achieve higher local concentrations. That’s why quorum sensing is achieved at 20 hours, versus 41 for the spatial equilibrium model.
+This observation has significant repercussions on the applicability of our project. Bacteria that manage to colonize a solid surface seem to have a much higher probability of achieving quorum sensing under conditions of competitive growth, where their total population size will be limited by resource availability, such as in the colon. Of even greater practical importance, it shows that transfections to monolayers of Caco-2 cells in the lab, which we use as a cancer model, by quorum sensing bacteria have a reasonable chance of success.
+The simulations were designed in this way to allow for easy experimental validation. Unfortunately, material shortages prevented the realization of the suggested experiments and the experimental validation of our model is deferred.
+Figure 13 left: The geometry of the first simulation on the tiny agar disk with the bacterial colony fully grown. On the left is the disk’s axis and on the right is the rim. The bacteria sit on the disk’s surface.
+Figure 13 right: Geometry for the second simulation. Notice the much larger agar disk. The large scale difference makes the bacteria invisible at this zooms. Their position can be inferred by the fine mesh around them.
+Figure 14: Quorum sensing is achieved by an E. Coli bacterium, part of a colony growing on a tiny agar plate at 11 hours. This bacterium was created at 3 hours and lived until the end. Because of its central position, it is the first bacterium in the colony to transition into quorum sensing.
+Figure 16: Close look at a bacterium from simulation 2. It is created at 9 hours and the levels of [AHL] around it are rising rapidly, because the colony has just expanded to its area. At 20 hours [DNA.(LuxR.AHL)2] begins to rise rapidly, signifying the quorum sensing transition. It is one of the first bacteria in the colony to transition into QS, thanks to its central position.
+Progression of [AHL] dynamics on the small agar plate of simulation 2. Left: spatial distribution of [AHL] on the agar cylinder as it evolves in time. Same geometry as on [figure 13b][here] (cylinder axis on the left, rim on the right, surface on top). During the first 10sec (video time), the dynamics are dominated by the colony’s outwards growth. This expansion phase prevents AHL from reaching critical concentrations and delays QS. After the colony growth slows down, the spatial maximum in [AHL] stops moving and grows slowly. In this case, there are many more bacteria occupying a much larger area than in simulation 1. At 14sec the quorum sensing transition begins, but the visualization appears quite different than in simulation 1. One reason for this is that the larger area the bacteria occupy produces a phase difference between them, with those that are further away from the [AHL] maximum taking more time to reach QS. The transition is therefore more gradual. After 16sec, most bacteria have transitioned and the rapid increase in AHL production is evident by the sharpening spatial distribution. Right top: total amount of AHL in the agar plate. Right bottom: maximum [AHL] from the left graph at each time step.
+References
+[1] Weber, M. & Buceta, J. (2013). Dynamics of the quorum sensing switch: stochastic and non-stationary effects. BMC Systems Biology 2013, 7:6 [2] Fujikawa, H. & Morozumi, S. (2005). Modeling Surface Growth of Escherichia coli on Agar Plates. APPLIED AND ENVIRONMENTAL MICROBIOLOGY, Dec. 2005, 7920–7926 [3] Trovato, A., Seno, F, Zanardo, M., Alberghini, S., Tondello, A. & Squartini A. (2014). Quorum vs. diffusion sensing: a quantitative analysis of the relevance of absorbing or reflecting boundaries. FEMS Microbiology Letters, Volume 352, Issue 2, 1 March 2014, Pages 198–203 [4] Rosemary, J. R. Is quorum sensing a side effect of diffusion sensing? Trends in Microbiology, Volume 10, Issue 8, Pages 365-370 [5] West, S. A., Winzer, K., Gardner, A., Diggle, S. P. Quorum sensing and the confusion about diffusion. Trends in Microbiology, Volume 20, Issue 12, 2012, Pages 586-594. https://doi.org/10.1016/j.tim.2012.09.004 .
+pANDORRA Design Algorithm
+“If you know yourself and you know your enemy, you shouldn’t fear the result of a thousand battles”-Sun Tzu
+If knowledge is power, then modeling is the key to a successful engineering endeavour. Our modeling of the biophysical characteristics of the classifier circuits that follows in this section is largely based upon the exciting work of research teams led by Professors Z. Xie and Y. Benenson [ 1 , 2 ]. The latter’s newest paper [ 2 ] faces the same questions: it analyzes the modeling process and optimizes the classifier’s logical expression. Standing on their shoulders, we expand upon their work by analyzing architectural variations of the classifier circuits, which add an additional optimization axis.
+Architecture of a cell-type classifier
+pANDORRA is based on a family of layered genetic circuits that aim to biophysically implement logical expressions involving miRNA molecules in 2 basic roles: upregulated or downregulated (on the target cells in respect to the control). The family is characterized by a basic structure emanating from these two roles. The target gene (the system’s output) is controlled by a promoter and RNA interference (RNAi) from the downregulated miRNAs and forms the lower layer of the system. The upper layer comprises target sites for the upregulated miRNAs and an inhibitor for the lower layer.
+This basic architecture can be significantly improved with a double-inversion module for the the upper layer [ 1 ]. It takes the form of a middle layer with a promoter that is activated by the upper layer’s product and in turn produces the inhibitor for the lower layer. This extra part significantly improves the system’s efficiency.
+But how do we define the system’s efficiency and how do we optimize its architecture, out of the many options left open by the previous definitions? And after finding the optimal architecture, how do we choose the optimal miRNA targets to separate particular cell groups? These are the basic questions we set out to answer by modeling the pANDORRA system.
+Modeling classifiers
+The main task of a classifier system, given a group of target and control cells, is to produce large amounts of output when inside a target cell and little output when inside a control cell. Ideally, it should function as a logical function: maximum output expression in all target cells and zero in all controls. We will therefore judge its efficiency by how close it is to the ideal. We define the fold change of a concrete classifier instance as the average output margin between the two groups.
+The circuit’s layered design naturally guides the modeling effort in two paths: estimating each layer’s output and the effects this output has on the next layer. Basic elements of the model therefore would be relationships between the concentrations of the involved regulatory species and the outputs of the regulated elements.
+Take the RNAi mechanism: let Pmax be the unregulated (maximum) output concentration and C* the miRNA concentration that results in a 50% reduction of the output. Then the relationship between the output [P] and the input [miRNA] is:
+[
+P
+]
+=
+P
+m
+a
+x
+1
+1
++
+[
+m
+i
+R
+N
+A
+]
+C
+∗
+Next question: if P is regulated by 2 miRNAs together, how do they interact? Following the same logic as in [ 2 ], we assume that the behave additively. If each miRNA has a Ci* concentration of half repression and n is the number of miRNAs, the cumulative regulation is:
+[
+P
+]
+=
+P
+m
+a
+x
+1
+1
++
+∑
+i
+=
+1
+n
+[
+m
+i
+R
+N
+A
+i
+]
+C
+i
+∗
+If there are multiple target sites for a particular miRNA we can assume that their effect on interference will also be additive, so if there are ri target repeats for miRNAi, the output will be:
+[
+P
+]
+=
+P
+m
+a
+x
+1
+1
++
+∑
+i
+=
+1
+n
+r
+i
+[
+m
+i
+R
+N
+A
+i
+]
+C
+i
+∗
+To simplify the following expressions, we can define the interference on a scale of 0 to 1 based on the above:
+R
+N
+A
+i
+=
+1
+1
++
+∑
+i
+=
+1
+n
+r
+i
+[
+m
+i
+R
+N
+A
+i
+]
+C
+i
+∗
+These observations can provide the output of the classifier’s upper layer. A valid design is not limited to 1 OR gate, therefore the total output (let’s assume the output is rtTA) is the sum of each gate’s output:
+[
+r
+t
+T
+A
+]
+=
+r
+t
+T
+A
+m
+a
+x
+∑
+g
+=
+1
+m
+R
+N
+A
+i
+g
+rtTA is an inducer of the pTRE promoter and its induction can be modelled on a scale of 0 to 1 with the use of the reaction’s dissociation constant Kd as follows:
+A
+=
+r
+t
+T
+A
+K
+d
+r
+t
+T
+A
+The second layer can be regulated in 2 ways: by rtTA through its promoter and by RNA interference, like the other layers. The first regulation is transcriptional, whereas the second post-transcriptional. Let’s assume the outputs of the second layer can be the protein LacI and the miRNA FF4. LacI will be affected by both regulatory mechanisms; in our particular implementation though FF4 will only be affected by the transcriptional regulation due to the FF4 being produced. Their levels would be then:
+[
+L
+a
+c
+I
+]
+=
+[
+L
+a
+c
+I
+]
+m
+a
+x
+A
+(
+r
+t
+T
+A
+)
+R
+N
+A
+i
+(
+up_miR
+)
+[
+L
+a
+c
+I
+]
+=
+[
+L
+a
+c
+I
+]
+m
+a
+x
+A
+(
+r
+t
+T
+A
+)
+The final layer’s output applies the exact same logic:
+[
+O
+u
+t
+p
+u
+t
+]
+=
+[
+O
+u
+t
+p
+u
+t
+]
+m
+a
+x
+R
+N
+A
+i
+(
+FF4,down_miR
+)
+A
+(
+L
+a
+c
+I
+)
+This biophysical model expresses an input-output relationship between the miR inputs and the classifier output. Given an miRNA expression dataset, we can calculate the expected output for each sample and evaluate the performance of a concrete classifier.
+Classifier design process
+Circuit optimization algorithm
+pANDORRA’s goal is to discriminate 2 groups of cells. If there is an miRNA expression dataset for these cells, we need to find the optimal circuit inputs that maximize output in cancer cells and minimize it in control cells. Thanks to the evaluation function derived above, if we have a way to generate candidate circuits, we can employ a search method to optimize the logical circuit.
+The search space is huge and looking at every possible combination of circuit inputs is impractical; the search is guided instead by a genetic algorithm. The search begins at the simplest circuits: those with a single up- or downregulated miRNA. At each search step, the pool of candidate circuits is evaluated and only the top best-performing are kept. These are then used as a seed to propose new circuits by randomly recombining them together or adding to them single miRNAs. This process is repeated until the best-performing circuit isn’t dethroned for enough steps [ 2 ]. The parallels between this process and natural selection and genetic recombination are obvious, justifying the name “genetic algorithm”.
+Optimizing the logical circuit therefore requires selecting an architecture first (to have a concrete evaluation function). However, if there are many candidate architectures it can’t generally be known a priori which one will perform best on a particular dataset. Different architectures can be sensitive to different levels of miRNA input - imagine using a particularly strong repressor in the middle layer: low concentrations would be sufficient to completely knock out the output. The only way this classifier would produce output is if the levels of the upregulated miRNAs are exceedingly high on an absolute scale. This architecture wouldn’t work well to recognize cancer cells whose upregulated miRNAs are expressed in lower levels. Therefore, deciding on an architecture is also an optimization problem that should be solved for a specific dataset.
+Contrary to the huge search space in circuit optimization, the biologically realizable architectures are few and each can be examined closely. To optimize across the architectural axis then, one need only find the best classifier circuit given the current architecture’s evaluation function. In the following section, we examine the various architectures in more detail.
+Classifier Architectures
+The first proposed architecture is straightforward: it accommodates upregulated miR on the top layer, downregulated miR directly on the output layer and couples the upregulated ones with 2 parallel mechanisms in the middle layer: transcriptional repression of the output layer by LacI and post-transcriptional inhibition by FF4.
+The second architecture removes the parallel inhibition mechanism by FF4 and loosens the coupling of low levels of upregulated miR to the output. At the same time, by adding upregulated miR targets at the middle layer, it increases the coupling of high levels of upregulated miR to the output.
+By removing upregulated miR targets on the upper layer, the third architecture allows greater LacI leakage when the upregulated miR are high.
+The fourth architecture is very similar to the third, only simpler to implement.
+The fifth architecture again combines the complementary couplings provided by LacI and FF4.
+By reestablishing the upper layer, we get architecture six.
+And by removing LacI we get architecture seven.
+Transcriptional vs Post-transcriptional Repression
+The basic variable element among these architectures is the method of double inversion. The two middle layer coupling mechanisms we explore, LacI and FF4, are used individually or combined. To assess the significance of this decision, we explore the input-output relationship for the corresponding architectures by scanning a pair of input upregulated miRNAs connected together in the same OR gate along the biologically plausible range they can cover.
+There is stark difference in their behaviour. LacI maps low counts of both the miRNAs to relatively low output levels (OUTmax = 10000) and high counts of either on to high output levels, thus implementing the OR gate. Its transition occurs very rapidly at relatively low miRNA counts, while its on/off ratio is 20. FF4 on the other hand is even more effective at mapping low levels of both miRNA to low output levels and high levels of both to high output, but maps high levels of only one of them to middle output, therefore implementing an arithmetic AND gate more than a logical OR gate. Its transition is much more gradual than LacI’s, leaving a large zone of uncertain output, while its overall on/off ratio is 15. It also appears that the FF4’s presence masks the effect of LacI.
+AND gates are implemented more successfully, at least for upregulated miRNAs. Although the overall on/off ratio remains the same, the output is more consistent with a logical expression when one miRNA is high and the other is low.
+Overall this analysis shows that LacI is more appropriate to implement logic gates. However, it is not a silver bullet. Its transition occurs at a point that might be inappropriate for some datasets, leaving even the miRNAs that are “low” on the positive side of the output.
+miRNA Target Tandem Repeats
+An interesting possibility is the adaptation of the number of target sites where each miRNA can attach to cause interference. It has been shown by [3] that there is little interaction between multiple miRNA and RISC complexes attaching next to each other, allowing us to model the overall dynamics additively. This assumption is challenged when there are low copy numbers of the participating molecules, but let’s follow it as a working hypothesis. Additive RNAi dynamics implies that, given an interference strength x by some miRNA for 1 repeat of the target site, if there are multiple repeats the interference becomes n*x.
+To examine the effect of target site repeats, we’ll use an example dataset and circuit on the previous architectures.
+Our Caco-2 and healthy dataset was obtained from the work by Cummins et al., 2006 [ 4 ]. The miRNA expression data regarding the HEK-293 and A549 cell lines were retrieved from the mammalian microRNA expression atlas [ 5 ]
+Architecture & Circuit Optimization
+We use the methods and insights derived so far to implement classifiers for our lab experiments. The experimental goal is to prove the ability of an optimized classifier to target cells from the Caco-2 cell line versus a healthy tissue control. Due to practical considerations, the controls on the actual experiments were the HEK-293 and A549 cell lines.
+Running the circuit optimization algorithm on a dataset comprising Caco-2 and healthy samples [ 4 ] for the various architectures suggests the following circuits for each:
+- where “cMargin” is the logarithm of the fold change
+Apparently the best architectures are indeed the ones that use LacI in the middle layer and don’t use FF4 (which overrules LacI’s influence).
+The LacI architectures are optimal with a very small number of inputs. The others have more inputs, but due to the way the optimization works, many of those inputs might be of only marginal significance. It is then in our best interest from a designer's perspective to attempt to simplify the proposed circuits - a process called “pruning”. Taking cues from LacI, we attempt to prune the other architectures to the same small circuit, which is a subset of all the larger circuits.
+Experiments are expensive and models are useful lies; acknowledging this statement, it is also useful to put the results of our model in a broader perspective provided by the literature and increase our chances of a successful experiment. miR-21 was included due to exceptionally high expression level in most cance cell lines but not in the majority of healty and immortalized tissues [ 2 ]. While examining miR-373, we notice it shares the same seed sequence with miR-372. The optimization algorithm takes this similarity into account at a preprocessing step, adding the expressions of miR-372 and miR-373 together and reporting only miR-372.
+Putting all these elements together leads us to propose the following circuit for the wet lab experiments:
+Architecture: 2 (LacI + miR targets at middle layer)
+Circuit: hsa-mir-372 OR hsa-mir-373 AND hsa-mir-21 AND ~hsa-mir-143 AND ~hsa-mir-145
+Re-evaluation of the proposed circuit
+Although we’ve determined architecture 2 to be optimal, we reevaluate the proposed circuit across all the architectures. The resulting logarithm of the fold change is:
+arch1
+arch2
+arch3
+arch4
+arch5
+arch6
+arch7
+1.45
+2.69
+2.64
+2.65
+0.90
+1.67
+0.77
+Architecture 2 retains the same high fold change with the proposed circuit.
+Implementation problems and fallback
+We designed experiments to implement this final classifier circuit in the lab. The promoter bearing LacO operator sites, CAGop, was ordered to be synthesized, but unfortunately synthesis proved very difficult due to the high GC content and the construct arrived at the 31st of October. Necessity forced us to fall back to an alternate architecture for which we already had the Parts: architecture 7 (FF4). Thanks to the way we had structured the circuit elements, we also had some leeway in choosing which miRNA targets to actually include: miR-21, miR-372 OR miR-372, or both. We reevaluate these 3 options for architecture 7 and also compute the efficiency of the circuits on datasets with HEK-293 and A549 as controls, apart from healthy tissue samples.
+Expected fold change logarithm for healthy samples:
+mir21 & ~mir143 & ~mir145
+0.835
+mir372|mir373 & ~mir143 & ~mir145
+0.881
+mir21 & mir372|mir373 & ~mir143 & ~mir145
+0.766
+Expected fold change logarithm for the HEK-293 cell line:
+mir21 & ~mir143 & ~mir145
+1.572
+mir372|mir373 & ~mir143 & ~mir145
+1.038
+mir21 & mir372|mir373 & ~mir143 & ~mir145
+1.054
+Expected fold change logarithm for the A549 cell line:
+mir21 & ~mir143 & ~mir145
+0.620
+mir372|mir373 & ~mir143 & ~mir145
+1.138
+mir21 & mir372|mir373 & ~mir143 & ~mir145
+1.068
+References
+[1] Xie, Z., Wroblewska, L., Prochazka, L., Weiss, R., & Benenson, Y. (2011). Multi-input RNAi-based logic circuit for identification of specific cancer cells. Science, 333(6047), 1307-1311.
+[2] Mohammadi, P., Beerenwinkel, N., & Benenson, Y. (2017). Automated Design of Synthetic Cell Classifier Circuits Using a Two-Step Optimization Strategy. Cell Systems, 4(2), 207-218.
+[3] Schmitz, U., Lai, X., Winter, F., Wolkenhauer, O., Vera, J., & Gupta, S. K. (2014). Cooperative gene regulation by microRNA pairs and their identification using a computational workflow. Nucleic acids research, 42(12), 7539-7552.
+[4] Cummins, J. M., He, Y., Leary, R. J., Pagliarini, R., Diaz, L. A., Sjoblom, T., ... & Raymond, C. K. (2006). The colorectal microRNAome. Proceedings of the National Academy of Sciences of the United States of America, 103(10), 3687-3692.
+[5] Landgraf, P., Rusu, M., Sheridan, R., Sewer, A., Iovino, N., Aravin, A., ... & Lin, C. (2007). A mammalian microRNA expression atlas based on small RNA library sequencing. Cell, 129(7), 1401-1414.
+Protein Structure Prediction
+Why do we need to predict the tertiary structure of proteins? - MOTIVATION
+Proteins consist of amino acid chains that fold in 3-dimensional space in ways we do not yet completely comprehend. Each protein chain spans from a handful of amino acids to more than a thousand residues, rendering the problem of determining the relationship between primary and tertiary structure immensely complex .
+In our project, we employed a mutated fimH modifiedby adding the RPMrel peptide in order to achieve selective adhesion of our E. coli strains on cancer cells. In particular, we the fimH sequence was altered by substituting 1 (Proline to Glutamine) and inserting 28 new residues (RPMrel, SpyTag, HisTag). We would like to explore how these changes affect the 3-dimensional structure of the fimH protein.
+To this end, we embarked on a journey to create an artificial neural network model that, given a protein's primary structure, can yield sufficient information to reconstruct the full 3-dimensional structure.
+The idea is that our model can provide insight as to how the tertiary structure changes after the modifications, in that we can compare the native structure of the protein with the structure of the protein's modified sequence.
+Moreover, such a model would be invaluable as it could predict structures de novo for proteins for which we do not yet have structural information. Such a protein is Apoptin, the toxin we used as our classifier's output in order to induce selective cell death.
+Therefore, our motivation is 2-fold:
+to study how a protein's structure changes after altering its primary sequence profile (in our case FimH)
+to predict the de novo tertiary protein structures based solely on primary structure information (in our case Apoptin)
+What we propose is an end-to-end pipeline that solely requires the amino acid sequence of the protein (primary structure) as input, predicts its corresponding secondary structure & contact map and finally recreates and visualizes the full 3-dimensional tertiary structure.
+From Amino acids to 0s and 1s - ENCODING PROTEINS
+In order to unravel the protein sequence-to-structure mystery one inevitably needs to summon the power of neural networks due to the aforementioned complexity and data volume. To fully exploit the generalization power of neural networks, we need to design a concise yet unabridged representation for our data, the protein sequences and their corresponding tertiary structures.
+To make use of the primary and secondary structure sequence information we map the one-letter Amino acid codes to integers in range 1-20 and we use 0 to signify unknown encountered residues. We have now a vocabulary of 21 words that we project to a high-dimensional vector through the use of word embeddings [ 1 ], a technique widely used in natural language processing. Similarly, regarding the secondary structure, we have a vocabulary of 8 words that is mapped to high-dimensional vectors through embedding.
+A common representation of a protein's tertiary structure is the contact map. This N x N matrix (N the number of residues in the chain) encompasses all the required information to reconstruct the 3-dimensional structure. Every (x,y) point on the map is interpreted as a contact probability between the residues x and y.
+The fimH contact map with distance cutoff 9 Å recreated from chain A of PDB id 2VCO
+We can see that the majority of contacts span around the diagonal and that is only natural as it means that residues which are at a closer distance have a higher probability of forming a contact than distant ones. In general, secondary structures form patterns on the contact map, e.g. helices are adjacent to the diagonal, and provide a foundation for the prediction of the most difficult long-range contacts. That being said, we first need to obtain information about the secondary structure and subsequently use that to assist in contact prediction.
+Since, we have access to ground truth for every protein sequence in our dataset we can employ supervised learning approaches. Secondary structure prediction is a classification problem of 8 classes, where we need to predict the secondary structure class of every residue, while providing context information for residues of the same sequence. Contact map prediction can be interpreted as a regression problem, where one needs to predict the contact probabilities for every pair of residues in the chain.
+Gaining local structural insight - SECONDARY STRUCTURE PREDICTION MODEL
+The first step, given the protein's primary structure is to make an educated guess about its secondary structure. In 2017, we don't even need to do that. We can have machine learning models do that for us.
+Although secondary structure provides valuable information for the local structural entities along the chain, it is not enough on its own to produce the contact map. Therefore, we can interpret this step, in terms of machine learning terminology, as an internal representation of the input that is passed on deeper in the network to assist contact prediction. However, since secondary structure has a semantic meaning of its own in the eyes of biologists, we treat the two models separately as it is standard practice in the literature.
+Our Secondary Structure Predictor consists of a wide bidirectional recurrent layer, followed by a number of fully connected layers and the output layer. The model trains on primary sequence samples and predicts the secondary structure class for every Amino acid.
+In a nutshell, the sequence passes through the recurrent layer and the model “remembers” what has already happened in the sequence -in terms of secondary structures- to provide context for every subsequent residue that it sees. The bigger the size of the recurrent layer the greater the memory capacity of the network and, in turn, its predictive power.
+The additional layers that follow progressively reduce the representation dimension until we are left with a 1-hot vector (1 x 8) that indicates the most prevalent class choice. In the end, the full predicted sequence corresponds to all secondary structure segments.
+Top Row: primary structure sequence of one-letter Amino acid codes
+Bottom Row: secondary structure sequence of one-letter class of the 8 classes
+Inferring the contacts - CONTACT MAP PREDICTION MODEL
+Our end goal is to predict contacts between residues in a pairwise fashion. For a sequence of N Amino acids we want to derive a N x N map, where each position shows the probability of the two residues being in contact.
+At first, we need to build a N x N map, hereafter referred to as “tensor”, that will serve as the input layer to our network and will be updated after each epoch as the network learns to solve the regression task. The tensor captures the semantic relationship between residues and constantly changes as training progresses.
+In the previous section, we mentioned how we use embeddings to map our single-letter Amino acid codes to high-dimensional vectors. That is, for a primary structure sequence of N residues, we end up with a N x m matrix, where m is the size of the embedding.
+In order to exploit the additional information we have for every Amino acid about its secondary structure classification, we employ, once again, word embeddings of size k that we stack to our previous m-dimensional vector. Now, every Amino acid is encoded as a concatenation of the two embeddings with a resulting vector of size m + k.
+The secondary structure information may be incorporated directly as a result of our Secondary Structure Predictor model or - for proteins with known structures- can be provided directly as additional input. However, the latter can only be of use for model evaluation as, in practice, we are more interested to predict structures de novo.
+The next step is to create a representation for every pair of Amino acids in order to create the full N x N tensor. For a pair (x,y) of Amino acids we concatenate their respective embeddings thus creating a new vector of size 2 * (m + k). As an alternative, we can perform an element-wise operation (e.g. multiplication) between the two distinct residue embeddings and maintain the resulting pair embedding dimension to m + k.
+Now that we have constructed our tensor, we add several 2-dimensional convolutional layers to scan every Amino acid pair on our map for contacts. When training is complete, the resulting map is compared to the native contact map by specifying a probability threshold that distinguishes contacts from non-contacts.
+Recreating proteins in three dimensions - TERTIARY STRUCTURE RECONSTRUCTION
+The final step of the process is to retrieve the 3d structure from the predicted contact map. To achieve that, we feed the contact map to FT-COMAR ], a tool that is able to recreate the tertiary structure by reading a contact map with values 1 (contact), 0 (no contact), -1 (uncertain) [ 2 ]. In our implementation, a contact is declared uncertain if the predicted probability is between 0.3 and 0.6. The resulting 3-dimensional information is written to a file that we can load to iCin3D to visualize and interact with the reconstructed structure.
+What have we learned? - PRELIMINARY RESULTS
+Due to limited access to computational resources, we were not able to train models of adequate performance to assess the changes in FimH tertiary structure or visualize the estimated structure of Apoptin in a reliable way. Although the models' performance were monotonously improving we could not reach convergence before the wiki freeze, as we were restricted by shallow architectures and small mini-batch sizes.
+For example, for the Secondary Structure Predictor we obtained a 27% Q8 accuracy using a relatively shallow 2-layer architecture. Q8 accuracy measures the percent of residues for which 8-state secondary structure is correctly predicted. For the Contact Map Predictor, we set a probability threshold of 0.45 to determine whether two residues are in contact and the model correctly predicted 43% of all contacts.
+We will continue to work towards improving the model performances as well as attempt different approaches to solve the contact map.
+However, for the sake of completeness, we employed a publicly available tool that offers similar functionality but different approach. RaptorX-Contact-Predict is a web server tool that predicts the contact map and provides direct visualization of the resulting tertiary structure through JSmol.
+Contact Map comparison of fimH wild type and our modified fimH. Black dots signify common contacts that exist in both structures, green dots the unique contacts in wild type fimH and the magenta dots the unique contacts that exist in our modified fimH sequence. The locations where the RPMrel and tags were inserted are evident in the contact map in places where there exist only magenta dots along the diagonal.
+The top left structure corresponds to wild type fimH, the bottom left to our modified fimH. To the right, we see the two structures superimposed, with wild type fimH shown in grey.
+A Deep Dive into Specifics - IMPLEMENTATION DETAILS
+Data
+Our dataset is a set of 10932 proteins from the PDB database, that were selected based on certain criteria using the PISCES server. Specifically, the percentage identity cutoff is 60%, the resolution cutoff is 1.8 angstroms, and the R-factor cutoff is 0.25.
+We observed that 9754 out of 10932 proteins have some missing residues, for which there is no structural information available. In all such cases, the missing residues were discarded and the sequence truncated. 21 proteins were excluded from the dataset as there was no available secondary structure information whatsoever.
+We split the dataset of 10911 remaining proteins, into 8728 for training and 2183 for validation. In addition, we tested our Secondary Structure Predictor to the benchmark dataset CB513 in order to compare our approach with existing methods.
+Labels
+For the Secondary Structure Predictor the required label for every Amino acid in the sequence is the corresponding secondary structure information. Every Amino acid belongs to one of the 8 classes [ 3 ]. Hence, every protein sequence is paired with its label, a sequence of equal length consisting of the class id for every Amino acid.
+To derive secondary structure labels for our dataset, we employed STRIDE, an algorithm designed for the assignment of protein secondary structure elements given the atomic coordinates of the protein, as defined by X-ray crystallography, protein NMR, or another protein structure determination method [ 4 ].
+For the Contact Map Predictor the required label is the native contact map. To obtain the contact map we need the structural information provided in the PDB file of every protein sample, that is the atomic coordinates of every Amino acid. The contact map is constructed by computing the Cb distance for every pair of Amino acids in the chain and ,subsequently, if that distance satisfies a specified threshold [ 5 ] the pair is considered to be in contact.
+To extract the native contact map for every PDB file, we implemented a group of helper functions that allow for the generation of contact maps of different distance cutoffs and distance types, namely Ca, Cb and Ca + Cb.
+Model Architecture
+The Secondary Structure Predictor model consists of an embedding layer that maps the one hot Amino acid representations to 100-dimensional vectors, a bidirectional LSTM layer of 180 cells and a fully connected layer of 140 neurons with linear activation function. Finally, we have the output softmax layer of 8 neurons that points to the most probable class choice. The training loss is calculated according to the formula of categorical cross entropy.
+The Contact Map Predictor model has a tensor input that is feeded to 6 2D-convolutional layers. After each convolutional layer we enforce batch normalization to prevent exploding gradients. The output layer that computes the probability of contact has a linear activation function.
+Frameworks
+The models were developed in Python using the Theano and Keras frameworks.
+References
+[1] Mikolov, T., Sutskever, I., Chen, K., Corrado, G. S., & Dean, J. (2013). Distributed representations of words and phrases and their compositionality. In Advances in neural information processing systems (pp. 3111-3119). [2] Vassura, M., Margara, L., Di Lena, P., Medri, F., Fariselli, P., & Casadio, R. (2008). FT-COMAR: fault tolerant three-dimensional structure reconstruction from protein contact maps. Bioinformatics, 24(10), 1313-1315. [3] Kabsch, W., & Sander, C. (1983). Dictionary of protein secondary structure: pattern recognition of hydrogen‐bonded and geometrical features. Biopolymers, 22(12), 2577-2637. [4] Frishman, D., & Argos, P. (1995). Knowledge‐based protein secondary structure assignment. Proteins: Structure, Function, and Bioinformatics, 23(4), 566-579. [5] Duarte, J. M., Sathyapriya, R., Stehr, H., Filippis, I., & Lappe, M. (2010). Optimal contact definition for reconstruction of contact maps. BMC bioinformatics, 11(1), 283.
+CFD – Large Intestine (Colon) Model
+Overview – Goals
+Let's imagine that the classifier plasmids are ready to be used in vivo, thus, in clinical trials.
+How can we predict the path, which the genetically engineered bacteria will follow inside the large intestine?
+How can we be certain that our bacteria will eventually reach the area around the cancerous tissue?
+Will our bacteria attach to the carcinoma or will the Colon Chyme wash them out?
+The purpose of our Colon Fluid Dynamics model is to give an answer to those questions and to further explore the unknown and chaotic world of the human large intestine.
+The Large Intestine
+In our project, the RNAi-based apoptotic circuit is to be eventually distributed via the gastrointestinal system towards the tumor inside the large intestine. Thus, it is essential that we examined carefully the properties of the colon's environment.
+The large intestine is the last section of the gastrointestinal tract that is responsible for absorbing water and nutrients and concurrently converting digested food into feces. (Even though the length of the colon is considerably smaller than the small intestine's, the thickness of the walls as well as its diameter are bigger.) The length of the colon approaches the mean value of 1.5m and 6-7cm in diameter in most humans.
+The Chyme (intestinal fluid containing the digested food) is transported from the small intestine towards the large intestine via the ileocecal sphincter. Chyme “settles” in the cecum, after its entrance into the large bowel, where it is mixed with bacteria which naturally reside in it constituting the gut's flora and contribute to much of the large intestine's functionality. The chyme is transferred consequently from one haustra to another by slow peristaltic waves. Those waves can be either mass movements, which are very slow and widespread movements happening a few times throughout the day and associated with food consumption by means of the gastrocolic and duodenocolic reflex or segmentation movements that mostly serve to chop and mix the intestinal content.
+Peristalsis is a radially symmetrical contraction and relaxation of muscles that propagates as a wave down the tube (in our case the intestinal tube), in an anterograde direction. In the case of the human intestinal tract, smooth muscle tissue contracts in sequence to produce a peristaltic wave, which propels fecal aggregates along the tract. This is the main kind of movement that will be taken into account in our model. More technical details on the physical model of peristalsis are presented in the Human Colon Fluid Dynamics section of our model.
+The large intestine can be considered a mechanical propulsion system implying that one should determine its elastic and viscous properties before proceeding with the model.
+Some primitive tensile properties of the human large intestine are the maximal stress and destructive strain, valued at 0.9 MPa and 180% respectively[ 1 ]. In addition, to gauge the elastic properties of the intestinal wall one needs to determine the elastic modulus (Young's modulus) as well as the Poisson Ratio.
+Young's modulus (E) is a numerical constant that describes the elastic properties of an elastic material undergoing tension or compression unidirectionally and functions as ameasure of the material's capacity to withstand alterations in its shape. The mathematical formula describing this physical entity is the following:
+\[E = \frac{{stress}}{{strain}} = \frac{{F{L_0}}}{{A({L_n} - {L_0})}}\]
+The physical units of E in the metric system are Newtons per square meter (N/m2).
+Poisson's Ratio (σ) is the ratio of transverse contraction strain to longitudinal extension strain in the direction of the stretching force applied on the material's surface. The large intestinal tissue is commonly considered as soft tissue and the mathematical formula describing its Poisson's ratio is the following:
+\[\sigma  =  - \frac{{d{\varepsilon _{trans}}}}{{d{\varepsilon _{axial}}}}\]
+Those values exist in the literature; as a mean value across all locations of the colon (distal, medial and proximal) as well as in every possible orientation (circumferental and longtitudinal) for the Elastic Modulus equal to 5.18 MPa and as a commonly accepted value of 0.5 for incompressible materials for soft tissue, such as the colon.[ 2 , 3 ]
+Human Colon Fluid Dynamics
+Human Colon Fluid Dynamics
+Our genetically engineered bacteria are supposed to navigate towards the cancerous tissue inside the large intestine via the gastrointestinal tract's chyme. As mentioned before, chyme is a fluid consisting of partly digested food flowing through the digestive tract. Thus, in order to determine the bacterial flow characteristics, a fluid dynamics analysis is mandatory.
+GEOMETRY
+Colon cancer constitutes one of the most commonly diagnosed cancers worldwide, thus one could easily consider the importance of determining its morphology. More often than not, colorectal cancer emerges as a malignant transition of a polyp, therefore one could assume that they share their macroscopic geometry, particularly in the early stages.
+In our Colon Cancer CFD model, we assumed that the polyp, which evolved to cancer, is found in the proximal ascending colon of the large intestine as it is one of the most common colon regions where carcinomas are found (together with the Sigmoid Colon). Thus, the geometry of our model represents the caecum and a major part of the ascending colon. The CAD file for the geometry was designed with the “Autodesk – Inventor Professional” software.
+It contains 2D identical structures which were then revolved into 3D objects and unified as an assembly so that they form a 3D solid structure.  The round surface on the left of the solid represents the fluid inlet, thus it could be considered as the final part of the caecum
+region close to the ileocecal sphincter. After the inlet, one could see the characteristic “curved cylindrical” shapes which represent the intestinal haustra. On the upper right side of the image is the fluid outlet which could be considered as the section close to the hepatic flexure which then continues to the transverse colon.
+After the construction of the outer intestinal geometry, the geometry of the cancerous polyp was added to the structure. By adding a 2D sketch on a working plane parallel to one of the haustra and by constructing a mushroom-like shaped solid, we were able to design the tumor inside the colon.
+The tumor is the blue object shown on the diagram. The solid which we created is very similar to the anatomical morphology of a human polyp.
+FLUID DYNAMICS GOVERNING EQUATIONS
+In this section we examine the physical laws behind the flow of the gastrointestinal fluids.
+The basic differential equations that govern the flow of fluids are the Navier – Stokes equations and the continuity equation. The mathematical form of those equations is as follows:
+\[\rho \left( {\frac{{\partial {\bf{V}}}}{{\partial t}} + {\bf{V}} \cdot \nabla {\bf{V}}} \right) =  - \nabla p + \rho {\bf{g}} + \nabla  \cdot \left( {\mu (\nabla {\bf{V}} + {{(\nabla {\bf{V}})}^T})} \right) - \frac{2}{3}\mu (\nabla  \cdot {\bf{V}}){\bf{I}})\] \[\rho \nabla  \cdot {\bf{V}} = 0\]
+where ρ (rho) stands for fluid density, V is the velocity vector of the fluid which produces a velocity field and μ (mu) stands for dynamic viscosity of the fluid. Let's analyze further each term in the equations:
+$\rho \left( {\frac{{\partial {\bf{V}}}}{{\partial t}} + {\bf{V}} \cdot \nabla {\bf{V}}} \right)$: This term represents all the inertial forces.
+$ - \nabla p$: This term all the pressure forces.
+$\nabla  \cdot \left( {\mu \left( {\nabla {\bf{V}} + {{(\nabla {\bf{V}})}^T}} \right) - \frac{2}{3}\mu (\nabla  \cdot {\bf{V}}){\bf{I}}} \right)$: This term all the viscous forces.
+$\rho {\bf{g}}$: This term represents the external gravitational force of weight.
+All these terms combined together, comprise the well-known Navier-Stokes which represent the conservation of momentum. The continuity equation for incompressible fluids represents the conservation of mass in the system. Another way of writing the Navier – Stokes equations for incompressible fluids is the following one:
+\[\rho \left( {\frac{{\partial {\bf{V}}}}{{\partial t}} + {\bf{V}} \cdot \nabla {\bf{V}}} \right) =  - \nabla p + \rho {\bf{g}} + \mu {\nabla ^2}{\bf{V}}\]
+These equations generally hold for incompressible Newtonian fluids. In the case of fecal matter, we consider the fluid to be Newtonian as it is composed mainly of liquid water (close to 90%) while inside the caecum and ascending colon and because the relationship between the viscous stresses and the local strain rate is linear.
+Once we know the velocity field V as well as the pressure p in every spatial point of our geometry, we can determine the stress tensor, which in mathematical terms stands as follows:
+\[{\bf{\sigma }} =  - p{\bf{I}} + \eta [\nabla {\bf{V}} + {(\nabla {\bf{V}})^T}]\]
+From the stress tensor one could determine the values of two other important fluid mechanical quantities, the hydrodynamic force and the hydrodynamic torque, which are expressed mathematically as follows:
+Hydrodynamic Force: \(F(t) = \iint\limits_S({{\bf{\sigma }} \cdot {\bf{n}}}) dS\)
+Hydrodynamic Torque: $$L(t) = \iint {{\bf{x}} \times ({\bf{\sigma }} \cdot {\bf{n}})dS}$$
+These two integrals are calculated on the surface S and x stands for the positions on that surface.
+We should refer to a common dimensionless group in fluid dynamics that we used in our model. The ratio of inertial forces to viscous forces, Reynold's number (Re), is one of the most important dimensionless groups in fluid dynamics. The mathematical representation of Re is the following one:
+\[{\mathop{\rm Re}\nolimits}  = \frac{{\rho Vl}}{\mu }\]
+where ρ is the fluid density, V the fluid velocity, l the characteristic length (characteristic area in 3D objects) and μ the dynamic viscosity. The Reynold's number could be used as an indicator in order to determine whether a specific kind of fluid motion is laminar or turbulent of even transitional. In our case, the Reynold's number has a very low value equal to 0.00003 and thus, the viscous effects dominate the fluid. The reason why Reynold's number takes such a low value is that if we zoomed in the fluid we could see bacteria swimming at the same velocity as the fluid velocity field. Assuming that the size of a bacterium is about 10-6m, their swimming velocity is 30x10-6 m/s and the density of the fluid in which the bacteria swim is 1000 kg/m3 and the dynamic viscosity is around 0.001 Pa.s, the Reynold's number turns out to be equal to 1x10-5.
+Life at low Reynolds numbers
+Life at low Reynold's numbers: In environments such as a fluid with a very low Reynold's number, the particles which “live” inside the fluid are considered “swimmers” as they deform their surface to sustain their movement. In our case, the E. coli bacteria, which constitute an important part of the gut's flora, have helical flagella to help them with their locomotion.
+If a bacterium suddenly stops deforming its body, it will become a “victim” of the inertial forces of the fluid and thus, it will decelerate. At low Reynold's numbers, the drag force acting on the bacterium takes the form of viscous forces, $f_{drag} \sim \eta UL$ , and the bacterium can reach a distance of about 0.1 nm before stopping its movement. In contrast, at high Reynold numbers the distance is longer and thus, Re at low values can be interpreted as a non-dimensional coasting distance.
+One could describe the locomotion of a bacterium in low Re as a function of the swimming gait ${{\bf{u}}_s}(t)$(velocity field on the body surface). At every instant, it can be assumed that the body is solid with unknown velocity ${\bf{U}}(t)$ and rotation rate ${\bf{\Omega }}(t)$. Thus, the instantaneous velocity on the body surface is ${\bf{u}} = {\bf{U}} + {\bf{\Omega }} \times {\bf{x}} + {{\bf{u}}_s}$. To calculate in every time step the values of ${\bf{U}}(t)$ and ${\bf{\Omega }}(t)$, one needs to determine both the velocity and stress fields in the problem in order to utilize the following integral:
+$${\bf{\hat F}} \cdot U + {\bf{\hat L}} \cdot \Omega  =  - \iint_{S(t)} {{u_s} \cdot {\bf{\hat \sigma }} \cdot ndS}$$
+Assuming that the swimmer is a bacterium with filament, what makes its movement in low Re possible is mainly the existence of drag forces perpendicular to the motion of the filament. The propulsive force generated along the filament (length L and deformation amplitude y(x,t)) is given by:
+$${{\bf{F}}_{prop}} \approx \left( {{\xi _ \bot } - {\xi _{||}}} \right)\int_0^L {\left( {\frac{{\partial y}}{{\partial t}}\frac{{\partial y}}{{\partial x}}} \right)dx{e_x}} $$
+This equation is a consequence of Purcell's Scallop Theorem and is derived for Re -> 0[ 4 ].
+MESHING & NUMERICAL SIMULATION
+The software for the model's numerical simulations is Comsol Multiphysics (v. 5.0) thus, the numerical method utilized is Finite Element Method (FEM).
+The number of physical problems that can be solved analytically is very small compared to all the real world physical systems that can be solved only by approximations. One way to find a solution to a complex physical problem such as fluid flow in the human large intestine is to utilize discretization methods that lead to numerical solutions. An example of space discretization method is the Finite Element Method which considers an analytical function as a linear combination of basis functions.
+Comsol Multiphysics uses this method in order to compute the numerical solutions of fap in every single node of the space discretization. However, in order for such calculations to be possible one needs to discretize the problem geometry into nodes and elements. The grid that is being produced by the software user is called a “Mesh” and the shape of its elements can vary. In our model, the tetrahedron mesh was utilized, which is the 3D representation of the 2D triangle mesh. Although the meshing was implemented by the software itself by using “physics-based” mesh, the discretization method was tetrahedral as it is easy and quick to create but it also creates an unstructured grid which in our case is helpful as there are domain regions with large difference in the required scales. For instance, in the proximity of the tumor we needed a finer meshing as the numerical solutions would converge to more accurate values that way.
+The mesh generated by Comsol Multiphysics is a physics-controlled mesh with finer elements. The tetrahedral space discretization is visible on the mesh plot. We present here two mesh plots; the first shows the tetrahedral meshing of the intestinal geometry and the second one depicts the interior region where the tumor meshing is visible.
+Initial Parameters & Boundary Conditions
+In CFD models one needs to determine the initial values of the parameters as well as the boundary conditions of the problem in order to get an accurate result from the solver.
+The normal velocity of Chyme inside the small intestine is below 1 cm/s and inside the large intestine it's even slower. Thus, we assumed that a logical value for the inlet normal velocity is 0.5 cm/s. The outlet boundary condition is pressure and its value is 101.16 kPa, close to 1 atm [ 5 ].
+The intestinal “tube” in our geometry is considered to be a no-slip wall in our study which implies that the velocity of the fluid particles close to the wall will tend to zero. The tumor region is a no-slip interior wall.
+Results
+The velocity field of the fluid flow inside the large intestine is quite complex, when peristalsis occurs, as the intestinal walls contract in a periodical manner in order to forward the colon contents towards the rectum where they are being secreted. However, that kind of study is beyond the scope of our model. In our model the inlet velocity is a consequence of the contraction of the caecum but we assume that the time scale of the peristalsis is bigger than the fluid movement's; thus, no peristaltic waves occur throughout our model and the fluid is driven by its inlet velocity and a pressure outlet which is close to 1 atm.
+Also, viscosity is a rather important factor when it comes to fluid flow. The intestinal fluid, due to nutrients and water absorption, doesn't possess a constant viscosity value; although the site of absorption and phase change of Chyme is the Transverse Colon and not the Caecum and Ascending Colon, the digested food determines to a high degree the success of nutrients and water absorption. Thus, we considered essential to examine the fluid flow under different dynamic viscosity values.
+Velocity Field – Dynamic Viscosity μ=0.6913 mPa∙s
+The dynamic viscosity in this section is the value of Water Dynamic Viscosity at T = 37oC. The following diagram shows the velocity field distribution inside the colon geometry.
+Velocity Field – Dynamic Viscosity μ=0.01 Pa∙s
+The following diagram shows the velocity field distribution inside the colon geometry.
+\[\mathop {\lim }\limits_{x \to \infty } x\]
+Velocity Field – Dynamic Viscosity μ=1 Pa∙s
+The dynamic viscosity in this section is the value of Water Dynamic Viscosity at T = 37oC. The following diagram shows the velocity field distribution inside the colon geometry.
+VELOCITY FIELD MAGNITUDE – TUMOR REGION
+In these diagrams, the magnitude of the fluid's velocity field is given with respect to the arc length of the tumor. In the following diagram, we depict the boundary arc chosen.
+One could observe that between the velocity magnitude maxima appear a few local minima which we decided to call “Velocity Field Valley Traps (VFVT)” (or Valleys of the Muses). In these regions, the velocity around them has a greater value, thus, the bacteria “swimmers” that will reach these regions will most likely stay there and attach to the tumor rather than being washed out by the fluid. We could consider those regions as local stagnation regions of the fluid. Although the local maxima for each dynamic viscosity value are found at about the same location on the arc boundary of the tumor, the local minima or VFVTs don't follow the same rule. Having said that, the VFVTs for viscosity values 0.01 Pa.s and 1 Pa.s are located on the same regions which implies that for viscosity changes in that range the regions of the tumor on which the bacteria would attach doesn't change. Those regions are:
+However, for viscosity value 0.6913 mPa.s the VFVTs seem to have a slight displacement from the other VFVT locations. More specifically, the first and third VFVTs “moved” towards the top arc length which implies that for low viscosities the VFVTs appear closer to more curved regions of the tumor geometry.
+DRAG FORCES ON THE TUMOR REGION
+In our study of the fluid flow near the tumor, it is essential to determine the drag forces on the tumor if we want to predict whether our 'bactofectors' will manage to stay attached to the tumor. Thus, due to the small cohesive forces between the bacteria and the tumor surface, it is safe enough to assume that the total stress forces on the tumor due to the fluid will apply to the bacteria as well.
+We computed the total drag forces on the tumor arc boundary (same as the velocity magnitude) by integrating the total stresses over the entire arc length.
+What seems interesting in these diagrams is the fact that for different values of fluid viscosity the total stress on the boundary remains the same. Why does this happen?
+Well, let's remind ourselves that by integrating the total stresses on the arc boundary, we assume both the pressure and viscous forces. Thus, we should distinguish the two cases and examine which case is affected by the varying viscosity values.
+If we could make a prediction, it would be logical to assume that viscosity affects the viscous forces which interest us.
+VISCOUS FORCES ON THE TUMOR REGION
+Shear Rate and probability of Tumor Surface Attachment
+Bacterial locomotion, in fluid flows with low Reynolds numbers, behave in a bizarre manner. To be more specific, the Navier – Stokes equation for an incompressible fluid takes the following form:
+\[\nabla p - {\bf{f}} = \mu {\nabla ^2}{\bf{u}}\]
+In case there is an imbalance between the driving forces and the dissipation, the fluid reacts to this imbalance by altering the magnitude and direction of u in order to reach a state where there is a balance between the viscous and other forces. The imposed boundary conditions on the system determine the state of the system on the same time step as no boundary “memory” appears. Thus, the fluid depends on each time step on the boundary conditions and that implies the existence of time-reversibility [ 13 ].
+According to literature [ 6 ], surface attachment of bacteria is enhanced not in high-shear regions as one could expect but in low-shear regions. More specifically, the factor which determines the degree of bacterial attachment on a surface is the shear-induced trapping which in low-shear regions is enhanced. Thus, for small shear rates (0 – 10 s-1) one could expect sufficient bacterial surface attachment. However, in these low-shear regions chemotaxis may be compromised. Fortunately, in our Quorum Sensing Model, our bacterial communication through the AHL molecule does not affect bacterial locomotion thus chemotaxis in our case is not an issue.
+It is interesting to notice that the shear stress values on the tumor boundaries are within the low-shear region limits and thus, we expect a considerable number of our bacteria to attach to the tumor surface.
+References
+[1] Egorov, Viacheslav & Schastlivtsev, Ilya & Prut, E & Baranov, Andrey & Turusov, Robert. (2002). Mechanical properties of the human gastrointestinal tract. Journal of biomechanics. 35. 1417-25. 10.1016/S0021-9290(02)00084-2. [2] Christensen, Ben & Oberg, Kevin & C Wolchok, Jeffrey. (2015). Tensile Properties of the Rectal and Sigmoid Colon: A Comparative Analysis of Human and Porcine Tissue. SpringerPlus. 4. . 10.1186/s40064-015-0922-x. Hoeg, Slatkin, Burdick and Grundfest [Proc. ICRA200] [3] Lauga, Eric & Powers, Thomas. (2008). The hydrodynamics of swimming microorganisms. Report Progr Phys. 72. . 10.1088/0034-4885/72/9/096601. [4] Ji-Hong Chen, Yuanjie Yu, Zixian Yang, Wen-Zhen Yu (2017, February 20). Intraluminal pressure patterns in the human colon assessed by high-resolution manometry. Nature Scientific Reports 2017 [5] D. Heg, H & B. Slatkin, A & W. Burdick, J & Warren, Dr & Grundfest, S. (1999). Biomechanical Modeling of the Small Intestine as Required for the Design and Operation of a Robotic Endoscope. Proceedings - IEEE International Conference on Robotics and Automation. 2. . 10.1109/ROBOT.2000.844825. [6] Rusconi, Roberto & Guasto, Jeffrey & Stocker, Roman. (2014). Bacterial transport suppressed by fluid shear. Nature Physics. 10. 212-217. 10.1038/nphys2883. [7] Yamada, H. (1970). Strength of Biological Material. [8] Happel, John & Brenner, R. (1965). Low Reynolds Number Hydrodynamics: With Special Applications to Particulate Media. Prentice-Hall International Series in the Physical and Chemical Engineering Sciences. [9] T. Chwang, Allen. (1975). Hydromechanics of low-Reynolds-number flow. II: Singularity method for Stokes flows. Journal of Fluid Mechanics. 67. 787 - 815. 10.1017/S0022112075000614. [10] T.  Chwang , Allen & Yao-Tsu  Wu , T. (1974). Hydromechanics of low-Reynolds-number flow. Part 1. Rotation of axisymmetric prolate bodies. Journal of Fluid Mechanics. 63. 607 - 622. 10.1017/S0022112074001819. [11] Cohen, Netta & Boyle, Jordan. (2010). Swimming at low Reynolds number: A beginners guide to undulatory locomotion. Contemporary Physics - CONTEMP PHYS. 51. 103-123. 10.1080/00107510903268381. [12] Taktikos, Johannes. (2013). Modeling the random walk and chemotaxis of bacteria: Aspects of biofilm formation. . 10.14279/depositonce-3477. [13] Ouldridge, Tom. Low Reynolds number hydrodynamics: Stoke’s flow. University College [14] Moore, Keith L. Clinically Oriented Anatomy. Wolters Kluwer. Lippincot Williams & Wilkins

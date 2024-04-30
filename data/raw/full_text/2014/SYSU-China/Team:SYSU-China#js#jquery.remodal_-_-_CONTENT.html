@@ -1,0 +1,320 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_SYSU-China_js_jquery_remodal"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:SYSU-China/js/jquery.remodal">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:SYSU-China/js/jquery.remodal&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:SYSU-China/js/jquery.remodal&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:SYSU-China/js/jquery.remodal&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:SYSU-China/js/jquery.remodal" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:SYSU-China/js/jquery.remodal</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><DL><DT>(function ($) {
+</DT></DL><PRE>   &quot;use strict&quot;;
+</PRE><PRE>   /**
+    * Remodal settings
+    */
+   var pluginName = &quot;remodal&quot;,
+       defaults = {
+           hashTracking: true,
+           closeOnConfirm: true,
+           closeOnCancel: true,
+           closeOnEscape: true,
+           closeOnAnyClick: true
+       };
+</PRE><PRE>   /**
+    * Special plugin object for instances.
+    * @type {Object}
+    */
+   $[pluginName] = {
+       lookup: []
+   };
+</PRE><PRE>   var current, // current modal
+       scrollTop; // scroll position
+</PRE><PRE>   /**
+    * Get transition duration in ms
+    * @return {Number}
+    */
+   var getTransitionDuration = function ($elem) {
+       var duration = $elem.css(&quot;transition-duration&quot;) ||
+           $elem.css(&quot;-webkit-transition-duration&quot;) ||
+           $elem.css(&quot;-moz-transition-duration&quot;) ||
+           $elem.css(&quot;-o-transition-duration&quot;) ||
+           $elem.css(&quot;-ms-transition-duration&quot;) ||
+           0;
+       var delay = $elem.css(&quot;transition-delay&quot;) ||
+           $elem.css(&quot;-webkit-transition-delay&quot;) ||
+           $elem.css(&quot;-moz-transition-delay&quot;) ||
+           $elem.css(&quot;-o-transition-delay&quot;) ||
+           $elem.css(&quot;-ms-transition-delay&quot;) ||
+           0;
+</PRE><PRE>       return (parseFloat(duration) + parseFloat(delay)) * 1000;
+   };
+</PRE><PRE>   /**
+    * Get a scrollbar width
+    * @return {Number}
+    */
+   var getScrollbarWidth = function () {
+       if ($(document.body).height() &lt;= $(window).height()) {
+           return 0;
+       }
+</PRE><PRE>       var outer = document.createElement(&quot;div&quot;);
+       outer.style.visibility = &quot;hidden&quot;;
+       outer.style.width = &quot;100px&quot;;
+       document.body.appendChild(outer);
+</PRE><PRE>       var widthNoScroll = outer.offsetWidth;
+       // force scrollbars
+       outer.style.overflow = &quot;scroll&quot;;
+</PRE><PRE>       // add innerdiv
+       var inner = document.createElement(&quot;div&quot;);
+       inner.style.width = &quot;100%&quot;;
+       outer.appendChild(inner);
+</PRE><PRE>       var widthWithScroll = inner.offsetWidth;
+</PRE><PRE>       // remove divs
+       outer.parentNode.removeChild(outer);
+</PRE><PRE>       return widthNoScroll - widthWithScroll;
+   };
+</PRE><PRE>   /**
+    * Lock screen
+    */
+   var lockScreen = function () {
+       $(document.body).css(&quot;padding-right&quot;, &quot;+=&quot; + getScrollbarWidth());
+       $(&quot;html, body&quot;).addClass(pluginName + &quot;_lock&quot;);
+   };
+</PRE><PRE>   /**
+    * Unlock screen
+    */
+   var unlockScreen = function () {
+       $(document.body).css(&quot;padding-right&quot;, &quot;-=&quot; + getScrollbarWidth());
+       $(&quot;html, body&quot;).removeClass(pluginName + &quot;_lock&quot;);
+   };
+</PRE><PRE>   /**
+    * Parse string with options
+    * @param str
+    * @returns {Object}
+    */
+   var parseOptions = function (str) {
+       var obj = {}, clearedStr, arr;
+</PRE><PRE>       // remove spaces before and after delimiters
+       clearedStr = str.replace(/\s*:\s*/g, &quot;:&quot;).replace(/\s*,\s*/g, &quot;,&quot;);
+</PRE><PRE>       // parse string
+       arr = clearedStr.split(&quot;,&quot;);
+       var i, len, val;
+       for (i = 0, len = arr.length; i &lt; len; i++) {
+           arr[i] = arr[i].split(&quot;:&quot;);
+           val = arr[i][1];
+</PRE><PRE>           // convert string value if it is like a boolean
+           if (typeof val === &quot;string&quot; || val instanceof String) {
+               val = val === &quot;true&quot; || (val === &quot;false&quot; ? false : val);
+           }
+</PRE><PRE>           // convert string value if it is like a number
+           if (typeof val === &quot;string&quot; || val instanceof String) {
+               val = !isNaN(val) ? +val : val;
+           }
+</PRE><PRE>           obj[arr[i][0]] = val;
+       }
+</PRE><PRE>       return obj;
+   };
+</PRE><PRE>   /**
+    * Remodal constructor
+    */
+   function Remodal(modal, options) {
+       this.settings = $.extend({}, defaults, options);
+       this.modal = modal;
+       this.buildDOM();
+       this.addEventListeners();
+       this.index = $[pluginName].lookup.push(this) - 1;
+       this.busy = false;
+   }
+</PRE><PRE>   /**
+    * Build required DOM
+    */
+   Remodal.prototype.buildDOM = function () {
+       this.body = $(document.body);
+       this.bg = $(&quot;.&quot; + pluginName + &quot;-bg&quot;);
+       this.modalClose = $(&quot;&lt;a href='#'&gt;&quot;).addClass(pluginName + &quot;-close&quot;);
+</PRE>
+        this.overlay = $(&quot;<DIV>&quot;).addClass(pluginName + &quot;-overlay&quot;);
+<PRE>       if (!this.modal.hasClass(pluginName)) {
+           this.modal.addClass(pluginName);
+       }
+</PRE><PRE>       this.modal.css(&quot;visibility&quot;, &quot;visible&quot;);
+       this.modal.append(this.modalClose);
+       this.overlay.append(this.modal);
+       this.body.append(this.overlay);
+</PRE><PRE>       this.confirm = this.modal.find(&quot;.&quot; + pluginName + &quot;-confirm&quot;);
+       this.cancel = this.modal.find(&quot;.&quot; + pluginName + &quot;-cancel&quot;);
+</PRE><PRE>       var tdOverlay = getTransitionDuration(this.overlay),
+           tdModal = getTransitionDuration(this.modal),
+           tdBg = getTransitionDuration(this.bg);
+       this.td = tdModal &gt; tdOverlay ? tdModal : tdOverlay;
+       this.td = tdBg &gt; this.td ? tdBg : this.td;
+   };
+</PRE><PRE>   /**
+    * Add event listeners to the current modal window
+    */
+   Remodal.prototype.addEventListeners = function () {
+       var self = this;
+</PRE><PRE>       this.modalClose.bind(&quot;click.&quot; + pluginName, function (e) {
+           e.preventDefault();
+           self.close();
+       });
+</PRE><PRE>       this.cancel.bind(&quot;click.&quot; + pluginName, function (e) {
+           e.preventDefault();
+           self.modal.trigger(&quot;cancel&quot;);
+           if (self.settings.closeOnCancel) {
+               self.close();
+           }
+       });
+</PRE><PRE>       this.confirm.bind(&quot;click.&quot; + pluginName, function (e) {
+           e.preventDefault();
+           self.modal.trigger(&quot;confirm&quot;);
+           if (self.settings.closeOnConfirm) {
+               self.close();
+           }
+       });
+</PRE><PRE>       $(document).bind(&quot;keyup.&quot; + pluginName, function (e) {
+           if (e.keyCode === 27 &amp;&amp; self.settings.closeOnEscape) {
+               self.close();
+           }
+       });
+</PRE><PRE>       this.overlay.bind(&quot;click.&quot; + pluginName, function (e) {
+           var $target = $(e.target);
+           if (!$target.hasClass(pluginName + &quot;-overlay&quot;)) {
+               return;
+           }
+</PRE><PRE>           if (self.settings.closeOnAnyClick) {
+               self.close();
+           }
+       });
+   };
+</PRE><PRE>   /**
+    * Open modal window
+    */
+   Remodal.prototype.open = function () {
+       // check if animation is complete
+       if (this.busy) {
+           return;
+       }
+       this.busy = true;
+</PRE><PRE>       this.modal.trigger(&quot;open&quot;);
+</PRE><PRE>       var id = this.modal.attr(&quot;data-&quot; + pluginName + &quot;-id&quot;);
+       if (id &amp;&amp; this.settings.hashTracking) {
+           scrollTop = $(window).scrollTop();
+           location.hash = id;
+       }
+</PRE><PRE>       if (current &amp;&amp; current !== this) {
+           current.overlay.hide();
+           current.body.removeClass(pluginName + &quot;_active&quot;);
+       }
+       current = this;
+</PRE><PRE>       lockScreen();
+       this.overlay.show();
+</PRE><PRE>       var self = this;
+       setTimeout(function () {
+           self.body.addClass(pluginName + &quot;_active&quot;);
+</PRE><PRE>           setTimeout(function () {
+               self.busy = false;
+               self.modal.trigger(&quot;opened&quot;);
+           }, self.td + 50);
+       }, 25);
+   };
+</PRE><PRE>   /**
+    * Close modal window
+    */
+   Remodal.prototype.close = function () {
+       // check if animation is complete
+       if (this.busy) {
+           return;
+       }
+       this.busy = true;
+</PRE><PRE>       this.modal.trigger(&quot;close&quot;);
+</PRE><PRE>       if (this.settings.hashTracking &amp;&amp;
+           this.modal.attr(&quot;data-&quot; + pluginName + &quot;-id&quot;) === location.hash.substr(1)) {
+           location.hash = &quot;&quot;;
+           $(window).scrollTop(scrollTop);
+       }
+</PRE><PRE>       this.body.removeClass(pluginName + &quot;_active&quot;);
+</PRE><PRE>       var self = this;
+       setTimeout(function () {
+           self.overlay.hide();
+           unlockScreen();
+</PRE><PRE>           self.busy = false;
+           self.modal.trigger(&quot;closed&quot;);
+       }, self.td + 50);
+   };
+</PRE><PRE>   if ($) {
+       $.fn[pluginName] = function (opts) {
+           var instance;
+           this.each(function (i, e) {
+               var $e = $(e);
+               if ($e.data(pluginName) == null) {
+                   instance = new Remodal($e, opts);
+                   $e.data(pluginName, instance.index);
+</PRE><PRE>                   if (instance.settings.hashTracking &amp;&amp;
+                       $e.attr(&quot;data-&quot; + pluginName + &quot;-id&quot;) === location.hash.substr(1)) {
+                       instance.open();
+                   }
+               }
+           });
+</PRE><PRE>           return instance;
+       };
+   }
+</PRE><PRE>   $(document).ready(function () {
+       /**
+        * data-remodal-target opens a modal window with a special id without hash change.
+        */
+       $(document).on(&quot;click&quot;, &quot;[data-&quot; + pluginName + &quot;-target]&quot;, function (e) {
+           e.preventDefault();
+</PRE><PRE>           var elem = e.currentTarget,
+               id = elem.getAttribute(&quot;data-&quot; + pluginName + &quot;-target&quot;),
+               $target = $(&quot;[data-&quot; + pluginName + &quot;-id=&quot; + id + &quot;]&quot;);
+</PRE><PRE>           $[pluginName].lookup[$target.data(pluginName)].open();
+       });
+</PRE><PRE>       /**
+        * Auto initialization of modal windows.
+        * They should have the 'remodal' class attribute.
+        * Also you can pass params into the modal throw the data-remodal-options attribute.
+        * data-remodal-options must be a valid JSON string.
+        */
+       $(document).find(&quot;.&quot; + pluginName).each(function (i, container) {
+           var $container = $(container),
+               options = $container.data(pluginName + &quot;-options&quot;);
+</PRE><PRE>           if (!options) {
+               options = {};
+           } else if (typeof options === &quot;string&quot; || options instanceof String) {
+               options = parseOptions(options);
+           }
+</PRE><PRE>           $container[pluginName](options);
+       });
+   });
+</PRE><PRE>   /**
+    * Hashchange handling to show a modal with a special id.
+    */
+   var hashHandler = function (e, closeOnEmptyHash) {
+       var id = location.hash.replace(&quot;#&quot;, &quot;&quot;);
+</PRE><PRE>       if (typeof closeOnEmptyHash === &quot;undefined&quot;) {
+           closeOnEmptyHash = true;
+       }
+</PRE><PRE>       if (!id) {
+           if (closeOnEmptyHash) {
+               // check if we have currently opened modal and animation is complete
+               if (current &amp;&amp; !current.busy &amp;&amp; current.settings.hashTracking) {
+                   current.close();
+               }
+           }
+       } else {
+           var $elem;
+</PRE><PRE>           // Catch syntax error if your hash is bad
+           try {
+               $elem = $(&quot;[data-&quot; + pluginName + &quot;-id=&quot; + id.replace(new RegExp(&quot;/&quot;, &quot;g&quot;), &quot;\\/&quot;) + &quot;]&quot;);
+           } catch (e) {}
+</PRE><PRE>           if ($elem &amp;&amp; $elem.length) {
+               var instance = $[pluginName].lookup[$elem.data(pluginName)];
+</PRE><PRE>               if (instance &amp;&amp; instance.settings.hashTracking) {
+                   instance.open();
+               }
+           }
+</PRE><PRE>       }
+   };
+   $(window).bind(&quot;hashchange.&quot; + pluginName, hashHandler);
+</PRE>
+})(window.jQuery || window.Zepto);</DIV><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:SYSU-China/js/jquery.remodal">http://2014.igem.org/Team:SYSU-China/js/jquery.remodal</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:SYSU-China/js/jquery.remodal" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:SYSU-China/js/jquery.remodal" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:SYSU-China/js/jquery.remodal&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:SYSU-China/js/jquery.remodal&amp;oldid=283641" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

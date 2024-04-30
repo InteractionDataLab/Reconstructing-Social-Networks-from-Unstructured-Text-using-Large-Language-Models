@@ -1,0 +1,40 @@
+Team:Rice/Software/Step10
+Home
+Project
+Overview
+Design
+Background
+Modeling
+Software
+Notebook
+Protocols
+Results
+Demonstration
+Future Directions
+Safety
+InterLab
+Human Practices
+Overview
+Education & Engagement
+Collaborations
+Integrated Human Practices
+Achievements
+Parts
+Medal Requirements
+Team
+Members
+Advisors
+Instructors
+Attributions
+Ranking Candidates Details
+Get all TIRs from genome file, calculate binding energies of remaining ASDs with each TIR, then ranks candidates from highest to lowest binding energies. Higher binding energies are preferred, as this is another orthogonality constraint.
+Figure S5. Overview: Obtaining all translation initiation regions from the Coding Region.
+Function: formatCDSfile
+The CDS file for a particular organism contains lots of extraneous information, so formatCDSfile narrows down the information to only those lines that contain the starting index of the CDS for forward CDSs, or starting and ending indices if the CDS is on the complementary strand. First, the function creates a file path (specific to the organism whose CDS is being analyzed) where the formatted CDS will be stored. Two files are then opened, 1) the CDS file itself, and 2) the file which will be stored in the aforementioned file path where the formatted CDS will be written into. The function iterates through every line in the CDS file. It combines the previous line and the current line into a variable called currentandprevious to prevent any CDS locations that are found over two separate lines from being missed.
+The general format of a CDS file specifying the indices of the start codon of that particular CDS are as follows. For CDSs on the forward strand, the data looks like: >lcl|NC_000913.3_cds_NP_414542.1_1 [gene=thrL] [protein=thr operon leader peptide] [protein_id=NP_414542.1] [location=190..255], where all we care about is bolded (the indices of the start and end of the CDS). If the CDS is found on the complementary strand, the location tag looks like [location=complement(10643..11356)]. For one, this function differentiates between a line that contains useful information about the start/ end location and a line that just lists the DNA sequence by searching currentandprevious for the key “location=”, which is only found directly before the indices are stated. If this key is not found in the line, then the line doesn’t actual contain any useful information thus it is not included in the formatted CDS file. The remaining cases are divided into the cases where the CDS is found on the complementary strand, the forward strand, or if the CDS is a transpliced “joined” sequence.
+In the case that the CDS is on the complementary strand, we write the entire line up to the second index in complement() and store it in the formatted CDS file. The technique we use to determine the end of the information we need to write into the file is to find the “)]” that signifies the end of the complement tag (italicized above). In some cases there was some previous part of the line that contained the key “)]” which did not signify the end of the complement tag. In these cases we ignored the first instance of the key and only used the second instance of the key to write the line. Join cases with transpliced CDSs are ignored, because they constitute a very small portion of the entire list of CDSs. If the CDS is on the forward strand, we only care about the starting index so we only write the information up to the starting index. We did this by localizing the “..” key that separated the starting and ending indices in the forward CDS. Again, if there was some other key that did not signify the end of the forward CDS location tag, we ignored the first instance and wrote the line up to the second instance.
+Function: findCDSfromformatted
+The purpose of this function is to read the formatted CDS file and create 2 lists, one containing the indices applicable to forward CDS, and one containing those where the CDS is on the complement strand.  The function goes line by line and locates the index of the “L” in the key “location=”. To ensure that we are only looking at lines that contain information about the CDS, we first make sure that the line contains the “location=” key (which every line already does, since that’s how the formatted CDS file is initially made). For complementary cases, we take the second index (for example, in location=complement(10642..11356) we take the number 11356, subtract 1 from that number (to account for Python indexing), and store that number in a list called cdslist2. For forward cases we take the first index (in location=190...255 we take 190) and store it in cdslist1.
+Function: getallTIRs
+With the forward and complementary cases in separate lists, we then turn to the genome. After opening the genome file, we set up a variable called index that keeps track of what the index of the first base pair in a specific line of the genome file is. For example, index on the first line is 0, and index on the second line is 70, because we’ve iterated through one line which already contains 70 base pairs (Python indices 0 to 69), so the first base pair on the second line has Python index 70. The function then iterates through all the lines of the genome file in a for loop. It treats the forward cases (whose CDSs are stored in CDSlist1) and the complementary cases (in CDSlist2) separately. For the forward cases, we go to the index in the genome that is specified by the first index in the location tag (which was stored in cdslist1). For example, we go to the index 190 and we take 20 base pairs upstream of this index and 3 base pairs downstream (the 3 bps downstream of the starting index of the CDS is the start codon ATG), and convert this sequence to mRNA by changing the T’s to U’s.  For the complement cases, we go the indices stored in cdslist2 (for example, 11356). We take 3 bps upstream of this index and 20 bps downstream of this index and take the reverse complement of this sequence to find the TIRs on the complement strand. Again, we convert this sequence to mRNA. All the TIRs from the forward and complement cases are stored in a dictionary accessible by TIR number (e.g. TIR1) called TIRdict, which is returned from the function. This TIRdict contains almost all of the TIRs in the genome, except for those transpliced cases that we ignored when formatting the CDS file.
+Figure S6. Extracting the TIRs in different situations.

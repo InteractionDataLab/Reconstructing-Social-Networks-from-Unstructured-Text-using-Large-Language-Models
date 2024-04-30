@@ -1,0 +1,658 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Amsterdam_maarten_exporting_src_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Amsterdam/maarten/exporting.src.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Amsterdam/maarten/exporting.src.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Amsterdam/maarten/exporting.src.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Amsterdam/maarten/exporting.src.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Amsterdam/maarten/exporting.src.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Amsterdam/maarten/exporting.src.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>/**
+</P><PRE>* @license Highcharts JS v2.2.5 (2012-06-08)
+* Exporting module
+*
+* (c) 2010-2011 Torstein Hønsi
+*
+* License: www.highcharts.com/license
+*/
+</PRE><P>// JSLint options:
+/*global Highcharts, document, window, Math, setTimeout */
+</P><P>(function () { // encapsulate
+</P><P>// create shortcuts
+var HC = Highcharts,
+	Chart = HC.Chart,
+	addEvent = HC.addEvent,
+	removeEvent = HC.removeEvent,
+	createElement = HC.createElement,
+	discardElement = HC.discardElement,
+	css = HC.css,
+	merge = HC.merge,
+	each = HC.each,
+	extend = HC.extend,
+	math = Math,
+	mathMax = math.max,
+	doc = document,
+	win = window,
+	hasTouch = doc.documentElement.ontouchstart !== undefined,
+	M = 'M',
+	L = 'L',
+	DIV = 'div',
+	HIDDEN = 'hidden',
+	NONE = 'none',
+	PREFIX = 'highcharts-',
+	ABSOLUTE = 'absolute',
+	PX = 'px',
+	UNDEFINED,
+	defaultOptions = HC.getOptions();
+</P><P>	// Add language
+	extend(defaultOptions.lang, {
+		downloadPNG: 'Download PNG image',
+		downloadJPEG: 'Download JPEG image',
+		downloadPDF: 'Download PDF document',
+		downloadSVG: 'Download SVG vector image',
+		exportButtonTitle: 'Export to raster or vector image',
+		printButtonTitle: 'Print the chart'
+	});
+</P><P>// Buttons and menus are collected in a separate config option set called 'navigation'.
+// This can be extended later to add control buttons like zoom and pan right click menus.
+defaultOptions.navigation = {
+	menuStyle: {
+		border: '1px solid #A0A0A0',
+		background: '#FFFFFF'
+	},
+	menuItemStyle: {
+		padding: '0 5px',
+		background: NONE,
+		color: '#303030',
+		fontSize: hasTouch ? '14px' : '11px'
+	},
+	menuItemHoverStyle: {
+		background: '#4572A5',
+		color: '#FFFFFF'
+	},
+</P><P>	buttonOptions: {
+		align: 'right',
+		backgroundColor: {
+			linearGradient: [0, 0, 0, 20],
+			stops: [
+				[0.4, '#F7F7F7'],
+				[0.6, '#E3E3E3']
+			]
+		},
+		borderColor: '#B0B0B0',
+		borderRadius: 3,
+		borderWidth: 1,
+		//enabled: true,
+		height: 20,
+		hoverBorderColor: '#909090',
+		hoverSymbolFill: '#81A7CF',
+		hoverSymbolStroke: '#4572A5',
+		symbolFill: '#E0E0E0',
+		//symbolSize: 12,
+		symbolStroke: '#A0A0A0',
+		//symbolStrokeWidth: 1,
+		symbolX: 11.5,
+		symbolY: 10.5,
+		verticalAlign: 'top',
+		width: 24,
+		y: 10
+	}
+};
+</P><P>// Add the export related options
+defaultOptions.exporting = {
+	//enabled: true,
+	//filename: 'chart',
+	type: 'image/png',
+	url: '<A href="http://export.highcharts.com/'" class="external free" rel="nofollow">http://export.highcharts.com/'</A>,
+	width: 800,
+	buttons: {
+		exportButton: {
+			//enabled: true,
+			symbol: 'exportIcon',
+			x: -10,
+			symbolFill: '#A8BF77',
+			hoverSymbolFill: '#768F3E',
+			_id: 'exportButton',
+			_titleKey: 'exportButtonTitle',
+			menuItems: [{
+				textKey: 'downloadPNG',
+				onclick: function () {
+					this.exportChart();
+				}
+			}, {
+				textKey: 'downloadJPEG',
+				onclick: function () {
+					this.exportChart({
+						type: 'image/jpeg'
+					});
+				}
+			}, {
+				textKey: 'downloadPDF',
+				onclick: function () {
+					this.exportChart({
+						type: 'application/pdf'
+					});
+				}
+			}, {
+				textKey: 'downloadSVG',
+				onclick: function () {
+					this.exportChart({
+						type: 'image/svg+xml'
+					});
+				}
+			}
+			// Enable this block to add &quot;View SVG&quot; to the dropdown menu
+			/*
+			,{
+</P><P>				text: 'View SVG',
+				onclick: function () {
+					var svg = this.getSVG()
+						.replace(/&lt;/g, '\n&lt;')
+						.replace(/&gt;/g, '&gt;');
+</P>
+					doc.body.innerHTML = '<PRE>' + svg + '</PRE>';
+<P>				}
+			} // */
+			]
+</P><P>		},
+		printButton: {
+			//enabled: true,
+			symbol: 'printIcon',
+			x: -36,
+			symbolFill: '#B5C9DF',
+			hoverSymbolFill: '#779ABF',
+			_id: 'printButton',
+			_titleKey: 'printButtonTitle',
+			onclick: function () {
+				this.print();
+			}
+		}
+	}
+};
+</P><P>extend(Chart.prototype, {
+	/**
+	 * Return an SVG representation of the chart
+	 *
+	 * @param additionalOptions {Object} Additional chart options for the generated SVG representation
+	 */
+	getSVG: function (additionalOptions) {
+		var chart = this,
+			chartCopy,
+			sandbox,
+			svg,
+			seriesOptions,
+			options = merge(chart.options, additionalOptions); // copy the options and add extra options
+</P><P>		// IE compatibility hack for generating SVG content that it doesn't really understand
+		if (!doc.createElementNS) {
+			/*jslint unparam: true*//* allow unused parameter ns in function below */
+			doc.createElementNS = function (ns, tagName) {
+				return doc.createElement(tagName);
+			};
+			/*jslint unparam: false*/
+		}
+</P><P>		// create a sandbox where a new chart will be generated
+		sandbox = createElement(DIV, null, {
+			position: ABSOLUTE,
+			top: '-9999em',
+			width: chart.chartWidth + PX,
+			height: chart.chartHeight + PX
+		}, doc.body);
+</P><P>		// override some options
+		extend(options.chart, {
+			renderTo: sandbox,
+			forExport: true
+		});
+		options.exporting.enabled = false; // hide buttons in print
+		options.chart.plotBackgroundImage = null; // the converter doesn't handle images
+</P><P>		// prepare for replicating the chart
+		options.series = [];
+		each(chart.series, function (serie) {
+			seriesOptions = merge(serie.options, {
+				animation: false, // turn off animation
+				showCheckbox: false,
+				visible: serie.visible
+			});
+</P><P>			if (!seriesOptions.isInternal) { // used for the navigator series that has its own option set
+</P><P>				// remove image markers
+				if (seriesOptions &amp;&amp; seriesOptions.marker &amp;&amp; /^url\(/.test(seriesOptions.marker.symbol)) {
+					seriesOptions.marker.symbol = 'circle';
+				}
+</P><P>				options.series.push(seriesOptions);
+			}
+		});
+</P><P>		// generate the chart copy
+		chartCopy = new Highcharts.Chart(options);
+</P><P>		// reflect axis extremes in the export
+		each(['xAxis', 'yAxis'], function (axisType) {
+			each(chart[axisType], function (axis, i) {
+				var axisCopy = chartCopy[axisType][i],
+					extremes = axis.getExtremes(),
+					userMin = extremes.userMin,
+					userMax = extremes.userMax;
+</P><P>				if (userMin !== UNDEFINED || userMax !== UNDEFINED) {
+					axisCopy.setExtremes(userMin, userMax, true, false);
+				}
+			});
+		});
+</P><P>		// get the SVG from the container's innerHTML
+		svg = chartCopy.container.innerHTML;
+</P><P>		// free up memory
+		options = null;
+		chartCopy.destroy();
+		discardElement(sandbox);
+</P><P>		// sanitize
+		svg = svg
+			.replace(/zIndex=&quot;[^&quot;]+&quot;/g, <I>)</I>
+			.replace(/isShadow=&quot;[^&quot;]+&quot;/g, <I>)</I>
+			.replace(/symbolName=&quot;[^&quot;]+&quot;/g, <I>)</I>
+			.replace(/jQuery[0-9]+=&quot;[^&quot;]+&quot;/g, <I>)</I>
+			.replace(/isTracker=&quot;[^&quot;]+&quot;/g, <I>)</I>
+			.replace(/url\([^#]+#/g, 'url(#')
+			.replace(/&lt;svg /, '&lt;svg xmlns:xlink=&quot;<A href="http://www.w3.org/1999/xlink" class="external free" rel="nofollow">http://www.w3.org/1999/xlink</A>&quot; ')
+			.replace(/ href=/g, ' xlink:href=')
+			.replace(/\n/, ' ')
+			.replace(/&lt;\/svg&gt;.*?$/, '&lt;/svg&gt;') // any HTML added to the container after the SVG (#894)
+			/* This fails in IE &lt; 8
+			.replace(/([0-9]+)\.([0-9]+)/g, function(s1, s2, s3) { // round off to save weight
+				return s2 +'.'+ s3[0];
+			})*/
+</P><P>			// Replace HTML entities, issue #347
+			.replace(/ /g, '\u00A0') // no-break space
+			.replace(/­/g,  '\u00AD') // soft hyphen
+</P><P>			// IE specific
+			.replace(/&lt;IMG /g, '&lt;image ')
+			.replace(/height=([^&quot; ]+)/g, 'height=&quot;$1&quot;')
+			.replace(/width=([^&quot; ]+)/g, 'width=&quot;$1&quot;')
+			.replace(/hc-svg-href=&quot;([^&quot;]+)&quot;&gt;/g, 'xlink:href=&quot;$1&quot;/&gt;')
+			.replace(/id=([^&quot; &gt;]+)/g, 'id=&quot;$1&quot;')
+			.replace(/class=([^&quot; ]+)/g, 'class=&quot;$1&quot;')
+			.replace(/ transform /g, ' ')
+			.replace(/:(path|rect)/g, '$1')
+			.replace(/style=&quot;([^&quot;]+)&quot;/g, function (s) {
+				return s.toLowerCase();
+			});
+</P><P>		// IE9 beta bugs with innerHTML. Test again with final IE9.
+		svg = svg.replace(/(url\(#highcharts-[0-9]+)&quot;/g, '$1')
+			.replace(/&quot;/g, &quot;'&quot;);
+		if (svg.match(/ xmlns=&quot;/g).length === 2) {
+			svg = svg.replace(/xmlns=&quot;[^&quot;]+&quot;/, <I>);</I>
+		}
+</P><P>		return svg;
+	},
+</P><P>	/**
+	 * Submit the SVG representation of the chart to the server
+	 * @param {Object} options Exporting options. Possible members are url, type and width.
+	 * @param {Object} chartOptions Additional chart options for the SVG representation of the chart
+	 */
+	exportChart: function (options, chartOptions) {
+		var form,
+			chart = this,
+			svg = chart.getSVG(merge(chart.options.exporting.chartOptions, chartOptions)); // docs
+</P><P>		// merge the options
+		options = merge(chart.options.exporting, options);
+</P><P>		// create the form
+		form = createElement('form', {
+			method: 'post',
+			action: options.url,
+			enctype: 'multipart/form-data'
+		}, {
+			display: NONE
+		}, doc.body);
+</P><P>		// add the values
+		each(['filename', 'type', 'width', 'svg'], function (name) {
+			createElement('input', {
+				type: HIDDEN,
+				name: name,
+				value: {
+					filename: options.filename || 'chart',
+					type: options.type,
+					width: options.width,
+					svg: svg
+				}[name]
+			}, null, form);
+		});
+</P><P>		// submit
+		form.submit();
+</P><P>		// clean up
+		discardElement(form);
+	},
+</P><P>	/**
+	 * Print the chart
+	 */
+	print: function () {
+</P><P>		var chart = this,
+			container = chart.container,
+			origDisplay = [],
+			origParent = container.parentNode,
+			body = doc.body,
+			childNodes = body.childNodes;
+</P><P>		if (chart.isPrinting) { // block the button while in printing mode
+			return;
+		}
+</P><P>		chart.isPrinting = true;
+</P><P>		// hide all body content
+		each(childNodes, function (node, i) {
+			if (node.nodeType === 1) {
+				origDisplay[i] = node.style.display;
+				node.style.display = NONE;
+			}
+		});
+</P><P>		// pull out the chart
+		body.appendChild(container);
+</P><P>		// print
+		win.print();
+</P><P>		// allow the browser to prepare before reverting
+		setTimeout(function () {
+</P><P>			// put the chart back in
+			origParent.appendChild(container);
+</P><P>			// restore all body content
+			each(childNodes, function (node, i) {
+				if (node.nodeType === 1) {
+					node.style.display = origDisplay[i];
+				}
+			});
+</P><P>			chart.isPrinting = false;
+</P><P>		}, 1000);
+</P><P>	},
+</P><P>	/**
+	 * Display a popup menu for choosing the export type
+	 *
+	 * @param {String} name An identifier for the menu
+	 * @param {Array} items A collection with text and onclicks for the items
+	 * @param {Number} x The x position of the opener button
+	 * @param {Number} y The y position of the opener button
+	 * @param {Number} width The width of the opener button
+	 * @param {Number} height The height of the opener button
+	 */
+	contextMenu: function (name, items, x, y, width, height) {
+		var chart = this,
+			navOptions = chart.options.navigation,
+			menuItemStyle = navOptions.menuItemStyle,
+			chartWidth = chart.chartWidth,
+			chartHeight = chart.chartHeight,
+			cacheName = 'cache-' + name,
+			menu = chart[cacheName],
+			menuPadding = mathMax(width, height), // for mouse leave detection
+			boxShadow = '3px 3px 10px #888',
+			innerMenu,
+			hide,
+			menuStyle;
+</P><P>		// create the menu only the first time
+		if (!menu) {
+</P><P>			// create a HTML element above the SVG
+			chart[cacheName] = menu = createElement(DIV, {
+				className: PREFIX + name
+			}, {
+				position: ABSOLUTE,
+				zIndex: 1000,
+				padding: menuPadding + PX
+			}, chart.container);
+</P><P>			innerMenu = createElement(DIV, null,
+				extend({
+					MozBoxShadow: boxShadow,
+					WebkitBoxShadow: boxShadow,
+					boxShadow: boxShadow
+				}, navOptions.menuStyle), menu);
+</P><P>			// hide on mouse out
+			hide = function () {
+				css(menu, { display: NONE });
+			};
+</P><P>			addEvent(menu, 'mouseleave', hide);
+</P><P>
+			// create the items
+			each(items, function (item) {
+				if (item) {
+					var div = createElement(DIV, {
+						onmouseover: function () {
+							css(this, navOptions.menuItemHoverStyle);
+						},
+						onmouseout: function () {
+							css(this, menuItemStyle);
+						},
+						innerHTML: item.text || chart.options.lang[item.textKey]
+					}, extend({
+						cursor: 'pointer'
+					}, menuItemStyle), innerMenu);
+</P><P>					div[hasTouch ? 'ontouchstart' : 'onclick'] = function () {
+						hide();
+						item.onclick.apply(chart, arguments);
+					};
+</P><P>					// Keep references to menu divs to be able to destroy them
+					chart.exportDivElements.push(div);
+				}
+			});
+</P><P>			// Keep references to menu and innerMenu div to be able to destroy them
+			chart.exportDivElements.push(innerMenu, menu);
+</P><P>			chart.exportMenuWidth = menu.offsetWidth;
+			chart.exportMenuHeight = menu.offsetHeight;
+		}
+</P><P>		menuStyle = { display: 'block' };
+</P><P>		// if outside right, right align it
+		if (x + chart.exportMenuWidth &gt; chartWidth) {
+			menuStyle.right = (chartWidth - x - width - menuPadding) + PX;
+		} else {
+			menuStyle.left = (x - menuPadding) + PX;
+		}
+		// if outside bottom, bottom align it
+		if (y + height + chart.exportMenuHeight &gt; chartHeight) {
+			menuStyle.bottom = (chartHeight - y - menuPadding)  + PX;
+		} else {
+			menuStyle.top = (y + height - menuPadding) + PX;
+		}
+</P><P>		css(menu, menuStyle);
+	},
+</P><P>	/**
+	 * Add the export button to the chart
+	 */
+	addButton: function (options) {
+		var chart = this,
+			renderer = chart.renderer,
+			btnOptions = merge(chart.options.navigation.buttonOptions, options),
+			onclick = btnOptions.onclick,
+			menuItems = btnOptions.menuItems,
+			buttonWidth = btnOptions.width,
+			buttonHeight = btnOptions.height,
+			box,
+			symbol,
+			button,
+			borderWidth = btnOptions.borderWidth,
+			boxAttr = {
+				stroke: btnOptions.borderColor
+</P><P>			},
+			symbolAttr = {
+				stroke: btnOptions.symbolStroke,
+				fill: btnOptions.symbolFill
+			},
+			symbolSize = btnOptions.symbolSize || 12;
+</P><P>		// Keeps references to the button elements
+		if (!chart.exportDivElements) {
+			chart.exportDivElements = [];
+			chart.exportSVGElements = [];
+		}
+</P><P>		if (btnOptions.enabled === false) {
+			return;
+		}
+</P><P>		// element to capture the click
+		function revert() {
+			symbol.attr(symbolAttr);
+			box.attr(boxAttr);
+		}
+</P><P>		// the box border
+		box = renderer.rect(
+			0,
+			0,
+			buttonWidth,
+			buttonHeight,
+			btnOptions.borderRadius,
+			borderWidth
+		)
+		//.translate(buttonLeft, buttonTop) // to allow gradients
+		.align(btnOptions, true)
+		.attr(extend({
+			fill: btnOptions.backgroundColor,
+			'stroke-width': borderWidth,
+			zIndex: 19
+		}, boxAttr)).add();
+</P><P>		// the invisible element to track the clicks
+		button = renderer.rect(
+				0,
+				0,
+				buttonWidth,
+				buttonHeight,
+				0
+			)
+			.align(btnOptions)
+			.attr({
+				id: btnOptions._id,
+				fill: 'rgba(255, 255, 255, 0.001)',
+				title: chart.options.lang[btnOptions._titleKey],
+				zIndex: 21
+			}).css({
+				cursor: 'pointer'
+			})
+			.on('mouseover', function () {
+				symbol.attr({
+					stroke: btnOptions.hoverSymbolStroke,
+					fill: btnOptions.hoverSymbolFill
+				});
+				box.attr({
+					stroke: btnOptions.hoverBorderColor
+				});
+			})
+			.on('mouseout', revert)
+			.on('click', revert)
+			.add();
+</P><P>		// add the click event
+		if (menuItems) {
+			onclick = function () {
+				revert();
+				var bBox = button.getBBox();
+				chart.contextMenu('export-menu', menuItems, bBox.x, bBox.y, buttonWidth, buttonHeight);
+			};
+		}
+		/*addEvent(button.element, 'click', function() {
+			onclick.apply(chart, arguments);
+		});*/
+		button.on('click', function () {
+			onclick.apply(chart, arguments);
+		});
+</P><P>		// the icon
+		symbol = renderer.symbol(
+				btnOptions.symbol,
+				btnOptions.symbolX - (symbolSize / 2),
+				btnOptions.symbolY - (symbolSize / 2),
+				symbolSize,				
+				symbolSize
+			)
+			.align(btnOptions, true)
+			.attr(extend(symbolAttr, {
+				'stroke-width': btnOptions.symbolStrokeWidth || 1,
+				zIndex: 20
+			})).add();
+</P><P>		// Keep references to the renderer element so to be able to destroy them later.
+		chart.exportSVGElements.push(box, button, symbol);
+	},
+</P><P>	/**
+	 * Destroy the buttons.
+	 */
+	destroyExport: function () {
+		var i,
+			chart = this,
+			elem;
+</P><P>		// Destroy the extra buttons added
+		for (i = 0; i &lt; chart.exportSVGElements.length; i++) {
+			elem = chart.exportSVGElements[i];
+			// Destroy and null the svg/vml elements
+			elem.onclick = elem.ontouchstart = null;
+			chart.exportSVGElements[i] = elem.destroy();
+		}
+</P><P>		// Destroy the divs for the menu
+		for (i = 0; i &lt; chart.exportDivElements.length; i++) {
+			elem = chart.exportDivElements[i];
+</P><P>			// Remove the event handler
+			removeEvent(elem, 'mouseleave');
+</P><P>			// Remove inline events
+			chart.exportDivElements[i] = elem.onmouseout = elem.onmouseover = elem.ontouchstart = elem.onclick = null;
+</P><P>			// Destroy the div by moving to garbage bin
+			discardElement(elem);
+		}
+	}
+});
+</P><P>/**
+</P><PRE>* Crisp for 1px stroke width, which is default. In the future, consider a smarter,
+* global function.
+*/
+</PRE><P>function crisp(arr) {
+	var i = arr.length;
+	while (i--) {
+		if (typeof arr[i] === 'number') {
+			arr[i] = Math.round(arr[i]) - 0.5;		
+		}
+	}
+	return arr;
+}
+</P><P>// Create the export icon
+HC.Renderer.prototype.symbols.exportIcon = function (x, y, width, height) {
+	return crisp([
+		M, // the disk
+		x, y + width,
+		L,
+		x + width, y + height,
+		x + width, y + height * 0.8,
+		x, y + height * 0.8,
+		'Z',
+		M, // the arrow
+		x + width * 0.5, y + height * 0.8,
+		L,
+		x + width * 0.8, y + height * 0.4,
+		x + width * 0.4, y + height * 0.4,
+		x + width * 0.4, y,
+		x + width * 0.6, y,
+		x + width * 0.6, y + height * 0.4,
+		x + width * 0.2, y + height * 0.4,
+		'Z'
+	]);
+};
+// Create the print icon
+HC.Renderer.prototype.symbols.printIcon = function (x, y, width, height) {
+	return crisp([
+		M, // the printer
+		x, y + height * 0.7,
+		L,
+		x + width, y + height * 0.7,
+		x + width, y + height * 0.4,
+		x, y + height * 0.4,
+		'Z',
+		M, // the upper sheet
+		x + width * 0.2, y + height * 0.4,
+		L,
+		x + width * 0.2, y,
+		x + width * 0.8, y,
+		x + width * 0.8, y + height * 0.4,
+		'Z',
+		M, // the lower sheet
+		x + width * 0.2, y + height * 0.7,
+		L,
+		x, y + height,
+		x + width, y + height,
+		x + width * 0.8, y + height * 0.7,
+		'Z'
+	]);
+};
+</P><P>
+// Add the buttons on chart load
+Chart.prototype.callbacks.push(function (chart) {
+	var n,
+		exportingOptions = chart.options.exporting,
+		buttons = exportingOptions.buttons;
+</P><P>	if (exportingOptions.enabled !== false) {
+</P><P>		for (n in buttons) {
+			chart.addButton(buttons[n]);
+		}
+</P><P>		// Destroy the export elements at chart destroy
+		addEvent(chart, 'destroy', chart.destroyExport);
+	}
+</P><P>});
+</P><P>
+}());
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Amsterdam/maarten/exporting.src.js">http://2012.igem.org/Team:Amsterdam/maarten/exporting.src.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Amsterdam/maarten/exporting.src.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Amsterdam/maarten/exporting.src.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Amsterdam/maarten/exporting.src.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Amsterdam/maarten/exporting.src.js&amp;oldid=14478" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

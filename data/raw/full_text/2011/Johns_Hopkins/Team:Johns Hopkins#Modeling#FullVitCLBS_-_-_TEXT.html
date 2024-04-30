@@ -1,0 +1,68 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Johns Hopkins/Modeling/FullVitCLBS
+From 2011.igem.org
+VitaYeast - Johns Hopkins University, iGEM 2011
+Team
+Members
+Acknowledgements
+Advisors
+Sponsors
+Attributions
+Gallery
+Vitamins
+Background
+Overview
+Vitamin A
+Vitamin C
+Measurements
+Applications
+Results
+Future Plans
+Yeast Toolkit
+Background
+Overview
+Promoters and UTRs
+Violacein
+Yeast Vector Library
+Results
+Future Plans
+Human Practices
+Overview
+IRB Approval
+Data
+Modeling
+Platform
+LBS Models
+Optimization
+Sensitivity
+Parameter Fitting
+Notebook
+Protocols
+Vitamin Experiments
+Yeast Toolkit Experiments
+Safety
+Related Links:
+Modeling:
+LBS Models
+Optimization
+Sensitivity
+Parameter fitting
+The Full Pathway+Expression L-Ascorbate Model in LBS
+directive sample 90000.0 5000   // Compartments comp cytosol = new comp; comp nucleus = new comp inside cytosol;   // Transcriptional machinery spec Ribo = new{mrna:binding}; spec RNAP = new{dna:binding,mrna:binding};   // Gene-Enzyme Pairs spec GME = new{bind:binding}; spec sub_GDP_D_mannose_epimerase  = new{}; spec GDP_D_mannose_epimerase = new{}; spec VTC5 = new{bind:binding}; spec GDP_L_Gal_phosphorylase = new{}; spec ARA2 = new{bind:binding}; spec D_Ara_dehydrogenase = new{}; spec ALO1 = new{bind:binding}; spec D_Ara_Lac_oxidase = new{}; spec VTC4 = new{bind:binding}; spec Gal_P_phosphatase = new{}; spec VTC2 = new{bind:binding}; spec GDP = new{};   // Metabolites spec GDP_D_Man = new{}; spec GDP_L_Gal = new{}; spec L_Gal_P = new{}; spec L_Gal = new{}; spec L_Gal_Lac = new{}; spec L_ascorbate = new{};   // Rate constants rate GDP_clearance = 1.0E-9; rate kb = 0.01; rate ku = 1.0E-4; rate GDP_D_mannose_epimerase_Km = 0.0045; rate GDP_D_mannose_epimerase_Kcat = 0.041; rate Ki = 5.0e-4; rate GDP_L_Gal_phosphorylase_Km = 0.01; rate GDP_L_Gal_phosphorylase_Kcat = 13.0; rate Gal_P_phosphatase_Km = 0.107; rate Gal_P_phosphatase_Kcat = 6.0; rate D_Ara_dehydrogenase_Km = 180.0; rate D_Ara_dehydrogenase_Kcat = 125.0; rate L_Gal_Lac_dehydrogenase_Km = 53.7; rate L_Gal_Lac_dehydrogenase_Kcat = 18.8;   //Transcription Kinetics rate rna_deg = 0.0058; rate rna_falloff = 0.01; rate rnap_bind = 0.5; rate transcription = 10; rate termination = 10; rate ribo_bind = 0.1; rate ribo_unbind = 0.01; rate translation = 10; rate export = 0.01; rate prot_deg = 0.01;   module transcribe(spec DNA:{bind}, mRNA:{down}) {  RNAP{dna} + DNA{bind} ->{rnap_bind} RNAP{dna!1}-DNA{bind!1} |  RNAP{dna!1}-DNA{bind!1} ->{transcription} mRNA{down!2}- RNAP{dna!1,mrna!2}-DNA{bind!1} |  mRNA{down!2}-RNAP{dna!1,mrna!2}-DNA{bind!1} ->{termination} mRNA{down}  + RNAP{dna,mrna} + DNA{bind} };   module translate(spec mRNA:{up}, Prot) {  Ribo{mrna} + mRNA{up} <->{ribo_bind}{ribo_unbind}  Ribo{mrna!1}-mRNA{up!1} |  Ribo{mrna!1}-mRNA{up!1} ->{translation} Ribo{mrna} + mRNA{up} + Prot };   module express(comp nuc; spec DNA:{bind}, Prot) {  spec mRNA = new{up:binding,down:binding};  nuc[ transcribe(DNA:{bind}, mRNA:{down}) | mRNA ->{rna_deg} ] |  nuc[ mRNA ] ->{export} mRNA |  translate(mRNA:{up}, Prot) | mRNA -> {rna_deg} };   module mmInhibitionRXN(spec sub, enz, prod, inhib; rate km, kcat, k) {  rate rxn_rate = kcat*enz/(sub+km*(1+inhib/k));  sub + enz ->[rxn_rate] enz + prod };   module mmRXN(spec sub, enz, prod; rate km, kcat) {  rate rxn_rate = kcat*enz/(sub+km);  sub + enz ->[rxn_rate] enz + prod };   module mmTwoProductsRXN(spec sub, enz, prod1, prod2; rate km, kcat) {  rate rxn_rate = kcat*enz/(sub+km);  sub + enz ->[rxn_rate] enz + prod1 + prod2 };   cytosol[  express(nucleus, GME:{bind}, sub_GDP_D_mannose_epimerase) |  express(nucleus, VTC5:{bind}, GDP_L_Gal_phosphorylase) |  express(nucleus, VTC2:{bind}, GDP) |  express(nucleus, VTC4:{bind}, Gal_P_phosphatase) |  express(nucleus, ARA2:{bind}, D_Ara_dehydrogenase) |  express(nucleus, ALO1:{bind}, D_Ara_Lac_oxidase) |  sub_GDP_D_mannose_epimerase + sub_GDP_D_mannose_epimerase <->{kb}{ku}  GDP_D_mannose_epimerase |  mmInhibitionRXN(GDP_D_Man, GDP_D_mannose_epimerase, GDP_L_Gal, GDP,  GDP_D_mannose_epimerase_Km, GDP_D_mannose_epimerase_Kcat, Ki) |  mmTwoProductsRXN(GDP_L_Gal, GDP_L_Gal_phosphorylase, L_Gal_P, GDP,  GDP_L_Gal_phosphorylase_Km, GDP_L_Gal_phosphorylase_Kcat) |  mmRXN(L_Gal_P, Gal_P_phosphatase, L_Gal, Gal_P_phosphatase_Km,  Gal_P_phosphatase_Kcat) |  mmRXN(L_Gal, D_Ara_dehydrogenase, L_Gal_Lac, D_Ara_dehydrogenase_Km,  D_Ara_dehydrogenase_Kcat) |  mmRXN(L_Gal_Lac, D_Ara_Lac_oxidase, L_ascorbate,  L_Gal_Lac_dehydrogenase_Km, L_Gal_Lac_dehydrogenase_Kcat) |   ->{10} GDP_D_Man |   GDP ->{GDP_clearance} |   sub_GDP_D_mannose_epimerase ->{prot_deg} |   GDP_D_mannose_epimerase ->{prot_deg} |   GDP_L_Gal_phosphorylase ->{prot_deg} |   D_Ara_dehydrogenase ->{prot_deg} |   D_Ara_Lac_oxidase ->{prot_deg} |   Gal_P_phosphatase ->{prot_deg} |   init Ribo 10 |  nucleus[   init GME 1 |   init VTC2 1 |   init VTC4 1 |   init ARA2 1 |   init VTC5 1 |   init ALO1 1 |   init RNAP 1  ] ]
+Retrieved from " http://2011.igem.org/Team:Johns_Hopkins/Modeling/FullVitCLBS "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

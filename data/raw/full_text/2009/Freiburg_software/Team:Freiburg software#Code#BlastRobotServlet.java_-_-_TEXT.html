@@ -1,0 +1,29 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Freiburg software/Code/BlastRobotServlet.java
+From 2009.igem.org
+Home
+The Team
+The Project
+The Code
+User Guide
+Notebook
+Miscellaneous
+BlastRobotServlet
+/* *    Copyright: synbiowave *      *    License: GPL *      *    Authors: Paul Staab *      *    Version: 0.1  *     *    DESCRIPTION: *     This is the main class of a SynBioWave-Robot doing a blast-search */  package blastRobot;  import java.util.LinkedHashMap;  import org.biojava.bio.seq.DNATools; import org.synbiowave.menu.MenuItem; import org.synbiowave.servlet.AbstractSbwRobotServlet; import org.xml.sax.SAXException;  import com.google.wave.api.Event; import com.google.wave.api.RobotMessageBundle; import com.google.wave.api.TextView;  public class BlastRobotServlet extends AbstractSbwRobotServlet  {    private static final long serialVersionUID = 3125104904376445527L;    @Override   public void createMenu(MenuItem menu)    {    MenuItem blast_prog = new MenuItem("textfield","Program",generateKey() );    blast_prog.setOption("value", "blastn");    MenuItem blast_db = new MenuItem("textfield","Database",generateKey() );    blast_db.setOption("value", "nr");    MenuItem blast_seq = new MenuItem("textarea","Sequence",generateKey() );    blast_seq.setOption("value", "ACAAGATGCCATTGTCCCCCGGCCTCCTGCTGCTGCTGCTCTCCGGGGCC");      menu.createSubItem("menu", "Sequence", this.generateKey())     .createSubItem("button", "BLAST", this.generateKey() )          .createSubItem("form", "BLASTform", this.generateKey() )     .appendSubItem(blast_prog)     .appendSubItem(blast_db)     .appendSubItem(blast_seq);   }    @Override   public String myName() {    return "blastrobot@appspot.com";   }    @Override   public void processSbwMenuEvents(String buttonLabel, LinkedHashMap<String, String> formValues , Event event)   {    if (buttonLabel.contains("BLASTform"))    {        try      {      TextView tv = event.getWavelet().getRootBlip().getDocument();            //Do the search      BlastSearch blast = new BlastSearch();      blast.setSequence(DNATools.createDNA(formValues.get(this.generateKey() + "Sequence")));      blast.setDatabase(formValues.get(this.generateKey() + "Database"));      blast.setProgram(formValues.get(this.generateKey() + "Program"));      blast.search();                 MenuItem blastbutton = new MenuItem("chron","Blasting...",this.generateKey());      blastbutton.setOption("value", "3000");      this.directMenuInsert(event.getWavelet(), blastbutton);            tv.setAnnotation("rid", blast.getRID() );      tv.setAnnotation("blastresult", "0");        }     catch (Exception error)     {      TextView tv = event.getBlip().getDocument();      tv.append("ERROR:" + error.getMessage() + " \n " );     }    }    if (buttonLabel.contains("Blasting..."))    {             TextView tv2 = event.getWavelet().getRootBlip().getDocument();     try      {      if ( (!tv2.getAnnotations("blastresult").isEmpty()) && tv2.getAnnotations("blastresult").get(0).getValue().contentEquals("0") )      {      tv2.setAnnotation("blastresult", "1");             BlastSearch blast = new BlastSearch();       blast.setRID( tv2.getAnnotations("rid").get(0).getValue() );       blast.parseResult();              TextView tv = event.getWavelet().appendBlip().getDocument();       tv.append(blast.waveOutput());      }     }     catch (SAXException error)     {      tv2.setAnnotation("blastresult", "0");      MenuItem blastbutton = new MenuItem("chron","Blasting...",this.generateKey());      blastbutton.setOption("value", "3000");      this.directMenuInsert(event.getWavelet(), blastbutton);     }     catch (Exception error)     {      event.getWavelet().appendBlip().getDocument().append("ERROR:" + error.getMessage() + error.getClass().getCanonicalName() + " \n ");     }         }   }     @Override   public void processSbwEvents(RobotMessageBundle bundle)    {                 } }
+Retrieved from " http://2009.igem.org/Team:Freiburg_software/Code/BlastRobotServlet.java "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

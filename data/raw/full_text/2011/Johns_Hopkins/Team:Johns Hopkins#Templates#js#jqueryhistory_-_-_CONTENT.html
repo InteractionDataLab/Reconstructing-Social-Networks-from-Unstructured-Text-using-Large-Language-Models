@@ -1,0 +1,159 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Johns_Hopkins_Templates_js_jqueryhistory"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Johns_Hopkins/Templates/js/jqueryhistory">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Johns_Hopkins/Templates/js/jqueryhistory&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Johns_Hopkins/Templates/js/jqueryhistory&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Johns_Hopkins/Templates/js/jqueryhistory&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Johns_Hopkins/Templates/js/jqueryhistory" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Johns Hopkins/Templates/js/jqueryhistory</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2011.igem.org</H3><P>/*
+</P><PRE>* jQuery history plugin
+* 
+* sample page: <A href="http://www.mikage.to/jquery/jquery_history.html" class="external free" rel="nofollow">http://www.mikage.to/jquery/jquery_history.html</A>
+*
+* Copyright (c) 2006-2009 Taku Sano (Mikage Sawatari)
+* Licensed under the MIT License:
+*   <A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>
+*
+* Modified by Lincoln Cooper to add Safari support and only call the callback once during initialization
+* for msie when no initial hash supplied.
+*/
+</PRE><P>
+jQuery.extend({
+	historyCurrentHash: undefined,
+	historyCallback: undefined,
+	historyIframeSrc: undefined,
+</P><P>	historyInit: function(callback, src){
+		jQuery.historyCallback = callback;
+		if (src) jQuery.historyIframeSrc = src;
+		var current_hash = location.hash.replace(/\?.*$/, <I>);</I></P><P>		jQuery.historyCurrentHash = current_hash;
+		// if ((jQuery.browser.msie) &amp;&amp; (jQuery.browser.version &lt; 8)) {
+		if (jQuery.browser.msie) {
+			// To stop the callback firing twice during initilization if no hash present
+			if (jQuery.historyCurrentHash == <I>) {</I>
+			jQuery.historyCurrentHash = '#';
+		}
+</P><P>			// add hidden iframe for IE
+			jQuery(&quot;body&quot;).prepend('&lt;iframe id=&quot;jQuery_history&quot; style=&quot;display: none;&quot;'+
+				(jQuery.historyIframeSrc ? ' src=&quot;'+jQuery.historyIframeSrc+'&quot;' : <I>)</I>
+				+'&gt;&lt;/iframe&gt;'
+			);
+			var ihistory = jQuery(&quot;#jQuery_history&quot;)[0];
+			var iframe = ihistory.contentWindow.document;
+			iframe.open();
+			iframe.close();
+			iframe.location.hash = current_hash;
+		}
+		else if (jQuery.browser.safari) {
+			// etablish back/forward stacks
+			jQuery.historyBackStack = [];
+			jQuery.historyBackStack.length = history.length;
+			jQuery.historyForwardStack = [];
+			jQuery.lastHistoryLength = history.length;
+</P><P>			jQuery.isFirst = true;
+		}
+		if(current_hash)
+			jQuery.historyCallback(current_hash.replace(/^#/, <I>));</I>
+		setInterval(jQuery.historyCheck, 100);
+	},
+</P><P>	historyAddHistory: function(hash) {
+		// This makes the looping function do something
+		jQuery.historyBackStack.push(hash);
+</P><P>		jQuery.historyForwardStack.length = 0; // clear forwardStack (true click occured)
+		this.isFirst = true;
+	},
+</P><P>	historyCheck: function(){
+		// if ((jQuery.browser.msie) &amp;&amp; (jQuery.browser.version &lt; 8)) {
+		if (jQuery.browser.msie) {
+			// On IE, check for location.hash of iframe
+			var ihistory = jQuery(&quot;#jQuery_history&quot;)[0];
+			var iframe = ihistory.contentDocument || ihistory.contentWindow.document;
+			var current_hash = iframe.location.hash.replace(/\?.*$/, <I>);</I>
+			if(current_hash != jQuery.historyCurrentHash) {
+</P><P>				location.hash = current_hash;
+				jQuery.historyCurrentHash = current_hash;
+				jQuery.historyCallback(current_hash.replace(/^#/, <I>));</I></P><P>			}
+		} else if (jQuery.browser.safari) {
+			if(jQuery.lastHistoryLength == history.length &amp;&amp; jQuery.historyBackStack.length &gt; jQuery.lastHistoryLength) {
+				jQuery.historyBackStack.shift();
+			}
+			if (!jQuery.dontCheck) {
+				var historyDelta = history.length - jQuery.historyBackStack.length;
+				jQuery.lastHistoryLength = history.length;
+</P><P>				if (historyDelta) { // back or forward button has been pushed
+					jQuery.isFirst = false;
+					if (historyDelta &lt; 0) { // back button has been pushed
+						// move items to forward stack
+						for (var i = 0; i &lt; Math.abs(historyDelta); i++) jQuery.historyForwardStack.unshift(jQuery.historyBackStack.pop());
+					} else { // forward button has been pushed
+						// move items to back stack
+						for (var i = 0; i &lt; historyDelta; i++) jQuery.historyBackStack.push(jQuery.historyForwardStack.shift());
+					}
+					var cachedHash = jQuery.historyBackStack[jQuery.historyBackStack.length - 1];
+					if (cachedHash != undefined) {
+						jQuery.historyCurrentHash = location.hash.replace(/\?.*$/, <I>);</I>
+						jQuery.historyCallback(cachedHash);
+					}
+				} else if (jQuery.historyBackStack[jQuery.historyBackStack.length - 1] == undefined &amp;&amp; !jQuery.isFirst) {
+					// back button has been pushed to beginning and URL already pointed to hash (e.g. a bookmark)
+					// document.URL doesn't change in Safari
+					if (location.hash) {
+						var current_hash = location.hash;
+						jQuery.historyCallback(location.hash.replace(/^#/, <I>));</I>
+					} else {
+						var current_hash = <I>;</I>
+						jQuery.historyCallback(<I>);</I>
+					}
+					jQuery.isFirst = true;
+				}
+			}
+		} else {
+			// otherwise, check for location.hash
+			var current_hash = location.hash.replace(/\?.*$/, <I>);</I>
+			if(current_hash != jQuery.historyCurrentHash) {
+				jQuery.historyCurrentHash = current_hash;
+				jQuery.historyCallback(current_hash.replace(/^#/, <I>));</I>
+			}
+		}
+	},
+	historyLoad: function(hash){
+		var newhash;
+		hash = decodeURIComponent(hash.replace(/\?.*$/, <I>));</I></P><P>		if (jQuery.browser.safari) {
+			newhash = hash;
+		}
+		else {
+			newhash = '#' + hash;
+			location.hash = newhash;
+		}
+		jQuery.historyCurrentHash = newhash;
+</P><P>		// if ((jQuery.browser.msie) &amp;&amp; (jQuery.browser.version &lt; 8)) {
+		if (jQuery.browser.msie) {
+			var ihistory = jQuery(&quot;#jQuery_history&quot;)[0];
+			var iframe = ihistory.contentWindow.document;
+			iframe.open();
+			iframe.close();
+			iframe.location.hash = newhash;
+			jQuery.lastHistoryLength = history.length;
+			jQuery.historyCallback(hash);
+		}
+		else if (jQuery.browser.safari) {
+			jQuery.dontCheck = true;
+			// Manually keep track of the history values for Safari
+			this.historyAddHistory(hash);
+</P><P>			// Wait a while before allowing checking so that Safari has time to update the &quot;history&quot; object
+			// correctly (otherwise the check loop would detect a false change in hash).
+			var fn = function() {jQuery.dontCheck = false;};
+			window.setTimeout(fn, 200);
+			jQuery.historyCallback(hash);
+			// N.B. &quot;location.hash=&quot; must be the last line of code for Safari as execution stops afterwards.
+			//      By explicitly using the &quot;location.hash&quot; command (instead of using a variable set to &quot;location.hash&quot;) the
+			//      URL in the browser and the &quot;history&quot; object are both updated correctly.
+			location.hash = newhash;
+		}
+		else {
+		  jQuery.historyCallback(hash);
+		}
+	}
+});
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2011.igem.org/Team:Johns_Hopkins/Templates/js/jqueryhistory">http://2011.igem.org/Team:Johns_Hopkins/Templates/js/jqueryhistory</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Johns_Hopkins/Templates/js/jqueryhistory" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Johns_Hopkins/Templates/js/jqueryhistory" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Johns_Hopkins/Templates/js/jqueryhistory&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Johns_Hopkins/Templates/js/jqueryhistory&amp;oldid=72831" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2011.igem.org:Privacy_policy" title="2011.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2011.igem.org:General_disclaimer" title="2011.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

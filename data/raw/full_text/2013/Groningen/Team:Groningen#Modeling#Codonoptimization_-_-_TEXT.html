@@ -1,0 +1,77 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Groningen/Modeling/Codonoptimization
+From 2013.igem.org
+Codon Optimization
+The genetic code is degenerate due to the fact that multiple tRNA molecules can be used to encode a single amino acid. Each protein can therefore be translated from many different nucleotide sequences, which provides us with a degree of control when constructing synthetic genes. The process of finding the optimal sequence for a gene is called codon optimization.
+Which sequence is optimal is dependent on the goal, and although codon optimization is mostly used to increase protein expression, it can also be used for inserting or removing certain nucleotide sub-sequences (which are required for functions such as post-translational modifications and DNA degradation), protein folding, and for the modification of protein domains, GC-content, and higher RNA structures.
+Goals
+The primary goal for applying codon optimization in our project is to increase the expression of the silk gene for maximal silk yield. This can be achieved by increasing both translation elongation as translation initiation rates. The former, the translation elongation rate, is more or less dependent on codon availability, which can form a major bottleneck in the translation process. This bottleneck can be removed, or at least pushed back, by selecting the codons for each amino acid according to some optimal ratio with respect to their availabilities. Besides directly increasing the amino acid elongation rate, it results in higher tRNA and ribosome recycle rates [1], and has been found to decrease translational errors [2].
+Increasing translation initiation rates can be done by increasing mRNA availability, and by taking mRNA secondary structures into account. The former, mRNA availability, can be modified by maximizing mRNA longevity through the removal of endonuclease binding sites. Such sites are recognized by endonuclease proteins, which can then initiate the degradation process of nucleotide sequences. The latter, mRNA secondary structures, can significantly impact protein expression by  blocking the ribosome binding site [3]. There are various mRNA secondary structures, but to keep things simple, we strived for a minimal number of secondary mRNA structures in close proximity to the ribosome binding site.
+Our secondary goal for codon optimization is to help with the secretion of silk. It is known that secretion is, in part, dependent on the correct folding of a protein, and although the folding process is dependent on many different factors, we can exert a degree of control by manipulating translation elongation rates [4]. The goal, then, is to match target and host translational elongation speeds through appropriate codon selection, so as to to reconstruct the folding conditions in the host as closely as possible.
+Expression
+A 100 amino acid sequence in Bacillus subtilis 168 strain can potentially have 5100 unique codon sequences, requiring a calculation time of quindecillions of years! An exhaustive blind search is therefore infeasible, which is why we chose to implement a genetic algorithm in c++.
+We initiated the search with a population of 100 semi-random codon sequences (the amino-sequence itself was preserved). Each sequence was then evaluated and given a score based on three factors: (2.1) codon availability, (2.2) RNA secondary structures, and (2.3) endonuclease restriction sites. The top 10% of the population was selected, and was used to rebuild the population with a 2% mutation rate. This cycle of selection and mutation repeated itself for 500 generations. Finally, due to long calculation times and for convenient future use, we applied the algorithm to a single repeat unit from A.E.Brooks et al. [5] (see figure 1).
+Figure 1. Amino acid sequence 2E from A.E.Brooks et al. [5].
+Codon availability
+Codon availability, or tRNA availability to be more exact, has been found to be directly proportional to the number of tRNA gene counts - for bacillus a 0.86 correlation was observed [6]. The tRNA gene count data can be found on the online genomic database [7,8] along with the tRNA usage data, which is the percentage of nucleotide triplets of each codon observed in coding regions. Although the tRNA gene counts give a good impression of tRNA availability, a more accurate representation can be created by incorporating the tRNA usage data.
+When adjusting the tRNA availabilities to account for tRNA usage we looked at the standard Watson-Crick and wobble base pairing rules. The first two nucleotide bases bind to anti-codon bases according to the standard Watson-Crick rules; guanine binds with cytosine, and adenine binds with uradine. The third nucleotide, however, can undergo 'wobble', which basically states that the binding rules are less strict [9]. In particular, we adopted the following two rules; tRNA uradine can bind to all mRNA bases, and tRNA guanine can bind to mRNA adenine and uradine.
+A final binding rule was adopted due to nucleotide modifications, of which hundreds of different types have been observed. Luckily for us, however, the vast majority of these (over 70%) are adenine to inosine modifications [10]. Moreover, when adenine appears at the wobble position it is almost always converted to inosine [11], which may then bind to mRNA adenine, uradine, and cytosine. The resulting wobble base pairs can be seen in figure 2, where green represents Watson-Crick pairing, blue the permitted wobble pairs, and red the base pairs that are not allowed.
+Figure 2. Permitted nucleotide base pairing. Green: Watson-Crick base pairing. Blue: permitted wobble pairs. Red: nucleotide pairs that are not allowed.
+The term 'tRNA usage of codon x' is now perhaps slightly misleading and requires some clarification: since multiple anticodons can now bind to some codon x, the usage of codon x has to be divided amongst all possible anticodon matches. To further complicate matters, not all nucleotide bases have the same binding affinity. In particular, we adopted the following two heuristics with respect to wobble base binding preferences; Watson-Crick standard pairs have a higher binding affinity than all wobble base pairs [12], and Inosine-adenine pairs have a lower binding affinity than both inosine-cytosine as inosine-uradine pairs [13].
+The formula below shows how the relative codon ratios obtained from the gene count data were adapted. Ai is the availability of codon i, Ux is the usage of codon x, Mx is the number of anticodon pairs for codon x, and Bi reflects the binding affinity for anticodon match i.
+The codon availability score for each sequence was then assessed by counting the frequency of each codon, and comparing this to the optimal frequencies obtained from E.1.
+RNA secondary structures
+Single stranded RNA can fold itself up in many different structures, such as 'hairpins', 'stem-loops', and 'pseudoknots'. Such structures can have a significant impact on protein expression, in particular when they occur in close proximity to the ribosome binding site [3]. When maximizing protein expression, it is therefore advantageous to strive for a minimal amount of RNA secondary structures surrounding the ribosome binding site.
+Predicting these structures, however, is a time-intensive task. We therefore piped the required in and output of our algorithm to, and from, the free-to-use software called RNAStructure [14,15]. The actual 'RNA secondary structure score' for each sequence was reflected by the number of nucleotide pairs within a range of 90 bases from the ribosome binding site.
+Endonuclease recognition sites
+Endonuclease proteins, also known as restriction enzymes, are proteins that are capable of cleaving DNA at specific nucleotide recognition cites. In order to avoid unnecessary cleavage and to increase DNA longevity, these should be removed from the sequence. For B.subtilis 168, two recognition sites are currently known: 'GGCC' and 'CTCGAG' [16]. The 'endonuclease score' for each sequence was reflected simply by the number of recognition site occurrences.
+Results
+Although the algorithm strives to optimize all three factors mentioned above, at some point one property has to make way for another. Removing a restriction site, for example, may negatively impact the codon selection error, and vica versa. We therefore added different weights to each error value, in order to create two sequences with the following priorities:
+Sequence 1: Codon Availability > Secondary RNA Structures > Restriction sites
+Sequence 2: Codon Availability > Restriction sites
+The idea, then, is to initiate the construct with sequence one, which has a minimal amount of secondary structures at the ribosome binding site, followed by any number of sequence 2. The error plots of each factor for these sequence 1 and 2 can be seen below. Both were fully optimized at generation ~150, but the calculations continued to generation 500 to make sure.
+Figure 3. Error plot for sequence 1 (E1).
+Figure 4. Error plot for sequence 2 (E2).
+Folding
+Our secondary goal for codon optimisation is to provide a potential back-up plan for secretion by providing a codon sequence optimized for the correct folding of a protein. It does so by matching translation elongation speeds of the silk proteins MaSp1 and MaSp2 in Argiope aurantia and B.subtilis 168. Since the translation elongation rate can significantly impact protein folding [4], it may also have an impact on the secretion.
+Matching translation elongation rates
+In order to match the translation elongation rate of some protein in B.subtilis 168 with A.aurantia, the codon selection should be optimized so as to mirror the corresponding codon availability in A.aurantia. However, this requires tRNA gene count data of A.aurantia, which appears to be, as of yet, unavailable. This can be compensated for by the fact that highly expressed genes prefer optimal codons [17], and that MaSp1 and MaSp2 are indeed highly expressed genes.
+We therefore approximated the optimal selection of tRNA codons by assuming that the main coding regions of MaSp1 and MaSp2 were indeed significantly biased towards optimal codons. The head and tail regions of these genes were excluded from the analysis, since these may be under additional evolutionary pressures, such as the requirement to preserve certain nucleotide sequences for folding. Furthermore, since the total number of codons in MaSp1 and MaSp2 was already relatively small, we excluded all amino-acids constituting less than 1% of the total sequence as these may have a higher chance of being unreliable. The resulting optimal codons selections for each amino acid can be seen in the left spreadsheet of figure 3, whereas the right spreadsheet shows the same results for the head and the tail. It is clear that the codon bias here is significantly different, which suggests either that there is little to no codon bias in these genes, or that the head and tail regions have indeed undergone additional evolutionary pressures to maintain certain nucleotide sequences.
+Figure 5. Left: amino acid distribution in the MaSp1 and MaSp2 proteins without the N and C terminus. Right: amino acid distribution in the N and C terminus of the MaSp1 and MaSp2 proteins.
+Blind Search
+Because, for protein folding, the correct matching of translation elongation speeds at a local level are more important than correct matching at a global one, we could apply an exhaustive blind search, written in matlab. The optimal codon sequence for each silk protein was the sequence with the smallest codon selection error for each consecutive group of five amino acids, where the codon selection error was the difference in codon availabilities found in bacillus with the availabilities found in A.aurantia.
+References
+[1] Milana Frenkel-Morgenstern, Amar Danon, Thomas Christian, Takao Igarashi, Lydia Cohen, Ya-Ming Hou, Lars Juhl Jensen. (2012). “Genes adopt non-optimal codon usage to generate cell cycle-dependent oscillations in protein levels”. Mol Sys Biol. V8; 572.
+[2] Hershberg R, Petrov DA (2009) General Rules for Optimal Codon Choice. PLoS Genet 5(7): e1000556. doi:10.1371/journal.pgen.1000556
+[3] Elina Jacobs, James D. Mills, and Michael Janitz, “The Role of RNA Structure in Posttranscriptional Regulation of Gene Expression,” Journal of Genetics and Genomics, vol. 39, no. 10, pp. 535–543, 2012.
+[4] Kaufman RJ. Regulation of mRNA translation by protein folding in the endoplasmic reticulum. Trends Biochem Sci. 2004 Mar;29(3):152-8.
+[5] Amanda E. Brooks, Shane M. Stricker, Sangeeta B. Joshi, Timothy J. Kamerzell, C. Russell Middaugh, & Randolph V. Lewis†. (2008). Properties of Synthetic Spider Silk Fibers Based on Argiope aurantia MaSp2. Biomacromolecules vol 9. pp 1509-1510.
+[6] Kanaya S, Yamada Y, Kudo Y, Ikemura T (1999) Studies of codon usage and tRNA genes of 18 unicellular organisms and quantification of Bacillus subtilis tRNAs: gene expression level and species-specific diversity of codon usage based on multivariate analysis. Gene 238: 143-155.
+[7] http://gtrnadb.ucsc.edu/Baci_subt/Baci_subt-summary-codon.html
+[8] Patricia P. Chan and Todd M. Lowe. (2008). GtRNAdb: a database of transfer RNA genes detected in genomic sequence
+[9] CRICK, F.H.C. (1966). Codon-anticodon pairing: the wobble hypothesis, J.Mol.Biol.19:548-555.
+[10] Jonatha M.Gott. Methods in enzymology, RNA editing.
+[11] http://bass.bio.uci.edu/~hudel/bs99a/lecture21/lecture2_2.html
+[12] Xuhua Xia. (2008). The cost of wobble translation in fungal mitochondrial genomes: integration of two traditional hypotheses. BMC Evolutionary Biology 2008, 8:211
+[13] T. Ikemura and H. Ozeki. (1983). Codon Usage and Transfer RNA Contents: Organism-specific Codon-choice Patterns in Reference to the Isoacceptor Contents. Quant Biol 1983. 47: 1087-1097.
+[14] D.H. Mathews, M.D. Disney, J. L. Childs, S.J. Schroeder, M. Zuker, D.H. Turner (2004). "Incorporating chemical modification constraints into a dynamic programming algorothm for prediction of RNA secondary structure.". Proceedings of the National Academy of Sciences, USA 101 (19): 7287–7292.
+[15 D.H. Mathews (2004). "Using an RNA secondary structure partition function to determine confidence in base pairs predicted by free energy minimization.". RNA 10 (8): 1178–1190.
+[16] http://rebase.neb.com/cgi-bin/onumget?845
+[17] Paul M.Sharp and Kevin M.Devine. (1989). Codon usage and gene expression level in Dictyostelium discoideum: highly expressed genes do 'prefer' optimal codons. Nucleic Acids Research, vol 17 number 13.
+Retrieved from " http://2013.igem.org/Team:Groningen/Modeling/Codonoptimization "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

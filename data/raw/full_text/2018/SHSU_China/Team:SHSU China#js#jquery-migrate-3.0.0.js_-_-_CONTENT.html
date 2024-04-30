@@ -1,0 +1,437 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SHSU_China_js_jquery-migrate-3_0_0_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SHSU China/js/jquery-migrate-3.0.0.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* jQuery Migrate - v3.0.0 - 2016-06-09
+* Copyright jQuery Foundation and other contributors
+*/
+</PRE><P>(function( jQuery, window ) {
+&quot;use strict&quot;;
+</P><P>
+jQuery.migrateVersion = &quot;3.0.0&quot;;
+</P><P>
+( function() {
+</P><P>	// Support: IE9 only
+	// IE9 only creates console object when dev tools are first opened
+	// Also, avoid Function#bind here to simplify PhantomJS usage
+	var log = window.console &amp;&amp; window.console.log &amp;&amp;
+			function() { window.console.log.apply( window.console, arguments ); },
+		rbadVersions = /^[12]\./;
+</P><P>	if ( !log ) {
+		return;
+	}
+</P><P>	// Need jQuery 3.0.0+ and no older Migrate loaded
+	if ( !jQuery || rbadVersions.test( jQuery.fn.jquery ) ) {
+		log( &quot;JQMIGRATE: jQuery 3.0.0+ REQUIRED&quot; );
+	}
+	if ( jQuery.migrateWarnings ) {
+		log( &quot;JQMIGRATE: Migrate plugin loaded multiple times&quot; );
+	}
+</P><P>	// Show a message on the console so devs know we're active
+	log( &quot;JQMIGRATE: Migrate is installed&quot; +
+		( jQuery.migrateMute ? &quot;&quot; : &quot; with logging active&quot; ) +
+		&quot;, version &quot; + jQuery.migrateVersion );
+</P><P>} )();
+</P><P>var warnedAbout = {};
+</P><P>// List of warnings already given; public read only
+jQuery.migrateWarnings = [];
+</P><P>// Set to false to disable traces that appear with warnings
+if ( jQuery.migrateTrace === undefined ) {
+	jQuery.migrateTrace = true;
+}
+</P><P>// Forget any warnings we've already given; public
+jQuery.migrateReset = function() {
+	warnedAbout = {};
+	jQuery.migrateWarnings.length = 0;
+};
+</P><P>function migrateWarn( msg ) {
+	var console = window.console;
+	if ( !warnedAbout[ msg ] ) {
+		warnedAbout[ msg ] = true;
+		jQuery.migrateWarnings.push( msg );
+		if ( console &amp;&amp; console.warn &amp;&amp; !jQuery.migrateMute ) {
+			console.warn( &quot;JQMIGRATE: &quot; + msg );
+			if ( jQuery.migrateTrace &amp;&amp; console.trace ) {
+				console.trace();
+			}
+		}
+	}
+}
+</P><P>function migrateWarnProp( obj, prop, value, msg ) {
+	Object.defineProperty( obj, prop, {
+		configurable: true,
+		enumerable: true,
+		get: function() {
+			migrateWarn( msg );
+			return value;
+		}
+	} );
+}
+</P><P>if ( document.compatMode === &quot;BackCompat&quot; ) {
+</P><P>	// JQuery has never supported or tested Quirks Mode
+	migrateWarn( &quot;jQuery is not compatible with Quirks Mode&quot; );
+}
+</P><P>
+var oldInit = jQuery.fn.init,
+	oldIsNumeric = jQuery.isNumeric,
+	oldFind = jQuery.find,
+	rattrHashTest = /\[(\s*[-\w]+\s*)([~|^$*]?=)\s*([-\w#]*?#[-\w#]*)\s*\]/,
+	rattrHashGlob = /\[(\s*[-\w]+\s*)([~|^$*]?=)\s*([-\w#]*?#[-\w#]*)\s*\]/g;
+</P><P>jQuery.fn.init = function( arg1 ) {
+	var args = Array.prototype.slice.call( arguments );
+</P><P>	if ( typeof arg1 === &quot;string&quot; &amp;&amp; arg1 === &quot;#&quot; ) {
+</P><P>		// JQuery( &quot;#&quot; ) is a bogus ID selector, but it returned an empty set before jQuery 3.0
+		migrateWarn( &quot;jQuery( '#' ) is not a valid selector&quot; );
+		args[ 0 ] = [];
+	}
+</P><P>	return oldInit.apply( this, args );
+};
+jQuery.fn.init.prototype = jQuery.fn;
+</P><P>jQuery.find = function( selector ) {
+	var args = Array.prototype.slice.call( arguments );
+</P><P>	// Support: PhantomJS 1.x
+	// String#match fails to match when used with a //g RegExp, only on some strings
+	if ( typeof selector === &quot;string&quot; &amp;&amp; rattrHashTest.test( selector ) ) {
+</P><P>		// The nonstandard and undocumented unquoted-hash was removed in jQuery 1.12.0
+		// First see if qS thinks it's a valid selector, if so avoid a false positive
+		try {
+			document.querySelector( selector );
+		} catch ( err1 ) {
+</P><P>			// Didn't *look* valid to qSA, warn and try quoting what we think is the value
+			selector = selector.replace( rattrHashGlob, function( _, attr, op, value ) {
+				return &quot;[&quot; + attr + op + &quot;\&quot;&quot; + value + &quot;\&quot;]&quot;;
+			} );
+</P><P>			// If the regexp *may* have created an invalid selector, don't update it
+			// Note that there may be false alarms if selector uses jQuery extensions
+			try {
+				document.querySelector( selector );
+				migrateWarn( &quot;Attribute selector with '#' must be quoted: &quot; + args[ 0 ] );
+				args[ 0 ] = selector;
+			} catch ( err2 ) {
+				migrateWarn( &quot;Attribute selector with '#' was not fixed: &quot; + args[ 0 ] );
+			}
+		}
+	}
+</P><P>	return oldFind.apply( this, args );
+};
+</P><P>// Copy properties attached to original jQuery.find method (e.g. .attr, .isXML)
+var findProp;
+for ( findProp in oldFind ) {
+	if ( Object.prototype.hasOwnProperty.call( oldFind, findProp ) ) {
+		jQuery.find[ findProp ] = oldFind[ findProp ];
+	}
+}
+</P><P>// The number of elements contained in the matched element set
+jQuery.fn.size = function() {
+	migrateWarn( &quot;jQuery.fn.size() is deprecated; use the .length property&quot; );
+	return this.length;
+};
+</P><P>jQuery.parseJSON = function() {
+	migrateWarn( &quot;jQuery.parseJSON is deprecated; use JSON.parse&quot; );
+	return JSON.parse.apply( null, arguments );
+};
+</P><P>jQuery.isNumeric = function( val ) {
+</P><P>	// The jQuery 2.2.3 implementation of isNumeric
+	function isNumeric2( obj ) {
+		var realStringObj = obj &amp;&amp; obj.toString();
+		return !jQuery.isArray( obj ) &amp;&amp; ( realStringObj - parseFloat( realStringObj ) + 1 ) &gt;= 0;
+	}
+</P><P>	var newValue = oldIsNumeric( val ),
+		oldValue = isNumeric2( val );
+</P><P>	if ( newValue !== oldValue ) {
+		migrateWarn( &quot;jQuery.isNumeric() should not be called on constructed objects&quot; );
+	}
+</P><P>	return oldValue;
+};
+</P><P>migrateWarnProp( jQuery, &quot;unique&quot;, jQuery.uniqueSort,
+	&quot;jQuery.unique is deprecated, use jQuery.uniqueSort&quot; );
+</P><P>// Now jQuery.expr.pseudos is the standard incantation
+migrateWarnProp( jQuery.expr, &quot;filters&quot;, jQuery.expr.pseudos,
+	&quot;jQuery.expr.filters is now jQuery.expr.pseudos&quot; );
+migrateWarnProp( jQuery.expr, &quot;:&quot;, jQuery.expr.pseudos,
+	&quot;jQuery.expr[\&quot;:\&quot;] is now jQuery.expr.pseudos&quot; );
+</P><P>
+var oldAjax = jQuery.ajax;
+</P><P>jQuery.ajax = function( ) {
+	var jQXHR = oldAjax.apply( this, arguments );
+</P><P>	// Be sure we got a jQXHR (e.g., not sync)
+	if ( jQXHR.promise ) {
+		migrateWarnProp( jQXHR, &quot;success&quot;, jQXHR.done,
+			&quot;jQXHR.success is deprecated and removed&quot; );
+		migrateWarnProp( jQXHR, &quot;error&quot;, jQXHR.fail,
+			&quot;jQXHR.error is deprecated and removed&quot; );
+		migrateWarnProp( jQXHR, &quot;complete&quot;, jQXHR.always,
+			&quot;jQXHR.complete is deprecated and removed&quot; );
+	}
+</P><P>	return jQXHR;
+};
+</P><P>
+var oldRemoveAttr = jQuery.fn.removeAttr,
+	oldToggleClass = jQuery.fn.toggleClass,
+	rmatchNonSpace = /\S+/g;
+</P><P>jQuery.fn.removeAttr = function( name ) {
+	var self = this;
+</P><P>	jQuery.each( name.match( rmatchNonSpace ), function( i, attr ) {
+		if ( jQuery.expr.match.bool.test( attr ) ) {
+			migrateWarn( &quot;jQuery.fn.removeAttr no longer sets boolean properties: &quot; + attr );
+			self.prop( attr, false );
+		}
+	} );
+</P><P>	return oldRemoveAttr.apply( this, arguments );
+};
+</P><P>jQuery.fn.toggleClass = function( state ) {
+</P><P>	// Only deprecating no-args or single boolean arg
+	if ( state !== undefined &amp;&amp; typeof state !== &quot;boolean&quot; ) {
+		return oldToggleClass.apply( this, arguments );
+	}
+</P><P>	migrateWarn( &quot;jQuery.fn.toggleClass( boolean ) is deprecated&quot; );
+</P><P>	// Toggle entire class name of each element
+	return this.each( function() {
+		var className = this.getAttribute &amp;&amp; this.getAttribute( &quot;class&quot; ) || &quot;&quot;;
+</P><P>		if ( className ) {
+			jQuery.data( this, &quot;__className__&quot;, className );
+		}
+</P><P>		// If the element has a class name or if we're passed `false`,
+		// then remove the whole classname (if there was one, the above saved it).
+		// Otherwise bring back whatever was previously saved (if anything),
+		// falling back to the empty string if nothing was stored.
+		if ( this.setAttribute ) {
+			this.setAttribute( &quot;class&quot;,
+				className || state === false ?
+				&quot;&quot; :
+				jQuery.data( this, &quot;__className__&quot; ) || &quot;&quot;
+			);
+		}
+	} );
+};
+</P><P>
+var internalSwapCall = false;
+</P><P>// If this version of jQuery has .swap(), don't false-alarm on internal uses
+if ( jQuery.swap ) {
+	jQuery.each( [ &quot;height&quot;, &quot;width&quot;, &quot;reliableMarginRight&quot; ], function( _, name ) {
+		var oldHook = jQuery.cssHooks[ name ] &amp;&amp; jQuery.cssHooks[ name ].get;
+</P><P>		if ( oldHook ) {
+			jQuery.cssHooks[ name ].get = function() {
+				var ret;
+</P><P>				internalSwapCall = true;
+				ret = oldHook.apply( this, arguments );
+				internalSwapCall = false;
+				return ret;
+			};
+		}
+	} );
+}
+</P><P>jQuery.swap = function( elem, options, callback, args ) {
+	var ret, name,
+		old = {};
+</P><P>	if ( !internalSwapCall ) {
+		migrateWarn( &quot;jQuery.swap() is undocumented and deprecated&quot; );
+	}
+</P><P>	// Remember the old values, and insert the new ones
+	for ( name in options ) {
+		old[ name ] = elem.style[ name ];
+		elem.style[ name ] = options[ name ];
+	}
+</P><P>	ret = callback.apply( elem, args || [] );
+</P><P>	// Revert the old values
+	for ( name in options ) {
+		elem.style[ name ] = old[ name ];
+	}
+</P><P>	return ret;
+};
+</P><P>var oldData = jQuery.data;
+</P><P>jQuery.data = function( elem, name, value ) {
+	var curData;
+</P><P>	// If the name is transformed, look for the un-transformed name in the data object
+	if ( name &amp;&amp; name !== jQuery.camelCase( name ) ) {
+		curData = jQuery.hasData( elem ) &amp;&amp; oldData.call( this, elem );
+		if ( curData &amp;&amp; name in curData ) {
+			migrateWarn( &quot;jQuery.data() always sets/gets camelCased names: &quot; + name );
+			if ( arguments.length &gt; 2 ) {
+				curData[ name ] = value;
+			}
+			return curData[ name ];
+		}
+	}
+</P><P>	return oldData.apply( this, arguments );
+};
+</P><P>var oldTweenRun = jQuery.Tween.prototype.run;
+</P><P>jQuery.Tween.prototype.run = function( percent ) {
+	if ( jQuery.easing[ this.easing ].length &gt; 1 ) {
+		migrateWarn(
+			&quot;easing function &quot; +
+			&quot;\&quot;jQuery.easing.&quot; + this.easing.toString() +
+			&quot;\&quot; should use only first argument&quot;
+		);
+</P><P>		jQuery.easing[ this.easing ] = jQuery.easing[ this.easing ].bind(
+			jQuery.easing,
+			percent, this.options.duration * percent, 0, 1, this.options.duration
+		);
+	}
+</P><P>	oldTweenRun.apply( this, arguments );
+};
+</P><P>var oldLoad = jQuery.fn.load,
+	originalFix = jQuery.event.fix;
+</P><P>jQuery.event.props = [];
+jQuery.event.fixHooks = {};
+</P><P>jQuery.event.fix = function( originalEvent ) {
+	var event,
+		type = originalEvent.type,
+		fixHook = this.fixHooks[ type ],
+		props = jQuery.event.props;
+</P><P>	if ( props.length ) {
+		migrateWarn( &quot;jQuery.event.props are deprecated and removed: &quot; + props.join() );
+		while ( props.length ) {
+			jQuery.event.addProp( props.pop() );
+		}
+	}
+</P><P>	if ( fixHook &amp;&amp; !fixHook._migrated_ ) {
+		fixHook._migrated_ = true;
+		migrateWarn( &quot;jQuery.event.fixHooks are deprecated and removed: &quot; + type );
+		if ( ( props = fixHook.props ) &amp;&amp; props.length ) {
+			while ( props.length ) {
+			   jQuery.event.addProp( props.pop() );
+			}
+		}
+	}
+</P><P>	event = originalFix.call( this, originalEvent );
+</P><P>	return fixHook &amp;&amp; fixHook.filter ? fixHook.filter( event, originalEvent ) : event;
+};
+</P><P>jQuery.each( [ &quot;load&quot;, &quot;unload&quot;, &quot;error&quot; ], function( _, name ) {
+</P><P>	jQuery.fn[ name ] = function() {
+		var args = Array.prototype.slice.call( arguments, 0 );
+</P><P>		// If this is an ajax load() the first arg should be the string URL;
+		// technically this could also be the &quot;Anything&quot; arg of the event .load()
+		// which just goes to show why this dumb signature has been deprecated!
+		// jQuery custom builds that exclude the Ajax module justifiably die here.
+		if ( name === &quot;load&quot; &amp;&amp; typeof args[ 0 ] === &quot;string&quot; ) {
+			return oldLoad.apply( this, args );
+		}
+</P><P>		migrateWarn( &quot;jQuery.fn.&quot; + name + &quot;() is deprecated&quot; );
+</P><P>		args.splice( 0, 0, name );
+		if ( arguments.length ) {
+			return this.on.apply( this, args );
+		}
+</P><P>		// Use .triggerHandler here because:
+		// - load and unload events don't need to bubble, only applied to window or image
+		// - error event should not bubble to window, although it does pre-1.7
+		// See <A rel="nofollow" class="external free" href="http://bugs.jquery.com/ticket/11820">http://bugs.jquery.com/ticket/11820</A>
+		this.triggerHandler.apply( this, args );
+		return this;
+	};
+</P><P>} );
+</P><P>// Trigger &quot;ready&quot; event only once, on document ready
+jQuery( function() {
+	jQuery( document ).triggerHandler( &quot;ready&quot; );
+} );
+</P><P>jQuery.event.special.ready = {
+	setup: function() {
+		if ( this === document ) {
+			migrateWarn( &quot;'ready' event is deprecated&quot; );
+		}
+	}
+};
+</P><P>jQuery.fn.extend( {
+</P><P>	bind: function( types, data, fn ) {
+		migrateWarn( &quot;jQuery.fn.bind() is deprecated&quot; );
+		return this.on( types, null, data, fn );
+	},
+	unbind: function( types, fn ) {
+		migrateWarn( &quot;jQuery.fn.unbind() is deprecated&quot; );
+		return this.off( types, null, fn );
+	},
+	delegate: function( selector, types, data, fn ) {
+		migrateWarn( &quot;jQuery.fn.delegate() is deprecated&quot; );
+		return this.on( types, selector, data, fn );
+	},
+	undelegate: function( selector, types, fn ) {
+		migrateWarn( &quot;jQuery.fn.undelegate() is deprecated&quot; );
+		return arguments.length === 1 ?
+			this.off( selector, &quot;**&quot; ) :
+			this.off( types, selector || &quot;**&quot;, fn );
+	}
+} );
+</P><P>
+var oldOffset = jQuery.fn.offset;
+</P><P>jQuery.fn.offset = function() {
+	var docElem,
+		elem = this[ 0 ],
+		origin = { top: 0, left: 0 };
+</P><P>	if ( !elem || !elem.nodeType ) {
+		migrateWarn( &quot;jQuery.fn.offset() requires a valid DOM element&quot; );
+		return origin;
+	}
+</P><P>	docElem = ( elem.ownerDocument || document ).documentElement;
+	if ( !jQuery.contains( docElem, elem ) ) {
+		migrateWarn( &quot;jQuery.fn.offset() requires an element connected to a document&quot; );
+		return origin;
+	}
+</P><P>	return oldOffset.apply( this, arguments );
+};
+</P><P>
+var oldParam = jQuery.param;
+</P><P>jQuery.param = function( data, traditional ) {
+	var ajaxTraditional = jQuery.ajaxSettings &amp;&amp; jQuery.ajaxSettings.traditional;
+</P><P>	if ( traditional === undefined &amp;&amp; ajaxTraditional ) {
+</P><P>		migrateWarn( &quot;jQuery.param() no longer uses jQuery.ajaxSettings.traditional&quot; );
+		traditional = ajaxTraditional;
+	}
+</P><P>	return oldParam.call( this, data, traditional );
+};
+</P><P>var oldSelf = jQuery.fn.andSelf || jQuery.fn.addBack;
+</P><P>jQuery.fn.andSelf = function() {
+	migrateWarn( &quot;jQuery.fn.andSelf() replaced by jQuery.fn.addBack()&quot; );
+	return oldSelf.apply( this, arguments );
+};
+</P><P>
+var oldDeferred = jQuery.Deferred,
+	tuples = [
+</P><P>		// Action, add listener, callbacks, .then handlers, final state
+		[ &quot;resolve&quot;, &quot;done&quot;, jQuery.Callbacks( &quot;once memory&quot; ),
+			jQuery.Callbacks( &quot;once memory&quot; ), &quot;resolved&quot; ],
+		[ &quot;reject&quot;, &quot;fail&quot;, jQuery.Callbacks( &quot;once memory&quot; ),
+			jQuery.Callbacks( &quot;once memory&quot; ), &quot;rejected&quot; ],
+		[ &quot;notify&quot;, &quot;progress&quot;, jQuery.Callbacks( &quot;memory&quot; ),
+			jQuery.Callbacks( &quot;memory&quot; ) ]
+	];
+</P><P>jQuery.Deferred = function( func ) {
+	var deferred = oldDeferred(),
+		promise = deferred.promise();
+</P><P>	deferred.pipe = promise.pipe = function( /* fnDone, fnFail, fnProgress */ ) {
+		var fns = arguments;
+</P><P>		migrateWarn( &quot;deferred.pipe() is deprecated&quot; );
+</P><P>		return jQuery.Deferred( function( newDefer ) {
+			jQuery.each( tuples, function( i, tuple ) {
+				var fn = jQuery.isFunction( fns[ i ] ) &amp;&amp; fns[ i ];
+</P><P>				// Deferred.done(function() { bind to newDefer or newDefer.resolve })
+				// deferred.fail(function() { bind to newDefer or newDefer.reject })
+				// deferred.progress(function() { bind to newDefer or newDefer.notify })
+				deferred[ tuple[ 1 ] ]( function() {
+					var returned = fn &amp;&amp; fn.apply( this, arguments );
+					if ( returned &amp;&amp; jQuery.isFunction( returned.promise ) ) {
+						returned.promise()
+							.done( newDefer.resolve )
+							.fail( newDefer.reject )
+							.progress( newDefer.notify );
+					} else {
+						newDefer[ tuple[ 0 ] + &quot;With&quot; ](
+							this === promise ? newDefer.promise() : this,
+							fn ? [ returned ] : arguments
+						);
+					}
+				} );
+			} );
+			fns = null;
+		} ).promise();
+</P><P>	};
+</P><P>	if ( func ) {
+		func.call( deferred, deferred );
+	}
+</P><P>	return deferred;
+};
+</P><P>})( jQuery, window );
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

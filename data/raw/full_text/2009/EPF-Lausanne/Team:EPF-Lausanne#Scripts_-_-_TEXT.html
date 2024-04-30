@@ -1,0 +1,105 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:EPF-Lausanne/Scripts
+From 2009.igem.org
+Home
+Team
+Presentation
+School
+Team Management
+Brainstorming
+Sponsors
+Project
+Abstract
+Theory
+Strategy
+Experimental Setup
+Results
+Parts submitted to the Registry
+Future directions
+References
+Modeling
+Modeling overview
+Analysis Methods
+Results
+References
+Human practices
+Overview
+Talks
+Survey
+Media
+Safety
+Lab
+Last News
+Notebook
+Protocols used
+Contents
+1 Extract data from namd log file
+2 Sum of RMSD for each residue
+3 Mean RMSD along time
+4 RMSF from namd .dcd
+Scripts used
+A few scripts were needed to analyze the trajectory file (.dcd) and log files from namd. We'll list here what we made and how they can be used. All scripts are in TCL but don't show an elevated syntax.
+Extract data from namd log file
+Some informations about the simulation are stored in the log file. A script is really useful to extract them before plotting. We updated the file available on namd website. Here is our version of namdstats.tcl . Please rename to namdstats.tcl after download.
+Here are the steps to use this script:
+source namdstats.tcl
+data_time DATA_NAME LOG_FILE
+It will extract data from LOG_FILE, creating a DATA_NAME.dat in the working directory (type pwd to see where you are) containing values and time informations.
+Available DATA_NAME are: BOND, ANGLE, DIHED, IMPRP, ELECT, VDW, BOUNDARY, MISC, KINETIC, TOTAL, TEMP, TOTAL2, TOTAL3, TEMPAVG, PRESSURE, GPRESSURE, VOLUME, PRESSAVG, GPRESSAVG.
+So, to extract pressure from our first simulation, the command is:
+data_time PRESSURE namd_log
+Sum of RMSD for each residue
+Basically, this script will calculate the RMSD at each frame. The ouptut is residue number and the sum of its RMSD at each specified frame.
+You have to provide a list or residue ID in the $sel_resid. There is no check for duplicated ID, so choose carefully your selection ;). (The .dcd and .pdb must be loaded before). You probably want to select each residue composing the protein only once, that's why we use "protein and alpha", there is only one CA per residu. This selection is only to define which residues are taken in consideration, it has no impact on wich atoms are selected.
+If you want to change which atoms are taken in consideration for RMSD, you'll have to update the selection within the script.
+The RMSD will calculate the RMSD for each non-hydrogen atom of the residue at each step and sum all these results. That's why the process is really heavy: #Residues * #AtomsPerResidue * #Frames * #CostOfRMSD
+Output is residue_rmsd.dat
+In the TkCon window type:
+source residue_rmsd_v2.tcl
+set sel_resid [[atomselect top "protein and alpha"] get resid]
+rmsd_residue_over_time top $sel resid
+Remark: we updated the script residue_rmsd.tcl that was originaly available from namd website to be able to specify on which frames the rsmd has to be computed. Please have a look on this wiki for a more up-to-date version of the file... Command is:
+rmsd_residue_over_time top $sel resid FIRST_FRAME LAST_FRAME
+Mean RMSD along time
+We used this particular representation of RMSD to visualize if our simulation is reaching an equilibrium. It also helps a lot to see if the parameters are correctly set.
+As we wrote the script, take a special care at the selections you make ;)
+The script will go through the frames and sum RMSD of each selected residues (in fact it will sum RMSD of every atom composing the residue)
+The sum of RMSD for each frame is then divided by the number of residues, to "normalize" the value
+As before, you have to provide the list of residues.
+Output is data_rmsd.dat
+In the TkCon window type:
+source residue_rmsd_igem09.tcl
+set sel_resid [[atomselect top "protein and alpha"] get resid]
+rmsd_residue_over_time_igem top $sel_resid 0 0
+The script was updated to be able to define reference frame and first frame were RMSD will be calculated. We usually don't need to compute RMSD during heating, for instance. RMSD takes a lot of time. In our first run 1 frame = 100 timesteps * 2 fs*timesteps^-1 = 200 fs
+complete form for run is:
+rmsd_residue_over_time top $sel_resid FIRST_FRAME REFERENCE_FRAME
+RMSF from namd .dcd
+Root mean square fluctuation can be compared to the beta factor observed during chrystallography. The beta factor has to be loaded from the .pdb. This can be achieved with a few bash commands:
+cat 2v0u.pdb | grep CA > 2v0u_prot_CA.pdb
+We then wrote a script to get RMSF.
+RMSF is calculated on a selected window of frames (between FIRST_FRAME and LAST_FRAME).
+There is no reference frame, the function return the fluctuation around the average in the window.
+It returns one value per alpha carbon.
+Output is data_rmsf_igem.dat
+In the TkCon window type:
+source rmsf_igem09.tcl
+set sel_resid [[atomselect top "protein and alpha"] get resid]
+rmsf_CA top $sel_resid FIRST_FRAME LAST_FRAME
+Retrieved from " http://2009.igem.org/Team:EPF-Lausanne/Scripts "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

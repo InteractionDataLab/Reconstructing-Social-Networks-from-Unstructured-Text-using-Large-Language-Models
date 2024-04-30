@@ -1,0 +1,187 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:MIT/Tools/
+From 2011.igem.org
+HOME
+PROJECT
+DATA
+NOTEBOOK
+MODEL
+PARTNERS
+TEAM
+HUMAN PRACTICES
+Navigation
+Modeling
+mcell Modeling Platform
+G-Level Assembly
+Colony Picker
+Geneious
+Modeling
+To understand how to create different types of cellular patterns, we did a tremendous amount of modeling. The modeling was central to our engineering process - it was used to determine what genetic circuits can produce patterns and the range of patterns any particular genetic circuit can produce. Moreover, the model was used to determine the feasibility of engineering any particular pattern into real-world cells; any pattern we could actually make in real life would have to be stable under a wide range of parameters. Essentially, we used the model as a computational design tool to decide what we could build and how we could build it.
+The simulation of cell shape dynamics was crucial to our modeling. Cell shape is (obviously) an important part part of the structure of biological tissues. We incorporated control of cell adhesion strength into our circuits; differing cell adhesion cannot be simulated without the cells moving around and changing their form and surface area. However, the internal structure of the cell played little role in our design, because we did not incorporate any devices that allow control of internal structure, or the specific control of cell shape, into our circuits. Thus, the cells, for our purposes, were simply structure-less stochastically moving blobs with individually varying strengths of adhesion. This fit very well into the paradigm of the Cellular Potts Method[1], so we modeled the external shape-position dynamics of our cells using the Cellular Potts Method while simulating the internal protein dynamics by numerically integrating an ODE inside each cell.
+A Summary of the Simulation Method
+To simulate the cell shape dynamics, we used the Cellular Potts Method - an extremely efficient, lattice-based, Monte-Carlo method for simulating "generalized cells" - blobs with a set of given properties, occupying a set of lattice points. In our simulations we modeled a real-life cell using a single "generalized cell".
+The "energy" of the system is a function of the state of the system; it is the sum of a set of constraints. In our case, the energy is the sum (for every cell) of
+A constraint on volume of the form lambda_V(Volume_of_Cell - Target_Volume)^2
+A constraint on surface area of the fomr lambda_S(Surface_of_Cell - Target_Surface)^2
+The energy of adhesion, which is (summing over the neighbors of the cell) -NCAD_Strength*NCAD_in_Cell*NCad_in_Neighboring_Cell
+For our simulations, lambda_V = 1, lambda_S = 2, Target_Volume = 64, Target_Surface = 32, and NCAD_Strength = 1.
+In our method, the following is repeatedly done:
+For every point P1 in the lattice,
+A neighboring point P2 is chosen
+If P1 belonged to cell A and P2 belonged to a cell other than A, the change in the "energy" of the system configuration is calculated
+If the change in system energy is negative, P2 becomes a member of cell A
+If the change in system energy is posituve, P2 becomes a member of cell A with probability e^-deltaH/T, where T is the "temperature", a constant.  (Thus, the "temperature" determines how much the cells move around.)
+The ODEs are Euler-stepped forward a fixed timestep (in our simulations, the timestep is 0.1)
+The parameters of the ODEs running "inside" each cell are updated with new information such as the amount of a surface protein in contact with a cell
+Parameters in the "effective energy", like the amounth of NCAD in each cell, are updated by the new information in the ODEs in each cell The software for running, managing, rendering, and analyzing models that use this method all this described on the mCell Modeling Framework page.
+The Circuit and the ODE Model
+Using our simulations, we discovered this relatively simple patterning circuit should reliably produce several different types of patterns, depending on whether how adhesion is controlled. (Note: the amount of doxycycline, which modulates the strength of rtTA3, must be adjusted so that Notch production is less than Delta production when LacI is absent, but greater than Delta production when LacI is present. Essentially, this creates an intermediate-strength constitutive promoter.)
+Not shown is the repression of the Hef1a-LacO promoter by LacI, the production of Gal4 when Notch and Delta on touching cells bind, the stimulation of UAS by Gal4, and the Notch/Delta cis-repression. In cis-repression, Notch and Delta on the same cell bind to one another to form a complex, which then gets removed from the plasma membrane. We assumed, following the models in [2], that these protein-protein dynamics occur on a much faster timescale than transcription. The same assumption was made of the 'Notch + Delta -> Notch/Delta Complex' reaction. Thus, cis-repression is modeled with the term $k_c*NCis*DCis$, and trans-activation is modeled with the term $k_t*NCis*DCis$. We modeled the production of proteins by promoters using Hill functions, as is standard practice.
+That produces the following set of differential equations:
+Key:
+D, N - amount of Delta, Notch inside the cell
+D', N' - amount of Delta, Notch touching the membrane of the cell. (When calculating these values, we assumed that Delta and Notch are evenly distributed on a cell's membrane.)
+G - amount of Gal4
+L - amount of LacI
+R - amount of Reporter protein
+k_t - strength of trans-activation
+k_c - strength of cis-inhibition
+b_L - strength of LacI repression
+n_prod - constitutive producton of Notch
+d_min - minimum production of Delta
+d_prod - the additional production that Delta can achieve. When LacI is absent, d_min + d_prod is the maximum rate of Delta production.
+g_prod - maximum rate of production of UAS promoter
+k_d - Gal4-UAS disassociation constant
+h - cooperativity of Gal4 binding to UAS
+g_deg - rate of degradation of Gal4
+p_deg - rate of degradation of other protein
+In our simulations, every cell began with 0 of every protein. We took the values k_t = 0.1, k_c = 1, k_d = 1500, h = 1, g_deg = 1, and p_deg = 0.1 from [2]. We let n_prod = 5, d_min = 2, d_prod = 8; these are reasonable values in scale with those suggested for Notch and Delta production in [2]. We varied b_L through various values and found that a fairly large range of reasonable values extending outside of 5<b_L<50 generates patterning.
+IN ALL THE FOLLOWING VIDEOS, RED IS AMOUNT OF DELTA PROTEIN AND GREEN IS AMOUNT OF NOTCH PROTEIN
+Constitutive Adhesion
+In this simulation, all cells have a constant 10 NCad. There is no UAS:NCAD in the circuit
+Video
+Analysis
+What happens here is that, initially, all the cells develop a large amount of Delta. However, some Notch still remains in the cells, and is strongly activated; Delta production rates begin to drop because of the LacI. Some cells gain significant amounts of Notch before others, due to the random movements of the cells. Once a cell gains a significant amount of Notch, it's Delta level drops off sharply, and it ceases to activate cells in its vincinity. Thus, once a cell is fully "activated", other cells around it are much less likely to be. The stable state of such dynamics is a mosaic pattern, in which single cells are activated and are surrounded by a sea of inactivated cells. THis produces a characteristic mosaic pattern.
+But what if they are not sticky?
+There is a very large discrepancy between the behavior of the circuit in HEK cells in CHO cells, which are modeled with no adhesion and are initialized with gaps in between them. In CHO cells, the following ensues:
+Movie
+Analysis
+The cells drift around until they hit one another, activating. However, they do not stick. Many drift away. The pattern as a whole has no cohesive strucure. Whenever enough cells hit one area, only the cells in the middle are activated, producing a dendritic structure. (The reason there is any patterning at all is because there are too many cells for them not to run into one another.)
+Adding in NCAD
+In this run, the UAS:NCAD is added to the circuit.
+Movie
+Analysis
+In here, cells drift around until they hit one another, then begin to activate. Eventually, this forms a stable, adhering structure with several holes in it. Many of the holes close up, but some remain quite stable. Cells drift from active into non-active form and back, occasionally, but the structure as whole remains stable.
+It is interesting to see how whenever enough of a thickness of cells appears, the characteristic mosaic pattern forms. Furthermore, it is interesting to compare the behavior of the holes in the structure to the behavior of the holes in the previous simulation. In this simulation, the holes are more stable because of the effect the "backbone" of adhering cells has on the structure.
+Data and Citations
+The data for these runs can be downloaded from here .
+[1] http://en.wikipedia.org/wiki/Cellular_Potts_model
+[2] Sprinzak, et al. Cis-interactions between Notch and Delta generate mutually exclusive signalling states. Nature 465:86-90
+mcell - A Multicellular Modeling Framework
+mcell is a small set of Python classes that allows the enterprising modeler to:
+Easily create very flexible models of of multicellular dynamics
+Manage the models already created through a simple command-line interface
+Easily change defined parameters in models
+Render the runs of the models in a convenient, simple way
+Analyze the runs of the models through histograms
+mcell is a thin layer on top of the combination of BionetSolver , which model internal cell states as systems of ODEs, and CompuCell3D , which models cell shape dynamics using the Glazier-Graner-Hogeweg methos. It was created largely in reaction to inconveniences experienced when using BionetSolver and CompuCell3D as detailed here . It is in continuous development; we would like to continue evolving it outside the bounds of this competition. We encourage you to read through the code and look at our modeling data as examples to understand the framework.
+Quick Links
+Why?
+Installation
+How It Works
+Management of Models
+Rendering and Analysis of Runs
+Why?
+Over the course of the summer, we tried several ways of modeling multicellular dynamics. The first thing we tried was everyone's trusted favorite, MATLAB. We generated a system of several thousand ODEs, in which groups of 5 ODEs represented the state of a single cell, and were coupled to ODEs describing adjacent cells. Unfortunately, this was very, very slow, and did not allow for the modeling of cell shape dynamics.
+Then, we discovered a way to couple CompuCell3D with ODE models of internal cell states. We realized that, if we wanted to do any sort of reasonably flexible modeling, we needed to do something like this. So, we downloaded CompuCell3D, read the documentation, and started modeling various circuits.
+Now, CompuCell3D coupled with BionetSolver is a great system. However, we quickly discovered that this wasn't quite enough for our purposes. For instance, CompuCell3D allows one to dynamically change the "cell type", and this the cell color. However, as we were trying to engineer cells, we were interested in the dynamics of the protein expression levels -- in fundamentally continuous quantities -- rather than a discrete notion of "cell type"! CompuCell 3D would not let us visualize the values that we needed -- so we wrote a Python script to render the models the way we wanted to.
+Other problems emerged. We wanted to be able to analyze the data in other ways -- in particular, we wanted to see histograms of the levels of expression of some protein. In addition, we realized that trying to manage all our models was becoming quite inconvenient without a unified organization scheme.
+So, we had several hastily-written, badly organized Python scripts and many, many folders scattered around. We then decided that this problem needs fixing, and created a small set of classes to unify the object model do the file management, rendering, and analysis, for us -- using a convenient and extensible command-line interface. We found this functionality to be tremndously useful for our purposes, and thus, we are sharing mcell with the world.
+Installation
+Dependencies: Python 2.5.6 , CompuCell3D 3.5.0 , BionetSolver 1.0.0 for Python 2.5 , matplotlib , PIL , and hcluster .
+Also very useful: Synthetic Biology Workbench (for defining circuits)
+Download mcell from here . Unzip the files somewhere into your PATH. Open mcell.py, and edit the variables between #START CONFIG and #END CONFIG. (They have self-explanatory names, and their functions are explained in the file.) In hook.py.template, edit the commented line to reflect the location of mcell. Place the Template folder into you modeling directory for an empty template model. The other folders are also interesting models that we have tried out. (The params files in the model folders describe the parameters the model requires to run.)
+How it works
+In mcell models, BionetSolver models the internal cell states, and CompuCell3D models the cell dynamics.
+BionetSolver
+BionetSolver reads one or several SBML files, each of which define a circuit as a system of chemical reactions in several containers with given rate laws. SBML models are simply XML files, and can be written with a text editor; however, it is much easier to define them using a graphical designer, like JDesigner , or using a simple scripting language, like [Jarnac]. (Both of those editors can be obtained by installing the Synthetic Biology Workbench .
+After loading the circuits, BionetSolver is in posession of a system of ODEs that define the internal state of each modeled cell. To simulate each cell, BionetSolver simply Euler-steps its ODE system forward with a fixed time step. Some of the variables in the ODE model (like, say, the concentration of a protein on the neighboring cells) are actually parameters that are continually updated from the CompuCell3D thread.
+More documentation on BionetSolver can be found by downloading it from the link above .
+CompuCell3D
+CompuCell3D uses the Glazier-Graner-Hogeweg model to simulate cell shape dynamics. The playing field is a matrix. An entry of the matrix corresponds to an ID of the cell occupying that spot on the playing field. Thus, a cell is represented as a set of points on the matrix. The medium the cell are in is represented by a single large cell occupying all the "empty space".
+To iterate the model forward, CompuCell3D chooses a random point on the matrix -- the invading point -- and a random adjacent point -- the receiving point. If the two points are from different cells, then the receiving point's cell id becomes set to the invading point's cell id with some probability e^-(T*k(state)), where T is set in the configuration file and k(state) is a function of the state of the system that is determined by the plugins defined in the configuration file. (For example, the Contact plugin adds a term to k that makes cells of one cell type want to stick or not stick to cells of another cell type. The Surface plugin adds a term that grows larger as the surface area of the cell deviates from a defined amount.) This procedure is called a Monte Carlo step (MCS).  Certain parameters of the plugins -- say, the type, or the adhesiveness of a cell -- can be continuously updated to reflect the internal state of the cell.
+Coupling BionetSolver and CompuCell3D
+CompuCell3D provides a mechanism to script its function called a Steppable. Thus, to couple the internal states of the cells and the cell shape dynamics, a steppable called ModelSteppable is used. ModelSteppable initializes BionetSolver with circuits before CompuCell starts running its model, but after it has created the initial state of the cells. Then, CompuCell3D takes several MCSs to update the cell shape state. ModelSteppable then loops over the cells, updating the internal states of the cells in the BionetSolver circuits to match the external states, and the external state parameters in CompuCell3D to match the internal states of the cells. The full internal state every cell is printed to one file, and the state of the cell shapes is printed to another file. This cycle then repeats many, many times.
+Management of Models
+Directory Structure
+mcell uses a directory structure to manage its models. All models are contained in a modeling directory, the location of which is configurable in mcell.py. Every folder in the modeling directory is considered by mcell to be a model. A model folder contains 3 necessary files: a CompuCell3D configuration file (cc3d.xml), a hook file(hook.py), and a file containing ModelSteppable (steppable.py). A model folder also contains files that start with "circuit_", which are all assumed to be SBML models of circuits. These files define a model.
+All folders inside the model folder are considered to be runs of the model; the name of the folder is the name of the run.  Inside the run folder, the LatticeData folder contains vtk files that describe the state of the cell shapes at every frame of the model; the CellData.txt file which describes the complete state of every cell for every frame, one frame per line; and the model folder, which contains the final model files with parameters substituted into them. (To run a model, mcell actually loads the model files, adds in the given parameters, writes them to the model folder, and runs CompuCell3D on cc3d.xml in the model folder.)
+Parameters
+Each of the model files can contain strings in the form "%(something)s"; when the model is run with model.run("NewRun", something=2), the parameter 2 will be substituted in place of that string for the duration of the run.
+Easy definition of a model
+here are several utility functions in mcell_model_utils.py that allow easier definition of the coupling between internal and external cell states. Note: mcell_model_utils.py should be imported into every model's steppable inside the ModelSteppable class definition for them to work. All functions expect a setup for ModelSteppable as in the Template model.
+self.setToWeightedValuesOf("a", "b") sets protein "a" in all cells to the value of "b" in the neighboring cells, weighted by contact area. This is used to easily set up a model of surface proteins interacting on adjacent cells.
+self.updateAdhesionMolecule("a", "b") sets the amount of adhesion molecule "a" in CompuCell to the amount of protein "b" for every cell. This is used in conjunction with the AdhesionFlex plugin; it expects self.adhesionFlexPlugin = CompuCell.getAdhesionFlexPlugin() in the initialization of a steppable.
+Command Line Management
+To run mcell, run python and type from mcell import *. This initializes a models dictionary containing all the models in your modeling directory. Each model is a fully functional python object! If we have a model called Test, then:
+models['Test'].runs is a dictionary containing all the runs of the object (which are also Python objects)
+models['Test'].cc3d_config contains a python object that represents the cc3d.xml for the model. running models['Test'].cc3d_config.edit() would open your favorite text editor to edit the config, and running models['Test'].cc3d_config.copy(dest) will copy the CC3D configuration to dest. The same goes for the hook file(.hook) and the ModelSteppable file(.steppable).
+models['Test'].circuits is an array containing python objects like described above that reference the circuits in the model.
+models['Test'].clone('NewModel') creates a new model identical to Test called NewModel. This is incredibly useful for creating models that are similar to other models, something done quite often. Cloning the Template model creates a fairly good setup to begin defining a model.
+models['Test'].run('NewRun', params) runs Test with parameters params (a dictionary) and creates the NewRun run. Parameters for a model are defined as described in the Parameters section above.
+models['Test'].destroy() irrevocably destroys the model.
+Rendering and Analysis of Runs
+If r is a Run object (taken from something like r = models['Test'].runs['NewRun']), then:
+r.load() will load the run data into memory. This is time and memory intensive, as, unfortunatly, multicellular runs entail a lot of data.
+r.render(species="Reporter", unload=False, pix_size=5) will render the model into movie.avi in the run's folder, coloring the cells proportional to the amount or "Reporter" protein that they express. The data for the model will not be unloaded after the run, and the pixel size of a singly CompuCell3D matrix entry is 5. All these arguments are optional and default to the values given here.
+r.render_hist_movie(species="Reporter") will render a movie of the histograms of the values of the "Reporter" protein in all the cells as the simulation evolves. The argument is optional and "Reporter" is the default. The name of the movie will be histograms.avi.
+r.frames is an array that, after loading the model, contains Frame objects that contain the raw data for every frame of the simulation. Specifically, r.frames[0].cell_states[2]['Reporter'] contains the value of the "Reporter" protein in cell with id 2 during the first frame. r.frames[0].cell_types, r.frames[0].cell_ids, and r.frames[0].cell_clusters are 2-dimensional arrays containing the cell types, the cell ids, and the cell clusters on the CompuCell3D "playing field" for that frame.
+G-Level Assembly
+This summer, we relied on three levels of G-Level Assembly: Gibson, Golden Gate, and Gateway. These three techniques allowed us to assemble together fusion proteins of many parts of DNA in one-pot reactions.
+Gateway
+The Gateway cloning system is available from Invitrogen. It is a fast and reliable way to create expression vectors for mammalian cells. It fulfills the same function as restriction cloning in the Biobrick standardization, allowing us to combine vectors with different parts to create a whole circuit. But the actual mechanism is vastly different from restriction cloning. Gateway uses recombination enzymes to combine multiple vectors, a one-step process that avoids the laborious digestion and ligation steps involved in restriction cloning.
+An example LR reaction.
+An example BP reaction.
+Cloning Process Overview
+We start out by cloning all the genes and promoters needed into pENTR vectors; the pENTR vectors contain restriction and recombination sites, so either cloning method can be used to insert the target DNA into the vectors. The next step is to combine pENTR vectors containing the relevant gene and promoter with a pDEST vector containing both prokaryotic and eukaryotic origins of replication. Gateway cloning allows us to avoid laborious digestion and ligation steps in favor of a faster, more efficient method. To obtain the expression vector, we combine all three plasmids in a recombination reaction; the step takes 12-16 hours total and yields reliable products that can be further verified through restriction digests and sequencing.
+Golden Gate
+Golden Gate assembly is a one-pot method using restriction endonucleases that have a different cutting site than recognition site to assemble many parts of DNA together. It was developed in 2008 by Engler et al and is available here . Using a directional restriction enzyme, which does not cut at the recognition site such as BsaI allows us to cut out parts that have specific overhangs with each other after cutting. Ligase is also in the reaction, which will ligate parts together; if it ligates a cutting sequence back together, these will simply be cut again. By the end, all the recognition sites will have be excised, leaving only the complete part. This summer, we used Golden Gate assembly for Part:BBa_K511400 and Part:BBa_K511500 .
+Image taken from http://j5.jbei.org/j5manual/pages/23.html
+Process Overview
+A Golden Gate reaction can be set up via the following protocol. Take special care to use equimolar concentrations for each DNA fragment and high concentration ligase.
+50 fmol of each DNA fragment
+1 uL of Promega High Concentration T4 Ligase
+1 uL of NEB BsaI
+1 uL of Promega T4 Ligase Buffer
+Water to 15 uL
+Cycle at:
+(5 minutes at 37 C, 5 minutes at 18 C) x 50
+10 minutes at 50 C
+10 minutes at 80 C
+Gibson
+Gibson assembly is a high-efficiency scarless method of assembling multiple large pieces of DNA at once without the need for restriction enzymes. It was developed in 2009 by Gibson et al and is available here . It uses an exonuclease to chew back the 5' overhang until the DNA parts hydrogen bond, a polymerase and ligase to replace and ligate the missing nucleotides. Enzyme activity is controlled through temperature cycling. This summer, we successfully used Gibson assembly to create some of our parts, such as Part:BBa_K511401 .
+Process Overview
+Primers are first designed to PCR on ~20bp overhangs onto each of the DNA parts to be assembled together. After this product is cleaned up, equimolar concentrations of DNA along with a Master Mix of enzymes are run for an hour at 50C, resulting in a product that can be immediately transformed into cells for propagation.
+Colony Picker
+Depicted above is the 2011 MIT iGEM team's addition to the DARPA funded robot in collaboration with BU. We programmed a user interface for the colony picker that can be found here . A video of one of our instructors using our interface to guide the robot can be found here . The scanner can also be used a 2D barcode scanner, thanks to a collaboration with Ginkgo that allowed us to port their technology to the scanner.
+Here is a screenshot of our user interface.
+In addition, we developed a service that allows people to interface with the robot online to request automated restriction mapping or Gateway cloning.
+Geneious - A Bioinformatics Suite for Synthetic Biology
+This year, we assembled dozens of unique expression vectors from dozens of entry and destination vectors, some of which we assembled via Gibson or Golden Gate reactions. In order to keep track of this large volume of plasmids, primers, and sequencing results, we heavily relied on the Geneious bioinformatics suite. Geneious offers tools from primer design to virtual gel electrophoresis, excellent file sharing for collaborations, automatic in silico assembly of multi site LR reactions, and more. Geneious was a powerful tool for everything from analyzing our sequencing results to assembling fusion plasmids, and we are excited to have Geneious' host company, Biomatters Ltd., as a sponsor.
+Retrieved from " http://2011.igem.org/Team:MIT/Tools/ "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

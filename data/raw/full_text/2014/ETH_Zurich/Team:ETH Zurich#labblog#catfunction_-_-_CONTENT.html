@@ -1,0 +1,205 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_ETH_Zurich_labblog_catfunction_php"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:ETH_Zurich/labblog/catfunction.php">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:ETH_Zurich/labblog/catfunction.php&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:ETH_Zurich/labblog/catfunction.php&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:ETH_Zurich/labblog/catfunction.php&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:ETH_Zurich/labblog/catfunction.php" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:ETH Zurich/labblog/catfunction.php</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><DIV id="contentSub">(Redirected from <A href="/wiki/index.php?title=Team:ETH_Zurich/labblog/catfunction&amp;redirect=no" title="Team:ETH Zurich/labblog/catfunction">Team:ETH Zurich/labblog/catfunction</A>)</DIV><P>&lt;?php
+/**
+</P><PRE>* Parser hook extension adds a &lt;category-cloud&gt; tag to wiki markup. The
+* following attributes are used:
+*    category = The category, minus the &quot;Category:&quot;
+*    minsize = The minimum size, as percentage. Defaults to 80.
+*    maxsize = The maximum size, as a percentage. Defaults to 125.
+*    class = The CSS class to assign to the outer div, defaults
+*            to &quot;category-cloud&quot;
+*
+* There is also a parser function that uses {{#category-cloud:CategoryName}}
+* with optional parameters being includes as &quot;|param=value&quot;.
+*
+* @addtogroup Extensions
+* @author Dylan R. E. Moonfire &lt;contact@mfgames.com&gt;
+* @copyright © 2007 Dylan R. E. Moonfire
+* @licence GNU General Public Licence 2.0
+*/
+
+</PRE><P>// Make sure we are being properly
+if( !defined( 'MEDIAWIKI' ) ) {
+</P><PRE>   echo( &quot;This file is an extension to the MediaWiki software &quot;
+</PRE><P>		. &quot;and cannot be used standalone.\n&quot; );
+</P><PRE>   die( -1 );
+</PRE><P>}
+</P><P>// Hook up into MediaWiki
+$wgExtensionFunctions[] = 'categoryCloud';
+$wgHooks['LanguageGetMagic'][]	= 'categoryCloudMagic';
+$wgExtensionCredits['parserhook'][] = array(
+</P><PRE>   'name' =&gt; 'Category Cloud',
+   'author' =&gt; 'Dylan R. E. Moonfire',
+   'description' =&gt; 'Create a tag cloud using categories.',
+   'url' =&gt; '<A href="https://www.mediawiki.org/wiki/Extension:CategoryCloud'" class="external free" rel="nofollow">https://www.mediawiki.org/wiki/Extension:CategoryCloud'</A>,
+   'version' =&gt; '0.4.0'
+</PRE><P>);
+</P><P>function categoryCloud() {
+</P><PRE>       global $wgParser, $wgMessageCache;
+
+</PRE><P>	// Set the hooks
+</P><PRE>       $wgParser-&gt;setHook('category-cloud', 'categoryCloudRender');
+</PRE><P>	$wgParser-&gt;setFunctionHook('category-cloud', 'categoryCloudFunction');
+</P><P>	// Set our messages
+	$wgMessageCache-&gt;addMessages( array(
+</P><PRE>                   'categorycloud_missingcategory'
+</PRE><P>			=&gt; 'CategoryCloud: Cannot find category attribute',
+</P><PRE>                   'categorycloud_emptycategory'
+</PRE><P>			=&gt; 'CategoryCloud: Category is empty: ',
+</P><PRE>                   'categorycloud_cannotparse'
+</PRE><P>			=&gt; 'CategoryCloud: Cannot parse parameter: ',
+		));
+}
+</P><P>// This manipulates the results of the CategoryCloud extension
+// into the same function as the &lt;category-cloud&gt; tag.
+function categoryCloudFunction($parser) {
+	// Get the arguments
+</P><PRE>       $fargs = func_get_args();
+       $input = array_shift($fargs);
+
+</PRE><P>	// The first category is required
+	$category = array_shift($fargs);
+	$params = array();
+	$params[&quot;category&quot;] = $category;
+	$params[&quot;donotparse&quot;] = 1;
+</P><P>	// Split the rest of the arguments
+	foreach ($fargs as $parm) {
+		// Split it into its components
+		$split = split(&quot;=&quot;, $parm);
+</P><P>		if (!$split[1])	{
+			return htmlspecialchars(wfMsg(
+				'categorycloud_cannotparse')
+				. $parm);
+		}
+</P><P>		// Save it
+		$params[$split[0]] = $split[1];
+	}
+</P><P>	// Return the cloud
+	return categoryCloudRender($input, $params, $parser);
+}
+</P><P>// Sets up the magic for the parser functions
+function categoryCloudMagic(&amp;$magicWords, $langCode) {
+	$magicWords['category-cloud'] = array(0, 'category-cloud');
+	return true;
+}
+</P><P>// The actual processing
+function categoryCloudRender($input, $args, &amp;$parser) {
+	// Imports
+	global $wgOut;
+</P><P>	// Profiling
+</P><PRE>       wfProfileIn('CategoryCloud::Render');
+
+</PRE><P>	// Disable the cache, otherwise the cloud will only update
+	// itself when a user edits and saves the page.
+	$parser-&gt;disableCache();
+</P><P>	// Get the database handler and specific controls
+</P><PRE>       $dbr =&amp; wfGetDB( DB_SLAVE );
+       $pageTable = $dbr-&gt;tableName('page');
+   	$categoryLinksTable = $dbr-&gt;tableName('categorylinks');
+
+</PRE><P>	// Normalize the order
+	$order = &quot;name&quot;;
+	if (array_key_exists(&quot;order&quot;, $args)) $order = $args[&quot;order&quot;];
+</P><P>	if ($order != &quot;count&quot;)
+		$order = &quot;name&quot;;
+	else // we want reverse
+		$order = &quot;count desc&quot;;
+</P><P>	// Get the list of the subcategories and the number of children
+	if (!array_key_exists(&quot;category&quot;, $args)) {
+		return htmlspecialchars(wfMsg(
+			'categorycloud_missingcategory'));
+	}
+</P><P>	$categoryName = $args[&quot;category&quot;];
+</P><P>	// Build up an SQL of everything
+	$categoryNamespace = 14;
+	$sql = &quot;SELECT p1.page_title as name, count(*) as count &quot;
+		. &quot;FROM $categoryLinksTable cl, $categoryLinksTable cl2, &quot;
+		. &quot;  $pageTable p1, $pageTable p2 &quot;
+		. &quot;WHERE cl.cl_to = &quot; . $dbr-&gt;addQuotes($categoryName)
+		. &quot; AND cl.cl_from  = p1.page_id &quot;
+		. &quot; AND cl2.cl_to   = p1.page_title &quot;
+		. &quot; AND cl2.cl_from = p2.page_id &quot;
+		. &quot; AND p1.page_namespace = $categoryNamespace &quot;
+		. &quot; AND p1.page_id != p2.page_id &quot;
+		. &quot;GROUP BY p1.page_title &quot;
+		. &quot;ORDER BY $order&quot;;
+	$res = $dbr-&gt;query($sql);
+</P><PRE>   	if ($dbr-&gt;numRows( $res ) == 0) {
+</PRE><P>		// Can't find category
+		return htmlspecialchars(wfMsg(
+			'categorycloud_emptycategory')
+			. $categoryName);
+	}
+</P><P>	// Build up an array and keep track of mins and maxes
+	$minCount = -1;
+	$maxCount = -1;
+</P><PRE>       $countAll = 0;
+       $total = 0;
+</PRE><P>	$categories = array();
+	$names = array();
+</P><P>	while ($row = $dbr-&gt;fetchObject($res)) {
+		// Pull out the fields
+		$name = $row-&gt;name;
+		$count = $row-&gt;count;
+</P><P>		// Add it to the array and keep track of min/max
+		$categories[$name] = $count;
+		$names[] = $name;
+		$countAll++;
+		$total += $count;
+</P><P>		if ($minCount &lt; 0 || $minCount &gt; $count)
+			$minCount = $count;
+</P><P>		if ($maxCount &lt; 0 || $maxCount &lt; $count)
+			$maxCount = $count;
+	}
+</P><P>	// Figure out the averages and font sizes
+	$minSize = 80;
+	$maxSize = 125;
+</P><P>	if (array_key_exists(&quot;minsize&quot;, $args)) $minSize = $args[&quot;minsize&quot;];
+	if (array_key_exists(&quot;maxsize&quot;, $args)) $maxSize = $args[&quot;maxsize&quot;];
+</P><P>	$countDelta = $maxCount - $minCount;
+	$sizeDelta = $maxSize - $minSize;
+	$average = $total / $countAll;
+</P><P>	// Create the tag cloud div
+	$class = &quot;category-cloud&quot;;
+</P><P>	if ($args[&quot;class&quot;]) $class = $args[&quot;class&quot;];
+</P>
+	$text  = &quot;<DIV>&quot;;
+<P>	// Go through the categories by name
+	foreach ($names as $cat) {
+		// Wrap the link in a size
+		if ($countDelta == 0)
+			$size = 100;
+		else
+			$size = (($categories[$cat] - $minCount)
+				* $sizeDelta / $countDelta) + $minSize;
+</P><P>		// Get the link
+		$cat = str_replace(&quot;_&quot;, &quot; &quot;, $cat);
+		$text .= &quot; <SPAN style="font-size: $size%;">&quot;
+			. &quot;<A href="/wiki/index.php?title=Category:$cat&amp;action=edit&amp;redlink=1" class="new" title="Category:$cat (page does not exist)">$cat</A></SPAN>&quot;;
+	}
+</P><P>	// Finish up
+</P>
+	$text .= &quot;</DIV>&quot;;
+<P>	// If donotparse is set to a value, then we don't want
+	// to parse it into wiki text.
+	if (array_key_exists(&quot;donotparse&quot;, $args)) {
+	        wfProfileOut('CategoryCloud::RenderNoParse');
+		return $text;
+	}
+</P><P>	// Parse the results into wiki text
+	$output = $parser-&gt;parse($text,
+			$parser-&gt;mTitle, $parser-&gt;mOptions,
+			true, false);
+</P><P>	// Finish up and return the results
+</P><PRE>       wfProfileOut('CategoryCloud::Render');
+       return $output-&gt;getText();
+</PRE><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:ETH_Zurich/labblog/catfunction.php">http://2014.igem.org/Team:ETH_Zurich/labblog/catfunction.php</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:ETH_Zurich/labblog/catfunction.php" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:ETH_Zurich/labblog/catfunction.php" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:ETH_Zurich/labblog/catfunction.php&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:ETH_Zurich/labblog/catfunction.php&amp;oldid=27017" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

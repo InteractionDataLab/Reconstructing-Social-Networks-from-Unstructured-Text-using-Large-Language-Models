@@ -1,0 +1,367 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Rice_Model_Code skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Rice/Model/Code</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><DIV class="nav-container"><NAV><UL class="nav-list"><LI><A href="https://2018.igem.org/Team:Rice" style="text-decoration:none">Home</A></LI><LI><A href="#!" style="text-decoration:none">Project</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Description" style="text-decoration:none">Overview</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Design" style="text-decoration:none">Design</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Background" style="text-decoration:none">Background</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Model" style="text-decoration:none">Modeling</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Software" style="text-decoration:none">Software</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Notebook" style="text-decoration:none">Notebook</A></LI><LI><A href="https://static.igem.org/mediawiki/2018/0/05/T--Rice--Protocols.pdf" style="text-decoration:none">Protocols</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Results" style="text-decoration:none">Results</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Demonstrate" style="text-decoration:none">Demonstration</A></LI><LI><A href="https://2018.igem.org/Team:Rice/FutureDirections#!" style="text-decoration:none">Future Directions</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Safety" style="text-decoration:none">Safety</A></LI><LI><A href="https://2018.igem.org/Team:Rice/InterLab" style="text-decoration:none">InterLab</A></LI></UL><LI><A href="#!" style="text-decoration:none">Human Practices</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Human_Practices" style="text-decoration:none">Overview</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Public_Engagement" style="text-decoration:none">Education &amp; Engagement</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Collaborations" style="text-decoration:none">Collaborations</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Integrated_HP" style="text-decoration:none">Integrated Human Practices</A></LI><LI><A href="#!" style="text-decoration:none">Achievements</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Parts" style="text-decoration:none">Parts</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Medal_Requirements" style="text-decoration:none">Medal Requirements</A></LI><LI><A href="#!" style="text-decoration:none">Team</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Members" style="text-decoration:none">Members</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Mentors" style="text-decoration:none">Advisors</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Instructors" style="text-decoration:none">Instructors</A></LI><LI><A href="https://2018.igem.org/Team:Rice/Attributions" style="text-decoration:none">Attributions</A></LI></NAV></DIV><DIV class="igem_2017_content_wrapper"><DIV id="topbox"><H1>Modeling
+            </H1></DIV><DIV class="container"><DIV class="center"><H2>Modeling Code</H2></DIV><DIV class="preformatted">
+%% cell_advanced_modeling.m
+% Author: Aadith Vittala
+% Modifying algorithm from Darlington et al., Nat. Comm. 2018
+% Simulate metabolic, translational, and transcriptional processes; includes options for orthogonal ribosomes/RNA polymerases
+
+%% Simulation abilities:
+% The program initializes all variables and parameters necessary for all
+% the processes. In the most general case, the program simulates orthogonal
+% 16S rRNAs and orthogonal T7 RNAPs. The orthogonal ribosomes can translate
+% the circuit proteins, and the orthogonal T7 RNAPs can
+% transcribe the circuit genes, the T7 RNAP genes, and
+% the 16S rRNAs. The system therefore can simulate any of the circuits from
+% our project. The UBER circuit is run by setting type = &quot;uber&quot; in
+% cell_ODE(), and the full orthogonal translation and transcription circuit
+% can by run with type = &quot;full&quot;. For circuit protein expression without any
+% orthogonal components, use type = &quot;circuit&quot;. For host cell only
+% simulation, use type = &quot;host&quot;. Any other type will default to host cell
+% only. 
+
+clear all; close all; %Clear the screen
+
+
+function [P,Y] = initialize()
+    %% initialize():
+    %   Initializes all the numbers necessary for the model; P contains
+    %   all parameters while Y contains all variables
+    
+    %% Constants related to energy
+    s_e = 1e4; % external substrate source
+    phi_e = 0.5; % efficiency of converting internal substrate into energy
+    v_T = 728; % max rate of substrate import
+    v_E = 5800; % max rate of substrate-energy conversion
+    k_T = 1000; % Michaelis-Menten const. for substrate importer
+    k_E = 1000; % Michaelis-Menten const. for substrate-energy conversion
+
+    %% Constants related to transcription
+    w_T = 4.14; % max transport enzyme transcription
+    w_E = 4.14; % max substrate-energy conversion enzyme transcription
+    w_H = 948.93; % max other host protein transcription
+    w_R = 930; % max host ribosome transcription
+    w_r = 3170; % max host rRNA transcription
+    w_P = 2.975; % max host RNA polymerase transcription
+    o_T = 4.38; % transcription energy threshold for transporter genes
+    o_E = 4.38; % transcription energy threshold for substrate-energy conversion genes
+    o_H = 4.38; % transcription energy threshold for other host genes
+    o_R = 426.87; % transcription energy threshold for ribosome genes
+    o_r = 426.87; % transcription energy threshold for host rRNA genes
+    o_P = 0.7; % transcription energy threshold for host RNA polymerase genes
+    k_H = 152219; % other host protein regulatory transcription threshold
+    h_H = 4; % other host protein transcription Hill constant
+    k_P = 4494; % RNA polymerase linear activation constant
+    d_m = 0.1; % mRNA degradation rate
+    d_r = 0.1; % rRNA degradation rate
+
+    %% Constants related to translation
+    b_r = 1; % RNA-ribosome binding rate (doesn't matter whether it's mRNA or rRNA)
+    u_r = 1; % RNA-ribosome unbinding rate (doesn't matter whether it's mRNA or rRNA)
+    d_p = 0; % protein degradation rate
+    n_T = 300; % length of transporter enzyme
+    n_E = 300; % length of substrate-energy conversion enzyme
+    n_H = 300; % length of average other host protein
+    n_R = 7459; % length of ribosome
+    n_P = 3636; % length of average prokaryotic RNA polymerase
+    gamma_max = 1260; % max elongation rate
+    k_gamma = 7; % elongation energy threshold
+    M_proteome = 1e8; % proteome size
+    
+    %% Constants related to circuit protein production
+    w_C = 100; % max circuit gene transcription
+    o_C = 4.38; % transcription energy threshold for circuit genes
+    n_C = 300; % length of circuit protein
+    
+    %% Constants related to orthogonal ribosomes
+    w_O = 2; % max 16S rRNA genes transcription - selected at random/may vary
+    o_O = 4.38; % transcription energy threshold for 16S rRNA
+    
+    %% Constants related to orthogonal T7 RNA polymerase
+    w_P7 = 1; % max T7 RNAP gene transcription - selected at random/may vary
+    o_P7 = 4.38; % transcription energy threshold for T7 RNAP
+    n_P7 = 883; % length of T7 RNAP
+    k_P7 = 3; % T7 RNA polymerase linear activation constant
+    
+    %% Package all parameters together
+    P = [s_e;phi_e;v_T;v_E;k_T;k_E;w_T;w_E;w_H;w_R;w_r;w_P;o_T;o_E;o_H;o_R;o_r;o_P;k_H;h_H;k_P;d_m;d_r;b_r;u_r;...
+        d_p;n_T;n_E;n_H;n_R;n_P;gamma_max;k_gamma;M_proteome;w_C;o_C;n_C;w_O;o_O;w_P7;o_P7;n_P7;k_P7];
+    
+    %% Variables related to energy
+    s_i = 128.8039; % internalized substrate
+    E_cell = 46.9893; % cellular energy
+
+    %% Variables related to mRNAs
+    m_T = 0.2971; % mRNAs for substrate transport enzymes
+    m_E = 0.2971; % mRNAs for substrate-energy conversion enzymes
+    m_H = 14.9702; % mRNAs for other host proteins
+    m_R = 2.0046; % mRNAs for ribosomal proteins
+    m_P = 0.0718; % mRNAs for host RNA polymerases
+    
+    %% Variables related to proteins
+    r_R = 0.0875; % host rRNAs
+    c_T = 15.5701; % translation complexes for substrate transport enzymes
+    c_E = 15.5701; % translation complexes for substrate-energy conversion enzymes
+    c_H = 784.4142; % translation complexes for other host proteins
+    c_R = 422.5180; % translation complexes for ribosomal proteins
+    c_P = 13.3627; % translation complexes for host RNA polymerases
+    p_T = 4.1473e3; % substrate transport enzymes
+    p_E = 4.1473e3; % substrate-energy conversion enzymes
+    p_H = 2.0894e+05; % other host proteins
+    p_R = 3.0303e+03; % ribosomal proteins
+    p_P = 293.6724; % host RNA polymerases
+    R_h = 244.6569; % functional host ribosomes
+    
+    %% Variables for circuit proteins
+    m_C = 0; % mRNAs for circuit genes
+    c_C = 0; % translation complexes for circuit genes
+    p_C = 0; % circuit proteins
+    
+    %% Variables for orthogonal ribosomes
+    r_O = 0; % 16S rRNA for orthogonal ribosomes
+    R_O = 0; % functional orthogonal ribosomes
+    
+    %% Variables for T7 RNAP
+    m_P7 = 0; % mRNAs for T7 RNAP
+    c_P7 = 0; % translation complexes for T7 RNAP
+    p_P7 = 10; % T7 RNA polymerases; keep a few at beginning to account for leak promoter
+    
+   
+    %% Package all variables into a single array to use matlab stiff differential equation solver (ode15s)
+    Y = [s_i; E_cell; m_T; m_E; m_H; m_R; m_P; r_R; c_T; c_E; c_H; c_R; c_P; p_T; p_E; p_H; p_R; p_P; R_h; m_C; c_C; p_C; r_O; R_O; m_P7; c_P7; p_P7];
+end
+
+function dY = cell_ODE(T,Y,P,type)
+    %% cell_ODE(T,Y,P,type):
+    %   Calculates derivative with respect to time of all the variable in
+    %   the simulation using equations from the Nat. Comm. 2018 paper plus
+    %   additional equations for host RNA polymerases
+    %   Accounts for circuit genes, orthgonal translation, and orthogonal
+    %   transcription as necessary: type can be &quot;host&quot;, &quot;circuit&quot;, &quot;uber&quot;,
+    %   or &quot;full&quot;. See file header for description of each.
+    
+    %% Unpack host parameters from P
+    s_e=P(1);phi_e=P(2);v_T=P(3);v_E=P(4);k_T=P(5);k_E=P(6);w_T=P(7);w_E=P(8);
+    w_H=P(9);w_R=P(10);w_r=P(11);w_P=P(12);o_T=P(13);o_E=P(14);o_H=P(15);o_R=P(16);o_r=P(17);
+    o_P=P(18);k_H=P(19);h_H=P(20);k_P=P(21);d_m=P(22);d_r=P(23);b_r=P(24);u_r=P(25);d_p=P(26);
+    n_T=P(27);n_E=P(28);n_H=P(29);n_R=P(30);n_P=P(31);gamma_max=P(32);k_gamma=P(33);M_proteome=P(34);
+    
+    %% Unpack circuit parameters from P
+    w_C=P(35);o_C=P(36);n_C=P(37);w_O=P(38);o_O=P(39);w_P7=P(40);o_P7=P(41);n_P7=P(42);k_P7=P(43);
+    
+    %% Use type to determine what components to remove
+    host_RNAP_burden = 1; % proportion of circuit transcription by host ribosomes
+    host_ribo_burden = 1; % proportion of circuit translation by host ribosomes
+    switch type
+        case &quot;host&quot; % just the host cell, no circuit or orthogonal processes
+            w_C = 0; % turn off transcription of circuit
+            w_O = 0; % turn off transcription of orthogonal rRNA
+            w_P7 = 0; % turn off transcription of T7 RNAP
+        case &quot;circuit&quot; % host cell with circuit gene, no orthogonal processes
+            w_O = 0; % turn off transcription of orthogonal rRNA
+            w_P7 = 0; % turn off transcription of T7 RNAP
+        case &quot;uber&quot; % host cell with orthogonal transcription of T7 RNAP and circuit gene
+            w_O = 0;
+            %w_P7 = w_C; % equal transcription of T7 RNAP and circuit gene
+            host_RNAP_burden = 0;
+        case &quot;oribo&quot; % host cell with orthogonal translation of circuit gene, no orthogonal transcription
+            %w_O = w_C;
+            w_P7 = 0;
+            host_ribo_burden = 0;
+        case &quot;full&quot; % host cell with orthogonal transcription of T7 RNAP, circuit gene, and orthogonal 16S rRNA; also, orthogonal translation of circuit gene
+            host_RNAP_burden = 0;
+            host_ribo_burden = 0;
+            %w_P7 = w_C; % equal transcription of T7 RNAP and circuit gene
+            %w_O = w_C; % equal transcription of 16s rRNA and circuit gene
+        otherwise % bad input -&gt; same as &quot;host&quot;
+            w_C = 0; % turn off transcription of circuit
+            w_O = 0; % turn off transcription of orthogonal rRNA
+            w_P7 = 0; % turn off transcription of T7 RNAP
+    end
+    
+    %% Unpack current host variables from Y
+    s_i = Y(1); E_cell = Y(2); m_T = Y(3); m_E = Y(4); m_H = Y(5);
+    m_R = Y(6); m_P = Y(7); r_R = Y(8); c_T = Y(9); c_E = Y(10); c_H = Y(11);
+    c_R = Y(12); c_P = Y(13); p_T = Y(14); p_E = Y(15); p_H = Y(16); p_R = Y(17); 
+    p_P = Y(18); R_h = Y(19); 
+    
+    %% Unpack current circuit variables from Y
+    m_C = Y(20); c_C = Y(21); p_C = Y(22); r_O = Y(23); 
+    R_O = Y(24); m_P7 = Y(25); c_P7 = Y(26); p_P7 = Y(27);
+
+    %% Determine global translation rate (auxiliary variable)
+    gamma = gamma_max*E_cell/(k_gamma+E_cell);
+    
+    %% Determine growth rate (auxiliary variable)
+    lambda = gamma*(c_T+c_E+c_H+c_R+c_P+c_C+c_P7)/M_proteome; % Supp. eqn 11 + modified for host RNA polymerase
+    
+    %% Determine global polymerase activity
+    alpha = min(1, p_P/k_P); % host polymerase activity, modified to allow transcriptional slowdown
+    alpha_P7 = min(1, p_P7/k_P7); % T7 polymerase activity
+    
+    %% Determine rate of change for energy variables
+    ds_i = v_T*p_T*s_e/(k_T+s_e) - v_E*p_E*s_i/(k_E+s_i) - lambda*s_i; % Supp. eqn 1
+    dE_cell = phi_e*v_E*p_E*s_i/(k_E+s_i) - gamma*(c_T+c_E+c_H+c_R+c_P+c_C+c_P7) - lambda*E_cell; % Supp. eqn 2, modified for host RNA polymerase
+    
+    %% Determine rate of change for mRNA variables
+    dm_T = w_T*alpha*E_cell/(E_cell+o_T) + gamma*c_T/n_T - b_r*R_h*m_T + u_r*c_T - (d_m+lambda)*m_T; % Supp. eqn 4, modified for host RNA polymerase
+    dm_E = w_E*alpha*E_cell/(E_cell+o_E) + gamma*c_E/n_E - b_r*R_h*m_E + u_r*c_E - (d_m+lambda)*m_E; % Same as above
+    dm_R = w_R*alpha*E_cell/(E_cell+o_R) + gamma*c_R/n_R - b_r*R_h*m_R + u_r*c_R - (d_m+lambda)*m_R; % Same as above
+    dm_P = w_P*alpha*E_cell/(E_cell+o_P) + gamma*c_P/n_P - b_r*R_h*m_P + u_r*c_P - (d_m+lambda)*m_P; % Same as above (created for host RNA polymerase)
+    dm_H = w_H/(1+(p_H/k_H)^h_H)*alpha*E_cell/(E_cell+o_H) + gamma*c_H/n_H ...
+            - b_r*R_h*m_H + u_r*c_H - (d_m+lambda)*m_H; % Supp. eqn 4, including R factor for regulation of host proteins
+    dm_C = host_RNAP_burden*w_C*alpha*E_cell/(E_cell+o_C) + (1-host_RNAP_burden)*w_C*alpha_P7*E_cell/(E_cell+o_C) ...
+            - host_ribo_burden*b_r*R_h*m_C - (1-host_ribo_burden)*b_r*R_O*m_C ...
+            + gamma*c_C/n_C + u_r*c_C - (d_m+lambda)*m_C; % Supp. eqn 4, modified for polymerases and allowing T7 RNAP use or o-ribo use
+    dm_P7 = w_P7*alpha_P7*E_cell/(E_cell+o_P7) + gamma*c_P7/n_P7 - b_r*R_h*m_P7 + u_r*c_P7 - (d_m+lambda)*m_P7; % Supp. eqn 4 (for T7 RNA polymerase)
+    
+    %% Determine rate of change for proteins
+    dc_T = b_r*R_h*m_T - u_r*c_T - gamma*c_T/n_T - (d_p+lambda)*c_T; % Supp. eqn 5
+    dc_E = b_r*R_h*m_E - u_r*c_E - gamma*c_E/n_E - (d_p+lambda)*c_E; % Same as above
+    dc_R = b_r*R_h*m_R - u_r*c_R - gamma*c_R/n_R - (d_p+lambda)*c_R; % Same as above
+    dc_H = b_r*R_h*m_H - u_r*c_H - gamma*c_H/n_H - (d_p+lambda)*c_H; % Same as above
+    dc_P = b_r*R_h*m_P - u_r*c_P - gamma*c_P/n_P - (d_p+lambda)*c_P; % Same as above (created for host RNA polymerase)
+    dc_P7 = b_r*R_h*m_P7 - u_r*c_P7 - gamma*c_P7/n_P7 - (d_p+lambda)*c_P7; % Same as above (created for T7 RNA polymerase)
+    dc_C = host_ribo_burden*b_r*R_h*m_C + (1-host_ribo_burden)*b_r*R_O*m_C ...
+            - u_r*c_C - gamma*c_C/n_C - (d_p+lambda)*c_C; % Same as above, allowing o-ribo use
+    dp_T = gamma*c_T/n_T - (d_p+lambda)*p_T; % Supp. eqn 7
+    dp_E = gamma*c_E/n_E - (d_p+lambda)*p_E; % Same as above
+    dp_H = gamma*c_H/n_H - (d_p+lambda)*p_H; % Same as above
+    dp_P = gamma*c_P/n_P - (d_p+lambda)*p_P; % Same as above (created for host RNA polymerase)
+    dp_P7 = gamma*c_P7/n_P7 - (d_p+lambda)*p_P7; % Same as above (created for T7 RNA polymerase)
+    dp_C = gamma*c_C/n_C - (d_p+lambda)*p_C; % Same as above
+    dp_R = gamma*c_R/n_R - (d_p+lambda)*p_R - b_r*p_R*r_R + u_r*R_h - b_r*p_R*r_O + u_r*R_O; % Supp. eqn 16
+    dr_R = w_r*alpha*E_cell/(E_cell+o_r) - b_r*p_R*r_R + u_r*R_h - (d_r+lambda)*r_R; % Supp. eqn 8 + modified for host RNA polymerase
+    dr_O = host_RNAP_burden*w_O*alpha*E_cell/(E_cell+o_O) + (1-host_RNAP_burden)*w_O*alpha_P7*E_cell/(E_cell+o_O) ...
+            - b_r*p_R*r_O + u_r*R_O - (d_r+lambda)*r_O; % Supp. eqn 15 + modified for possible T7 RNA polymerase use
+    dR_h = b_r*p_R*r_R - u_r*R_h  - (d_p+lambda)*R_h + gamma*(c_T/n_T+c_E/n_E+c_H/n_H+c_R/n_R+c_P/n_P+c_P7/n_P7+host_ribo_burden*c_C/n_C) ...
+            + u_r*(c_T+c_E+c_R+c_H+c_P+c_P7+host_ribo_burden*c_C) ...
+            - b_r*R_h*(m_T+m_E+m_R+m_H+m_P+m_P7+host_ribo_burden*m_C); % Supp. eqn 10 + modified for host RNA polymerase + allows o-ribo use
+    dR_O = b_r*p_R*r_O - u_r*R_O  - (d_p+lambda)*R_O + gamma*((1-host_ribo_burden)*c_C/n_C) ...
+            + u_r*(1-host_ribo_burden)*c_C ...
+            - b_r*R_O*(1-host_ribo_burden)*m_C; % Supp. eqn 17
+    
+    dY = [ds_i; dE_cell; dm_T; dm_E; dm_H; dm_R; dm_P; dr_R; dc_T; dc_E; dc_H; dc_R; dc_P; dp_T; dp_E; dp_H; dp_R; dp_P; dR_h; dm_C; dc_C; dp_C; ...
+            dr_O; dR_O; dm_P7; dc_P7; dp_P7];
+
+end
+
+function dYf = sensitivityAnalysis(par_num, type, P, alpha)
+    %% sensitivityAnalysis(par_num, type, P, alpha)
+    % Returns senstivity of steady-state values of variables for
+    % changes in P(par_num) = (d_out/out) / (d_in/in)
+    % type indicates the type of ODE to simulate
+    % P gives the parameters to use for the simulation
+    % alpha specifies the percent change for finding the derivative
+    time = 2000; % time to simulate in minutes each time we try to get to steady state
+    [~,Y0] = initialize(); % Initialize variables/parameters
+    original_value = P(par_num);
+    P(par_num) = original_value-alpha/200*original_value; % Adjust parameter        
+    odeoptions = odeset('NonNegative',[1:length(Y0)]);
+    [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y0, odeoptions); % Run the correct ODE
+    dY = cell_ODE(T,Y(end,:),P,type); % Find derivative
+    while max(abs(dY)) &gt; 0.1 % if not at steady state yet (dE_cell/dt too large)
+        [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y(end,:), odeoptions);
+        dY = cell_ODE(T,Y(end,:),P,type);
+    end
+    Yf1 = Y(end,:);
+
+    [~,Y0] = initialize(); % Initialize variables/parameters
+    P(par_num) = original_value+alpha/200*original_value; % Adjust parameter      
+    odeoptions = odeset('NonNegative',[1:length(Y0)]);
+    [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y0, odeoptions); % Run the correct ODE
+    dY = cell_ODE(T,Y(end,:),P,type); % Find derivative
+    while max(abs(dY)) &gt; 0.1 % if not at steady state yet (dE_cell/dt too large)
+        [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y(end,:), odeoptions);
+        dY = cell_ODE(T,Y(end,:),P,type);
+    end
+    Yf2 = Y(end,:);
+    dYf = 2*100*(Yf2 - Yf1)./(Yf2+Yf1)./alpha; % percent change in final values divided by alpha (sensitivity) 
+end
+
+function out = outputLevel(P, type)
+    %% outputLevel(P, type)
+    % returns the circuit protein level for the given type (type) and for
+    % the given values of the parameters (P)
+    time = 2000; % time to simulate in minutes each time we try to get to steady state
+    [~,Y0] = initialize(); % Initialize variables/parameters
+    odeoptions = odeset('NonNegative',[1:length(Y0)]);
+    [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y0, odeoptions); % Run the correct ODE
+    dY = cell_ODE(T,Y(end,:),P,type); % Find derivative
+    while max(abs(dY)) &gt; 0.1 % if not at steady state yet (dE_cell/dt too large)
+        [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y(end,:), odeoptions);
+        dY = cell_ODE(T,Y(end,:),P,type);
+    end
+    out = Y(end, 22);
+end
+
+function growth = growthLevel(P, type)
+    %% growthLevel(P, type)
+    % returns the growth level for the given type (type) and for
+    % the given values of the parameters (P)
+    time = 2000; % time to simulate in minutes each time we try to get to steady state
+    [~,Y0] = initialize(); % Initialize variables/parameters
+    odeoptions = odeset('NonNegative',[1:length(Y0)]);
+    [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y0, odeoptions); % Run the correct ODE
+    dY = cell_ODE(T,Y(end,:),P,type); % Find derivative
+    while max(abs(dY)) &gt; 0.1 % if not at steady state yet (dE_cell/dt too large)
+        [T,Y] = ode15s(@(T,Y) cell_ODE(T,Y,P,type), [0 time], Y(end,:), odeoptions);
+        dY = cell_ODE(T,Y(end,:),P,type);
+    end
+    growth = P(32)*Y(end,2)/(Y(end,2)+P(33))*(Y(end,9)+Y(end,10)+Y(end,11)+Y(end,12)+Y(end,13)+Y(end,21)+Y(end,26))/P(34);
+end
+
+function dYfs = controlledComparision(par_num, P, alpha)
+    %% controlledComparision(par_num, P, alpha)
+    % performs a controlled comparision by ensuring output levels are equal
+    % for all three circuits before running sensitivity analysis
+    % returns the sensitivities for all three circuits, given a parameter
+    % to change (par_num), parameters for the rest of the circuit (P), and
+    % a percent change (alpha)
+    c0 = P(35); % value of w_C for type = &quot;circuit&quot;
+    out0 = outputLevel(P, &quot;circuit&quot;); % output level for host-controlled
+    
+    low = 0; % for a quick binary search for uber
+    high = 2*c0;
+    for i = 1:20
+        mid = (low+high)/2;
+        P(35) = mid;
+        outTry = outputLevel(P, &quot;uber&quot;);
+        if outTry &gt; out0
+            high = mid;
+        end
+        if outTry &lt; out0
+            low = mid;
+        end
+    end
+    c1 = mid;
+    
+    low = 0; % for a quick binary search for full system
+    high = 2*c0;
+    for i = 1:20
+        mid = (low+high)/2;
+        P(35) = mid;
+        outTry = outputLevel(P, &quot;full&quot;);
+        if outTry &gt; out0
+            high = mid;
+        end
+        if outTry &lt; out0
+            low = mid;
+        end
+    end
+    c2 = mid;
+
+    P(35) = c0;
+    dYfs(1,:) = sensitivityAnalysis(par_num, &quot;circuit&quot;, P, alpha);
+    P(35) = c1;
+    dYfs(2,:) = sensitivityAnalysis(par_num, &quot;uber&quot;, P, alpha);
+    P(35) = c2;
+    dYfs(3,:) = sensitivityAnalysis(par_num, &quot;full&quot;, P, alpha);
+end
+</DIV></DIV></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

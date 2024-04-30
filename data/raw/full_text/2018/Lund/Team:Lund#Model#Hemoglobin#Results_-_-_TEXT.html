@@ -1,0 +1,256 @@
+Team:Lund/Model/Hemoglobin/Results
+Toggle navigation
+Home
+People
+Project
+Description
+Design
+Product Design
+Results
+InterLab
+Parts
+Protocols
+Safety
+Notebook
+Model
+Practices
+Integrated
+Engagement
+Results and discussion
+Overview
+Introduction
+Materials and methods
+Results and Discussion
+Overview
+In this section we present the results of our model. First, we present the results obtained from the procedure of feature selection and discuss the obtained the descriptors from a biological point of view. Then, the model selection procedure is presented and the cross validation and  along with the external validation. The process of generating and ranking mutants is then shown and the proposed low affinity mutants are discussed from a structural point of view. Finally, we select four mutants, discuss the rationale behind the selection and present some wet lab results.
+A set of notebooks is made available online . However, running them might give slightly different results than what is presented here. The reason is due to the randomness involved when building the random forest classifiers in the recursive feature elimination and feature importance stage. However, we have run the notebooks several times and the results should still be consistent with what is presented here.
+Feature selection
+Fig. 1 illustrates the results obtained from the feature selection. In total, seven groups of descriptors were passed through the pipeline of which only four remained. Initially, 2874 descriptors were generated of which 1924 remained after the constant and duplication filter. Then, after filtering on co-linearity, only 118 descriptors remained. This big reduction is due to the extremely high redundancy among the descriptors as the dataset consists of mostly single point mutants. The amount of change in the physicochemical and structural properties in the primary structure is then indeed small and some descriptors do not even change at all. As an example, exchanging one hydrophobic amino acid to another does not alter the composition descriptors in feature group 4 ( see materials and methods ). It is therefore reasonable that only a small amount of uncorrelated descriptors are affected by the point mutations. Furthermore, after the univariate filter, only 46 descriptors were deemed informative and after the final recursive feature elimination (RF-RFECV) only 22 descriptors remained. The results are consistent with the rule of thumb that only a few descriptors are truly informative in biological structure-activity problems [1].
+Figure 1: The retained descriptors after the feature elimination pipeline.
+Interestingly, only the descriptors originating from the beta subunit remained, as can be seen in fig. 1. This indicates that the feature elimination pipeline never managed to find any meaningful correlations between the mutations in the alpha subunit and the target oxygen binding affinity. From this observation we decided to discard all entries with alpha mutations since no descriptors were retained, implying that all alpha subunit mutations, regardless of the type and number of mutation,  would give rise to the same set of descriptors. That is, all future results are based on solely the beta subunits.
+To further analyze the selected descriptors, we looked at the Gini importance indices derived from a random forest classifier, as illustrated in fig 2. It can be seen that only the descriptor groups G3, G4, G5, and G6 remained, corresponding to the autocorrelation descriptors, composition, transition and distribution descriptors, quasi-sequence order descriptors and amphiphilic pseudo-amino acid composition descriptors. The right part of the figure shows the combined importance, indicating that the autocorrelation property (group 3) is the most informative of all descriptors.
+Figure 2: The feature importances of the retained descriptors.
+The physicochemical and structural autocorrelation descriptors therefore seem to be the most informative features when predicting the oxygen binding affinity. Looking further into each descriptor, as illustrated in the left part of fig. 2, it can be seen that the descriptor G3.1.1.1.25 has the highest Gini importance. This index corresponds to the Moran-Broto autocorrelation of the hydrophobicity along the beta sequence at lag 25 (see section on the descriptors). That is, the way the hydrophobicity is distributed along the sequence seems to be a deciding factor in whether the oxygen binding affinity is increased or not. We interpret this as that the correlation of hydrophobicity between every twenty fifth residue is an informative descriptor of the oxygen binding affinity. This means that when a residue is mutated, the way the localized change in hydrophobicity impacts the correlation may decide whether the oxygen binding affinity increases or not.
+Furthermore, the descriptor with the third largest Gini importance is G3.1.2.1.2 which is also a Moran-Broto autocorrelation. However, this descriptor corresponds to the way the alpha-hydrogen chemical shift on each residue is correlated along the sequence. The lag is every second amino acid and the hydrogen chemical shift is a measure of how polar (positively charged) the environment around a hydrogen is. It therefore seems that the distribution of the local polarity around each alpha hydrogen may have an effect on the oxygen binding affinity. A scatter plot of the respective hydrophobicity and alpha hydrogen descriptors obtained from the model selection data is shown in fig. 3. It can be seen that there is a clear separation between the classes, and that a higher hydrophobic correlation indicates low affinity and that a higher (closer to zero) correlation in the alpha shift also indicates a high affinity. It must be noted that since the descriptors are normalized, it can be seen that the actual correlation for each physicochemical is small in absolute terms, while the class separation is high.
+For the sake of brevity, we end the discussion of each descriptor here, although there is still a lot which can be discussed.
+Figure 3: A scatter plot of the features G3.1.2.1.2 and G3.1.1.1.25.
+Model selection
+In total, seven classifiers were considered and screened for model selection by a twenty times repeated five-fold cross-validation iterated under a grid search of which the hyperparameters were chosen by manual zooming. Table 4 illustrates the results on the model screening. The logistic regression (LR) was used as a baseline model to evaluate the predictive power of the other descriptors. It can be seen that the random forest (RF) and gradient boosting (GB) classifiers performed equally well for all metrics. Compared to LR they achieved a slightly better performance on all metrics except for the sensitivity, which was close to one for the LR. This means that out of all high affinity mutants, it managed to correctly classify all of them. However, by looking at the specificity (and accuracy), it can be seen that the value is 0.7, which is approximately the class imbalance between the high and low affinity mutants. This indicates that the logistic regression is slightly biased towards high affinity hemoglobins. The RF and GB on the other hand have a slightly lower sensitivity, but a higher specificity and accuracy, which implies that the classification is more balanced. Finally, it can be seen that the support vector classifier (SVC) performs worse than the LR and is more biased towards the positive class as shown by the sensitivity, accuracy and specificity.
+Table 1: The results from the cross validation. The chosen hyperparameters plus/minus one standard deviation from the repeated cross validations are shown.
+Accuracy
+Sensitivity
+Specificity
+roc-auc
+RF
+0.74 (+/- 0.09)
+0.89 (+/- 0.09)
+0.77 (+/- 0.11)
+0.69 (+/- 0.13)
+GB
+0.71 (+/- 0.09)
+0.89 (+/- 0.10)
+0.74 (+/- 0.06)
+0.68 (+/- 0.13)
+SVC
+0.68 (+/- 0.14)
+1.00 (+/- 0.00)
+0.68 (+/- 0.01)
+0.69 (+/- 0.13)
+LR
+0.70 (+/- 0.04)
+0.99 (+/- 0.03)
+0.70 (+/- 0.03)
+0.68 (+/- 0.12)
+RF + SVC
+0.78 (+/- 0.06)
+0.98 (+/- 0.04)
+0.77 (+/- 0.06)
+0.72 (+/- 0.13)
+RF + GB
+0.73 (+/- 0.08)
+0.89 (+/- 0.10)
+0.76 (+/- 0.06)
+0.69 (+/- 0.13)
+RF + LR
+0.73 (+/- 0.05)
+0.98 (+/- 0.04)
+0.74 (+/- 0.04)
+0.71 (+/- 0.12)
+In addition to the above mentioned models, three voting classifiers were tested. The idea is that while some models may perform poorly on their own, combining them and letting them instead vote for a target might increase the total performance since the weak aspects of one model might be covered the other members. Since the training of a voting classifier becomes exponentially more expensive to train over a grid search due to the increased number of hyperparameters, the obtained hyperparameters from the individual models were used and the voting strategy used was a soft vote. It can be seen that the RF+SVC performs just as good or better than the other voting classifiers on all metrics. This indicates that while the RF was the best mode and SVC the worst, combining them resulted in an overall improvement. The other voting classifiers also showed a slightly improved performance.
+Since the models built have been cross-validated and optimized by using both the descriptors and the target affinities, the data can be considered consumed and cannot be used to evaluate the true performance of the estimators. Therefore, a final validation set is used which has been kept away from all previous feature and model selection procedures. The validation was done by retraining all estimators on the entire model selection data as opposed to in the cross-validation where only 80% is used in order to preserve an internal validation set. The results are illustrated in table 5. It can be seen that all models perform roughly the same as in the cross validation stage, except for the RF+GB which actually performs better. This might seem strange, but is reasonable since the models have now been trained with more data. Consequently, the RF+GB  was chosen as the final model.
+Table 2: The results from the external validation set.
+Model
+Accuracy
+Sensitivity
+Specificity
+roc-auc
+RF
+0.74
+0.93
+0.72
+0.69
+GB
+0.74
+0.93
+0.72
+0.69
+SVC
+0.61
+1.00
+0.61
+0.50
+LR
+0.70
+1.00
+0.67
+0.61
+RF + SVC
+0.70
+0.93
+0.68
+0.63
+RF + GB
+0.78
+0.93
+0.76
+0.74
+RF + LR
+0.70
+1.00
+0.67
+0.61
+Screening of hemoglobin mutants
+In total, 1795 single point mutations were generated by the procedure explained in the materials and methods section. The RF+GB model was chosen as the discriminator and trained with all data, including the validation set. The mutants were then ranked by their probability of decreasing their oxygen affinity by a soft voting. A selected subset of the ranked mutants is shown in table 3.
+Table 3: A selected set of mutations. The score is in the range 0-1 where a high score indicates a high probability of being a mutation that results in reduced oxygen binding affinity.
+Subunit
+Mutation
+Score
+beta
+E6D
+0.8653
+beta
+D73H
+0.8445
+beta
+D73R
+0.8365
+beta
+K61N
+0.8203
+beta
+K61S
+0.8175
+beta
+L32W
+0.8087
+beta
+K61A
+0.8039
+beta
+E6L
+0.7973
+beta
+K61Q
+0.7907
+beta
+D73A
+0.7897
+beta
+D73F
+0.7855
+beta
+K61P
+0.7853
+beta
+A142E
+0.2376
+beta
+L141C
+0.2376
+beta
+A142R
+0.2376
+beta
+A142F
+0.2376
+beta
+L141N
+0.2376
+beta
+L141H
+0.2376
+From the table, it can be seen that the mutations with the highest scores were E6D and with various mutations at positions 73 and 61. These residues are highlighted in fig 3, denoted as Glu6, Asp73 and Lys61 respectively. As can be seen, the residue at position 73 is situated very close to the heme group and may therefore directly affect the oxygen binding by direct interaction. Furthermore, the residue corresponds to aspartic acid which is a highly polar amino acid. By looking at the first four mutations at this position, the model suggests a substitution to either histidine, arginine, phenylalanine or alanine in order to reduce the oxygen binding affinity. Interestingly, both the histidine and arginine are basic amino acids, while phenylalanine and alanine, being aromatic and aliphatic respectively, are neutral. The model therefore proposes that by making the polarity at residue 73 less acidic, the oxygen binding affinity will drop. It is also worth mentioning that the residue at position 61 is very close to the His63, the distal histidine which directly interacts with the heme group. The model suggests changing the lysine for either glutamine, asparagine, proline or serine. Glutamine and asparagine both contain an amide group and the proline a secondary amine, meaning they are all slightly basic. Since the lysine on the other hand is highly basic, it seems that the model suggests that a reduction in basicity at position 61 will lead to reduced oxygen affinity.
+Furthermore, looking at residue 6, which corresponds to glutamic acid, it does not seem to take part in any direct interaction with the oxygen binding, as it is instead located at the surface of the hemoglobin, facing away from the dimer-dimer bonding. It may therefore instead be that this residue affects the oxygen binding by interacting with other mechanisms participating in the oxygen binding, such as the allosteric binding of other ligands.
+Finally, looking at the low score (high affinity) mutations, it can be seen that almost all mutations are located around the C-terminus. This may be due to the C-terminus being relatively close to the F-helix which is located just over the heme group, as illustrated in fig. 3. By mutating residues at this chain, there might be a possibility for a subsequent conformational change in how the F-helix is situated, possibly either facilitating oxygen binding to the heme group or hindering the subsequent dissociation.
+Figure 3: The three dimensional structure of the human hemoglobin subunit beta. The residues Glu6, Asp73, His63 and Lys61 has explicitly been marked along with the C-terminus to illustrate some proposed sites where the model suggests a mutation to occur.
+Mutant selection
+We chose the mutations D73A, D73K, K65D and E6D as our mutations. The scores are illustrated in table 4. The ones at residue 73 were chosen due to its close proximity to the heme group. We chose one substitution to the smaller alanine since it is neutral and does not completely change sign on the polarity. The other substitution to lysine was chosen because it completely changes the sign of the polarity. In addition, we did not want to change the size of the amino acid too much and since neither alanine nor lysine are bulky, it seemed like a reasonable choice compared to the other proposed mutations. The residue at position 65 was changed from lysine to aspartic acid to see the effect of a sign change in close proximity to the His67. Furthermore, both residues have similar size. The final mutation, E6D was chosen simply because it had the highest score of all mutations.
+Table 4. The selected mutations.
+Subunit
+Mutation
+Score
+Why
+beta
+D73A
+0.738
+Close to heme
+beta
+D73K
+0.676
+Close to heme
+beta
+K65D
+0.753
+Close to His63
+beta
+E6D
+0.865
+Highest score
+Lab results
+The mutants from table 4 were ordered from IDT and expressed in E. coli BL21-DE3 as explained in the experimental design section. All four proteins were successfully expressed as indicated by SDS-PAGE (fig. 4) and were proven to be functional by measuring the absorbance spectrum as shown in fig. 5-7. See the results section for more details.
+Figure 4: A crude SDS-PAGE of the hemoglobin.
+Figure 5: The absorbance spectrum of the D73A mutant. The functionality is indicated by the characteristic peaks at around 420 nm and 550 nm as well as the shift around 420 nm when adding NaD and CO.
+Figure 6: The absorbance spectrum of the D73K mutant. The functionality is indicated by the characteristic peaks at around 420 nm and 550 nm as well as the shift around 420 nm when adding NaD and CO.
+Figure 7: The absorbance spectrum of the K65D mutant. The functionality is indicated by the characteristic peaks at around 420 nm and 550 nm as well as the shift around 420 nm when adding NaD and CO.
+Figure 8: The absorbance spectrum of the E6D mutant. The functionality is indicated by the characteristic peaks at around 420 nm and 550 nm as well as the shift around 420 nm when adding NaD and CO.
+Final thoughts
+As is extremely important in data science and predictive modeling, we now take the opportunity discuss certain limitations with our dataset. First, we believe that the dataset might not be fully representative of all variants of human hemoglobins. From all 1327 human hemoglobins in the database, only 148 have had their oxygen binding affinities reported, of which we chose the 143 with substitution point mutations. The question that arises is whether there is some underlying reason why not all of them were analyzed, or whether the mutants were analyzed in complete randomness. In the former case a bias would be introduced since the dataset used would then be a subset which was chosen based on a certain property, whereas in the second case, the dataset would be representative. We are still not sure which of the cases is true. Secondly the dataset is probably affected by survivorship bias. The reason for this is that only functional, albeit unstable hemoglobins can be found in humans. This means that it is probably impossible to infer anything about whether the protein will for instance be stable or fold properly. This is one the reason why the model is not suited for prediction on its own.
+Given the stated limitations, the interpretation of an inference made on the dataset should be considered conditionally. That is, anything predicted should be interpreted under the condition that the protein will function properly. This means that not everything can be predicted from the dataset and that it therefore requires explicit human supervision when selecting new variants for screening. As such, this model is not intended to replace the traditional methods of rational design, but rather to be combined with traditional protein engineering by reducing the huge space of possible mutations into a manageable (and hopefully representative) subset.
+We will now discuss another issue, which is the choice of descriptors. The descriptors used were based on the physicochemical and structural properties of the primary sequence of the hemoglobin. Obviously, not all structural and physicochemical properties that are of relevance can be derived from the primary structure. For instance, it is not unreasonable that properties derived from the three-dimensional structure that cannot be derived from the primary may be indicative on the final oxygen binding affinity. However, incorporating this kind of information is very difficult since a three-dimensional structure for every mutant is needed prior to training. This is certainly hard to obtain and while one could rely on simulations, these are tedious, time-consuming and sometimes unreliable. In addition, there might also be other properties that are of relevance, such as how the electrons are coordinated around the heme group. While these kind of descriptors need simulations, they are also hard to estimate without a given three-dimensional structure. Clearly, features derived from the primary structure are simple to handle and can be generated immediately, which is the main reason why we proceeded this way.
+Conclusion
+We have rationally designed human hemoglobin mutants by combining machine learning and protein engineering. This was accomplished by ranking a computer-generated library of mutants by using a classifier trained on a set of functionally characterized hemoglobins. The model was successfully trained and gave insights into the oxygen binding affinity of human hemoglobin. A final set of four mutants were ordered, expressed in the lab and proven functional by SDS-PAGE and spectrophotometry. We are still working on fully characterizing the proteins and are hoping to be able to present a true validation by measuring the actual binding affinity.
+References
+Show
+[1] Cronin, M., and Schultz, T. (2003) Pitfalls in QSAR. Journal of Molecular Structure: THEOCHEM 622, 39-51.
+Home
+Home
+Team
+Team
+Collaborations
+Attributions
+Project
+Description
+Design
+Results
+InterLab
+Parts
+Protocol
+Safety
+Notebook
+Model
+Landing page
+Hemoglobin
+Growth curves
+Practices
+Integrated
+Engagement
+Contact
+Sölvegatan 22 A
+223 62 Lund
+Sweden
+igemlund@gmail.com
+Stay connected
+Facebook
+Instagram
+Twitter
+©2018 iGEM Lund

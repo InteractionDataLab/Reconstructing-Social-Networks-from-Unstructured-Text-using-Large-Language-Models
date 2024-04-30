@@ -1,0 +1,197 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:TU-Eindhoven/PBPK
+From 2013.igem.org
+Home
+Team
+Project
+Abstract
+Project Description
+Background
+The Chassis
+Potential Contrast Agents
+Kill Switch
+Applications
+Results
+Main Results
+Parts Submitted
+Outlook
+Future Steps
+Others
+Attributions
+Collaboration
+Achievements
+Wetlab
+Overview
+Preparation
+Lab Reports
+MRI Data Processing
+Anaerobic FNR Testing
+CEST Agent Testing
+Lab Journal
+Drylab
+Summary
+Protein Selection
+Contrast Mechanism
+Decoy Sites
+FNR Dynamics
+FNR Promotor
+Integral Model
+Bacteria in the Body
+Ganciclovir Distribution
+Time-kill Behavior
+Safety
+Overview
+Lab Safety
+Public and Environmental Safety
+Biosafety Within iGEM
+Society
+Outreach
+Human Practice
+Notebook
+Contents
+1 Ganciclovir Distribution
+1.1 Physiologically Based Pharmacokinetics Model
+1.2 Model Construction
+1.2.1 Tissue Grouping
+1.2.2 Route of Absorption and Elimination
+1.2.3 Formulation
+1.2.4 Parameter Estimation
+1.3 Simulation Result
+1.4 References
+Ganciclovir Distribution
+Ganciclovir is the prodrug to kill the bacteria. See the description page for the principle of killing . The bacteria needs to be killed at a mild rate. So it is important to predict the concentration of Ganciclovir in the body, especially in the tumor zone as the bacteria gather in this site. In this part we used PBPK to describe the distribution of the drug in different tissues of body.
+Physiologically Based Pharmacokinetics Model
+The pharmacokinetics model is a useful tool to predict drug concentrations in human tissues. It models 3 processes in drug consumption:
+1
+Absorption describes how the drug enters to blood stream via different method of administration.
+2
+Distribution is how the drug distributes into different human tissues.
+3
+Elimination is the process that the drug is eliminated from blood stream.
+And all the processes are modeled with differential equations.
+The essence of pharmacokinetics model is
+Compartmental method. Different tissues in human are modeled as compartments, like lung, kidney and fat. Within the compartment, it is assumed that drug distribution is uniform. The blood flows from one compartment to another and brings the drug throughout the body.
+Diffusion limitation. Diffusion limitation is illustrated by the speed of blood flow and the affinity of the compartment to the drug. Some organs have a higher rate of blood flow, like the lungs and kidneys. In these compartments, the concentration will change faster. Different compartments also have a different affinity to the drug. Affinity depends on the chemical composition of the drug and the human tissue. But generally, the kidneys always have the highest affinity as it is the main elimination compartment.
+Model Construction
+The construction of a pharmacokinetics model involves several steps. Although the principle of a pharmacokinetics model looks quite simple, every design of the model should be backed up with good reasons.
+Tissue Grouping
+PBPKtissue Tissue Grouping
+In PBPK, the number of compartments depends on the data availability, aim of the study and the calculation method. There are many variations in PBPK models. But they all share the same basic traits:
+One compartment for venous blood,
+One compartment for arterial blood,
+At least one elimination compartment and,
+At least one absorption compartment.
+Generally, as the number of compartments increases, the accuracy of prediction is improving. But the estimation error also increases as the data availability is limited. What is usually done is to lump together tissues with similar pharmacokinetical and toxicological properties. However these data are still not there for Ganciclovir.
+The rule of thumb in designing compartments is to ensure that the blood flow in each direction sums up to the cardiac output. So the two compartments, rapidly perfused tissue and slowly perfused tissue, are always used to compensate the blood flow.
+Our model is mainly based on the study of J.Ren et al.GCVtissuedistributionJ.Ren et al, Tissue distribution of borneol-modified Ganciclovir-loaded solid lipd nanoparticles in mice after intravenous administration. European Jounal of Pharmaceutics and Biopharmaceutics 83, 141-148 (2013) They tested the tissue concentrations of several organs in mice. Based on their results, firstly the compartments of brain, kidney, liver, spleen and lung are decided. As the aim is to predict the drug concentration in tumor zone, the compartment of tumor is also included in the model. To ensure that the blood flow sums up to total cardiac output, the rapidly perfused tissue and slowly perfused tissue are added.
+In the end the structure looks like .
+Route of Absorption and Elimination
+The Ganciclovir is administrated intravenously. So the initial condition in the model will be setting a concentration value to the venous blood. The drug is eliminated mainly through the kidneysPBPKelimin, so in the model the kidney is the only elimination compartment.
+Formulation
+PBPKscheme Schematic of PBPK Model
+The PBPK model uses ordinary differential equations and the state vectors are the drug concentrations of the compartments. The different affinities of tissues to the drug are modeled as partition coefficients when the blood flows out of tissue.
+For compartments kidney, brain, Rapidly-Perfused-Tissue, Slowly-Perfused-Tissue and tumor, the equations can be generalized as: (subscript 'co' for compartment）
+$$ \eqalignno{ \dot{C_{co}} & = \color{red}{Q_{co} C_{Art}} - \color{#08F}{\frac{Q_{co}}{K_{co}} C_{co}} }$$
+For the lung, the direction of blood flow is inversed:
+$$ \eqalignno{ \dot{C_{Lu}} & = \color{#08F}{Q_{Lu} C_{Ven}} - \color{red}{\frac{Q_{Lu}}{K_{Lu}} C_{Lu}}\\ }$$
+For the compartment of liver and spleen, the blood outflow from the spleen goes directly into the liver:
+$$ \eqalignno{ \dot{C_{Li}} & = \color{red}{(Q_{Li}-Q_{Sp}) C_{Art}} + \frac{Q_{Sp}}{K_{Sp}} C_{Sp} - \color{#08F}{\frac{Q_{Lu}}{K_{Lu}} C_{Lu}}\\ \dot{C_{Sp}} & = \color{red}{Q_{Sp} C_{Art}} - \color{#08F}{\frac{Q_{Sp}}{K_{Sp}} C_{Sp}}\\ }$$
+Finally for the arterial blood and venous blood:
+$$ \eqalignno{ \color{#08F}{\dot{C_{Ven}}} & = \color{#08F}{\sum_{co}{\frac{Q_{co}}{K_{co}} C_{co}}} - \color{#08F}{Q_{Lu} C_{Lu}}\\ \color{red}{\dot{C_{Art}}} & = \color{red}{Q_{Lu} C_{Lu}} - \color{red}{\sum_{co}{\frac{Q_{co}}{K_{co}} C_{co}}}, for~co = Ki, Li, Br, Ra, Sl~and~Tu\\ }$$
+Parameter Estimation
+There are two types of data in PBPK models, the drug-nonspecific data and the drug-specific data. For each compartment, we need to estimate the blood flow, tissue volume and partition coefficient. We also need to know the elimination compartment and it's elimination rate.
+1
+drug-nonspecific parameters
+The tissue volumes and the blood flows are taken from the mean values of human adults. The blood flows of brain, kidney, liver, spleen and lung are estimated from the study of Feras Khalil and Stephanie Laer.PBPKvolumeFeras Khalil and Stephanie Laer, Physiologically Based Pharmacokinetics Modeling: Methodology, Applications, and Limitations with a Focus on Its Role in Pediatric Drug Development. Journal of Biomedicine and Biotechnology ,  (2011) The volumes of these organs are from L. Birnbaum et al. PBPKparamL.Birnbaum et al, . Physiological Parameter Values for PBPK Models ,  (1994).
+The tissue volumes of the rapidly perfuse tissue and the slowly perfuse tissue are estimated from the study by J.H.Sung et al by keeping the same ratio to liver. PBPKtumorJong Hwan Sung et al, A Combined Pharmacokinetic-Pharmacodynamic(PK-PD) Model for Tumor Growth in the Rat with UFT Administration. Journal of Pharmaceutical Science 98,  (2009). The blood flows of these two compartments are taken from the same research. The values are scaled so that the blood flow sums up to cardiac output. Then the tumor is separated from slowly perfused tissue with the volume assumed to be 1% of the body volume.
+The result of tissue volume and blood flow:
+Compartment
+Fraction of body volume
+Fraction of cardiac output
+Brain
+0.017
+0.1162
+Kidney
+0.0044
+0.25
+Liver
+0.026
+0.227
+Spleen
+0.0023
+0.028
+Lung
+0.007
+1
+RapidPerfused
+0.025
+0.2078
+SlowPerfused
+0.4875
+0.170
+Tumor
+0.001
+0.001
+2
+drug-specific parameters
+PBPKoptim Data optimization in PBPK
+The partition coefficients are drug specific parameters. It equals the ratio of concentrations between two connected compartments during equilibrium. Ideally, it should be tested in the lab by administrating the drug continuously till the drug concentrations reach steady state in the tissues. But these data are very rare. Based on the available dataPBPKparam, the area methodPBPKareaMethodJames M.Gallo et al, Area Method for the Estimation of Partition Coefficients for Physiological Pharmacokinetic Models. Journal of Pharmacokinetics and Biopharmaceutics 15,  (1987) is used in combination with parameter optimization to estimate the partition coefficient.
+Firstly, the ratios of the Area Under the Curve(AUC) are calculated. This data is then used as an initial guess in the parameter optimization. Note that we can only get data for brain, kidney, liver, spleen and lung, the partition coefficient of rapidly perfused tissue is kept the same as the biggest value and those of slowly perfused tissue and tumor are kept the same as the smallest value. Then the simulation is run at once to get the new values of AUCs. The differences are the objective vectors to minimize.
+The elimination rate is also drug specific. Steven McGloughlin et al.PBPKeliminSteven McGloughlin et al, Ganciclovir pharmacokinetics and suggested dosing in continuous venous haemodiafiltration. International Journal of Antimicrobial Agents 37, 82-92 (2011) mentioned that kidney is the main elimination compartment for Ganciclovir and the apparent elimination rate is 0.049 h-1. The parameter optimization is also used to estimate the real elimination rate. The initial guess is the apparent elimination rate times the ratio of cardiac output to the blood flow of kidney, i.e., 0.196 h-1.
+The scheme of data optimization is shown in . The keobs in the figure stands for the observed elimination rate, i.e., the apparent elimination rate.
+The result of data optimization is:
+Partition coefficient
+Initial guess
+Data optimization result
+Brain
+0.1150
+0.1150
+Kidney
+2.1054
+2.0100
+Liver
+0.7087
+0.7091
+Spleen
+1.6475
+1.1682
+Lung
+1.2180
+1.2529
+RapidPerfused1
+2.1054
+2.0100
+SlowPerfused2
+0.1150
+0.1150
+Tumor2
+0.001
+0.001
+Elimination rate
+Total elimination rate
+0.196
+1.2748
+1. The value of rapidly perfused tissue is kept the same with the highest partition coefficient, i.e., in the kidney;
+2. The values of tumor and slowly perfused tissue are kept the same with the lowest partition coefficient.
+Simulation Result
+The result of a simulation with the estimated data is:
+References
+The source code of all models can be found here .
+Go to Top   
+Retrieved from " http://2013.igem.org/Team:TU-Eindhoven/PBPK "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

@@ -1,0 +1,170 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_BostonU_unslider"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:BostonU/unslider">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:BostonU/unslider&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:BostonU/unslider&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:BostonU/unslider&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:BostonU/unslider" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:BostonU/unslider</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/**
+</P><PRE>*   Unslider by @idiot
+*/
+
+</PRE><P>(function($, f) {
+	//  If there's no jQuery, Unslider can't work, so kill the operation.
+	if(!$) return f;
+</P><P>	var Unslider = function() {
+		//  Set up our elements
+		this.el = f;
+		this.items = f;
+</P><P>		//  Dimensions
+		this.sizes = [];
+		this.max = [0,0];
+</P><P>		//  Current inded
+		this.current = 0;
+</P><P>		//  Start/stop timer
+		this.interval = f;
+</P><P>		//  Set some options
+		this.opts = {
+			speed: 500,
+			delay: 3000, // f for no autoplay
+			complete: f, // when a slide's finished
+			keys: !f, // keyboard shortcuts - disable if it breaks things
+			dots: f, // display â€¢â€¢â€¢â€¢oâ€¢ pagination
+			fluid: f // is it a percentage width?,
+		};
+</P><P>		//  Create a deep clone for methods where context changes
+		var _ = this;
+</P><P>		this.init = function(el, opts) {
+			this.el = el;
+			this.ul = el.children('ul');
+			this.max = [el.outerWidth(), el.outerHeight()];			
+			this.items = this.ul.children('li').each(this.calculate);
+</P><P>			//  Check whether we're passing any options in to Unslider
+			this.opts = $.extend(this.opts, opts);
+</P><P>			//  Set up the Unslider
+			this.setup();
+</P><P>			return this;
+		};
+</P><P>		//  Get the width for an element
+		//  Pass a jQuery element as the context with .call(), and the index as a parameter: Unslider.calculate.call($('li:first'), 0)
+		this.calculate = function(index) {
+			var me = $(this),
+				width = me.outerWidth(), height = me.outerHeight();
+</P><P>			//  Add it to the sizes list
+			_.sizes[index] = [width, height];
+</P><P>			//  Set the max values
+			if(width &gt; _.max[0]) _.max[0] = width;
+			if(height &gt; _.max[1]) _.max[1] = height;
+		};
+</P><P>		//  Work out what methods need calling
+		this.setup = function() {
+			//  Set the main element
+			this.el.css({
+				overflow: 'hidden',
+				width: _.max[0],
+				height: this.items.first().outerHeight()
+			});
+</P><P>			//  Set the relative widths
+			this.ul.css({width: (this.items.length * 100) + '%', position: 'relative'});
+			this.items.css('width', (100 / this.items.length) + '%');
+</P><P>			if(this.opts.delay !== f) {
+				this.start();
+				this.el.hover(this.stop, this.start);
+			}
+</P><P>			//  Custom keyboard support
+			this.opts.keys &amp;&amp; $(document).keydown(this.keys);
+</P><P>			//  Dot pagination
+			this.opts.dots &amp;&amp; this.dots();
+</P><P>			//  Little patch for fluid-width sliders. Screw those guys.
+			if(this.opts.fluid) {
+				var resize = function() {
+					_.el.css('width', Math.min(Math.round((_.el.outerWidth() / _.el.parent().outerWidth()) * 100), 100) + '%');
+				};
+</P><P>				resize();
+				$(window).resize(resize);
+			}
+</P><P>			if(this.opts.arrows) {
+</P>
+				this.el.parent().append('<P class="arrows"><SPAN class="prev">â†</SPAN><SPAN class="next">â†’</SPAN></P>')
+<P>					.find('.arrows span').click(function() {
+						$.isFunction(_[this.className]) &amp;&amp; _[this.className]();
+					});
+			};
+</P><P>			//  Swipe support
+			if($.event.swipe) {
+				this.el.on('swipeleft', _.prev).on('swiperight', _.next);
+			}
+		};
+</P><P>		//  Move Unslider to a slide index
+		this.move = function(index, cb) {
+			//  If it's out of bounds, go to the first slide
+			if(!this.items.eq(index).length) index = 0;
+			if(index &lt; 0) index = (this.items.length - 1);
+</P><P>			var target = this.items.eq(index);
+			var obj = {height: target.outerHeight()};
+			var speed = cb ? 5 : this.opts.speed;
+</P><P>			if(!this.ul.is(':animated')) {			
+				//  Handle those pesky dots
+				_.el.find('.dot:eq(' + index + ')').addClass('active').siblings().removeClass('active');
+</P><P>				this.el.animate(obj, speed) &amp;&amp; this.ul.animate($.extend({left: '-' + index + '00%'}, obj), speed, function(data) {
+					_.current = index;
+					$.isFunction(_.opts.complete) &amp;&amp; !cb &amp;&amp; _.opts.complete(_.el);
+				});
+			}
+		};
+</P><P>		//  Autoplay functionality
+		this.start = function() {
+			_.interval = setInterval(function() {
+				_.move(_.current + 1);
+			}, _.opts.delay);
+		};
+</P><P>		//  Stop autoplay
+		this.stop = function() {
+			_.interval = clearInterval(_.interval);
+			return _;
+		};
+</P><P>		//  Keypresses
+		this.keys = function(e) {
+			var key = e.which;
+			var map = {
+				//  Prev/next
+				37: _.prev,
+				39: _.next,
+</P><P>				//  Esc
+				27: _.stop
+			};
+</P><P>			if($.isFunction(map[key])) {
+				map[key]();
+			}
+		};
+</P><P>		//  Arrow navigation
+		this.next = function() { return _.stop().move(_.current + 1) };
+		this.prev = function() { return _.stop().move(_.current - 1) };
+</P><P>		this.dots = function() {
+			//  Create the HTML
+</P>
+			var html = '<OL class="dots">';
+				$.each(this.items, function(index) { html += '&lt;li class=&quot;dot' + (index &lt; 1 ? ' active' : <I>) + '&quot;&gt;' + (index + 1) + ''; });</I>
+				html += '</OL>';
+<P>			//  Add it to the Unslider
+			this.el.addClass('has-dots').append(html).find('.dot').click(function() {
+				_.move($(this).index());
+			});
+		};
+	};
+</P><P>	//  Create a jQuery plugin
+	$.fn.unslider = function(o) {
+		var len = this.length;
+</P><P>		//  Enable multiple-slider support
+		return this.each(function(index) {
+			//  Cache a copy of $(this), so it 
+			var me = $(this);
+			var instance = (new Unslider).init(me, o);
+</P><P>			//  Invoke an Unslider instance
+			me.data('unslider' + (len &gt; 1 ? '-' + (index + 1) : <I>), instance);</I>
+		});
+	};
+})(window.jQuery, false);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:BostonU/unslider">http://2014.igem.org/Team:BostonU/unslider</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:BostonU/unslider" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:BostonU/unslider" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:BostonU/unslider&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:BostonU/unslider&amp;oldid=46268" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

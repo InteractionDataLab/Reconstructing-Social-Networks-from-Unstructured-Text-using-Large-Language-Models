@@ -1,0 +1,233 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Shenzhen BGIC 0101/Tutorial/segmman
+From 2013.igem.org
+Home
+Team
+Software »
+Overview
+Modules
+Next Version
+New Standard
+Compatibility
+Tutorial
+Web-Based Trial
+Downloads
+Requirements »
+Human Practices
+Safety
+Collaboration
+Medal Criteria
+Contact
+Tutorial
+SegmMan
+This module will cut chromosome into pieces with different sizes with Gibson, Goldengate, Homologous adaptors to them so that they are able to be assembled into whole experimentally.
+Plugin Scripts
+3-1. 01.whole2mega.pl
+This utility can split the whole chromosome ( at least 90kbp long ) into about 30k segments and add homologous overlap and adaptors, so that these fragments can be integrated into whole experimentally.
+Internal operation
+First, this utility searches for the location of centromere and ARSs (autonomously replicating site). The minimal distance between centromere and ARS should NOT be larger than a defined megachunk which is about 30k long.
+Second, this utility cuts out the first 30k sequence window containing the centromere and its adjacent ARS, and then adds this megachunk with two original markers and left, right telomeres.
+Thirdly, this utility continues to cut more megachunks from the original one to both ends. But these megachunks are not independent, they all have about 1kbp overlaps. Moreover, these new splited window can be given only one marker alternately and only left or right telomere.
+The output file will be dealed with 02.globalREmarkup.pl
+For more information about segmentation design, please refer to the page ASSEMBLY DESIGN PRINCIPLE .
+Example (command line)
+perl 01.whole2mega.pl –gff sce_chrI.gff -fa sce_chr01.fa -ol 1000 -ck 30000 -m1 LEU2 -m2 URA3 -m3 HIS3 -m4 TRP1 -ot sce_chrI.mega
+Parameters
+default
+Option
+gff
+The gff file of the chromosome being restriction enzyme sites parsing
+fa
+The fasta file of the chromosome being restriction enzyme sites parsing (The length of the chromosome is larger than 90k)
+ol
+The length of overlap between megachunks
+1000bp
+ck
+The length of megachunks
+30kbp
+m1
+The first marker for selection alternately
+LEU2 (1797bp)
+LEU2/URA3HIS3/TRP1
+m2
+The second marker for selection alternately
+URA3 (1112bp)
+LEU2/URA3/HIS3/TRP1
+m3
+The first marker orinally residing in first 30k segmentation
+HIS3 (1774bp)
+LEU2/URA3/HIS3/TRP1
+m4
+The second marker orinally residing in first 30k segmentation
+TRP1 (1467bp)
+LEU2/URA3/HIS3/TRP1
+ot
+The output file
+Prefix(fa filename)+ suffix(.mega)
+The format of output:
+The output file is stored in /the path where you install GENOVO/Result/ 01.whole2mega.
+Besides, there is screen output about the process state and result.
+1. Screen output
+2. 01.state
+ Store the segmentation information
+Megachunk_ID
+Corresponding location in the designed chromosome
+Part ID
+Location in the segmentation
+3 *.mega
+ Store the fasta information of the 30k segments
+3-2. 02.globalREmarkup.pl
+This utility will parse the exited restriction enzyme sites residing in the chromosome.
+Internal operation
+This utility searches the exited restriction enzyme sites along the chromosome both plus strand and minus strand, after users define the list of enzymes.
+Besides, we tried to find out all the potential restriction enzyme sites, so that maybe some unusual restriction enzyme sites can be created and let segmentation go. But because it had low efficiency, we’re still working on that.
+The output file will be dealed with 03.mega2chunk2mini.pl
+For more information about segmentation design, please refer to the page ASSEMBLY DESIGN PRINCIPLE .
+Example (command line)
+perl 02.globalREmarkup.pl -sg 01.whole2mega/sce_chrI.mega -re standard_and_IIB -ct Standard.ct –ot sce_chrI.mega.parse
+Parameters
+default
+Option
+sg
+The fasta file of the 30k segmentation, the output of 01.wh2mega.pl
+ps
+The markup file of the 30k segmentation, the output of 02.globalREmarkup.pl
+re
+The restriction enzyme sites list. It is devided by different standards, type (IIP, IIA, IIB), cost (standard, nonexpensive) and etc.
+Standard_and_IIB
+IIP/IIA/IIB/Standard/ Nonexpensive/ Standard_IIB Nonexpensive_IIB
+a2
+2k to 10k assembly strategy (Gibson or Goldengate)
+Gibson
+Gibson/ Goldengate
+a10
+10k to 30k assembly strategy (Gibson or Goldengate)
+Goldengate
+Gibson/ Goldengate
+ckmax2
+The maximum length of minichunks
+2200 bp
+ckmin2
+The minimum length of minichunks
+1800 bp
+cknum
+The number of minichunks in a chunk
+5
+Codon table list: 1. The Standard Code 2. The Vertebrate Mitochondrial Code 3. The Yeast Mitochondrial Code 4. The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma Code 5. The Invertebrate Mitochondrial Code 6. The Ciliate, Dasycladacean and Hexamita Nuclear Code 7. The Echinoderm and Flatworm Mitochondrial Code 8. The Euplotid Nuclear Code 9. The Bacterial, Archaeal and Plant Plastid Code 10. The Alternative Yeast Nuclear Code 11. The Ascidian Mitochondrial Code 12. The Alternative Flatworm Mitochondrial Code 13. Blepharisma Nuclear Code 14. Chlorophycean Mitochondrial Code 15. Trematode Mitochondrial Code 16. Scenedesmus Obliquus Mitochondrial Code 17. Thraustochytrium Mitochondrial Code 18. Pterobranchia Mitochondrial Code 19. Candidate Division SR1 and Gracilibacteria Code
+The format of utput
+The output file is stored in /the path where you install GENOVO/Result/. 02.globalREmarkup.
+Besides, there is screen output about the process state and result.
+1. Screen output
+2. *.parse
+Store the exited enzyme recognition site in the megachunks
+Enzyme ID Start End Recognition site Real site
+3-3. 03.chunk_30k_10k_2k.pl
+This utility can produce 2k minichunks with Gibson adaptors and 10k chunks with goldengate adaptors.
+Internal operation
+This utility will segmentate the megachunk produced by 03.mega2chunk2mini.pl into 2k minichunks with Gibson assembly adaptors, so that they can be put together into 10k chunks.
+First, this bin will search the inexistent restriction enzyme sites locally, and then decide the size of the minichunks according to the requirements from users, and add two same Gibson adaptors to each sides of minichunks. Secondly, the second part of this bin will define the start and end point of the chunks as users asked and design goldengate assembly adaptors for the chunks.
+The output file can be sent in gene synthesis company after human attention and double check.
+For more information about segmentation design, please refer to the page ASSEMBLY DESIGN PRINCIPLE .
+Example (command line)
+perl 03.mega2chunk2mini.pl -re standard_and_IIB -sg 01.whole2mega/sce_chr01_0.mega -ps 02.globalREmarkup/sce_chr01_0.parse  -ot 03.mega2chunk2mini
+Parameters
+default
+Option
+sg
+The fasta file of the 30k segmentation, the output of 01.wh2mega.pl
+ps
+The markup file of the 30k segmentation, the output of 02.globalREmarkup.pl
+re
+The restriction enzyme sites list. It is devided by different standards, type (IIP, IIA, IIB), cost (standard, nonexpensive) and etc.
+Standard_and_IIB
+IIP/IIA/IIB/Standard/ Nonexpensive/ Standard_IIB Nonexpensive_IIB
+a2
+2k to 10k assembly strategy (Gibson or Goldengate)
+Gibson
+Gibson/ Goldengate
+a10
+10k to 30k assembly strategy (Gibson or Goldengate)
+Goldengate
+Gibson/ Goldengate
+ckmax2
+The maximum length of minichunks
+2200 bp
+ckmin2
+The minimum length of minichunks
+1800 bp
+cknum
+The number of minichunks in a chunk
+5
+If parameter a2 is Gibson, then there are additional parameters:
+ol2
+The length of overlap
+40 bp
+tmax2
+The maximum melting temperature of the overlap of minichunks
+60℃
+tmin2
+The minimum melting temperature of the overlap of minichunks
+56℃
+fe2
+The minimum free energy of the overlap of minichunks
+-3
+ex2
+The type of exonuclease used for minichunks
+T5
+T5/T3
+lo2
+The minimum distance between minichunks overlap and loxpsym
+40 bp
+en2
+The type of enzyme flanking minichunks
+IIP
+et2
+ep2
+The maximum unit price of enzyme used in minichunks digestion
+0.5 $/unit
+If parameter a10 is Goldengate, then there are additional parameters:
+en10
+The type of enzyme flanking chunks
+IIB
+IIA/IIB
+et10
+The temperature of enzyme used in chunks digestion
+37℃
+The format of ouput
+The output file is stored in /the path where you install GENOVO/Result/. 03.mega2chunk2mini.
+Besides, there is screen output about the process state and result.
+1. Screen output
+2. *.2kstate
+Store the minichunks states.
+Left IIP enzyme site
+Right IIP enzyme site
+Start
+End
+Size of minichunks
+Melting temperature of overlap
+3. *.10kstate
+Store the chunks states
+Left IIB enzyme site
+Right IIB enzyme site
+Start
+End
+Size of chunks
+4. *.mini
+Store the fasta of designed minichunks.
+Retrieved from " http://2013.igem.org/Team:Shenzhen_BGIC_0101/Tutorial/segmman "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

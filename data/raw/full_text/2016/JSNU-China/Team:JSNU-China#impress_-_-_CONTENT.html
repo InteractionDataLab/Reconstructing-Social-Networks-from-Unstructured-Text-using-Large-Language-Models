@@ -1,0 +1,416 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_JSNU-China_impress skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:JSNU-China/impress</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* impress.js
+*
+* impress.js is a presentation tool based on the power of CSS3 transforms and transitions
+* in modern browsers and inspired by the idea behind prezi.com.
+*
+* MIT Licensed.
+*
+* Copyright 2011-2012 Bartek Szopka (@bartaz)
+*
+* ------------------------------------------------
+*  author:  Bartek Szopka
+*  version: 0.3
+*  url:     <A rel="nofollow" class="external free" href="http://bartaz.github.com/impress.js/">http://bartaz.github.com/impress.js/</A>
+*  source:  <A rel="nofollow" class="external free" href="http://github.com/bartaz/impress.js/">http://github.com/bartaz/impress.js/</A>
+*/
+</PRE><P>(function ( document, window ) {
+</P><PRE>   'use strict';
+</PRE><PRE>   // HELPER FUNCTIONS
+   
+   var pfx = (function () {
+</PRE><PRE>       var style = document.createElement('dummy').style,
+           prefixes = 'Webkit Moz O ms Khtml'.split(' '),
+           memory = {};
+           
+       return function ( prop ) {
+           if ( typeof memory[ prop ] === &quot;undefined&quot; ) {
+</PRE><PRE>               var ucProp  = prop.charAt(0).toUpperCase() + prop.substr(1),
+                   props   = (prop + ' ' + prefixes.join(ucProp + ' ') + ucProp).split(' ');
+</PRE><PRE>               memory[ prop ] = null;
+               for ( var i in props ) {
+                   if ( style[ props[i] ] !== undefined ) {
+                       memory[ prop ] = props[i];
+                       break;
+                   }
+               }
+</PRE><PRE>           }
+</PRE><PRE>           return memory[ prop ];
+       }
+</PRE><PRE>   })();
+</PRE><PRE>   var arrayify = function ( a ) {
+       return [].slice.call( a );
+   };
+   
+   var css = function ( el, props ) {
+       var key, pkey;
+       for ( key in props ) {
+           if ( props.hasOwnProperty(key) ) {
+               pkey = pfx(key);
+               if ( pkey != null ) {
+                   el.style[pkey] = props[key];
+               }
+           }
+       }
+       return el;
+   }
+   
+   var byId = function ( id ) {
+       return document.getElementById(id);
+   }
+   
+   var $ = function ( selector, context ) {
+       context = context || document;
+       return context.querySelector(selector);
+   };
+   
+   var $$ = function ( selector, context ) {
+       context = context || document;
+       return arrayify( context.querySelectorAll(selector) );
+   };
+   
+   var translate = function ( t ) {
+       return &quot; translate3d(&quot; + t.x + &quot;px,&quot; + t.y + &quot;px,&quot; + t.z + &quot;px) &quot;;
+   };
+   
+   var rotate = function ( r, revert ) {
+       var rX = &quot; rotateX(&quot; + r.x + &quot;deg) &quot;,
+           rY = &quot; rotateY(&quot; + r.y + &quot;deg) &quot;,
+           rZ = &quot; rotateZ(&quot; + r.z + &quot;deg) &quot;;
+       
+       return revert ? rZ+rY+rX : rX+rY+rZ;
+   };
+   
+   var scale = function ( s ) {
+       return &quot; scale(&quot; + s + &quot;) &quot;;
+   };
+   
+   var getElementFromUrl = function () {
+       // get id from url # by removing `#` or `#/` from the beginning,
+       // so both &quot;fallback&quot; `#slide-id` and &quot;enhanced&quot; `#/slide-id` will work
+       return byId( window.location.hash.replace(/^#\/?/,&quot;&quot;) );
+   };
+   
+   // CHECK SUPPORT
+   
+   var ua = navigator.userAgent.toLowerCase();
+   var impressSupported = ( pfx(&quot;perspective&quot;) != null ) &amp;&amp;
+                          ( document.body.classList ) &amp;&amp;
+                          ( document.body.dataset ) &amp;&amp;
+                          ( ua.search(/(iphone)|(ipod)|(android)/) == -1 );
+   
+   var roots = {};
+   
+   var impress = window.impress = function ( rootId ) {
+</PRE><PRE>       rootId = rootId || &quot;impress&quot;;
+       
+       // if already initialized just return the API
+       if (roots[&quot;impress-root-&quot; + rootId]) {
+           return roots[&quot;impress-root-&quot; + rootId];
+       }
+       
+       // DOM ELEMENTS
+       
+       var root = byId( rootId );
+       
+       if (!impressSupported) {
+           root.className = &quot;impress-not-supported&quot;;
+           return;
+       } else {
+           root.className = &quot;&quot;;
+       }
+       
+       // viewport updates for iPad
+       var meta = $(&quot;meta[name='viewport']&quot;) || document.createElement(&quot;meta&quot;);
+       // hardcoding these values looks pretty bad, as they kind of depend on the content
+       // so they should be at least configurable
+       meta.content = &quot;width=1024, minimum-scale=0.75, maximum-scale=0.75, user-scalable=no&quot;;
+       if (meta.parentNode != document.head) {
+           meta.name = 'viewport';
+           document.head.appendChild(meta);
+       }
+       
+       var canvas = document.createElement(&quot;div&quot;);
+       canvas.className = &quot;canvas&quot;;
+       
+       arrayify( root.childNodes ).forEach(function ( el ) {
+           canvas.appendChild( el );
+       });
+       root.appendChild(canvas);
+       
+       var steps = $$(&quot;.step&quot;, root);
+       
+       // SETUP
+       // set initial values and defaults
+       
+       document.documentElement.style.height = &quot;100%&quot;;
+       
+       css(document.body, {
+           height: &quot;100%&quot;,
+           overflow: &quot;hidden&quot;
+       });
+</PRE><PRE>       var props = {
+           position: &quot;absolute&quot;,
+           transformOrigin: &quot;top left&quot;,
+           transition: &quot;all 0s ease-in-out&quot;,
+           transformStyle: &quot;preserve-3d&quot;
+       }
+       
+       css(root, props);
+       css(root, {
+           top: &quot;50%&quot;,
+           left: &quot;50%&quot;,
+           perspective: &quot;1000px&quot;
+       });
+       css(canvas, props);
+       
+       var current = {
+           translate: { x: 0, y: 0, z: 0 },
+           rotate:    { x: 0, y: 0, z: 0 },
+           scale:     1
+       };
+</PRE><PRE>       var stepData = {};
+       
+       var isStep = function ( el ) {
+           return !!(el &amp;&amp; el.id &amp;&amp; stepData[&quot;impress-&quot; + el.id]);
+       }
+       
+       steps.forEach(function ( el, idx ) {
+           var data = el.dataset,
+               step = {
+                   translate: {
+                       x: data.x || 0,
+                       y: data.y || 0,
+                       z: data.z || 0
+                   },
+                   rotate: {
+                       x: data.rotateX || 0,
+                       y: data.rotateY || 0,
+                       z: data.rotateZ || data.rotate || 0
+                   },
+                   scale: data.scale || 1,
+                   el: el
+               };
+           
+           if ( !el.id ) {
+               el.id = &quot;step-&quot; + (idx + 1);
+           }
+           
+           stepData[&quot;impress-&quot; + el.id] = step;
+           
+           css(el, {
+               position: &quot;absolute&quot;,
+               transform: &quot;translate(-50%,-50%)&quot; +
+                          translate(step.translate) +
+                          rotate(step.rotate) +
+                          scale(step.scale),
+               transformStyle: &quot;preserve-3d&quot;
+           });
+           
+       });
+</PRE><PRE>       // making given step active
+</PRE><PRE>       var active = null;
+       var hashTimeout = null;
+       
+       var goto = function ( el ) {
+           if ( !isStep(el) || el == active) {
+               // selected element is not defined as step or is already active
+               return false;
+           }
+           
+           // Sometimes it's possible to trigger focus on first link with some keyboard action.
+           // Browser in such a case tries to scroll the page to make this element visible
+           // (even that body overflow is set to hidden) and it breaks our careful positioning.
+           //
+           // So, as a lousy (and lazy) workaround we will make the page scroll back to the top
+           // whenever slide is selected
+           //
+           // If you are reading this and know any better way to handle it, I'll be glad to hear about it!
+           window.scrollTo(0, 0);
+           
+           var step = stepData[&quot;impress-&quot; + el.id];
+           
+           if ( active ) {
+               active.classList.remove(&quot;active&quot;);
+           }
+           el.classList.add(&quot;active&quot;);
+           
+           root.className = &quot;step-&quot; + el.id;
+           
+           // `#/step-id` is used instead of `#step-id` to prevent default browser
+           // scrolling to element in hash
+           //
+           // and it has to be set after animation finishes, because in chrome it
+           // causes transtion being laggy
+           window.clearTimeout( hashTimeout );
+           hashTimeout = window.setTimeout(function () {
+               window.location.hash = &quot;#/&quot; + el.id;
+           }, 1000);
+           
+           var target = {
+               rotate: {
+                   x: -parseInt(step.rotate.x, 10),
+                   y: -parseInt(step.rotate.y, 10),
+                   z: -parseInt(step.rotate.z, 10)
+               },
+               translate: {
+                   x: -step.translate.x,
+                   y: -step.translate.y,
+                   z: -step.translate.z
+               },
+               scale: 1 / parseFloat(step.scale)
+           };
+           
+           // check if the transition is zooming in or not
+           var zoomin = target.scale &gt;= current.scale;
+           
+           // if presentation starts (nothing is active yet)
+           // don't animate (set duration to 0)
+           var duration = (active) ? &quot;1s&quot; : &quot;0&quot;;
+           
+           css(root, {
+               // to keep the perspective look similar for different scales
+               // we need to 'scale' the perspective, too
+               perspective: step.scale * 1000 + &quot;px&quot;,
+               transform: scale(target.scale),
+               transitionDuration: duration,
+               transitionDelay: (zoomin ? &quot;500ms&quot; : &quot;0ms&quot;)
+           });
+           
+           css(canvas, {
+               transform: rotate(target.rotate, true) + translate(target.translate),
+               transitionDuration: duration,
+               transitionDelay: (zoomin ? &quot;0ms&quot; : &quot;500ms&quot;)
+           });
+           
+           current = target;
+           active = el;
+           
+           return el;
+       };
+       
+       var prev = function () {
+           var prev = steps.indexOf( active ) - 1;
+           prev = prev &gt;= 0 ? steps[ prev ] : steps[ steps.length-1 ];
+           
+           return goto(prev);
+       };
+       
+       var next = function () {
+           var next = steps.indexOf( active ) + 1;
+           next = next &lt; steps.length ? steps[ next ] : steps[ 0 ];
+           
+           return goto(next);
+       };
+       
+       window.addEventListener(&quot;hashchange&quot;, function () {
+           goto( getElementFromUrl() );
+       }, false);
+       
+       window.addEventListener(&quot;orientationchange&quot;, function () {
+           window.scrollTo(0, 0);
+       }, false);
+       
+       // START 
+       // by selecting step defined in url or first step of the presentation
+       goto(getElementFromUrl() || steps[0]);
+</PRE><PRE>       return (roots[ &quot;impress-root-&quot; + rootId ] = {
+           goto: goto,
+           next: next,
+           prev: prev
+       });
+</PRE><PRE>   }
+</PRE><P>})(document, window);
+</P><P>// EVENTS
+</P><P>(function ( document, window ) {
+</P><PRE>   'use strict';
+   
+   // keyboard navigation handler
+   document.addEventListener(&quot;keydown&quot;, function ( event ) {
+       if ( event.keyCode == 8 || event.keyCode == 9 || ( event.keyCode &gt;= 32 &amp;&amp; event.keyCode &lt;= 34 ) || (event.keyCode &gt;= 37 &amp;&amp; event.keyCode &lt;= 40) ) {
+           switch( event.keyCode ) {
+               case 33: ; // pg up
+               case 37: ; // left
+               case 38:   // up
+                        impress().prev();
+                        break;
+               case 9:  ; // tab
+               case 32: ; // space
+               case 34: ; // pg down
+               case 39: ; // right
+               case 40:   // down
+                        impress().next();
+                        break;
+               case 8: impress().goto(document.getElementById('overview')); break;
+           }
+           
+           event.preventDefault();
+       }
+   }, false);
+   
+   // delegated handler for clicking on the links to presentation steps
+   document.addEventListener(&quot;click&quot;, function ( event ) {
+       // event delegation with &quot;bubbling&quot;
+       // check if event target (or any of its parents is a link)
+       var target = event.target;
+       while (target &amp;&amp; (target.tagName != &quot;A&quot;) &amp;&amp;
+               (target != document.body) ) {
+           target = target.parentNode;
+       }
+       
+       if (target &amp;&amp; target.tagName == &quot;A&quot; ) {
+           var href = target.getAttribute(&quot;href&quot;);
+           
+           // if it's a link to presentation step, target this step
+           if ( href &amp;&amp; href[0] == '#' ) {
+               target = document.getElementById( href.slice(1) );
+           }
+       }
+       
+       if ( impress().goto(target) ) {
+           event.stopImmediatePropagation();
+           event.preventDefault();
+       }
+   }, false);
+   
+   // delegated handler for clicking on step elements
+   document.addEventListener(&quot;click&quot;, function ( event ) {
+       var target = event.target;
+       // find closest step element
+       while (target &amp;&amp; target.classList &amp;&amp; !target.classList.contains(&quot;step&quot;) &amp;&amp;
+               (target != document.body) ) {
+           target = target.parentNode;
+       }
+       
+       if ( impress().goto(target) ) {
+           event.preventDefault();
+       }
+   }, false);
+   
+   // touch handler to detect taps on the left and right side of the screen
+   document.addEventListener(&quot;touchstart&quot;, function ( event ) {
+       if (event.touches.length === 1) {
+           var x = event.touches[0].clientX,
+               width = window.innerWidth * 0.3,
+               result = null;
+               
+           if ( x &lt; width ) {
+               result = impress().prev();
+           } else if ( x &gt; window.innerWidth - width ) {
+               result = impress().next();
+           }
+           
+           if (result) {
+               event.preventDefault();
+           }
+       }
+   }, false);
+</PRE><P>})(document, window);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

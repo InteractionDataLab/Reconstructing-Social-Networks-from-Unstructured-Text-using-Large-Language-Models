@@ -1,0 +1,146 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Berkeley Software/Eugene
+From 2009.igem.org
+Home
+Project
+Team
+Notebooks
+Downloads
+Miscellaneous
+Eugene
+Spectacles
+Kepler
+Data Model
+Eugene
+Introduction
+Eugene - Red-headed stepchild and language (Courtesy of Christine Tsin )
+With the rise of partification in synthetic biology, there needs to be a formal specification to describe standard biological parts, especially when designing complex devices. The specification needs to be both human-writable and human-readable, a language that raises the level of abstraction where bioengineers can work. Eugene is such a language. Engineering at the part level requires both flexibility and rigidity. Eugene allows the user to mix custom parts with predefined parts from established databases. Parts can encapsulate an arbitrary amount of information, anything from a DNA sequence to experimental history. When designing a device in Eugene, parts can be freely stitched together on a whim, or strictly joined together based on rules. The design process is meant to be systematic yet intuitive. The user considers what information parts include, constructs parts to be used in the design, enforces restrictions on how parts can interact, and creates devices that are composites of the parts or other devices. Being a textual design, a device specified in Eugene is portable and easily lends itself to being translated into other formats, such as XML. In synthetic biology, the notion of a part changes regularly and is debated tirelessly. Thus, Eugene tries to be adaptable and expressive in any climate. This page goes into the language specification in detail. We break the discussion up into four sections. We first discuss the language definition. Here we provide the basics of the language and how to construct a design using Eugene. Next we discuss some example designs created with Eugene . This is followed by a discussion on how the language is implemented and the data structures required . Finally we provide some sample results which illustrate the power of Eugene when applied to a number of published designs. Each section can be accessed with the buttons provided. Enjoy!
+Language Definition
+In this section we describe the elements in the language. These involve: primitive data types , properties , parts , devices , rules , conditional execution , and functions . The relationships between these language elements are shown in Figure 1. Here you can see that each subsequent category is built upon the previous category.
+Figure 1: Relationship between Eugene Categories
+Primitives
+The language supports five predefined primitives. These are txt, num, boolean, txt[], and num[]. Strings (sequences of characters) are represented through the data type “txt”, where the actual text is specified in double quotes. Real numbers and integers are supported by the data type “num” and logical values by the data type “boolean”.  Ordered lists of num and txt values can be created and individual members inside a list accessed by specifying an integer in the range from 0 to |List| - 1.
+Examples (1) and (2) are two real code snippets of how primitives can be specified in Eugene. “listOfSequences” is simply a list of 3 arbitrary DNA sequences. “specificSequence” is the last element of “listOfSequences” (i.e. “ATCG”). Examples (3) and (4) show how the data type “num” can support integers and decimals.
+Back Up
+Properties
+Properties represent characteristics of interest and are defined by primitives and associated with Parts. For example a user could define a property “Sequence” (the DNA sequence), ID (the uuid for a relational database which may hold the part), or Orientation (e.g. a forward or backward promoter). Examples 5-8 show how such properties would be defined. Property definitions must be defined by the five primitive types. In Part definitions properties will be bound to that Part as placeholders for the instantiation of values in Part declarations . Properties have to be defined before Parts can use them. The user can create new Property labels or use those created by other users and captured in header files . For example, the following Properties are predefined in the header file PropertyDefinition.h and do not need to be defined again if the header file is included in the main program:
+Back Up
+Parts
+The data type Part represents a standard biological Part. A Part can be defined empty initially and then property labels can be added through the function addProperties() or properties can be bound to a Part during the definition.
+Part Definition
+Part definitions do not construct any Parts, but rather specify which Parts can be constructed. This can be done in the header file or in the main program. When the header file PartDefintion.h and PropertyDefintion.h are included, the following Parts and their corresponding property labels are predefined. For instance, the Part “Promoter” will have three properties associated with it and all instances of Promoter will inherit ID, Sequence and Orientation:
+If the properties are unknown during Part Definition process, the Part can be defined either empty or with the known properties. Later property labels can be added through the function addProperties() provided the property labels have been created beforehand. RBS will have four property labels after the following statement:
+Part Declaration
+Part declarations make instances of predefined Parts and assign values to their properties. If the declaration specifies a list of values, it is assumed that every property will be assigned a value, where the order of the values corresponds to the order of the properties in the Part Definition as shown in example (17). Otherwise, a “dot notation“ followed by the name of the property can be employed, where the order becomes irrelevant as specified in the example below (16). The Part instance BBa_K112234_rbs has three properties associated with the Part RBS. These are ID, Sequence and Orientation. The identification label of a particular part from a database is stored in the ID placeholder to allow future access to the database. Sequence stores the DNA of a Part, while Orientation specifies the direction of the Part. Since dot notation is used, the ID value instantiation can be left out from the statement. Part declarations can be found in the header file PartDeclarations.h and are predefined if the header files are included in the main program.
+Back Up
+Devices
+Devices represent a composite of standard biological Parts and/or other Devices. In a Device declaration, the same Part and/or device can be used more than once. Property values of devices can be accessed with the dot operator; however, the value is the union of the property values of its members returned as a list. If the property is a txt or num, a txt[] or a num[] is returned. If the property is a txt[] or a num[], a txt[] or a num[] is also returned that consists of the lists appended together. For example the sequence of Device BBa_K112133 is the ordered union of the sequence of Part BBa_K112126 and the Device BBa_K112234. These two Devices are shown in Figures 2a and 2b, where the icon figures use true Visual BioBrick Open Language symbols (vBOL) icon graphic.
+Table 1: Relationship between vBOL and Eugene
+vBOL
+Description
+Eugene
+Figure 2a: Device BBa_K112133 , consisting of one
+Part Promoter BBa_K112126 and one Device BBa_K112234
+Device BBa_K112133(BBa_K112126, BBa_K112234);
+Figure 2b: Device BBa_K112234 , consisting of one
+Part Ribosome Binding Site and one Part Open Reading Frame
+Device BBa_K112234(BBa_K112234_rbs, BBa_K112234_orf);
+Individual Parts can be accessed through the use of square brackets and an index. The first member is indexed at zero. Square brackets can be stacked in the case of devices within devices. To access the first element BBa_K112234_rbs of Device BBa_K112234 through Device BBa_K112133, the following notation is supported:
+Back Up
+Rules
+The specification of rules provides the ability to validate Device declarations. Rule declarations in themselves do not perform the validation. They have to be “noted”, “asserted” or used as expressions inside an if-statement to give meaning. Rule declarations are single statements consisting of a left and right operand and one rule operator. The rule operators BEFORE, AFTER, WITH, NOTWITH, NEXTTO, NOTCONTAINS, NOTMORETHAN can be applied to Part instances or Device instances. Property values of Part/Device instances or primitives in relation with one Part/Device can be operators in rule declarations when using the relational operators <, <=, >, >=, !=, ==. These operators are overloaded when evaluating text and the text is compared according to alphabetical meaning. Table 2 provides a summary of the operators for Eugene rules.
+Table 2: Eugene Operators for Specifying Rules
+Compositional Operators
+BEFORE
+operand 1 appears before operand 2 on devices
+AFTER
+operand 1 appears after operand 2 on devices
+WITH
+operand 1 appears with operand 2 on devices
+NOTWITH
+operand 1 does not appear with operand 2 on devices
+NEXTTO
+operand 1 is adjacent to operand 2 on devices
+NOTMORETHAN
+operand 1 (a part instance) occurs not more than operand 2 times in a device
+NOTCONTAINS
+unary operator, where operand 2 is not contained in device
+Comparison Operators
+<
+less than for numbers, comes before alphabetically for text
+<=
+less than or equal to for numbers, comes before alphabetically or is equal to for text
+>
+greater than for numbers, comes after alphabetically for text
+>=
+greater than or equal for numbers, comes after alphabetically or is equal to for text
+!=
+not equal to
+==
+equal to
+Boolean Operators
+AND
+operand 1 AND operand 2
+OR
+operand 1 OR operand 2
+NOT
+NOT operand
+Table 3: Examples of Rule Declarations
+Eugene Syntax
+Description
+Rule r1(BBa_K112234_rbs BEFORE BBa_K11223_orf);
+Illustrates a rule where all Parts BBa_K112234_rbs have to come before all Parts BBa_K11223_orf
+Rule r2(BBa_K112234_rbs WITH BBa_K112234_orf);
+Illustrates a rule where the Part BBa_K112234_rbs has to be contained together with BBa_K112234_orf inside a Device
+Rule r3(BBa_K112126 NEXTTO BBa_K112234);
+Illustrates a rule where the Part BBa_K112126 has to be next to BBa_K112234 when a Device is declared
+num x = 2;
+Rule r4(BBa_K112234_rbs NOTMORETHAN x);
+Illustrates a rule where the Part BBa_K112234_rbs cannot occur more than x (=2) times in a Devie
+Rule r5(NOTCONTAINS BBa_B0032);
+Illustrates a rule where a Device cannot contain the Part BBa_B0032
+Rule r6(BBa_K112234_rbs.Sequence != BBa_K112234_orf.Sequence);
+Illustrates a rule that checks whether the sequence of BBa_K112234_rbs is equivalent to the sequence of BBa_K112234_orf
+Rule r7(BBa_K112234_rbs.RelativeStrength > BBa_B0032.RelativeStrength);
+Illustrates the comparison of Property values of Parts, where the “RelativeStrength” Property value for Part BBa_K112234_rbs has to be greater than the “RelativeStrength” Property value for Part BBa_B0032
+num relativeS = BBa_B0032.RelativeStrength;
+Rule r8(p.RelativeStrength > relativeS);
+Shows a similar comparison but uses the variable “relativeS” for comparison
+Back Up
+Asserting and Noting Rules
+In order to take effect, rules need to be “asserted” or “noted”, once they are declared. The scopes of all assert or note statements encompass every new Device. Every time a new Device is declared and provided “Assertions” and “Note” statements exist, the validation process is performed on the newly created Device. Rule instances can be combined with each other through the use of the logical operators AND, OR, NOT in the statements. The difference between rule assertions and rule notes lies in the strength of the consequence once a violation is found. If no violation is found the program continues running.
+Rule Assertion
+These statements are strong assertions and the program terminates with an error once a Device composition violates the statement. The following statement will check if BBa_K112234_rbs is not contained together with BBa_K112234_orf in the Device and their sequences should not be equal. In this case an error will terminate the program since both parts are components of the device, therefore violating the Assert statement.
+Rule Notes
+Notes issue warnings in the output when the violation occurs. But the program continues running. In the following example the Device BBa_K112133 meets the first note’s condition. However, the next note is violated and the program will issue a warning.
+Back Up
+Conditional Statements
+The use of conditional statements breaks up the flow of execution and allows certain blocks of code to be executed.  Eugene supports two kinds of if-statements to achieve this: Rule validating if-statement and standard if-statement. The three logical operators AND, OR, NOT can combine statements of each type but not together.
+Rule validating if-Statement
+Rules can be checked not just through Assert and Note statements but also in an if-statement. In this approach only specific rules will be considered, as they might not apply to all Devices.  The notation should specify a list of Devices and a logical combination of rule instances pertaining to that list. Suppose we would like to test a rule only on the specific Device instance BBa_K112133, where the Promoter BBa_K112126 comes before the Ribosome Binding Site BBa_K112234_rbs. Then the following conditional statement can achieve such conditional evaluation. In this case, the if statement will evaluate to true:
+Standard if-Statement
+Expressions not pertaining to rules and Devices can be evaluated by the standard if-statement which supports the relational operators <, <=, >, >=, !=, == as well as the logical operators AND, OR, NOT.
+Back Up
+Functions
+Functions are convenient actions users can invoke that are processed during runtime. The print function simply prints the argument to the console on a new line. The permute function automates the specification of many devices that share the same structure. It creates a device for every combination of predefined parts, maintaining the part type of each component in the argument device. If a component of the device is a device, even ones with only one part, it is not changed and appears in every permutation. Permutations are named <original device name>_<x> where <original device name> is the name of the argument device, and x is a number starting at 1. They can be accessed and manipulated like normally instantiated devices.
+Back Up
+Header Files
+The inclusion of header files allows the use of predefined Properties, Parts and Part Instances in the program. The manageability of code in the main file is more efficient by hiding the low level implementation of sequence and Parts. The user needs only to define Devices in the main file. On such a level the program can be written quickly and it is less error prone. Also, this allows each lab to have their own header file libraries. At the same time the option to change or declare other Properties, Parts and Part instances exists in the language.
+Back Up
+Retrieved from " http://2009.igem.org/Team:Berkeley_Software/Eugene "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

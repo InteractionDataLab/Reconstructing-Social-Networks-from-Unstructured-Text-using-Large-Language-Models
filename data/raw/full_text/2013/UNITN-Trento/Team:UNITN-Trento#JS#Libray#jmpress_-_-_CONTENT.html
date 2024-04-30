@@ -1,0 +1,2233 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_UNITN-Trento_JS_Library_jmpress"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:UNITN-Trento/JS/Library/jmpress">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:UNITN-Trento/JS/Library/jmpress&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmpress&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmpress&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:UNITN-Trento/JS/Library/jmpress" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:UNITN-Trento/JS/Library/jmpress</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><DIV id="contentSub">(Redirected from <A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Libray/jmpress&amp;redirect=no" title="Team:UNITN-Trento/JS/Libray/jmpress">Team:UNITN-Trento/JS/Libray/jmpress</A>)</DIV><P>/*!
+</P><PRE>* jmpress.js v0.4.0
+* <A href="http://shama.github.com/jmpress.js" class="external free" rel="nofollow">http://shama.github.com/jmpress.js</A>
+*
+* A jQuery plugin to build a website on the infinite canvas.
+*
+* Copyright 2012 Kyle Robinson Young @shama &amp; Tobias Koppers @sokra
+* Licensed MIT
+* <A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>
+*
+* Based on the foundation laid by Bartek Szopka @bartaz
+*/
+</PRE><P>/*!
+</P><PRE>* core.js
+* The core of jmpress.js
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+</P><P>	/**
+	 * Set supported prefixes
+	 *
+	 * @access protected
+	 * @return Function to get prefixed property
+	 */
+	var pfx = (function () {
+		var style = document.createElement('dummy').style,
+			prefixes = 'Webkit Moz O ms Khtml'.split(' '),
+			memory = {};
+		return function ( prop ) {
+			if ( typeof memory[ prop ] === &quot;undefined&quot; ) {
+				var ucProp  = prop.charAt(0).toUpperCase() + prop.substr(1),
+					props   = (prop + ' ' + prefixes.join(ucProp + ' ') + ucProp).split(' ');
+				memory[ prop ] = null;
+				for ( var i in props ) {
+					if ( style[ props[i] ] !== undefined ) {
+						memory[ prop ] = props[i];
+						break;
+					}
+				}
+			}
+			return memory[ prop ];
+		};
+	}());
+</P><P>	/**
+	 * map ex. &quot;WebkitTransform&quot; to &quot;-webkit-transform&quot;
+	 */
+	function mapProperty( name ) {
+		if(!name) {
+			return;
+		}
+		var index = 1 + name.substr(1).search(/[A-Z]/);
+		var prefix = name.substr(0, index).toLowerCase();
+		var postfix = name.substr(index).toLowerCase();
+		return &quot;-&quot; + prefix + &quot;-&quot; + postfix;
+	}
+	function addComma( attribute ) {
+		if(!attribute) {
+			return &quot;&quot;;
+		}
+		return attribute + &quot;,&quot;;
+	}
+</P><P>	/**
+	 * Default Settings
+	 */
+	var defaults = {
+		/* CLASSES */
+		stepSelector: '.step'
+		,containerClass: 
+		,canvasClass: 
+		,areaClass: 
+		,notSupportedClass: 'not-supported'
+		,loadedClass: 'loaded'
+</P><P>		/* CONFIG */
+		,fullscreen: true
+</P><P>		/* ANIMATION */
+		,animation: {
+			transformOrigin: 'top left'
+			,transitionProperty: addComma(mapProperty(pfx('transform'))) + addComma(mapProperty(pfx('perspective'))) + 'opacity'
+			,transitionDuration: '1s'
+			,transitionDelay: '500ms'
+			,transitionTimingFunction: 'ease-in-out'
+			,transformStyle: &quot;preserve-3d&quot;
+		}
+		,transitionDuration: 1500
+</P><P>		/* TEST */
+		,test: false
+	};
+	var callbacks = {
+		'beforeChange': 1
+		,'beforeInitStep': 1
+		,'initStep': 1
+		,'beforeInit': 1
+		,'afterInit': 1
+		,'beforeDeinit': 1
+		,'afterDeinit': 1
+		,'applyStep': 1
+		,'unapplyStep': 1
+		,'setInactive': 1
+		,'beforeActive': 1
+		,'setActive': 1
+		,'selectInitialStep': 1
+		,'selectPrev': 1
+		,'selectNext': 1
+		,'selectHome': 1
+		,'selectEnd': 1
+		,'loadStep': 1
+		,'applyTarget': 1
+	};
+	for(var callbackName in callbacks) {
+		defaults[callbackName] = [];
+	}
+</P><P>
+	/**
+	 * Initialize jmpress
+	 */
+	function init( args ) {
+		args = $.extend(true, {}, args || {});
+</P><P>		// accept functions and arrays of functions as callbacks
+		var callbackArgs = {};
+		var callbackName = null;
+		for (callbackName in callbacks) {
+			callbackArgs[callbackName] = $.isFunction( args[callbackName] ) ?
+				[ args[callbackName] ] :
+				args[callbackName];
+			args[callbackName] = [];
+		}
+</P><P>		// MERGE SETTINGS
+		var settings = $.extend(true, {}, defaults, args);
+</P><P>		for (callbackName in callbacks) {
+			if (callbackArgs[callbackName]) {
+				Array.prototype.push.apply(settings[callbackName], callbackArgs[callbackName]);
+			}
+		}
+</P><P>		/*** MEMBER VARS ***/
+</P><P>		var jmpress = $( this )
+			,container = null
+			,area = null
+			,oldStyle = {
+				container: &quot;&quot;
+				,area: &quot;&quot;
+			}
+			,canvas = null
+			,current = null
+			,active = false
+			,activeSubstep = null
+			,activeDelegated = false;
+</P><P>
+		/*** MEMBER FUNCTIONS ***/
+		// functions have to be called with this
+</P><P>		/**
+		 * Init a single step
+		 *
+		 * @param element the element of the step
+		 * @param idx number of step
+		 */
+		function doStepInit( element, idx ) {
+			var data = dataset( element );
+			var step = {
+				oldStyle: $(element).attr(&quot;style&quot;) || &quot;&quot;
+			};
+</P><P>			var callbackData = {
+				data: data
+				,stepData: step
+			};
+			callCallback.call(this, 'beforeInitStep', $(element), callbackData);
+			step.delegate = data.delegate;
+			callCallback.call(this, 'initStep', $(element), callbackData);
+</P><P>			$(element).data('stepData', step);
+</P><P>			if ( !$(element).attr('id') ) {
+				$(element).attr('id', 'step-' + (idx + 1));
+			}
+</P><P>			callCallback.call(this, 'applyStep', $(element), callbackData);
+		}
+		/**
+		 * Deinit a single step
+		 *
+		 * @param element the element of the step
+		 */
+		function doStepDeinit( element ) {
+			var stepData = $(element).data('stepData');
+</P><P>			$(element).attr(&quot;style&quot;, stepData.oldStyle);
+</P><P>			callCallback.call(this, 'unapplyStep', $(element), {
+				stepData: stepData
+			});
+		}
+		/**
+		 * Reapplies stepData to the element
+		 *
+		 * @param element
+		 */
+		function doStepReapply( element ) {
+			callCallback.call(this, 'unapplyStep', $(element), {
+				stepData: element.data(&quot;stepData&quot;)
+			});
+</P><P>			callCallback.call(this, 'applyStep', $(element), {
+				stepData: element.data(&quot;stepData&quot;)
+			});
+		}
+		/**
+		 * Completly deinit jmpress
+		 *
+		 */
+		function deinit() {
+			if ( active ) {
+				callCallback.call(this, 'setInactive', active, {
+					stepData: $(active).data('stepData')
+					,reason: &quot;deinit&quot;
+				} );
+			}
+			if (current.jmpressClass) {
+				$(jmpress).removeClass(current.jmpressClass);
+			}
+</P><P>			callCallback.call(this, 'beforeDeinit', $(this), {});
+</P><P>			$(settings.stepSelector, jmpress).each(function( idx ) {
+				doStepDeinit.call(jmpress, this );
+			});
+</P><P>			container.attr(&quot;style&quot;, oldStyle.container);
+			if(settings.fullscreen) {
+				$(&quot;html&quot;).attr(&quot;style&quot;, &quot;&quot;);
+			}
+			area.attr(&quot;style&quot;, oldStyle.area);
+			$(canvas).children().each(function() {
+				jmpress.append( $( this ) );
+			});
+			if( settings.fullscreen ) {
+				canvas.remove();
+			} else {
+				canvas.remove();
+				area.remove();
+			}
+</P><P>			callCallback.call(this, 'afterDeinit', $(this), {});
+</P><P>			$(jmpress).data(&quot;jmpressmethods&quot;, false);
+		}
+		/**
+		 * Call a callback
+		 *
+		 * @param callbackName String callback which should be called
+		 * @param element some arguments to the callback
+		 * @param eventData
+		 */
+		function callCallback( callbackName, element, eventData ) {
+			eventData.settings = settings;
+			eventData.current = current;
+			eventData.container = container;
+			eventData.parents = element ? getStepParents(element) : null;
+			eventData.current = current;
+			eventData.jmpress = this;
+			var result = {};
+			$.each( settings[callbackName], function(idx, callback) {
+				result.value = callback.call( jmpress, element, eventData ) || result.value;
+			});
+			return result.value;
+		}
+		/**
+		 * Load Siblings
+		 *
+		 * @access protected
+		 * @return void
+		 */
+		function loadSiblings() {
+			if (!active) {
+				return;
+			}
+			var siblings = $(active).near( settings.stepSelector )
+				.add( $(active).near( settings.stepSelector, true) )
+				.add( callCallback.call(this, 'selectPrev', active, {
+					stepData: $(active).data('stepData')
+				}))
+				.add( callCallback.call(this, 'selectNext', active, {
+					stepData: $(active).data('stepData')
+				}));
+			siblings.each(function() {
+				var step = this;
+				if ($(step).hasClass( settings.loadedClass )) {
+					return;
+				}
+				setTimeout(function() {
+					if ($(step).hasClass( settings.loadedClass )) {
+						return;
+					}
+					callCallback.call(jmpress, 'loadStep', step, {
+						stepData: $(step).data('stepData')
+					});
+					$(step).addClass( settings.loadedClass );
+				}, settings.transitionDuration - 100);
+			});
+			if ($(active).hasClass( settings.loadedClass )) {
+				return;
+			}
+			callCallback.call(jmpress, 'loadStep', active, {
+				stepData: $(active).data('stepData')
+			});
+			$(active).addClass( settings.loadedClass );
+		}
+		/**
+		 *
+		 */
+		function getStepParents( el ) {
+			var parents = [];
+			var currentEl = el;
+			while($(currentEl).parent().length &amp;&amp;
+						$(currentEl).parent().is(settings.stepSelector)) {
+				currentEl = $(currentEl).parent();
+				parents.push(currentEl[0]);
+			}
+			return parents;
+		}
+		/**
+		 * Reselect the active step
+		 *
+		 * @param String type reason of reselecting step
+		 */
+		function reselect( type ) {
+			return select( { step: active, substep: activeSubstep }, type);
+		}
+		/**
+		 * Select a given step
+		 *
+		 * @param el element to select
+		 * @param type reason of changing step
+		 * @return Object element selected
+		 */
+		function select( el, type ) {
+			var substep;
+			if ( $.isPlainObject( el ) ) {
+				substep = el.substep;
+				el = el.step;
+			}
+			if ( typeof el === 'string') {
+				el = jmpress.find( el ).first();
+			}
+			if ( !el || !$(el).data('stepData') ) {
+				return false;
+			}
+</P><P>			// Sometimes it's possible to trigger focus on first link with some keyboard action.
+			// Browser in such a case tries to scroll the page to make this element visible
+			// (even that body overflow is set to hidden) and it breaks our careful positioning.
+			//
+			// So, as a lousy (and lazy) workaround we will make the page scroll back to the top
+			// whenever slide is selected
+			//
+			// If you are reading this and know any better way to handle it, I'll be glad to hear about it!
+			scrollFix.call(this);
+</P><P>			var step = $(el).data('stepData');
+</P><P>			var cancelSelect = false;
+			callCallback.call(this, &quot;beforeChange&quot;, el, {
+				stepData: step
+				,reason: type
+				,cancel: function() {
+					cancelSelect = true;
+				}
+			});
+			if (cancelSelect) {
+				return undefined;
+			}
+</P><P>			var target = {};
+</P><P>			var delegated = el;
+			if($(el).data(&quot;stepData&quot;).delegate) {
+				delegated = $(el).parentsUntil(jmpress).filter(settings.stepSelector).filter(step.delegate) ||
+					$(el).near(step.delegate) ||
+					$(el).near(step.delegate, true) ||
+					$(step.delegate, jmpress);
+				step = delegated.data(&quot;stepData&quot;);
+			}
+			if ( activeDelegated ) {
+				callCallback.call(this, 'setInactive', activeDelegated, {
+					stepData: $(activeDelegated).data('stepData')
+					,delegatedFrom: active
+					,reason: type
+					,target: target
+					,nextStep: delegated
+					,nextSubstep: substep
+					,nextStepData: step
+				} );
+			}
+			var callbackData = {
+				stepData: step
+				,delegatedFrom: el
+				,reason: type
+				,target: target
+				,substep: substep
+				,prevStep: activeDelegated
+				,prevSubstep: activeSubstep
+				,prevStepData: activeDelegated &amp;&amp; $(activeDelegated).data('stepData')
+			};
+			callCallback.call(this, 'beforeActive', delegated, callbackData);
+			callCallback.call(this, 'setActive', delegated, callbackData);
+</P><P>			// Set on step class on root element
+			if (current.jmpressClass) {
+				$(jmpress).removeClass(current.jmpressClass);
+			}
+			$(jmpress).addClass(current.jmpressClass = 'step-' + $(delegated).attr('id') );
+			if (current.jmpressDelegatedClass) {
+				$(jmpress).removeClass(current.jmpressDelegatedClass);
+			}
+			$(jmpress).addClass(current.jmpressDelegatedClass = 'delegating-step-' + $(el).attr('id') );
+</P><P>			callCallback.call(this, &quot;applyTarget&quot;, active, $.extend({
+				canvas: canvas
+				,area: area
+			}, callbackData));
+</P><P>			active = el;
+			activeSubstep = callbackData.substep;
+			activeDelegated = delegated;
+</P><P>			loadSiblings.call(this);
+</P><P>			return delegated;
+		}
+		/**
+		 * This should fix ANY kind of buggy scrolling
+		 */
+		function scrollFix() {
+			function fix() {
+				if ($(container)[0].tagName === &quot;BODY&quot;) {
+					window.scrollTo(0, 0);
+				}
+				$(container).scrollTop(0);
+				$(container).scrollLeft(0);
+				function check() {
+					if ($(container).scrollTop() !== 0 ||
+						$(container).scrollLeft() !== 0) {
+							fix();
+						}
+				}
+				setTimeout(check, 1);
+				setTimeout(check, 10);
+				setTimeout(check, 100);
+				setTimeout(check, 200);
+				setTimeout(check, 400);
+			}
+			fix();
+		}
+		/**
+		 * Alias for select
+		 */
+		function goTo( el ) {
+			return select.call(this, el, &quot;jump&quot; );
+		}
+		/**
+		 * Goto Next Slide
+		 *
+		 * @return Object newly active slide
+		 */
+		function next() {
+			return select.call(this, callCallback.call(this, 'selectNext', active, {
+				stepData: $(active).data('stepData')
+				,substep: activeSubstep
+			}), &quot;next&quot; );
+		}
+		/**
+		 * Goto Previous Slide
+		 *
+		 * @return Object newly active slide
+		 */
+		function prev() {
+			return select.call(this, callCallback.call(this, 'selectPrev', active, {
+				stepData: $(active).data('stepData')
+				,substep: activeSubstep
+			}), &quot;prev&quot; );
+		}
+		/**
+		 * Goto First Slide
+		 *
+		 * @return Object newly active slide
+		 */
+		function home() {
+			return select.call(this, callCallback.call(this, 'selectHome', active, {
+				stepData: $(active).data('stepData')
+			}), &quot;home&quot; );
+		}
+		/**
+		 * Goto Last Slide
+		 *
+		 * @return Object newly active slide
+		 */
+		function end() {
+			return select.call(this,   callCallback.call(this, 'selectEnd', active, {
+				stepData: $(active).data('stepData')
+			}), &quot;end&quot; );
+		}
+		/**
+		 * Manipulate the canvas
+		 *
+		 * @param props
+		 * @return Object
+		 */
+		function canvasMod( props ) {
+			css(canvas, props || {});
+			return $(canvas);
+		}
+		/**
+		 * Return current step
+		 *
+		 * @return Object
+		 */
+		function getActive() {
+			return activeDelegated &amp;&amp; $(activeDelegated);
+		}
+		/**
+		 * fire a callback
+		 *
+		 * @param callbackName
+		 * @param element
+		 * @param eventData
+		 * @return void
+		 */
+		function fire( callbackName, element, eventData ) {
+			if( !callbacks[callbackName] ) {
+				$.error( &quot;callback &quot; + callbackName + &quot; is not registered.&quot; );
+			} else {
+				callCallback.call(this, callbackName, element, eventData);
+			}
+		}
+</P><P>		/**
+		 * PUBLIC METHODS LIST
+		 */
+		jmpress.data(&quot;jmpressmethods&quot;, {
+			select: select
+			,reselect: reselect
+			,scrollFix: scrollFix
+			,goTo: goTo
+			,next: next
+			,prev: prev
+			,home: home
+			,end: end
+			,canvas: canvasMod
+			,container: function() { return container; }
+			,settings: function() { return settings; }
+			,active: getActive
+			,current: function() { return current; }
+			,fire: fire
+			,deinit: deinit
+			,reapply: doStepReapply
+		});
+</P><P>		/**
+		 * Check for support
+		 * This will be removed in near future, when support is coming
+		 *
+		 * @access protected
+		 * @return void
+		 */
+		function checkSupport() {
+			var ua = navigator.userAgent.toLowerCase();
+			var supported = ( ua.search(/(iphone)|(ipod)|(android)/) === -1 );
+			return supported;
+		}
+</P><P>		// BEGIN INIT
+</P><P>		// CHECK FOR SUPPORT
+		if (checkSupport() === false) {
+			if (settings.notSupportedClass) {
+				jmpress.addClass(settings.notSupportedClass);
+			}
+			return;
+		} else {
+			if (settings.notSupportedClass) {
+				jmpress.removeClass(settings.notSupportedClass);
+			}
+		}
+</P><P>		// grabbing all steps
+		var steps = $(settings.stepSelector, jmpress);
+</P><P>		// GERNERAL INIT OF FRAME
+		container = jmpress;
+		area = $('&lt;div /&gt;');
+		canvas = $('&lt;div /&gt;');
+		$(jmpress).children().filter(steps).each(function() {
+			canvas.append( $( this ) );
+		});
+		if(settings.fullscreen) {
+			container = $('body');
+			$(&quot;html&quot;).css({
+				overflow: 'hidden'
+			});
+			area = jmpress;
+		}
+		oldStyle.area = area.attr(&quot;style&quot;) || &quot;&quot;;
+		oldStyle.container = container.attr(&quot;style&quot;) || &quot;&quot;;
+		if(settings.fullscreen) {
+			container.css({
+				height: '100%'
+			});
+			jmpress.append( canvas );
+		} else {
+			container.css({
+				position: &quot;relative&quot;
+			});
+			area.append( canvas );
+			jmpress.append( area );
+		}
+</P><P>		$(container).addClass(settings.containerClass);
+		$(area).addClass(settings.areaClass);
+		$(canvas).addClass(settings.canvasClass);
+</P><P>		document.documentElement.style.height = &quot;100%&quot;;
+		container.css({
+			overflow: 'hidden'
+		});
+</P><P>		var props = {
+			position: &quot;absolute&quot;
+			,transitionDuration: '0s'
+		};
+		props = $.extend({}, settings.animation, props);
+		css(area, props);
+		css(area, {
+			top: '50%'
+			,left: '50%'
+			,perspective: '1000px'
+		});
+		css(canvas, props);
+</P><P>		current = {};
+</P><P>		callCallback.call(this, 'beforeInit', null, {});
+</P><P>		// INITIALIZE EACH STEP
+		steps.each(function( idx ) {
+			doStepInit.call(jmpress, this, idx );
+		});
+</P><P>		callCallback.call(this, 'afterInit', null, {});
+</P><P>		// START
+		select.call(this,  callCallback.call(this, 'selectInitialStep', &quot;init&quot;, {}) );
+</P><P>		if (settings.initClass) {
+			$(steps).removeClass(settings.initClass);
+		}
+	}
+	/**
+	 * Return default settings
+	 *
+	 * @return Object
+	 */
+	function getDefaults() {
+		return defaults;
+	}
+	/**
+	 * Register a callback or a jmpress function
+	 *
+	 * @access public
+	 * @param name String the name of the callback or function
+	 * @param func Function? the function to be added
+	 */
+	function register(name, func) {
+		if( $.isFunction(func) ) {
+			if( methods[name] ) {
+				$.error( &quot;function &quot; + name + &quot; is already registered.&quot; );
+			} else {
+				methods[name] = func;
+			}
+		} else {
+			if( callbacks[name] ) {
+				$.error( &quot;callback &quot; + name + &quot; is already registered.&quot; );
+			} else {
+				callbacks[name] = 1;
+				defaults[name] = [];
+			}
+		}
+	}
+	/**
+	 * Set CSS on element w/ prefixes
+	 *
+	 * @return Object element which properties were set
+	 *
+	 * TODO: Consider bypassing pfx and blindly set as jQuery
+	 * already checks for support
+	 */
+	function css( el, props ) {
+		var key, pkey, cssObj = {};
+		for ( key in props ) {
+			if ( props.hasOwnProperty(key) ) {
+				pkey = pfx(key);
+				if ( pkey !== null ) {
+					cssObj[pkey] = props[key];
+				}
+			}
+		}
+		$(el).css(cssObj);
+		return el;
+	}
+	/**
+	 * Return dataset for element
+	 *
+	 * @param el element
+	 * @return Object
+	 */
+	function dataset( el ) {
+		if ( $(el)[0].dataset ) {
+			return $.extend({}, $(el)[0].dataset);
+		}
+		function toCamelcase( str ) {
+			str = str.split( '-' );
+			for( var i = 1; i &lt; str.length; i++ ) {
+				str[i] = str[i].substr(0, 1).toUpperCase() + str[i].substr(1);
+			}
+			return str.join( <I> );</I>
+		}
+		var returnDataset = {};
+		var attrs = $(el)[0].attributes;
+		$.each(attrs, function ( idx, attr ) {
+			if ( attr.nodeName.substr(0, 5) === &quot;data-&quot; ) {
+				returnDataset[ toCamelcase(attr.nodeName.substr(5)) ] = attr.nodeValue;
+			}
+		});
+		return returnDataset;
+	}
+	/**
+	 * Returns true, if jmpress is initialized
+	 *
+	 * @return bool
+	 */
+	function initialized() {
+		return !!$(this).data(&quot;jmpressmethods&quot;);
+	}
+</P><P>
+	/**
+	 * PUBLIC STATIC METHODS LIST
+	 */
+	var methods = {
+		init: init
+		,initialized: initialized
+		,deinit: function() {}
+		,css: css
+		,pfx: pfx
+		,defaults: getDefaults
+		,register: register
+		,dataset: dataset
+	};
+</P><P>	/**
+	 * $.jmpress()
+	 */
+	$.fn.jmpress = function( method ) {
+		function f() {
+			var jmpressmethods = $(this).data(&quot;jmpressmethods&quot;);
+			if ( jmpressmethods &amp;&amp; jmpressmethods[method] ) {
+				if ( method.substr(0, 1) === '_' &amp;&amp; jmpressmethods.settings().test === false) {
+					$.error( 'Method ' +  method + ' is protected and should only be used internally.' );
+				} else {
+					return jmpressmethods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+				}
+			} else if ( methods[method] ) {
+				if ( method.substr(0, 1) === '_' &amp;&amp; defaults.test === false) {
+					$.error( 'Method ' +  method + ' is protected and should only be used internally.' );
+				} else {
+					return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+				}
+			} else if ( callbacks[method] &amp;&amp; jmpressmethods ) {
+				var settings = jmpressmethods.settings();
+				var func = Array.prototype.slice.call( arguments, 1 )[0];
+				if ($.isFunction( func )) {
+					settings[method] = settings[method] || [];
+					settings[method].push(func);
+				}
+			} else if ( typeof method === 'object' || ! method ) {
+				return init.apply( this, arguments );
+			} else {
+				$.error( 'Method ' +  method + ' does not exist on jQuery.jmpress' );
+			}
+			// to allow chaining
+			return this;
+		}
+		var args = arguments;
+		var result;
+		$(this).each(function(idx, element) {
+			result = f.apply(element, args);
+		});
+		return result;
+	};
+	$.extend({
+		jmpress: function( method ) {
+			if ( methods[method] ) {
+				if ( method.substr(0, 1) === '_' &amp;&amp; defaults.test === false) {
+					$.error( 'Method ' +  method + ' is protected and should only be used internally.' );
+				} else {
+					return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+				}
+			} else if ( callbacks[method] ) {
+				// plugin interface
+				var func = Array.prototype.slice.call( arguments, 1 )[0];
+				if ($.isFunction( func )) {
+					defaults[method].push(func);
+				} else {
+					$.error( 'Second parameter should be a function: $.jmpress( callbackName, callbackFunction )' );
+				}
+			} else {
+				$.error( 'Method ' +  method + ' does not exist on jQuery.jmpress' );
+			}
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* near.js
+* Find steps near each other
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+</P><P>	// add near( selector, backwards = false) to jquery
+</P><P>
+	function checkAndGo( elements, func, selector, backwards ) {
+		var next;
+		elements.each(function(idx, element) {
+			if(backwards) {
+				next = func(element, selector, backwards);
+				if (next) {
+					return false;
+				}
+			}
+			if( $(element).is(selector) ) {
+				next = element;
+				return false;
+			}
+			if(!backwards) {
+				next = func(element, selector, backwards);
+				if (next) {
+					return false;
+				}
+			}
+		});
+		return next;
+	}
+	function findNextInChildren(item, selector, backwards) {
+		var children = $(item).children();
+		if(backwards) {
+			children = $(children.get().reverse());
+		}
+		return checkAndGo( children, findNextInChildren, selector, backwards );
+	}
+	function findNextInSiblings(item, selector, backwards) {
+		return checkAndGo(
+			$(item)[backwards ? &quot;prevAll&quot; : &quot;nextAll&quot;](),
+			findNextInChildren, selector, backwards );
+	}
+	function findNextInParents(item, selector, backwards) {
+		var next;
+		var parents = $(item).parents();
+		parents = $(parents.get());
+		$.each(parents.get(), function(idx, element) {
+			if( backwards &amp;&amp; $(element).is(selector) ) {
+				next = element;
+				return false;
+			}
+			next = findNextInSiblings(element, selector, backwards);
+			if(next) {
+				return false;
+			}
+		});
+		return next;
+	}
+</P><P>	$.fn.near = function( selector, backwards ) {
+		var array = [];
+		$(this).each(function(idx, element) {
+			var near = (backwards ?
+					false :
+					findNextInChildren( element, selector, backwards )) ||
+				findNextInSiblings( element, selector, backwards ) ||
+				findNextInParents( element, selector, backwards );
+			if( near ) {
+				array.push(near);
+			}
+		});
+		return $(array);
+	};
+}(jQuery, document, window));
+/*!
+</P><PRE>* transform.js
+* The engine that powers the transforms or falls back to other methods
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+	function toCssNumber(number) {
+		return (Math.round(10000*number)/10000)+&quot;&quot;;
+	}
+</P><P>	/**
+	 * 3D and 2D engines
+	 */
+	var engines = {
+		3: {
+			transform: function( el, data ) {
+				var transform = 'translate(-50%,-50%)';
+				$.each(data, function(idx, item) {
+					var coord = [&quot;X&quot;, &quot;Y&quot;, &quot;Z&quot;];
+					var i;
+					if(item[0] === &quot;translate&quot;) { // [&quot;translate&quot;, x, y, z]
+						transform += &quot; translate3d(&quot; + toCssNumber(item[1] || 0) + &quot;px,&quot; + toCssNumber(item[2] || 0) + &quot;px,&quot; + toCssNumber(item[3] || 0) + &quot;px)&quot;;
+					} else if(item[0] === &quot;rotate&quot;) {
+						var order = item[4] ? [1, 2, 3] : [3, 2, 1];
+						for(i = 0; i &lt; 3; i++) {
+							transform += &quot; rotate&quot; + coord[order[i]-1] + &quot;(&quot; + toCssNumber(item[order[i]] || 0) + &quot;deg)&quot;;
+						}
+					} else if(item[0] === &quot;scale&quot;) {
+						for(i = 0; i &lt; 3; i++) {
+							transform += &quot; scale&quot; + coord[i] + &quot;(&quot; + toCssNumber(item[i+1] || 1) + &quot;)&quot;;
+						}
+					}
+				});
+				$.jmpress(&quot;css&quot;, el, $.extend({}, { transform: transform }));
+			}
+		}
+		,2: {
+			transform: function( el, data ) {
+				var transform = 'translate(-50%,-50%)';
+				$.each(data, function(idx, item) {
+					var coord = [&quot;X&quot;, &quot;Y&quot;];
+					if(item[0] === &quot;translate&quot;) { // [&quot;translate&quot;, x, y, z]
+						transform += &quot; translate(&quot; + toCssNumber(item[1] || 0) + &quot;px,&quot; + toCssNumber(item[2] || 0) + &quot;px)&quot;;
+					} else if(item[0] === &quot;rotate&quot;) {
+						transform += &quot; rotate(&quot; + toCssNumber(item[3] || 0) + &quot;deg)&quot;;
+					} else if(item[0] === &quot;scale&quot;) {
+						for(var i = 0; i &lt; 2; i++) {
+							transform += &quot; scale&quot; + coord[i] + &quot;(&quot; + toCssNumber(item[i+1] || 1) + &quot;)&quot;;
+						}
+					}
+				});
+				$.jmpress(&quot;css&quot;, el, $.extend({}, { transform: transform }));
+			}
+		}
+		,1: {
+			// CHECK IF SUPPORT IS REALLY NEEDED?
+			// this not even work without scaling...
+			// it may better to display the normal view
+			transform: function( el, data ) {
+				var anitarget = { top: 0, left: 0 };
+				$.each(data, function(idx, item) {
+					var coord = [&quot;X&quot;, &quot;Y&quot;];
+					if(item[0] === &quot;translate&quot;) { // [&quot;translate&quot;, x, y, z]
+						anitarget.left = Math.round(item[1] || 0) + &quot;px&quot;;
+						anitarget.top = Math.round(item[2] || 0) + &quot;px&quot;;
+					}
+				});
+				el.animate(anitarget, 1000); // TODO: Use animation duration
+			}
+		}
+	};
+</P><P>	/**
+	 * Engine to power cross-browser translate, scale and rotate.
+	 */
+	var engine = (function() {
+		if ($.jmpress(&quot;pfx&quot;, &quot;perspective&quot;)) {
+			return engines[3];
+		} else if ($.jmpress(&quot;pfx&quot;, &quot;transform&quot;)) {
+			return engines[2];
+		} else {
+			// CHECK IF SUPPORT IS REALLY NEEDED?
+			return engines[1];
+		}
+	}());
+</P><P>	$.jmpress(&quot;defaults&quot;).reasonableAnimation = {};
+	$.jmpress(&quot;initStep&quot;, function( step, eventData ) {
+		var data = eventData.data;
+		var stepData = eventData.stepData;
+		var pf = parseFloat;
+		$.extend(stepData, {
+			x: pf(data.x) || 0
+			,y: pf(data.y) || 0
+			,z: pf(data.z) || 0
+			,r: pf(data.r) || 0
+			,phi: pf(data.phi) || 0
+			,rotate: pf(data.rotate) || 0
+			,rotateX: pf(data.rotateX) || 0
+			,rotateY: pf(data.rotateY) || 0
+			,rotateZ: pf(data.rotateZ) || 0
+			,revertRotate: false
+			,scale: pf(data.scale) || 1
+			,scaleX: pf(data.scaleX) || false
+			,scaleY: pf(data.scaleY) || false
+			,scaleZ: pf(data.scaleZ) || 1
+		});
+	});
+	$.jmpress(&quot;afterInit&quot;, function( nil, eventData ) {
+		var stepSelector = eventData.settings.stepSelector,
+			current = eventData.current;
+		current.perspectiveScale = 1;
+		current.maxNestedDepth = 0;
+		var nestedSteps = $(eventData.jmpress).find(stepSelector).children(stepSelector);
+		while(nestedSteps.length) {
+			current.maxNestedDepth++;
+			nestedSteps = nestedSteps.children(stepSelector);
+		}
+	});
+	$.jmpress(&quot;applyStep&quot;, function( step, eventData ) {
+		$.jmpress(&quot;css&quot;, $(step), {
+			position: &quot;absolute&quot;
+			,transformStyle: &quot;preserve-3d&quot;
+		});
+		if ( eventData.parents.length &gt; 0 ) {
+			$.jmpress(&quot;css&quot;, $(step), {
+				top: &quot;50%&quot;
+				,left: &quot;50%&quot;
+			});
+		}
+		var sd = eventData.stepData;
+		var transform = [
+			[&quot;translate&quot;,
+				sd.x || (sd.r * Math.sin(sd.phi*Math.PI/180)),
+				sd.y || (-sd.r * Math.cos(sd.phi*Math.PI/180)),
+				sd.z],
+			[&quot;rotate&quot;,
+				sd.rotateX,
+				sd.rotateY,
+				sd.rotateZ || sd.rotate,
+				true],
+			[&quot;scale&quot;,
+				sd.scaleX || sd.scale,
+				sd.scaleY || sd.scale,
+				sd.scaleZ || sd.scale]
+		];
+		engine.transform( step, transform );
+	});
+	$.jmpress(&quot;setActive&quot;, function( element, eventData ) {
+		var target = eventData.target;
+		var step = eventData.stepData;
+		var tf = target.transform = [];
+		target.perspectiveScale = 1;
+</P><P>		for(var i = eventData.current.maxNestedDepth; i &gt; (eventData.parents.length || 0); i--) {
+			tf.push([&quot;scale&quot;], [&quot;rotate&quot;], [&quot;translate&quot;]);
+		}
+</P><P>		tf.push([&quot;scale&quot;,
+			1 / (step.scaleX || step.scale),
+			1 / (step.scaleY || step.scale),
+			1 / (step.scaleZ)]);
+		tf.push([&quot;rotate&quot;,
+			-step.rotateX,
+			-step.rotateY,
+			-(step.rotateZ || step.rotate)]);
+		tf.push([&quot;translate&quot;,
+			-(step.x || (step.r * Math.sin(step.phi*Math.PI/180))),
+			-(step.y || (-step.r * Math.cos(step.phi*Math.PI/180))),
+			-step.z]);
+		target.perspectiveScale *= (step.scaleX || step.scale);
+</P><P>		$.each(eventData.parents, function(idx, element) {
+			var step = $(element).data(&quot;stepData&quot;);
+			tf.push([&quot;scale&quot;,
+				1 / (step.scaleX || step.scale),
+				1 / (step.scaleY || step.scale),
+				1 / (step.scaleZ)]);
+			tf.push([&quot;rotate&quot;,
+				-step.rotateX,
+				-step.rotateY,
+				-(step.rotateZ || step.rotate)]);
+			tf.push([&quot;translate&quot;,
+				-(step.x || (step.r * Math.sin(step.phi*Math.PI/180))),
+				-(step.y || (-step.r * Math.cos(step.phi*Math.PI/180))),
+				-step.z]);
+			target.perspectiveScale *= (step.scaleX || step.scale);
+		});
+</P><P>		$.each(tf, function(idx, item) {
+			if(item[0] !== &quot;rotate&quot;) {
+				return;
+			}
+			function lowRotate(name) {
+				if(eventData.current[&quot;rotate&quot;+name+&quot;-&quot;+idx] === undefined) {
+					eventData.current[&quot;rotate&quot;+name+&quot;-&quot;+idx] = item[name] || 0;
+				}
+				var cur = eventData.current[&quot;rotate&quot;+name+&quot;-&quot;+idx], tar = item[name] || 0,
+					curmod = cur % 360, tarmod = tar % 360;
+				if(curmod &lt; 0) {
+					curmod += 360;
+				}
+				if(tarmod &lt; 0) {
+					tarmod += 360;
+				}
+				var diff = tarmod - curmod;
+				if(diff &lt; -180) {
+					diff += 360;
+				} else if(diff &gt; 180) {
+					diff -= 360;
+				}
+				eventData.current[&quot;rotate&quot;+name+&quot;-&quot;+idx] = item[name] = cur + diff;
+			}
+			lowRotate(1);
+			lowRotate(2);
+			lowRotate(3);
+		});
+	});
+	$.jmpress(&quot;applyTarget&quot;, function( active, eventData ) {
+</P><P>		var target = eventData.target,
+			props, step = eventData.stepData,
+			settings = eventData.settings,
+			zoomin = target.perspectiveScale * 1.3 &lt; eventData.current.perspectiveScale,
+			zoomout = target.perspectiveScale &gt; eventData.current.perspectiveScale * 1.3;
+</P><P>		// extract first scale from transform
+		var lastScale = -1;
+		$.each(target.transform, function(idx, item) {
+			if(item.length &lt;= 1) {
+				return;
+			}
+			if(item[0] === &quot;rotate&quot; &amp;&amp;
+				item[1] % 360 === 0  &amp;&amp;
+				item[2] % 360 === 0  &amp;&amp;
+				item[3] % 360 === 0) {
+				return;
+			}
+			if(item[0] === &quot;scale&quot;) {
+				lastScale = idx;
+			} else {
+				return false;
+			}
+		});
+</P><P>		if(lastScale !== eventData.current.oldLastScale) {
+			zoomin = zoomout = false;
+			eventData.current.oldLastScale = lastScale;
+		}
+</P><P>		var extracted = [];
+		if(lastScale !== -1) {
+			while(lastScale &gt;= 0) {
+				if(target.transform[lastScale][0] === &quot;scale&quot;) {
+					extracted.push(target.transform[lastScale]);
+					target.transform[lastScale] = [&quot;scale&quot;];
+				}
+				lastScale--;
+			}
+		}
+</P><P>		var animation = settings.animation;
+		if(settings.reasonableAnimation[eventData.reason]) {
+			animation = $.extend({},
+				animation,
+				settings.reasonableAnimation[eventData.reason]);
+		}
+</P><P>		props = {
+			// to keep the perspective look similar for different scales
+			// we need to 'scale' the perspective, too
+			perspective: Math.round(target.perspectiveScale * 1000) + &quot;px&quot;
+		};
+		props = $.extend({}, animation, props);
+		if (!zoomin) {
+			props.transitionDelay = '0s';
+		}
+		if (!active) {
+			props.transitionDuration = '0s';
+			props.transitionDelay = '0s';
+		}
+		$.jmpress(&quot;css&quot;, eventData.area, props);
+		engine.transform(eventData.area, extracted);
+</P><P>		props = $.extend({}, animation);
+		if (!zoomout) {
+			props.transitionDelay = '0s';
+		}
+		if (!active) {
+			props.transitionDuration = '0s';
+			props.transitionDelay = '0s';
+		}
+</P><P>		eventData.current.perspectiveScale = target.perspectiveScale;
+</P><P>		$.jmpress(&quot;css&quot;, eventData.canvas, props);
+		engine.transform(eventData.canvas, target.transform);
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* active.js
+* Set the active classes on steps
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress;
+</P><P>	/* DEFINES */
+	var activeClass = 'activeClass',
+		nestedActiveClass = 'nestedActiveClass';
+</P><P>	/* DEFAULTS */
+	var defaults = $jmpress( 'defaults' );
+	defaults[nestedActiveClass] = &quot;nested-active&quot;;
+	defaults[activeClass]       = &quot;active&quot;;
+</P><P>	/* HOOKS */
+	$jmpress( 'setInactive', function( step, eventData ) {
+		var settings = eventData.settings,
+			activeClassSetting = settings[activeClass],
+			nestedActiveClassSettings = settings[nestedActiveClass];
+		if(activeClassSetting) {
+			$(step).removeClass( activeClassSetting );
+		}
+		if(nestedActiveClassSettings) {
+			$.each(eventData.parents, function(idx, element) {
+				$(element).removeClass(nestedActiveClassSettings);
+			});
+		}
+	});
+	$jmpress( 'setActive', function( step, eventData ) {
+		var settings = eventData.settings,
+			activeClassSetting = settings[activeClass],
+			nestedActiveClassSettings = settings[nestedActiveClass];
+		if(activeClassSetting) {
+			$(step).addClass( activeClassSetting );
+		}
+		if(nestedActiveClassSettings) {
+			$.each(eventData.parents, function(idx, element) {
+				$(element).addClass(nestedActiveClassSettings);
+			});
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* circular.js
+* Repeat from start after end
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress;
+</P><P>	/* FUNCTIONS */
+	function firstSlide( step, eventData ) {
+		return $(this).find(eventData.settings.stepSelector).first();
+	}
+	function prevOrNext( jmpress, step, eventData, prev) {
+		if (!step) {
+			return false;
+		}
+		var stepSelector = eventData.settings.stepSelector;
+		step = $(step);
+		do {
+			var item = step.near( stepSelector, prev );
+			if (item.length === 0 || item.closest(jmpress).length === 0) {
+				item = $(jmpress).find(stepSelector)[prev?&quot;last&quot;:&quot;first&quot;]();
+			}
+			if (!item.length) {
+				return false;
+			}
+			step = item;
+		} while( step.data(&quot;stepData&quot;).exclude );
+		return step;
+	}
+</P><P>	/* HOOKS */
+	$jmpress( 'initStep', function( step, eventData ) {
+		eventData.stepData.exclude = eventData.data.exclude &amp;&amp; [&quot;false&quot;, &quot;no&quot;].indexOf(eventData.data.exclude) === -1;
+	});
+	$jmpress( 'selectInitialStep', firstSlide);
+	$jmpress( 'selectHome', firstSlide);
+	$jmpress( 'selectEnd', function( step, eventData ) {
+		return $(this).find(eventData.settings.stepSelector).last();
+	});
+	$jmpress( 'selectPrev', function( step, eventData ) {
+		return prevOrNext(this, step, eventData, true);
+	});
+	$jmpress( 'selectNext', function( step, eventData ) {
+		return prevOrNext(this, step, eventData);
+	});
+}(jQuery, document, window));
+/*!
+</P><PRE>* start.js
+* Set the first step to start on
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+</P><P>	/* HOOKS */
+	$.jmpress( 'selectInitialStep', function( nil, eventData ) {
+		return eventData.settings.start;
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* ways.js
+* Control the flow of the steps
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress;
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+	// TODO allow call of route after init
+	function routeFunc( jmpress, route, type ) {
+		for(var i = 0; i &lt; route.length - 1; i++) {
+			var from = route[i];
+			var to = route[i+1];
+			$(from, jmpress).attr('data-' + type, to);
+		}
+	}
+	function selectPrevOrNext( step, eventData, attr, prev ) {
+		var stepData = eventData.stepData;
+		if(stepData[attr]) {
+			var near = $(step).near(stepData[attr], prev);
+			if(near &amp;&amp; near.length) {
+				return near;
+			}
+			near = $(stepData[attr], this)[prev?&quot;last&quot;:&quot;first&quot;]();
+			if(near &amp;&amp; near.length) {
+				return near;
+			}
+		}
+	}
+</P><P>	/* EXPORTED FUNCTIONS */
+	$jmpress( 'register', 'route', function( route, unidirectional, reversedRoute ) {
+		if( typeof route === &quot;string&quot; ) {
+			route = [route, route];
+		}
+		routeFunc(this, route, reversedRoute ? &quot;prev&quot; : &quot;next&quot;);
+		if (!unidirectional) {
+			routeFunc(this, route.reverse(), reversedRoute ? &quot;next&quot; : &quot;prev&quot;);
+		}
+	});
+</P><P>	/* HOOKS */
+	$jmpress( 'initStep', function( step, eventData ) {
+		for(var attr in {next:1,prev:1}) {
+			eventData.stepData[attr] = eventData.data[attr];
+		}
+	});
+	$jmpress( 'selectNext', function( step, eventData ) {
+		return selectPrevOrNext(step, eventData, &quot;next&quot;);
+	});
+	$jmpress( 'selectPrev', function( step, eventData ) {
+		return selectPrevOrNext(step, eventData, &quot;prev&quot;, true);
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* ajax.js
+* Load steps via ajax
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress;
+</P><P>	/* DEFINES */
+	var afterStepLoaded = 'afterStepLoaded';
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+</P><P>	/* REGISTER EVENTS */
+	$jmpress('register', afterStepLoaded);
+</P><P>	/* HOOKS */
+	$jmpress('initStep', function( step, eventData ) {
+		eventData.stepData.src = $(step).attr('href') || eventData.data.src || false;
+	});
+	$jmpress('loadStep', function( step, eventData ) {
+		var stepData = eventData.stepData,
+			href = stepData &amp;&amp; stepData.src;
+		if ( href ) {
+			$(step).load(href, function(response, status, xhr) {
+				$(eventData.jmpress).jmpress('fire', afterStepLoaded, step, $.extend({}, eventData, {
+					response: response
+					,status: status
+					,xhr: xhr
+				}));
+			});
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* hash.js
+* Detect and set the URL hash
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress,
+		hashLink = &quot;a[href^=#]&quot;;
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+	/**
+	 * getElementFromUrl
+	 *
+	 * @return String or undefined
+	 */
+	function getElementFromUrl(settings) {
+		// get id from url # by removing `#` or `#/` from the beginning,
+		// so both &quot;fallback&quot; `#slide-id` and &quot;enhanced&quot; `#/slide-id` will work
+		// TODO SECURITY check user input to be valid!
+		try {
+			var el = $( '#' + window.location.hash.replace(/^#\/?/,&quot;&quot;) );
+			return el.length &gt; 0 &amp;&amp; el.is(settings.stepSelector) ? el : undefined;
+		} catch(e) {}
+	}
+</P><P>	/* DEFAULTS */
+	$jmpress('defaults').hash = {
+		use: true
+		,update: true
+		,bindChange: true
+		// NOTICE: {use: true, update: false, bindChange: true}
+		// will cause a error after clicking on a link to the current step
+	};
+</P><P>	/* HOOKS */
+	$jmpress('selectInitialStep', function( step, eventData ) {
+		var settings = eventData.settings,
+			hashSettings = settings.hash,
+			current = eventData.current,
+			jmpress = $(this);
+		eventData.current.hashNamespace = &quot;.jmpress-&quot;+randomString();
+		// HASH CHANGE EVENT
+		if ( hashSettings.use ) {
+			if ( hashSettings.bindChange ) {
+				$(window).bind('hashchange'+current.hashNamespace, function() {
+					var urlItem = getElementFromUrl(settings);
+					if ( jmpress.jmpress('initialized') ) {
+						jmpress.jmpress(&quot;scrollFix&quot;);
+					}
+					if(urlItem &amp;&amp; urlItem.length) {
+						if(urlItem.attr(&quot;id&quot;) !== jmpress.jmpress(&quot;active&quot;).attr(&quot;id&quot;)) {
+							jmpress.jmpress('select', urlItem);
+						}
+						var shouldBeHash = &quot;#/&quot; + urlItem.attr(&quot;id&quot;);
+						if(window.location.hash !== shouldBeHash) {
+							window.location.hash = shouldBeHash;
+						}
+					}
+				});
+				$(hashLink).on(&quot;click&quot;+current.hashNamespace, function(event) {
+					var href = $(this).attr(&quot;href&quot;);
+					try {
+						if($(href).is(settings.stepSelector)) {
+							jmpress.jmpress(&quot;select&quot;, href);
+							event.preventDefault();
+							event.stopPropagation();
+						}
+					} catch(e) {}
+				});
+			}
+			return getElementFromUrl(settings);
+		}
+	});
+	$jmpress('afterDeinit', function( nil, eventData ) {
+		$(hashLink).off(eventData.current.hashNamespace);
+		$(window).unbind(eventData.current.hashNamespace);
+	});
+	$jmpress('setActive', function( step, eventData ) {
+		var settings = eventData.settings,
+			current = eventData.current;
+		// `#/step-id` is used instead of `#step-id` to prevent default browser
+		// scrolling to element in hash
+		if ( settings.hash.use &amp;&amp; settings.hash.update ) {
+			clearTimeout(current.hashtimeout);
+			current.hashtimeout = setTimeout(function() {
+				window.location.hash = &quot;#/&quot; + $(eventData.delegatedFrom).attr('id');
+			}, settings.transitionDuration + 200);
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* keyboard.js
+* Keyboard event mapping and default keyboard actions
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress,
+		jmpressNext = &quot;next&quot;,
+		jmpressPrev = &quot;prev&quot;;
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+	function stopEvent(event) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+</P><P>	/* DEFAULTS */
+	$jmpress('defaults').keyboard = {
+		use: true
+		,keys: {
+			33: jmpressPrev // pg up
+			,37: jmpressPrev // left
+			,38: jmpressPrev // up
+</P><P>			,9: jmpressNext+&quot;:&quot;+jmpressPrev // tab
+			,32: jmpressNext // space
+			,34: jmpressNext // pg down
+			,39: jmpressNext // right
+			,40: jmpressNext // down
+</P><P>			,36: &quot;home&quot; // home
+</P><P>			,35: &quot;end&quot; // end
+		}
+		,ignore: {
+			&quot;INPUT&quot;: [
+				32 // space
+				,37 // left
+				,38 // up
+				,39 // right
+				,40 // down
+			]
+			,&quot;TEXTAREA&quot;: [
+				32 // space
+				,37 // left
+				,38 // up
+				,39 // right
+				,40 // down
+			]
+			,&quot;SELECT&quot;: [
+				38 // up
+				,40 // down
+			]
+		}
+		,tabSelector: &quot;a[href]:visible, :input:visible&quot;
+	};
+</P><P>	/* HOOKS */
+	$jmpress('afterInit', function( nil, eventData ) {
+		var settings = eventData.settings,
+			keyboardSettings = settings.keyboard,
+			ignoreKeyboardSettings = keyboardSettings.ignore,
+			current = eventData.current,
+			jmpress = $(this);
+</P><P>		// tabindex make it focusable so that it can recieve key events
+		if(!settings.fullscreen) {
+			jmpress.attr(&quot;tabindex&quot;, 0);
+		}
+</P><P>		current.keyboardNamespace = &quot;.jmpress-&quot;+randomString();
+</P><P>		// KEYPRESS EVENT: this fixes a Opera bug
+		$(settings.fullscreen ? document : jmpress)
+			.bind(&quot;keypress&quot;+current.keyboardNamespace, function( event ) {
+</P><P>			for( var nodeName in ignoreKeyboardSettings ) {
+				if ( event.target.nodeName === nodeName &amp;&amp; ignoreKeyboardSettings[nodeName].indexOf(event.which) !== -1 ) {
+					return;
+				}
+			}
+			if(event.which &gt;= 37 &amp;&amp; event.which &lt;= 40 || event.which === 32) {
+				stopEvent(event);
+			}
+		});
+		// KEYDOWN EVENT
+		$(settings.fullscreen ? document : jmpress)
+			.bind(&quot;keydown&quot;+current.keyboardNamespace, function( event ) {
+			var eventTarget = $(event.target);
+</P><P>			if ( !settings.fullscreen &amp;&amp; !eventTarget.closest(jmpress).length || !keyboardSettings.use ) {
+				return;
+			}
+</P><P>			for( var nodeName in ignoreKeyboardSettings ) {
+				if ( eventTarget[0].nodeName === nodeName &amp;&amp; ignoreKeyboardSettings[nodeName].indexOf(event.which) !== -1 ) {
+					return;
+				}
+			}
+</P><P>			var reverseSelect = false;
+			var nextFocus;
+			if (event.which === 9) {
+				// tab
+				if ( !eventTarget.closest( jmpress.jmpress('active') ).length ) {
+					if ( !event.shiftKey ) {
+						nextFocus = jmpress.jmpress('active').find(&quot;a[href], :input&quot;).filter(&quot;:visible&quot;).first();
+					} else {
+						reverseSelect = true;
+					}
+				} else {
+					nextFocus = eventTarget.near( keyboardSettings.tabSelector, event.shiftKey );
+					if( !$(nextFocus)
+						.closest( settings.stepSelector )
+						.is(jmpress.jmpress('active') ) ) {
+						nextFocus = undefined;
+					}
+				}
+				if( nextFocus &amp;&amp; nextFocus.length &gt; 0 ) {
+					nextFocus.focus();
+					jmpress.jmpress(&quot;scrollFix&quot;);
+					stopEvent(event);
+					return;
+				} else {
+					if(event.shiftKey) {
+						reverseSelect = true;
+					}
+				}
+			}
+</P><P>			var action = keyboardSettings.keys[ event.which ];
+			if ( typeof action === &quot;string&quot; ) {
+				if (action.indexOf(&quot;:&quot;) !== -1) {
+					action = action.split(&quot;:&quot;);
+					action = event.shiftKey ? action[1] : action[0];
+				}
+				jmpress.jmpress( action );
+				stopEvent(event);
+			} else if ( $.isFunction(action) ) {
+				action.call(jmpress, event);
+			} else if ( action ) {
+				jmpress.jmpress.apply( jmpress, action );
+				stopEvent(event);
+			}
+</P><P>			if (reverseSelect) {
+				// tab
+				nextFocus = jmpress.jmpress('active').find(&quot;a[href], :input&quot;).filter(&quot;:visible&quot;).last();
+				nextFocus.focus();
+				jmpress.jmpress(&quot;scrollFix&quot;);
+			}
+		});
+	});
+	$jmpress('afterDeinit', function( nil, eventData ) {
+		$(document).unbind(eventData.current.keyboardNamespace);
+	});
+</P><P>
+}(jQuery, document, window));
+/*!
+</P><PRE>* viewport.js
+* Scale to fit a given viewport
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+</P><P>	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+</P><P>	var defaults = $.jmpress(&quot;defaults&quot;);
+	defaults.viewPort = {
+		width: false
+		,height: false
+		,maxScale: 0
+		,minScale: 0
+		,zoomable: 0
+		,zoomBindMove: true
+		,zoomBindWheel: true
+	};
+	var keys = defaults.keyboard.keys;
+	keys[$.browser.mozilla?107:187] = &quot;zoomIn&quot;;  // +
+	keys[$.browser.mozilla?109:189] = &quot;zoomOut&quot;; // -
+	defaults.reasonableAnimation.resize = {
+		transitionDuration: '0s'
+		,transitionDelay: '0ms'
+	};
+	defaults.reasonableAnimation.zoom = {
+		transitionDuration: '0s'
+		,transitionDelay: '0ms'
+	};
+	$.jmpress(&quot;initStep&quot;, function( step, eventData ) {
+		for(var variable in {&quot;viewPortHeight&quot;:1, &quot;viewPortWidth&quot;:1, &quot;viewPortMinScale&quot;:1, &quot;viewPortMaxScale&quot;:1, &quot;viewPortZoomable&quot;:1}) {
+			eventData.stepData[variable] = eventData.data[variable] &amp;&amp; parseFloat(eventData.data[variable]);
+		}
+	});
+	$.jmpress(&quot;afterInit&quot;, function( nil, eventData ) {
+		var jmpress = this;
+		eventData.current.viewPortNamespace = &quot;.jmpress-&quot;+randomString();
+		$(window).bind(&quot;resize&quot;+eventData.current.viewPortNamespace, function (event) {
+			$(jmpress).jmpress(&quot;reselect&quot;, &quot;resize&quot;);
+		});
+		eventData.current.userZoom = 0;
+		eventData.current.userTranslateX = 0;
+		eventData.current.userTranslateY = 0;
+		if(eventData.settings.viewPort.zoomBindWheel) {
+			$(eventData.settings.fullscreen ? document : this)
+				.bind(&quot;mousewheel&quot;+eventData.current.viewPortNamespace, function( event, delta ) {
+				delta = delta || event.originalEvent.wheelDelta;
+				var direction = (delta / Math.abs(delta));
+				if(direction &lt; 0) {
+					$(eventData.jmpress).jmpress(&quot;zoomOut&quot;, event.originalEvent.x, event.originalEvent.y);
+				} else if(direction &gt; 0) {
+					$(eventData.jmpress).jmpress(&quot;zoomIn&quot;, event.originalEvent.x, event.originalEvent.y);
+				}
+			});
+		}
+		if(eventData.settings.viewPort.zoomBindMove) {
+			$(eventData.settings.fullscreen ? document : this).bind(&quot;mousedown&quot;+eventData.current.viewPortNamespace, function (event) {
+				if(eventData.current.userZoom) {
+					eventData.current.userTranslating = { x: event.clientX, y: event.clientY };
+					event.preventDefault();
+					event.stopImmediatePropagation();
+				}
+			}).bind(&quot;mousemove&quot;+eventData.current.viewPortNamespace, function (event) {
+				var userTranslating = eventData.current.userTranslating;
+				if(userTranslating) {
+					$(jmpress).jmpress(&quot;zoomTranslate&quot;, event.clientX - userTranslating.x, event.clientY - userTranslating.y);
+					userTranslating.x = event.clientX;
+					userTranslating.y = event.clientY;
+					event.preventDefault();
+					event.stopImmediatePropagation();
+				}
+			}).bind(&quot;mouseup&quot;+eventData.current.viewPortNamespace, function (event) {
+				if(eventData.current.userTranslating) {
+					eventData.current.userTranslating = undefined;
+					event.preventDefault();
+					event.stopImmediatePropagation();
+				}
+			});
+		}
+	});
+	function maxAbs(value, range) {
+		return Math.max(Math.min(value, range), -range);
+	}
+	function zoom(x, y, direction) {
+		var current = $(this).jmpress(&quot;current&quot;),
+			settings = $(this).jmpress(&quot;settings&quot;),
+			stepData = $(this).jmpress(&quot;active&quot;).data(&quot;stepData&quot;),
+			container = $(this).jmpress(&quot;container&quot;);
+		if(current.userZoom === 0 &amp;&amp; direction &lt; 0) {
+			return;
+		}
+		var zoomableSteps = stepData.viewPortZoomable || settings.viewPort.zoomable;
+		if(current.userZoom === zoomableSteps &amp;&amp; direction &gt; 0) {
+			return;
+		}
+		current.userZoom += direction;
+</P><P>		var halfWidth = $(container).innerWidth()/2,
+			halfHeight = $(container).innerHeight()/2;
+</P><P>		x = x ? x - halfWidth : x;
+		y = y ? y - halfHeight : y;
+</P><P>		// TODO this is not perfect... too much math... :(
+		current.userTranslateX =
+			maxAbs(current.userTranslateX - direction * x / current.zoomOriginWindowScale / zoomableSteps,
+			halfWidth * current.userZoom * current.userZoom / zoomableSteps);
+		current.userTranslateY =
+			maxAbs(current.userTranslateY - direction * y / current.zoomOriginWindowScale / zoomableSteps,
+			halfHeight * current.userZoom * current.userZoom / zoomableSteps);
+</P><P>		$(this).jmpress(&quot;reselect&quot;, &quot;zoom&quot;);
+	}
+	$.jmpress(&quot;register&quot;, &quot;zoomIn&quot;, function(x, y) {
+		zoom.call(this, x||0, y||0, 1);
+	});
+	$.jmpress(&quot;register&quot;, &quot;zoomOut&quot;, function(x, y) {
+		zoom.call(this, x||0, y||0, -1);
+	});
+	$.jmpress(&quot;register&quot;, &quot;zoomTranslate&quot;, function(x, y) {
+		var current = $(this).jmpress(&quot;current&quot;),
+			settings = $(this).jmpress(&quot;settings&quot;),
+			stepData = $(this).jmpress(&quot;active&quot;).data(&quot;stepData&quot;),
+			container = $(this).jmpress(&quot;container&quot;);
+		var zoomableSteps = stepData.viewPortZoomable || settings.viewPort.zoomable;
+		var halfWidth = $(container).innerWidth(),
+			halfHeight = $(container).innerHeight();
+		current.userTranslateX =
+			maxAbs(current.userTranslateX + x / current.zoomOriginWindowScale,
+			halfWidth * current.userZoom * current.userZoom / zoomableSteps);
+		current.userTranslateY =
+			maxAbs(current.userTranslateY + y / current.zoomOriginWindowScale,
+			halfHeight * current.userZoom * current.userZoom / zoomableSteps);
+		$(this).jmpress(&quot;reselect&quot;, &quot;zoom&quot;);
+	});
+	$.jmpress('afterDeinit', function( nil, eventData ) {
+		$(window).unbind(eventData.current.viewPortNamespace);
+	});
+	$.jmpress(&quot;setActive&quot;, function( step, eventData ) {
+		var viewPort = eventData.settings.viewPort;
+		var viewPortHeight = eventData.stepData.viewPortHeight || viewPort.height;
+		var viewPortWidth = eventData.stepData.viewPortWidth || viewPort.width;
+		var viewPortMaxScale = eventData.stepData.viewPortMaxScale || viewPort.maxScale;
+		var viewPortMinScale = eventData.stepData.viewPortMinScale || viewPort.minScale;
+		// Correct the scale based on the window's size
+		var windowScaleY = viewPortHeight &amp;&amp; $(eventData.container).innerHeight()/viewPortHeight;
+		var windowScaleX = viewPortWidth &amp;&amp; $(eventData.container).innerWidth()/viewPortWidth;
+		var windowScale = (windowScaleX || windowScaleY) &amp;&amp; Math.min( windowScaleX || windowScaleY, windowScaleY || windowScaleX );
+</P><P>		if(windowScale) {
+			windowScale = windowScale || 1;
+			if(viewPortMaxScale) {
+				windowScale = Math.min(windowScale, viewPortMaxScale);
+			}
+			if(viewPortMinScale) {
+				windowScale = Math.max(windowScale, viewPortMinScale);
+			}
+</P><P>			var zoomableSteps = eventData.stepData.viewPortZoomable || eventData.settings.viewPort.zoomable;
+			if(zoomableSteps) {
+				var diff = (1/windowScale) - (1/viewPortMaxScale);
+				diff /= zoomableSteps;
+				windowScale = 1/((1/windowScale) - diff * eventData.current.userZoom);
+			}
+</P><P>			eventData.target.transform.reverse();
+			if(eventData.current.userTranslateX &amp;&amp; eventData.current.userTranslateY) {
+				eventData.target.transform.push([&quot;translate&quot;, eventData.current.userTranslateX, eventData.current.userTranslateY, 0]);
+			} else {
+				eventData.target.transform.push([&quot;translate&quot;]);
+			}
+			eventData.target.transform.push([&quot;scale&quot;,
+				windowScale,
+				windowScale,
+				1]);
+			eventData.target.transform.reverse();
+		}
+		eventData.current.zoomOriginWindowScale = windowScale;
+	});
+	$.jmpress(&quot;setInactive&quot;, function( step, eventData ) {
+		if(!eventData.nextStep || !step || $(eventData.nextStep).attr(&quot;id&quot;) !== $(step).attr(&quot;id&quot;)) {
+			eventData.current.userZoom = 0;
+			eventData.current.userTranslateX = 0;
+			eventData.current.userTranslateY = 0;
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* mouse.js
+* Clicking to select a step
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress;
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+</P><P>	/* DEFAULTS */
+	$jmpress(&quot;defaults&quot;).mouse = {
+		clickSelects: true
+	};
+</P><P>	/* HOOKS */
+	$jmpress(&quot;afterInit&quot;, function( nil, eventData ) {
+		var settings = eventData.settings,
+			stepSelector = settings.stepSelector,
+			current = eventData.current,
+			jmpress = $(this);
+		current.clickableStepsNamespace = &quot;.jmpress-&quot;+randomString();
+		jmpress.bind(&quot;click&quot;+current.clickableStepsNamespace, function(event) {
+			if (!settings.mouse.clickSelects || current.userZoom) {
+				return;
+			}
+</P><P>			// get clicked step
+			var clickedStep = $(event.target).closest(stepSelector);
+</P><P>			// clicks on the active step do default
+			if ( clickedStep.is( jmpress.jmpress(&quot;active&quot;) ) ) {
+				return;
+			}
+</P><P>			if (clickedStep.length) {
+				// select the clicked step
+				jmpress.jmpress(&quot;select&quot;, clickedStep[0], &quot;click&quot;);
+				event.preventDefault();
+				event.stopPropagation();
+			}
+		});
+	});
+	$jmpress('afterDeinit', function( nil, eventData ) {
+		$(this).unbind(eventData.current.clickableStepsNamespace);
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* mobile.js
+* Adds support for swipe on touch supported browsers
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress;
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+</P><P>	/* HOOKS */
+	$jmpress( 'afterInit', function( step, eventData ) {
+		var settings = eventData.settings,
+			current = eventData.current,
+			jmpress = eventData.jmpress;
+		current.mobileNamespace = &quot;.jmpress-&quot;+randomString();
+		var data, start = [0,0];
+		$(settings.fullscreen ? document : jmpress)
+			.bind(&quot;touchstart&quot;+current.mobileNamespace, function( event ) {
+</P><P>			data = event.originalEvent.touches[0];
+			start = [ data.pageX, data.pageY ];
+</P><P>		}).bind(&quot;touchmove&quot;+current.mobileNamespace, function( event ) {
+			data = event.originalEvent.touches[0];
+			event.preventDefault();
+			return false;
+		}).bind(&quot;touchend&quot;+current.mobileNamespace, function( event ) {
+			var end = [ data.pageX, data.pageY ],
+				diff = [ end[0]-start[0], end[1]-start[1] ];
+</P><P>			if(Math.max(Math.abs(diff[0]), Math.abs(diff[1])) &gt; 50) {
+				diff = Math.abs(diff[0]) &gt; Math.abs(diff[1]) ? diff[0] : diff[1];
+				$(jmpress).jmpress(diff &gt; 0 ? &quot;prev&quot; : &quot;next&quot;);
+				event.preventDefault();
+				return false;
+			}
+		});
+	});
+	$jmpress('afterDeinit', function( nil, eventData ) {
+		var settings = eventData.settings,
+			current = eventData.current,
+			jmpress = eventData.jmpress;
+		$(settings.fullscreen ? document : jmpress).unbind(current.mobileNamespace);
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* templates.js
+* The amazing template engine
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+	var $jmpress = $.jmpress,
+		templateFromParentIdent = &quot;_template_&quot;,
+		templateFromApplyIdent = &quot;_applied_template_&quot;;
+</P><P>	/* STATIC VARS */
+	var templates = {};
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+	function addUndefined( target, values, prefix ) {
+		for( var name in values ) {
+			var targetName = name;
+			if ( prefix ) {
+				targetName = prefix + targetName.substr(0, 1).toUpperCase() + targetName.substr(1);
+			}
+			if ( $.isPlainObject(values[name]) ) {
+				addUndefined( target, values[name], targetName );
+			} else if( target[targetName] === undefined ) {
+				target[targetName] = values[name];
+			}
+		}
+	}
+	function applyChildrenTemplates( children, templateChildren ) {
+		if ($.isArray(templateChildren)) {
+			if (templateChildren.length &lt; children.length) {
+				$.error(&quot;more nested steps than children in template&quot;);
+			} else {
+				children.each(function(idx, child) {
+					child = $(child);
+					var tmpl = child.data(templateFromParentIdent) || {};
+					addUndefined(tmpl, templateChildren[idx]);
+					child.data(templateFromParentIdent, tmpl);
+				});
+			}
+		} else if($.isFunction(templateChildren)) {
+			children.each(function(idx, child) {
+				child = $(child);
+				var tmpl = child.data(templateFromParentIdent) || {};
+				addUndefined(tmpl, templateChildren(idx, child, children));
+				child.data(templateFromParentIdent, tmpl);
+			});
+		} // TODO: else if(object)
+	}
+	function applyTemplate( data, element, template, eventData ) {
+		if (template.children) {
+			var children = element.children( eventData.settings.stepSelector );
+			applyChildrenTemplates( children, template.children );
+		}
+		applyTemplateData( data, template );
+	}
+	function applyTemplateData( data, template ) {
+		addUndefined(data, template);
+	}
+</P><P>	/* HOOKS */
+	$jmpress(&quot;beforeInitStep&quot;, function( step, eventData ) {
+		step = $(step);
+		var data = eventData.data,
+			templateFromAttr = data.template,
+			templateFromApply = step.data(templateFromApplyIdent),
+			templateFromParent = step.data(templateFromParentIdent);
+		if(templateFromAttr) {
+			$.each(templateFromAttr.split(&quot; &quot;), function(idx, tmpl) {
+				var template = templates[tmpl];
+				applyTemplate( data, step, template, eventData );
+			});
+		}
+		if (templateFromApply) {
+			applyTemplate( data, step, templateFromApply, eventData );
+		}
+		if (templateFromParent) {
+			applyTemplate( data, step, templateFromParent, eventData );
+			step.data(templateFromParentIdent, null);
+			if(templateFromParent.template) {
+				$.each(templateFromParent.template.split(&quot; &quot;), function(idx, tmpl) {
+					var template = templates[tmpl];
+					applyTemplate( data, step, template, eventData );
+				});
+			}
+		}
+	});
+	$jmpress(&quot;beforeInit&quot;, function( nil, eventData ) {
+		var data = $jmpress(&quot;dataset&quot;, this),
+			dataTemplate = data.template,
+			stepSelector = eventData.settings.stepSelector;
+		if (dataTemplate) {
+			var template = templates[dataTemplate];
+			applyChildrenTemplates( $(this).find(stepSelector).filter(function() {
+				return !$(this).parent().is(stepSelector);
+			}), template.children );
+		}
+	});
+</P><P>	/* EXPORTED FUNCTIONS */
+	$jmpress(&quot;register&quot;, &quot;template&quot;, function( name, tmpl ) {
+		if (templates[name]) {
+			templates[name] = $.extend(true, {}, templates[name], tmpl);
+		} else {
+			templates[name] = $.extend(true, {}, tmpl);
+		}
+	});
+	$jmpress(&quot;register&quot;, &quot;apply&quot;, function( selector, tmpl ) {
+		if( !tmpl ) {
+			// TODO ERROR because settings not found
+			var stepSelector = $(this).jmpress(&quot;settings&quot;).stepSelector;
+			applyChildrenTemplates( $(this).find(stepSelector).filter(function() {
+				return !$(this).parent().is(stepSelector);
+			}), selector );
+		} else if($.isArray(tmpl)) {
+			applyChildrenTemplates( $(selector), tmpl );
+		} else {
+			var template;
+			if(typeof tmpl === &quot;string&quot;) {
+				template = templates[tmpl];
+			} else {
+				template = $.extend(true, {}, tmpl);
+			}
+			$(selector).each(function(idx, element) {
+				element = $(element);
+				var tmpl = element.data(templateFromApplyIdent) || {};
+				addUndefined(tmpl, template);
+				element.data(templateFromApplyIdent, tmpl);
+			});
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* jqevents.js
+*/
+</PRE><P>(function( $, document, window, undefined ) {</P><P>	'use strict';
+</P><P>	/* FUNCTIONS */
+	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+</P><P>	/* HOOKS */
+	// the events should not bubble up the tree
+	// elsewise nested jmpress would cause buggy behavior
+	$.jmpress(&quot;setActive&quot;, function( step, eventData ) {
+		if(eventData.prevStep !== step) {
+			$(step).triggerHandler(&quot;enterStep&quot;);
+		}
+	});
+	$.jmpress(&quot;setInactive&quot;, function( step, eventData ) {
+		if(eventData.nextStep !== step) {
+			$(step).triggerHandler(&quot;leaveStep&quot;);
+		}
+	});
+</P><P>}(jQuery, document, window));
+/*!
+</P><PRE>* animation.js
+* Apply custom animations to steps
+*/
+</PRE><P>(function( $, document, window, undefined ) {
+</P><P>	'use strict';
+</P><P>	function randomString() {
+		return &quot;&quot; + Math.round(Math.random() * 100000, 0);
+	}
+</P><P>	function parseSubstepInfo(str) {
+		var arr = str.split(&quot; &quot;);
+		var className = arr[0];
+		var config = { willClass: &quot;will-&quot;+className, doClass: &quot;do-&quot;+className, hasClass: &quot;has-&quot;+className };
+		var state = &quot;&quot;;
+		for(var i = 1; i &lt; arr.length; i++) {
+			var s = arr[i];
+			switch(state) {
+			case &quot;&quot;:
+				if(s === &quot;after&quot;) {
+					state = &quot;after&quot;;
+				} else {
+					$.warn(&quot;unknown keyword in '&quot;+str+&quot;'. '&quot;+s+&quot;' unknown.&quot;);
+				}
+				break;
+			case &quot;after&quot;:
+				if(s.match(/^[1-9][0-9]*m?s?/)) {
+					var value = parseFloat(s);
+					if(s.indexOf(&quot;ms&quot;) !== -1) {
+						value *= 1;
+					} else if(s.indexOf(&quot;s&quot;) !== -1) {
+						value *= 1000;
+					} else if(s.indexOf(&quot;m&quot;) !== -1) {
+						value *= 60000;
+					}
+					config.delay = value;
+				} else {
+					config.after = Array.prototype.slice.call(arr, i).join(&quot; &quot;);
+				}
+			}
+		}
+		return config;
+	}
+	function find(array, selector, start, end) {
+		end = end || (array.length - 1);
+		start = start || 0;
+		for(var i = start; i &lt; end + 1; i++) {
+			if($(array[i].element).is(selector)) {
+				return i;
+			}
+		}
+	}
+	function addOn(list, substep, delay) {
+		$.each(substep._on, function(idx, child) {
+			list.push({substep: child.substep, delay: child.delay + delay});
+			addOn(list, child.substep, child.delay + delay);
+		});
+	}
+	$.jmpress(&quot;defaults&quot;).customAnimationDataAttribute = &quot;jmpress&quot;;
+	$.jmpress(&quot;afterInit&quot;, function( nil, eventData ) {
+		eventData.current.animationTimeouts = [];
+		eventData.current.animationCleanupWaiting = [];
+	});
+	$.jmpress(&quot;applyStep&quot;, function( step, eventData ) {
+		// read custom animation from elements
+		var substepsData = {};
+		var listOfSubsteps = [];
+		$(step).find(&quot;[data-&quot;+eventData.settings.customAnimationDataAttribute+&quot;]&quot;)
+				.each(function(idx, element) {
+			if($(element).closest(eventData.settings.stepSelector).is(step)) {
+				listOfSubsteps.push({element: element});
+			}
+		});
+		if(listOfSubsteps.length === 0) {
+			return;
+		}
+		$.each(listOfSubsteps, function(idx, substep) {
+			substep.info = parseSubstepInfo(
+				$(substep.element).data(eventData.settings.customAnimationDataAttribute));
+			$(substep.element).addClass(substep.info.willClass);
+			substep._on = [];
+			substep._after = null;
+		});
+		var current = {_after: undefined, _on: [], info: {}}; // virtual zero step
+		$.each(listOfSubsteps, function(idx, substep) {
+			var other = substep.info.after;
+			if(other) {
+				if(other === &quot;step&quot;) {
+					other = current;
+				} else if(other === &quot;prev&quot;) {
+					other = listOfSubsteps[idx-1];
+				} else {
+					var index = find(listOfSubsteps, other, 0, idx - 1);
+					if(index === -1) {
+						index = find(listOfSubsteps, other);
+					}
+					other = (index === -1 || index === idx) ? listOfSubsteps[idx-1] : listOfSubsteps[index];
+				}
+			} else {
+				other = listOfSubsteps[idx-1];
+			}
+			if(other) {
+				if(!substep.info.delay) {
+					if(!other._after) {
+						other._after = substep;
+						return;
+					}
+					other = other._after;
+				}
+				other._on.push({substep: substep, delay: substep.info.delay || 0});
+			}
+		});
+		if(current._after === undefined &amp;&amp; current._on.length === 0) {
+			var startStep = find(listOfSubsteps, eventData.stepData.startSubstep) || 0;
+			current._after = listOfSubsteps[startStep];
+		}
+		var substepsInOrder = [];
+		function findNextFunc(idx, item) {
+			if(item.substep._after) {
+				current = item.substep._after;
+				return false;
+			}
+		}
+		do {
+			var substepList = [{substep: current, delay: 0}];
+			addOn(substepList, current, 0);
+			substepsInOrder.push(substepList);
+			current = null;
+			$.each(substepList, findNextFunc);
+		} while(current);
+		substepsData.list = substepsInOrder;
+		$(step).data(&quot;substepsData&quot;, substepsData);
+	});
+	$.jmpress(&quot;unapplyStep&quot;, function( step, eventData ) {
+		var substepsData = $(step).data(&quot;substepsData&quot;);
+		if(substepsData) {
+			$.each(substepsData.list, function(idx, activeSubsteps) {
+				$.each(activeSubsteps, function(idx, substep) {
+					if(substep.substep.info.willClass) {
+						$(substep.substep.element).removeClass(substep.substep.info.willClass);
+					}
+					if(substep.substep.info.hasClass) {
+						$(substep.substep.element).removeClass(substep.substep.info.hasClass);
+					}
+					if(substep.substep.info.doClass) {
+						$(substep.substep.element).removeClass(substep.substep.info.doClass);
+					}
+				});
+			});
+		}
+	});
+	$.jmpress(&quot;setActive&quot;, function(step, eventData) {
+		var substepsData = $(step).data(&quot;substepsData&quot;);
+		if(!substepsData) {
+			return;
+		}
+		if(eventData.substep === undefined) {
+			eventData.substep =
+				(eventData.reason === &quot;prev&quot; ?
+					substepsData.list.length-1 :
+					0
+				);
+		}
+		var substep = eventData.substep;
+		$.each(eventData.current.animationTimeouts, function(idx, timeout) {
+			clearTimeout(timeout);
+		});
+		eventData.current.animationTimeouts = [];
+		$.each(substepsData.list, function(idx, activeSubsteps) {
+			var applyHas = idx &lt; substep;
+			var applyDo = idx &lt;= substep;
+			$.each(activeSubsteps, function(idx, substep) {
+				if(substep.substep.info.hasClass) {
+					$(substep.substep.element)[(applyHas?&quot;add&quot;:&quot;remove&quot;)+&quot;Class&quot;](substep.substep.info.hasClass);
+				}
+				function applyIt() {
+					$(substep.substep.element).addClass(substep.substep.info.doClass);
+				}
+				if(applyDo &amp;&amp; !applyHas &amp;&amp; substep.delay &amp;&amp; eventData.reason !== &quot;prev&quot;) {
+					if(substep.substep.info.doClass) {
+						$(substep.substep.element).removeClass(substep.substep.info.doClass);
+						eventData.current.animationTimeouts.push(setTimeout(applyIt, substep.delay));
+					}
+				} else {
+					if(substep.substep.info.doClass) {
+						$(substep.substep.element)[(applyDo?&quot;add&quot;:&quot;remove&quot;)+&quot;Class&quot;](substep.substep.info.doClass);
+					}
+				}
+			});
+		});
+	});
+	$.jmpress(&quot;setInactive&quot;, function(step, eventData) {
+		if(eventData.nextStep === step) {
+			return;
+		}
+		function cleanupAnimation( substepsData ) {
+			$.each(substepsData.list, function(idx, activeSubsteps) {
+				$.each(activeSubsteps, function(idx, substep) {
+					if(substep.substep.info.hasClass) {
+						$(substep.substep.element).removeClass(substep.substep.info.hasClass);
+					}
+					if(substep.substep.info.doClass) {
+						$(substep.substep.element).removeClass(substep.substep.info.doClass);
+					}
+				});
+			});
+		}
+		$.each(eventData.current.animationCleanupWaiting, function(idx, item) {
+			cleanupAnimation(item);
+		});
+		eventData.current.animationCleanupWaiting = [];
+		var substepsData = $(step).data(&quot;substepsData&quot;);
+		if(substepsData) {
+			eventData.current.animationCleanupWaiting.push( substepsData );
+		}
+	});
+	$.jmpress(&quot;selectNext&quot;, function( step, eventData ) {
+		if(eventData.substep === undefined) {
+			return;
+		}
+		var substepsData = $(step).data(&quot;substepsData&quot;);
+		if(!substepsData) {
+			return;
+		}
+		if(eventData.substep &lt; substepsData.list.length-1) {
+			return {step: step, substep: eventData.substep+1};
+		}
+	});
+	$.jmpress(&quot;selectPrev&quot;, function( step, eventData ) {
+		if(eventData.substep === undefined) {
+			return;
+		}
+		var substepsData = $(step).data(&quot;substepsData&quot;);
+		if(!substepsData) {
+			return;
+		}
+		if(eventData.substep &gt; 0) {
+			return {step: step, substep: eventData.substep-1};
+		}
+	});
+</P><P>}(jQuery, document, window));
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:UNITN-Trento/JS/Library/jmpress">http://2013.igem.org/Team:UNITN-Trento/JS/Library/jmpress</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:UNITN-Trento/JS/Library/jmpress" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:UNITN-Trento/JS/Library/jmpress" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmpress&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:UNITN-Trento/JS/Library/jmpress&amp;oldid=61802" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

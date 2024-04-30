@@ -1,0 +1,135 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tsinghua_Model_MATLABcode skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tsinghua/Model/MATLABcode</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P><TITLE>MATLAB Open source code</TITLE></P><H1>MATLAB code for iGEM Tsinghua Team </H1><DIV><H3>MIT LICENSE</H3><PRE><CODE class="html">
+            Copyright &lt;2017&gt; <COPYRIGHT ma="" hongpeng="">
+
+            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+            The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+            THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+        </COPYRIGHT></CODE></PRE></DIV><DIV><PRE><CODE class="lang-matlab">
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                main.m
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+            %Constant set
+            AFT  = 1e-3;
+            t_half_RNA = 1/3;
+            t_half_Pr = 1/6;
+            k_1 = 10^3;
+            k_2 = 10^3;
+            k_3 = 1;
+            k_4 = 5.56*(10^-3) * k_3;
+            k_5 = log(2) / t_half_RNA ;
+            k_6 = 4.17 * 10^-3;
+            k_7 = log(2) / t_half_Pr;
+            k_8 = 1e-1;
+            k_9 = 10;
+            yeta = 100;
+            A = afun( AFT, k_1, k_2, k_3 );
+            c_5 = k_6*A/k_7*(k_5 - k_7);
+            c_6 = k_6*A/(k_5 * k_7);
+            c_7 = -k_6*A/k_5*(k_5 - k_7);
+
+            fprintf('Constant sheet\n');
+            fprintf('AFT: %f , RNA_half_period: %f, Protein_half_period: %f \n', AFT, t_half_RNA, t_half_Pr);
+            fprintf('K_1: %f \n K_2: %f\n k_3: %f \n k_4: %f\n k_5: %f \n k_6: %f\n ', k_1, k_2, k_3, k_4, k_5, k_6);
+            fprintf('k_7: %f \n k_8: %f\n k_9: %f \n ', k_7, k_8, k_9);
+            fprintf('c_5: %f \n c_6: %f \n c_7: %f \n', c_5, c_6, c_7);
+            fprintf('yeta: %f\n', yeta);
+
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            T_SPAN = 100;
+            T_STEPS = 1000;
+            Prt = linspace(0, T_SPAN, T_STEPS);
+            Pr = prfun(Prt, c_5, c_6, c_7, k_5, k_7);
+            %disp(Pr)
+            tspan = [0 T_SPAN];
+            ic = T_SPAN/ T_STEPS;
+            y0 = [1 1];
+            opts = odeset('RelTol', 1e-2, 'AbsTol', 1e-4);
+            [t, y] = ode45(@(t, y) odefun(t, y, k_8, k_9, yeta, Prt, Pr), tspan, y0, opts);
+            y_axes = linspace(0, 1e-26, 10);
+
+            figure(1)
+            title('Consumption of Glucose under AFT signal')
+            xlabel('time') % x-axis label
+            ylabel('relative amount of Glucose') % y-axis label
+            plot(t, y(:,1));
+            legend('[Glucose]')
+            hold on;
+
+            figure(2)
+            title('Yeast population growth under AFT signal.')
+            xlabel('time') % x-axis label
+            ylabel('relative yeast population') % y-axis label
+            plot(t, y(:,2));
+            legend('yeast population');
+            hold on;
+        </CODE></PRE></DIV><DIV><PRE><CODE class="lang-matlab">  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                k1_AFT.m
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [ k1 ] = k1_AFT( ScFv1, AFT, ScFv1_AFT )
+            %FUNK1 Summary of this function goes here
+            %   Detailed explanation goes here
+                k1 = ScFv1_AFT / (ScFv1 * AFT);
+                
+            end
+
+            </CODE></PRE></DIV><DIV><PRE><CODE class="lang-matlab">
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                k2_AFT.m
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [ k1 ] = k2_AFT( ScFv2, AFT, ScFv2_AFT )
+            %FUNK1 Summary of this function goes here
+            %   Detailed explanation goes here
+                k1 = ScFv2_AFT / (ScFv2 * AFT);
+                
+            end
+
+
+            </CODE></PRE></DIV><DIV><PRE><CODE class="lang-matlab">
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                 afun.m
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [ A ] = afun( AFT, k1, k2, k3 )
+            %AFUN Summary of this function goes here
+            %   Detailed explanation goes here
+                A = k3 * k1 * AFT/(k1 * AFT + 1) * k2 * AFT/(k2 * AFT + 1);
+
+            end
+
+
+            </CODE></PRE></DIV><DIV><PRE><CODE class="lang-matlab">
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                prfun.m
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [ Pr ] = prfun( t, c_5, c_6, c_7, k_5, k_7 )
+            %PRFUN Summary of this function goes here
+            %   Detailed explanation goes here
+                Pr = c_5 * exp( -k_7 * t) + c_6 + c_7 * exp(-k_5 * t);
+
+            end
+
+            </CODE></PRE></DIV><DIV><PRE><CODE class="lang-matlab">
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                odefun.m
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            function [ dydt ] = odefun( t, y, k_8, k_9, yeta, Prt, Pr  )
+            %ODEFUN Summary of this function goes here
+            %   Detailed explanation goes here
+                Pr_ = interp1(Prt, Pr, t);
+                %disp(Pr_)
+                %y(1) ---&gt; Glucose
+                %y(2) ---&gt; Yeast
+                dydt = [-k_8*y(1)*y(2)*Pr_;k_9*y(2)*(y(1)*yeta - y(2)).*Pr_];
+
+            end
+
+            </CODE></PRE></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

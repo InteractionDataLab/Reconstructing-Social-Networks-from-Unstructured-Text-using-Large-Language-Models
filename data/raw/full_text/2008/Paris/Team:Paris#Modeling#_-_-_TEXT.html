@@ -1,0 +1,87 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Paris/Modeling/
+From 2008.igem.org
+Project
+Analysis
+Construction
+Characterization
+Perspectives
+Estimation of the parameters
+function Popt=findparam
+function Popt=findparam
+ 
+ 
+clear, close all
+ 
+%Parameters
+Tmax=100; %Time of the simulation
+Npoints=40; %Number of points available. We assume for the tests that they are regularly distant.
+x=1:Tmax/Npoints:Tmax;%Definition of the inducer vector.
+ 
+%The following function provides a Hill function, given a X vector and
+%some parameter that characterizes it.
+function y= Hill(x,K,Vmax,n)
+l=length(x);
+for i=1:l
+if K<0 s(i)=K; else s(i)=x(i); end
+y(i)=(Vmax*(s(i)^n))/((x(i)^n)+(K^n));
+end
+end
+ 
+%Then, we want to introduce some noise in the data obtained, in order to
+%simulate biological results.
+function y = NoisyHill(x,K,Vmax,n)
+y=Hill(x,K,Vmax,n);
+for i=1:length(x)
+y(i)=random('normal',y(i),Vmax/20);
+end
+end
+ 
+%Finally, we create a 'noisy Hill' vector that will be considered as
+%biological data.
+function set = genset
+K=30;
+Vmax=2;
+n=3;
+set=NoisyHill([1:Tmax/Npoints:Tmax],K,Vmax,n);
+end
+set=genset();
+ 
+%The heart of the problem is to minimize the distance between a
+%deterministic Hill function and the noisy one obtained. 'Toopt' is
+%just the criteria to minimize.
+function y = toopt(x,P)
+y=Hill(x,10*P(1),P(2),P(3))-set;
+end
+%These lines use a Matlab function to carry out the optimization process
+options=optimset('LevenbergMarquardt','on','TolX',1e-10,'MaxFunEvals',1e7,'TolFun',1e-5);
+Popt=lsqnonlin(@(P)toopt(x,P),[0.1,1,1],[0,0,0],[5,10,10],options);
+Popt=Popt(:);
+ 
+%In order to see the results, we plot both the noisy curve and the
+%estimated one.
+plot(set)
+hold on
+plot(Hill(x,10*Popt(1),Popt(2),Popt(3) ),'r');
+legend('Experimental Hill function','Estimation of the experimental hill function');
+gtext('NPoints=40, Standard Deviation=1/10');
+xlabel('Concentration of X');
+ylabel('Rate of Y production');
+end
+Retrieved from " http://2008.igem.org/Team:Paris/Modeling/ "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

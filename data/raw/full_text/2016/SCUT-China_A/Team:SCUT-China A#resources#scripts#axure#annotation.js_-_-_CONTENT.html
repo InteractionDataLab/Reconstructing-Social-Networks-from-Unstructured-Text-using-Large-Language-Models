@@ -1,0 +1,162 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_axure_annotation_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/axure/annotation.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>// ******* Annotation MANAGER ******** //
+$axure.internal(function($ax) {
+</P><PRE>   var NOTE_SIZE = 10;
+</PRE><PRE>   var _annotationManager = $ax.annotation = {};
+</PRE><PRE>   var _updateLinkLocations = $ax.annotation.updateLinkLocations = function(textId) {
+       var diagramObject = $ax.getObjectFromElementId(textId);
+       var rotation = (diagramObject &amp;&amp; diagramObject.style.rotation);
+       var shapeId = $ax.style.GetShapeIdFromText(textId);
+</PRE><PRE>       //we have to do this because webkit reports the post-transform position but when you set
+       //positions it's pre-transform
+       if(WEBKIT &amp;&amp; rotation) {
+           //we can dynamiclly rotate a widget now, show need to remember the transform rather than just remove it
+           //here jquery.css will return 'none' if element is display none
+           var oldShapeTransform = document.getElementById(shapeId).style['-webkit-transform'];
+           var oldTextTransform = document.getElementById(textId).style['-webkit-transform'];
+           $('#' + shapeId).css('-webkit-transform', 'scale(1)');
+           $('#' + textId).css('-webkit-transform', 'scale(1)');
+       }
+</PRE><PRE>       $('#' + textId).find('span[id$=&quot;_ann&quot;]').each(function(index, value) {
+           var elementId = value.id.replace('_ann', <I>);</I></PRE><PRE>           var annPos = $(value).position();
+           var left = annPos.left - NOTE_SIZE;
+           var top = annPos.top;
+</PRE><PRE>           $('#' + elementId + 'Note').css('left', left).css('top', top);
+       });
+</PRE><PRE>       //undo the transform reset
+       if(WEBKIT &amp;&amp; rotation) {
+           $('#' + shapeId).css('-webkit-transform', oldShapeTransform || <I>);</I>
+           $('#' + textId).css('-webkit-transform', oldTextTransform || <I>);</I>
+       }
+   };
+</PRE><PRE>   var dialogs = {};
+   $ax.annotation.ToggleWorkflow = function(event, id, width, height) {
+</PRE><PRE>       if(dialogs[id]) {
+           var $dialog = dialogs[id];
+           // reset the dialog
+           dialogs[id] = undefined;
+           if($dialog.dialog(&quot;isOpen&quot;)) {
+               $dialog.dialog(&quot;close&quot;);
+               return;
+           }
+       }
+</PRE><PRE>       // we'll need to save the scroll position just for stupid IE which will skip otherwise
+       var win = $(window);
+       var scrollY = win.scrollTop();
+       var scrollX = win.scrollLeft();
+</PRE><PRE>       var bufferH = 10;
+       var bufferV = 10;
+       var blnLeft = false;
+       var blnAbove = false;
+       var sourceTop = event.pageY - scrollY;
+       var sourceLeft = event.pageX - scrollX;
+</PRE><PRE>       if(sourceLeft &gt; width + bufferH) {
+           blnLeft = true;
+       }
+       if(sourceTop &gt; height + bufferV) {
+           blnAbove = true;
+       }
+</PRE><PRE>       var top = 0;
+       var left = 0;
+       if(blnAbove) top = sourceTop - height - 20;
+       else top = sourceTop + 10;
+       if(blnLeft) left = sourceLeft - width - 4;
+       else left = sourceLeft - 6;
+</PRE><PRE>       $ax.globals.MaxZIndex = $ax.globals.MaxZIndex + 1;
+       if(IE_10_AND_BELOW) height += 50;
+</PRE><PRE>       var dObj = $ax.getObjectFromElementId(id);
+       var ann = dObj.annotation;
+</PRE>
+        var $dialog = $('')
+<PRE>           .appendTo('body')
+           .html($ax.legacy.GetAnnotationHtml(ann))
+           .dialog({
+               title: dObj.label,
+               width: width,
+               height: height,
+               minHeight: 150,
+               zIndex: $ax.globals.MaxZIndex,
+               position: [left, top],
+               dialogClass: 'dialogFix',
+               autoOpen: false
+           });
+       $dialog.parent().appendTo('#base');
+       $dialog.dialog('open');
+       dialogs[id] = $dialog;
+</PRE><PRE>       // scroll ... just for IE
+       window.scrollTo(scrollX, scrollY);
+   };
+</PRE><PRE>   $ax.annotation.InitializeAnnotations = function (query) {
+       if(!$ax.document.configuration.showAnnotations) return;
+</PRE><PRE>       query.each(function(dObj, elementId) {
+           if(!dObj.annotation) return;
+</PRE><PRE>           if(dObj.type == 'hyperlink') {
+               var textId = $ax.style.GetTextIdFromLink(elementId);
+</PRE><PRE>               var elementIdQuery = $('#' + elementId);
+               elementIdQuery.after(&quot;<SPAN id=".22_.2B_elementId_.2B_.22_ann">​</SPAN>&quot;);
+</PRE><PRE>               if($ax.document.configuration.useLabels) {
+                   var label = $('#' + elementId).attr(&quot;data-label&quot;);
+                   if(!label || label == &quot;&quot;) label = &quot;?&quot;;
+</PRE>
+                    $('#' + textId).append(&quot;<DIV id=".22_.2B_elementId_.2B_.22Note" class="annnotelabel">&quot; + label + &quot;</DIV>&quot;);
+<PRE>               } else {
+</PRE>
+                    $('#' + textId).append(&quot;&quot;);
+<PRE>               }
+               $('#' + elementId + 'Note').click(function(e) {
+                   $ax.annotation.ToggleWorkflow(e, elementId, 300, 200, false);
+                   return false;
+               });
+</PRE><PRE>               _updateLinkLocations(textId);
+           } else {
+               if($ax.document.configuration.useLabels) {
+                   var label = $('#' + elementId).attr(&quot;data-label&quot;);
+                   if(!label || label == &quot;&quot;) label = &quot;?&quot;;
+</PRE>
+                    $('#' + elementId + &quot;_ann&quot;).append(&quot;<DIV id=".22_.2B_elementId_.2B_.22Note" class="annnotelabel">&quot; + label + &quot;</DIV>&quot;);
+<PRE>               } else {
+</PRE>
+                    $('#' + elementId + &quot;_ann&quot;).append(&quot;&quot;);
+<PRE>               }
+               $('#' + elementId + 'Note').click(function(e) {
+                   $ax.annotation.ToggleWorkflow(e, elementId, 300, 200, false);
+                   return false;
+               });
+           }
+</PRE>
+            $('#' + elementId + 'Note.annnoteimage').append(&quot;&quot;);
+<PRE>       });
+   };
+</PRE><PRE>   $ax.annotation.jQueryAnn = function(query) {
+       var elementIds = [];
+       query.each(function(diagramObject, elementId) {
+           if(diagramObject.annotation) elementIds[elementIds.length] = elementId;
+       });
+       var elementIdSelectors = jQuery.map(elementIds, function(elementId) { return '#' + elementId + '_ann'; });
+       var jQuerySelectorText = (elementIdSelectors.length &gt; 0) ? elementIdSelectors.join(', ') : <I>;</I>
+       return $(jQuerySelectorText);
+   };
+</PRE><PRE>   $(window.document).ready(function() {
+       $ax.annotation.InitializeAnnotations($ax(function(dObj) { return dObj.annotation; }));
+</PRE><PRE>       $ax.messageCenter.addMessageListener(function(message, data) {
+           //If the annotations are being hidden via the Sitemap toggle button, hide any open dialogs
+           if(message == 'annotationToggle') {
+               if(data == false) {
+                   for(var index in dialogs) {
+                       var $dialog = dialogs[index];
+                       if($dialog.dialog(&quot;isOpen&quot;)) {
+                           $dialog.dialog(&quot;close&quot;);
+                       }
+                   }
+               }
+           }
+       });
+   });
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

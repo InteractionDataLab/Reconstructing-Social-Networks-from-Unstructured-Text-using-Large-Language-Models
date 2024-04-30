@@ -1,0 +1,202 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Groningen_Modelling_Arsenic_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu"><UL><LI class="selected"><A href="/Team:Groningen/Modelling/Arsenic.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Groningen/Modelling/Arsenic.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Groningen/Modelling/Arsenic.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Groningen/Modelling/Arsenic.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Groningen/Modelling/Arsenic.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Groningen/Modelling/Arsenic.js</H1><DIV id="bodyContent"><H3 id="siteSub">From 2009.igem.org</H3><P>arsenicModelMaxIter = 1000;
+function arsenicModelConstants() { // Prevents other scripts from overriding them.
+</P><PRE> return {
+   // Extra-cellular
+   GlpFTfactor: 2, // relative amount of GlpF
+   hasGlpFPlasmid: false, // set to true for experiments with GlpF on a plasmid
+   // Intra-cellular
+   ars1T: 1.6605e-9,
+   ars2T: 0,
+   pro: 0, // TODO: rename to proR
+   proK: 0, // Promoters in front of ArsR fusion from Kostal2004 (handled completely analogously to MBPArsR)
+   proM: 0, // Promoters in front of our ArsR fusion (with MBP)
+   proF: 0, // Promoters in front of fMT
+   // Reaction constants
+   K1d: 6e-6, // ArsR-As
+   KKd: 6e-6, // ArsR-As (ArsR fusion from Kostal2004)
+   KMd: 6e-6, // MBPArsR-As
+   KFd: 6e-6, // fMT-As
+   nf: 3, // Hill coefficient for fMT + As
+   K3d2: Math.pow(0.33e-6,2), // ArsR-ars
+   v5: 3.1863e-6, // import
+   K5: 27.718e-6, // import
+   k8: 1e2, // export (unknown)
+   K7: 1e-4, // export (unknown)
+   tauB: 1800,  // half-life of ArsB
+   tauR: 6,  // half-life of ArsR
+   tauG: 6,  // half-life of GV
+   tauK: 960, // half-life of ArsR fusion of Kostal2004
+   tauM: 6, // half-life of MBP-ArsR
+   tauF: 6, // half-life of fMT
+   beta1: 100, // production rate of ArsR behind ars1 // TODO: Rename them all!
+   beta3: 100, // production rate of ArsR behind pro
+   beta4: 95, // production rate of ArsB behind ars1
+   beta5: 6.6, // production rate of GV behind ars2
+   betaK: 15.4,  // production rate of ArsR fusion of Kostal2004 behind proK
+   betaM: 26.6,  // production rate of MBP-ArsR behind proM
+   betaF: 200,  // production rate of fMT behind proF
+   // Volumes
+   Vs: 1.1e-3,
+   Vc: 0.0073e-3
+ };
+</PRE><P>}
+</P><P>// Returns an array with all the necessary variables initialized as if a solution with cells in equilibrium suddenly gets a shot of arsenic
+function arsenicModelInitialization(c,AsT) {
+</P><PRE> if (c.AsT!=undefined &amp;&amp; AsT==undefined) AsT = c.AsT;
+ // First determine equilibrium without arsenic
+ var x = arsenicModelEquilibrium(c,0);
+</PRE><PRE> // Return equilibrium with added arsenic
+ x.AsexT = AsT/c.Vs;
+ return x;
+</PRE><P>}
+</P><P>// Computes gradient of the variables in the arsenic model
+function arsenicModelGradient(c,x) {
+</P><PRE> // Solve 0 = As(III)in (1 + ArsR/KRd + MBPArsRT/(KMd + As(III)in)
+ //                        + nf fMTT As(III)in^(nf-1)/(KFdnf + As(III)in^nf) - As(III)inT
+ // and   0 = ArsR (1 + Asin/KRd + 2 ArsR ars / KAd²) - ArsRT
+ var arsT = c.ars1T+c.ars2T, KFdnf = Math.pow(c.KFd,c.nf);
+ var Asinlow = 0, Asinhigh = x.AsinT, Asintol = x.AsinT*1e-6, Asinlownf, Asinhighnf;
+ var ArsRlow = 0, ArsRhigh = x.ArsRT, ArsRtol = x.ArsRT*1e-6;
+ var arslow = arsT/(1+Math.pow(ArsRhigh,2)/c.K3d2), arshigh = arsT, arstol = arsT*1e-6;
+ for(var iter=1; iter&lt;=arsenicModelMaxIter &amp;&amp;
+                 (Asinhigh-Asinlow&gt;Asintol || ArsRhigh-ArsRlow&gt;ArsRtol || arshigh-arslow&gt;arstol); iter++) {
+   Asinlownf = Math.pow(Asinlow,c.nf-1); // It is not safe to divide out Asinlow/high, so we do c.nf-1 here
+   Asinhighnf = Math.pow(Asinhigh,c.nf-1);
+   Asinlow = x.AsinT/(1+ArsRhigh/c.K1d+x.MBPArsRT/(c.KMd+Asinlow)+x.KostalArsRT/(c.KKd+Asinlow)
+                       +c.nf*x.fMTT*Asinhighnf/(KFdnf+Asinlownf*Asinlow));
+   Asinhigh = x.AsinT/(1+ArsRlow/c.K1d+x.MBPArsRT/(c.KMd+Asinhigh)+x.KostalArsRT/(c.KKd+Asinhigh)
+                        +c.nf*x.fMTT*Asinlownf/(KFdnf+Asinhighnf*Asinhigh));
+   ArsRlow = x.ArsRT/(1+Asinhigh/c.K1d+2*arshigh*ArsRhigh/c.K3d2);
+   ArsRhigh = x.ArsRT/(1+Asinlow/c.K1d+2*arslow*ArsRlow/c.K3d2);
+   arslow = arsT*c.K3d2/(c.K3d2+Math.pow(ArsRhigh,2));
+   arshigh = arsT*c.K3d2/(c.K3d2+Math.pow(ArsRlow,2));
+ }
+ //if (iter&gt;15) alert(iter);
+ var Asin = Asinlow + 0.5*(Asinhigh-Asinlow);
+ var ArsR = ArsRlow + 0.5*(ArsRhigh-ArsRlow);
+ //var ars = arslow + 0.5*(arshigh-arslow);
+ /*alert('err='+[Asin*(1+ArsR/c.K1d+x.MBPArsRT/(c.KMd+Asin)+x.KostalArsRT/(c.KKd+Asin))
+         + c.nf*x.fMTT*Math.pow(Asin,c.nf)/(KFdnf+Math.pow(Asin,c.nf)) - x.AsinT,
+        ArsR*(1+Asin/c.K1d+2*(c.ars1T+c.ars2T)*ArsR/c.K3d2) - x.ArsRT,
+        ars*(c.K3d2+Math.pow(ArsRhigh,2))/c.K3d2 - arsT]);*/
+ /*alert('gradient, [Asin,ArsR,arsF]='+[Asin,ArsR,ars/arsT]
+        +', [AsinT-Asin,ArsRT-(ArsR+2*(arsT-ars))]='+[x.AsinT-Asin,x.ArsRT-(ArsR+2*(arsT-ars))]);*/
+</PRE><PRE> var KostalArsR = x.KostalArsRT*c.KKd/(c.KKd+Asin);
+ var MBPArsR = x.MBPArsRT*c.KMd/(c.KMd+Asin);
+ var fMT = x.fMTT*c.KFd/(c.KFd+Asin);
+ var ArsB = x.ArsBT*c.K7/(c.K7+Asin);
+ var ArsBAs = x.ArsBT*Asin/(c.K7+Asin);
+ var arsFraction = c.K3d2/(c.K3d2+Math.pow(ArsR,2));
+ var ars1 = c.ars1T*arsFraction;
+ var ars2 = c.ars2T*arsFraction;
+ var dAsinTdt = (c.hasGlpFPlasmid?c.GlpFTfactor:1)*c.v5*x.AsexT / (c.K5+x.AsexT) - c.k8*ArsBAs;
+ var dArsRT = c.beta1*ars1 + c.beta3*c.pro - (Math.LN2/c.tauR)*ArsR;
+</PRE><PRE> return {
+   // Extra-cellular
+   AsexT: -(c.Vc/c.Vs)*dAsinTdt,
+   // Intra-cellular
+   ArsBT: c.beta4*ars1 - (Math.LN2/c.tauB)*ArsB,
+   AsinT: dAsinTdt,
+   ArsRT: dArsRT,
+   KostalArsRT: c.betaK*c.proK - (Math.LN2/c.tauK)*KostalArsR,
+   MBPArsRT: c.betaM*c.proM - (Math.LN2/c.tauM)*MBPArsR,
+   fMTT: c.betaF*c.proF - (Math.LN2/c.tauF)*fMT,
+   GV: c.beta5*ars2 - (Math.LN2/c.tauG)*x.GV,
+   // Subcomponents (selected)
+   '_ArsR': ArsR,
+   '_Asin': Asin,
+   '_arsF': arsFraction
+ };
+</PRE><P>}
+</P><P>// Computes the equilibrium from constants
+function arsenicModelEquilibrium(c,AsT) {
+</P><PRE> if (c.AsT!=undefined &amp;&amp; AsT==undefined) AsT = c.AsT;
+</PRE><PRE> // Solve 0 = (β1 ars1T + β3 pro) (τR/ln(2)) K3d² - K3d² ArsR + β3 (τR/ln(2)) pro ArsR² - ArsR³
+ var fArsR = function(ArsR) { return (c.beta1*c.ars1T + c.beta3*c.pro)*(c.tauR/Math.LN2)*c.K3d2 - c.K3d2*ArsR + c.beta3*(c.tauR/Math.LN2)*c.pro*Math.pow(ArsR,2) - Math.pow(ArsR,3); }
+ var ArsRlow = 0, ArsRhigh = (c.beta1*c.ars1T + c.beta3*c.pro)*(c.tauR/Math.LN2);
+ var ArsR = findSingleZero(fArsR,ArsRlow,ArsRhigh);
+</PRE><PRE> // Compute ArsB and GV
+ var arsFraction = c.K3d2/(c.K3d2+Math.pow(ArsR,2));
+ var ArsB = c.beta4*(c.tauB/Math.LN2)*c.ars1T*arsFraction;
+ var KostalArsR = c.betaK*(c.tauK/Math.LN2)*c.proK;
+ var MBPArsR = c.betaM*(c.tauM/Math.LN2)*c.proM;
+ var fMT = c.betaF*(c.tauF/Math.LN2)*c.proF;
+ var GV = c.beta5*(c.tauB/Math.LN2)*c.ars2T*arsFraction;
+</PRE><PRE> // Determine intra-cellular concentration of As(III)
+ if (c.K7*(c.hasGlpFPlasmid?c.GlpFTfactor:1)*c.v5==0) {
+   var Asin = 0, AsinT = 0;
+ } else if (c.k8*ArsB==0) {
+   var AsinT = AsT/c.Vc;
+   var fAsin = function(Asin) {
+                 return Asin*(1+ArsR/c.K1d+MBPArsR/c.KMd+KostalArsR/c.KKd) + c.nf*fMT*Math.pow(Asin/c.KFd,c.nf) - AsinT;
+               };
+   var Asinlow = 0, Asinhigh = AsinT;
+   var Asin = findSingleZero(fAsin,Asinlow,Asinhigh);
+ } else {
+   // By solving 0 = Vs K5 As(III)in / (K7 v5/(k8 ArsB) - As(III)in)
+   //                 + Vc As(III)in (1 + ArsR/KRd + MBPArsR/KMd + fMTT As(III)in^(nf-1)/KFd^nf)
+   //                 - As(III)T
+   var fAsin = function(Asin) {
+                 return c.Vs*c.K5*Asin/(c.K7*(c.hasGlpFPlasmid?c.GlpFTfactor:1)*c.v5/(c.k8*ArsB) - Asin)
+                         + c.Vc*Asin*(1+ArsR/c.K1d+MBPArsR/c.KMd+KostalArsR/c.KKd)
+                         + c.Vc*c.nf*fMT*Math.pow(Asin/c.KFd,c.nf)
+                         - AsT;
+               };
+   var Asinlow = 0, Asinhigh = Math.min(AsT/c.Vc,c.K7*(c.hasGlpFPlasmid?c.GlpFTfactor:1)*c.v5/(c.k8*ArsB));
+   var Asin = findSingleZero(fAsin,Asinlow,Asinhigh);
+   var AsinT = Asin*(1+ArsR/c.K1d+MBPArsR/c.KMd+KostalArsR/c.KKd) + fMT*Math.pow(Asin/c.KFd,c.nf);
+ }
+</PRE><PRE> var ArsRT = ArsR*(1.0+Asin/c.K1d+2*ArsR*arsFraction*(c.ars1T+c.ars2T)/c.K3d2);
+ /*alert('equilibrium, [Asin,ArsR,arsF]='+[Asin,ArsR,arsFraction]
+         +', [AsinT-Asin,ArsRT-(ArsR+2*(arsT-ars))]='+[AsinT-Asin,ArsRT-(ArsR+2*(c.ars1T+c.ars2T)*(1-arsFraction))]);*/
+ return {
+   // Extra-cellular
+   'AsexT': (AsT-c.Vc*AsinT)/c.Vs,
+   // Intra-cellular
+   'ArsBT': ArsB*(1.0+Asin/c.K7),
+   'AsinT': AsinT,
+   'ArsRT': ArsRT,
+   'KostalArsRT': KostalArsR*(1.0+Asin/c.KKd),
+   'MBPArsRT': MBPArsR*(1.0+Asin/c.KMd),
+   'fMTT': fMT*(1.0+Math.pow(Asin/c.KFd,c.nf)),
+   'GV': GV,
+   // Subcomponents (selected)
+   '_ArsR': ArsR,
+   '_Asin': Asin,
+   '_arsF': arsFraction
+ };
+</PRE><P>}
+</P><P>// Assuming there is exactly one zero of f(x) for x in [low,high] this function will find it
+function findSingleZero(f,low,high,tol) {
+</P><PRE> if (tol===undefined) tol = 1e-6;
+ var ylow = f(low);
+ var yhigh = f(high);
+ var x = (low+high)/2.0, y;
+ for(var iter=1;
+     iter&lt;=arsenicModelMaxIter &amp;&amp; (high-low)/x&gt;tol;
+     iter++)
+ {
+   y = f(x);
+   if (y*ylow&gt;0) { // Checking if y and ylow have the same sign
+     low = x;
+     ylow = y;
+   } else {
+     high = x;
+     yhigh = y;
+   }
+   x = high - yhigh*(high-low)/(yhigh-ylow); // Secant method (roughly)
+   if (isNaN(x)) x = low+0.5*(high-low);
+   x = Math.min(Math.max(x,low+0.1*(high-low)),low+0.9*(high-low)); // Ensures convergence
+ }
+ return x;
+</PRE><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2009.igem.org/Team:Groningen/Modelling/Arsenic.js">http://2009.igem.org/Team:Groningen/Modelling/Arsenic.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Groningen/Modelling/Arsenic.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Groningen/Modelling/Arsenic.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Groningen/Modelling/Arsenic.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Groningen/Modelling/Arsenic.js&amp;oldid=110050" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2009.igem.org:Privacy_policy" title="2009.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2009.igem.org:General_disclaimer" title="2009.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

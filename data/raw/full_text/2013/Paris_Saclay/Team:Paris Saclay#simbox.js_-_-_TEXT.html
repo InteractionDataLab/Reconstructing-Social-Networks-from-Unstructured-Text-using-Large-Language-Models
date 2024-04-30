@@ -1,0 +1,105 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Paris Saclay/simbox.js
+From 2013.igem.org
+/* Simulator written by Damir Vodenicarevic for the Paris-Saclay 2013 iGEM team */
+simulations= new Array();
+function simboxes_load() {
+var simboxes= document.getElementsByClassName("simbox");
+for(var i=0 ; i < simboxes.length ; ++i)  init_simbox(simboxes[i], i);
+}
+function molecule() {
+this.name= undefined; this.init_qtty= 0; this.quantity= 0; this.curve_show= false; this.curve_color= "#000000"; this.const= false; this.adjustable= false; this.history= new Array();
+}
+function reaction() {
+this.inputs= new Array(); this.outputs= new Array(); this.probability= 0.0; this.precomp_probfactor= 0.0; this.precomp_n_consumed= new Array(); this.precomp_n_in= new Array();
+}
+function simulation() {
+this.id= undefined; this.volume= undefined; this.timestep= 0.0001; this.alpha= 7.4e-7; this.molecules= new Array(); this.reactions= new Array(); this.reac_order= new Array(); this.running= false; this.refresh_run_time= 70; this.refresh_interval= 30; this.timeout= null; this.curtime= 0.0; this.curstep= 0;
+this.canv= null; this.ctx= null; this.draw_min_t= 0.0; this.draw_max_t= 100.0; this.draw_min_v= 0.0; this.draw_max_v= 1000.0;
+}
+function simbox_get_molecule_id(simid, name) {
+for(var i= 0 ; i < simulations[simid].molecules.length ; ++i) {  if(simulations[simid].molecules[i].name == name)   return i; } return null;
+}
+function init_simbox(sb, id) {
+simulations[id]= new simulation();
+//Get parameters var xmlfile= sb.getAttribute('data-load')+'?action=raw&ctype=text/css&ps_tstamp='+new Date().getTime(); var width= parseInt(sb.getAttribute('data-width')); var height= parseInt(sb.getAttribute('data-height'));
+//Open XML data file var xmldata= null; try {  var xhr= new XMLHttpRequest();  xhr.open("GET", xmlfile, false);  xhr.send();  var parser= new DOMParser();  xmldata= parser.parseFromString(xhr.responseText, "application/xml");  if(xmldata.documentElement.nodeName != 'sim')   throw 'XML parsing error'; } catch(err) {  sb.innerHTML='Error : ' + err;  return false; }
+//Load display parameters if(xmldata.getElementsByTagName("yscale").length > 0)  simulations[id].draw_max_v= parseFloat(xmldata.getElementsByTagName("yscale")[0].childNodes[0].nodeValue);
+//Load simulation parameters if(xmldata.getElementsByTagName("volume").length > 0)  simulations[id].volume= parseFloat(xmldata.getElementsByTagName("volume")[0].childNodes[0].nodeValue); if(xmldata.getElementsByTagName("timestep").length > 0)  simulations[id].timestep= parseFloat(xmldata.getElementsByTagName("timestep")[0].childNodes[0].nodeValue); if(xmldata.getElementsByTagName("alpha").length > 0)  simulations[id].alpha= parseFloat(xmldata.getElementsByTagName("alpha")[0].childNodes[0].nodeValue);
+//Load molecules var molecule_tags= xmldata.getElementsByTagName("molecule"); for(var i= 0 ; i < molecule_tags.length ; ++i) {   simulations[id].molecules[i]= new molecule();  simulations[id].molecules[i].name= molecule_tags[i].getAttribute('name');  if(molecule_tags[i].hasAttribute('quantity'))  {   simulations[id].molecules[i].init_qtty= parseFloat(molecule_tags[i].getAttribute('quantity'));   simulations[id].molecules[i].quantity= parseFloat(molecule_tags[i].getAttribute('quantity'));  }  if(molecule_tags[i].hasAttribute('curve_show'))   simulations[id].molecules[i].curve_show= (molecule_tags[i].getAttribute('curve_show') == 'true');  if(molecule_tags[i].hasAttribute('curve_color'))   simulations[id].molecules[i].curve_color= molecule_tags[i].getAttribute('curve_color');  if(molecule_tags[i].hasAttribute('const'))   simulations[id].molecules[i].const= (molecule_tags[i].getAttribute('const') == 'true');  if(molecule_tags[i].hasAttribute('adjustable'))   simulations[id].molecules[i].adjustable= (molecule_tags[i].getAttribute('adjustable') == 'true'); }
+//Load reactions var reaction_tags= xmldata.getElementsByTagName("reaction"); for(var i= 0 ; i < reaction_tags.length ; ++i) {  simulations[id].reactions[i]= new reaction();  if(reaction_tags[i].hasAttribute('probability'))   simulations[id].reactions[i].probability= parseFloat(reaction_tags[i].getAttribute('probability'));
+//precomputing  simulations[id].reactions[i].precomp_probfactor= simulations[id].reactions[i].probability;    var input_tags= reaction_tags[i].getElementsByTagName("in");  if(input_tags.length > 2)  {   sb.innerHTML='Error : reactions with more than 2 reactices are not supported.';   return false;  }  for(var j= 0 ; j < input_tags.length ; ++j)  {    var tmpid= simbox_get_molecule_id(id, input_tags[j].childNodes[0].nodeValue);    if(tmpid == null)    {     sb.innerHTML='Error : molecule "'+input_tags[j].childNodes[0].nodeValue+'" not defined.';     return false;    }    simulations[id].reactions[i].inputs[j]= tmpid;
+//precomputing    if(!simulations[id].molecules[tmpid].const)    {     if(simulations[id].reactions[i].precomp_n_in[tmpid] == undefined)     {      simulations[id].reactions[i].precomp_n_in[tmpid] = 1;      simulations[id].reactions[i].precomp_n_consumed[tmpid] = 1;     }     else     {      simulations[id].reactions[i].precomp_n_in[tmpid] ++;      simulations[id].reactions[i].precomp_n_consumed[tmpid] ++;     }    }  }  //precomputing  if(input_tags.length == 2)  {   simulations[id].reactions[i].precomp_probfactor *= (simulations[id].alpha/simulations[id].volume);   if(simulations[id].reactions[i].inputs[0] == simulations[id].reactions[i].inputs[1])    simulations[id].reactions[i].precomp_probfactor /= 2;  }
+var output_tags= reaction_tags[i].getElementsByTagName("out");  for(var j= 0 ; j < output_tags.length ; ++j)  {    var tmpid= simbox_get_molecule_id(id, output_tags[j].childNodes[0].nodeValue);    if(tmpid == null)    {     sb.innerHTML='Error : molecule "'+output_tags[j].childNodes[0].nodeValue+'" not defined.';     return false;    }    simulations[id].reactions[i].outputs[j]= tmpid;
+//precomputing    if(simulations[id].reactions[i].precomp_n_consumed[tmpid] != undefined)    {     simulations[id].reactions[i].precomp_n_consumed[tmpid] --;     if(simulations[id].reactions[i].precomp_n_consumed[tmpid] <= 0) //not consuming      simulations[id].reactions[i].precomp_n_consumed.splice(tmpid, 1);    }  }
+//precompute index array for easy shuffling  simulations[id].reac_order[i]= i; }  //Clear loading text sb.innerHTML= ;
+//Create canvas simulations[id].canv= document.createElement('canvas'); simulations[id].ctx= simulations[id].canv.getContext("2d"); simulations[id].canv.id= "simbox_canv_"+id; simulations[id].canv.width= width; simulations[id].canv.height= height; sb.appendChild(simulations[id].canv);  //Init param box var paramdiv= document.createElement('div'); sb.appendChild(paramdiv); //legend var reshtmlparamdiv= ; for(var i= 0 ; i < simulations[id].molecules.length ; ++i) {  if(simulations[id].molecules[i].curve_show)   reshtmlparamdiv += ''+simulations[id].molecules[i].name+' '; } reshtmlparamdiv += 't = 0'; //quantity controls for(var i= 0 ; i < simulations[id].molecules.length ; ++i) {  if(simulations[id].molecules[i].adjustable)  {   reshtmlparamdiv += '
+';   reshtmlparamdiv += simulations[id].molecules[i].name + ' = <input id="simbox_ctl_'+id+'_'+i+'" type="number" min="0" value="'+simulations[id].molecules[i].quantity+'"/>';  } } reshtmlparamdiv += '
+'; //controls reshtmlparamdiv += '<button onclick="simbox_startclick(this,'+id+')" id="simbox_start_'+id+'">START</button><button onclick="simbox_resetclick(this,'+id+')" id="simbox_reset_'+id+'">RESET</button>'; //about reshtmlparamdiv += '
+Programmed by Damir Vodenicarevic, based on the work of Patrick Amar and Loïc Paulevé [HSIM: an hybrid stochastic simulation system for systems biology, Electronic Notes in Theoretical Computer Science www.elsevier.nl/locate/entcs]';
+paramdiv.innerHTML= reshtmlparamdiv;
+simbox_update_controls(id);
+return true;
+}
+function is_posint(str) {
+var parsed= parseInt(str);  if(isNaN(parsed)) return false;  if(!isFinite(parsed)) return false;  if(parsed < 0) return false;  return true;
+}
+function simbox_startclick(btn, simid) {
+if(simulations[simid].running) {   window.clearTimeout(simulations[simid].timeout);   simulations[simid].running= false;   btn.innerHTML= 'START'; } else {  for(var i= 0 ; i < simulations[simid].molecules.length ; ++i)  {   if(simulations[simid].molecules[i].adjustable)   {    var tmpval= document.getElementById('simbox_ctl_'+simid+'_'+i).value;    if(!is_posint(tmpval))    {     alert('Invalid quantity set for molecule "'+simulations[simid].molecules[i].name+'".');     return false;    }    simulations[simid].molecules[i].quantity= parseInt(tmpval);   }  }  simulations[simid].running= true;  btn.innerHTML= 'PAUSE';  simbox_refresh(simid); } simbox_update_controls(simid); return true;
+}
+function simbox_resetclick(btn, simid) {
+if(simulations[simid].running) {  window.clearTimeout(simulations[simid].timeout);  simulations[simid].running= false;  document.getElementById('simbox_start_'+simid).innerHTML= 'START'; }  //Reset quantities, clear curves simulations[simid].curtime= 0; simulations[simid].curstep= 0; for(var i= 0 ; i < simulations[simid].molecules.length ; ++i) {  simulations[simid].molecules[i].quantity= simulations[simid].molecules[i].init_qtty;  simulations[simid].molecules[i].history.length= 0; }
+//Update controls simbox_update_controls(simid);
+}
+function simbox_update_controls(simid) {
+for(var i= 0 ; i < simulations[simid].molecules.length ; ++i) {  if(simulations[simid].molecules[i].adjustable)  {   document.getElementById('simbox_ctl_'+simid+'_'+i).value= simulations[simid].molecules[i].quantity;   document.getElementById('simbox_ctl_'+simid+'_'+i).disabled= simulations[simid].running;  } } document.getElementById('simbox_time_'+simid).innerHTML= 't = ' + simulations[simid].curtime.toPrecision(5) + ' [step n°'+simulations[simid].curstep+']';
+}
+function simbox_refresh(simid) {
+var tmpdate= new Date(); var time1= tmpdate.getTime();
+while(tmpdate.getTime() - time1 < simulations[simid].refresh_run_time) {  simulation_step(simid);  tmpdate= new Date(); }  simulations[simid].draw_min_t= (simulations[simid].curtime - 20 < 0 ? 0 : simulations[simid].curtime - 20); simulations[simid].draw_max_t= simulations[simid].curtime; simbox_draw_graph(simid); simbox_update_controls(simid);
+simulations[simid].timeout= setTimeout(function() {simbox_refresh(simid);}, simulations[simid].refresh_interval);
+}
+function shuffle_array(array) {
+for(var i= array.length-1; i > 0 ; --i) {  var j= Math.floor(Math.random() * (i + 1));  var tmp= array[i];  array[i]= array[j];  array[j]= tmp; }
+}
+function simulation_step(simid) {
+var sim= simulations[simid];
+//Shuffle reaction order shuffle_array(sim.reac_order);
+for(var i= 0 ; i < sim.reac_order.length ; ++i) {  var reac= sim.reactions[sim.reac_order[i]];
+var proba= reac.precomp_probfactor;
+if(reac.inputs.length == 1)   proba *= sim.molecules[reac.inputs[0]].quantity;  else if(reac.inputs.length == 2)  {   if(reac.inputs[0] != reac.inputs[1])    proba *= sim.molecules[reac.inputs[0]].quantity * sim.molecules[reac.inputs[1]].quantity;   else if(sim.molecules[reac.inputs[0]].quantity >= 2)    proba *= sim.molecules[reac.inputs[0]].quantity *(sim.molecules[reac.inputs[0]].quantity - 1.0);   else    proba= 0.0;  }
+var n= Math.floor(proba);  var frac= proba - n;  if(frac > 0)  {   if(Math.random() < frac)    ++n;  }
+for(var elt in reac.precomp_n_consumed)  {   if( n * reac.precomp_n_consumed[elt] >= sim.molecules[elt].quantity )   {    var tmpe= Math.floor(sim.molecules[elt].quantity / reac.precomp_n_consumed[elt]);    if(tmpe < n)     n= tmpe;   }  }   //check for initial possibility  for(var elt in reac.precomp_n_in)  {   if( sim.molecules[elt].quantity < reac.precomp_n_in[elt] )   {    n= 0;    break;   }  }
+for(var j= 0 ; j < reac.inputs.length ; ++j)  {   if(!sim.molecules[reac.inputs[j]].const)    sim.molecules[reac.inputs[j]].quantity -= n;  }  for(var j= 0 ; j < reac.outputs.length ; ++j)  {   if(!sim.molecules[reac.outputs[j]].const)    sim.molecules[reac.outputs[j]].quantity += n;  } }
+for(var i= 0 ; i < sim.molecules.length ; ++i) {  if(sim.molecules[i].curve_show)   sim.molecules[i].history.push(sim.molecules[i].quantity); }
+sim.curtime += sim.timestep; sim.curstep++;
+}
+function simbox_drawXcoord(simid, t) {
+var tmin= simulations[simid].draw_min_t; var tmax= simulations[simid].draw_max_t; return simulations[simid].canv.width*(t-tmin)/(tmax-tmin);
+} function simbox_drawYcoord(simid, v) {
+var vmin= simulations[simid].draw_min_v; var vmax= simulations[simid].draw_max_v; return simulations[simid].canv.height*(1.0 - (v-vmin)/(vmax-vmin));
+}
+function simbox_draw_graph(simid) {
+var sim= simulations[simid]; var canv= sim.canv; var ctx= sim.ctx;
+ctx.clearRect(0, 0, canv.width, canv.height);
+for(var i= 0 ; i < sim.molecules.length ; ++i) {  if(sim.molecules[i].curve_show)  {   var dta= sim.molecules[i].history;   var tstart= Math.floor(sim.draw_min_t/sim.timestep);   var tend= Math.ceil(sim.draw_max_t/sim.timestep);   if(tstart > dta.length)    tstart= dta.length;   if(tend > dta.length)    tend= dta.length;     var step= Math.ceil((tend-tstart)/(200));
+ctx.beginPath();   for(var ti= tstart ; ti < tend ; ti += step)   {    if(ti > tstart)     ctx.lineTo( simbox_drawXcoord(simid, ti*sim.timestep), simbox_drawYcoord(simid, dta[ti]) );    else     ctx.moveTo( simbox_drawXcoord(simid, ti*sim.timestep), simbox_drawYcoord(simid, dta[ti]) );   }   ctx.strokeStyle= sim.molecules[i].curve_color;   ctx.stroke();  } }
+}
+window.addEventListener("load", simboxes_load, false);
+Retrieved from " http://2013.igem.org/Team:Paris_Saclay/simbox.js "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

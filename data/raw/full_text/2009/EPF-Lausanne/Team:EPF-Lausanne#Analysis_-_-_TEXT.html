@@ -1,0 +1,208 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:EPF-Lausanne/Analysis
+From 2009.igem.org
+Home
+Team
+Presentation
+School
+Team Management
+Brainstorming
+Sponsors
+Project
+Abstract
+Theory
+Strategy
+Experimental Setup
+Results
+Parts submitted to the Registry
+Future directions
+References
+Modeling
+Modeling overview
+Analysis Methods
+Results
+References
+Human practices
+Overview
+Talks
+Survey
+Media
+Safety
+Lab
+Last News
+Notebook
+Protocols used
+Contents
+1 Scripts
+2 Tutorials
+2.1 Maxwell-Boltzmann Energy Distribution
+2.2 Energies
+2.3 Temperature distribution
+2.4 Density
+2.5 Pressure as a function of simulation time
+2.6 RMSD for individual residues
+2.7 RMSD of selected atoms compared to initial position along time
+2.8 Salt bridges
+2.9 RMSF
+Analysis of Equilibrium
+Scripts
+As this page is getting crowded, we created another page to explain all the scripts we wrote. The current page has some kind of step by step tutorials, but if you want fast informations, you better go to the script page .
+Tutorials
+Maxwell-Boltzmann Energy Distribution
+         Click here to show/hide
+Here we will conﬁrm that the kinetic energy distribution of the atoms in a system corresponds to the Maxwell distribution for a given temperature.
+1. In VMD, load the .psf file. Browse for the restart velocity file (in our case, it was 2v0w_hydr_wb_i_eq.restart.vel), the type of ﬁle need this time to be selected. In the Determine ﬁle type: pull-down menu, choose NAMD Binary Coordinates, and load again.
+The molecule looks terrible! That is because VMD is reading the velocities as if they were coordinates, but how it looks doesn't matter: we just need VMD to make a file containing the masses and velocities for every atom.
+2. We create a selection with all the atoms in the system, by typing in the TkCon window:
+      set all [atomselect top all]
+Open a ﬁle energy.dat for writing:
+      set fil [open energy.dat w]
+3. For each atom in the system, calculate the kinetic energy, and write it to a ﬁle :
+      foreach m [$all get mass] v [$all get {x y z}] {
+      puts $fil [expr 0.5 * $m * [vecdot $v $v] ]
+      }
+Close the ﬁle:
+      close $fil
+All these steps can be avoided by typing in the Terminal Window:
+      vmd -dispdev text -e get energy.tcl
+We now have a ﬁle of raw data that can be used to ﬁt the obtained energy distribution to the Maxwell-Boltzmann distribution. The temperature of the distribution can be obtained from that ﬁt.
+1. In a Terminal window, type xmgrace. In the xmgrace window, choose the Data → Import → ASCI I menu item. In the Files box, select the ﬁle energy.dat. Click on the OK button. You should see a black trace which correspond to the raw data.
+2. To look at the distribution of points, we will make a histogram of this data. Choose the Data → Transformations → Histograms menu item. In the Source → Set window, click on the ﬁrst line, in order to make a histogram of the data just loaded.
+Click on the Normalize option.
+Fill in Start: 0, Stop at: 10, and # of bins: 100, and Apply.
+3. The plot has been created, but cannot be seen yet. Use the right button of the mouse to click on the ﬁrst set (in the Source → Set window).
+Click on Hide. Now, go to the main Grace window and click on the button labeled AS: it will resize the plot to ﬁt the existing values. This is the distribution of energies.
+Now, we will ﬁt a Maxwell-Boltzmann distribution to this plot and ﬁnd out the temperature that the distribution corresponds to.
+4. Choose the Data → Transformations → Non-linear curve ﬁtting menu item. In the Source → Set window, click on the last line, which corresponds to the histogram you created.
+In the Main tab, type in the Formula window:
+      y = (2/ sqrt(Pi * a0 ∧3 )) * sqrt(x) * exp (-x / a0)
+This will ﬁt the curve and get a ﬁt for the parameter a0, which corresponds to kB T in units of kcal/mol.
+5. In the Parameters drop-down menu, choose 1.  You can give an initial value to A0, so that the iterations will look for a value in the vicinity of your initial guess. In the A0 window, type 0.6, which in kcal/mol corresponds to a temperature of ∼ 300K.
+Click on the Apply button. This will open a window with the new value for a0, as well as some statistical measures, including the Correlation Coefficient, which is a measure of the ﬁt.
+The value of a0 obtained corresponds to kB T . Obtain the temperature T for this distribution with kB = 0.00198657 kcal  /mol /K.
+We obtain the following histogramm!
+Energies
+         Click here to show/hide
+Here we will calculate the averages of the various energies (kinetic and the different internal energies: bonded (bonds,  angles and dihedrals) and non-bonded (electrostatic, van der Waals)) over the course of a simulation.
+1. We start with a file obtained from NAMD:
+http://www.ks.uiuc.edu/Research/namd/utilities/ and download namdstat.tcl
+2. In the VMD TkCon window, type :
+     source namdstats.tcl
+     data avg ../namd_log 101 last
+The second line will call a procedure which will calculate the average for all output variables in the log ﬁle from the ﬁrst logged timestep after 101 to the end of the simulation.
+Temperature distribution
+         Click here to show/hide
+Objective: Simulate our protein in an NVE ensemble, and analyze the temperature distribution.
+In order to obtain the data for the temperature from the log ﬁle we will again use the script namdstats.tcl, which was already sourced. Type in a terminal window:
+      data_time TEMP namd_log
+It will store each timestep and its corresponding temperature in the file TEMP.dat.
+Using EXCEL, we obtain the following graph, which represents the evolution of the temperature in function of time:
+The first part corresponds the the heating, then we let the system reach an equilibrium (NPT state), a NVT portion, and finally a NPT portion again.
+Density
+         Click here to show/hide
+In order to obtain the data for the volume from the log ﬁle we will again use the script ''namdstats.tcl'', which was already sourced. Type in a terminal window:
+      data_time VOLUME namd_log
+It will store each timestep and its corresponding temperature in the file TEMP.dat.
+Using EXCEL, we obtain the following graph, which represents the evolution of the density in function of time:
+The first part corresponds the the heating, then we let the system reach an equilibrium (NPT state), a NVT portion, and finally a NPT portion again.
+Pressure as a function of simulation time
+         Click here to show/hide
+In order to obtain the data for the pressure from the log ﬁle we will again use the script namdstats.tcl, which has been updated for the occasion.
+The file can be found here . Please rename to namdstats.tcl after download.
+Here are the steps to use this script:
+      source namdstats.tcl
+      data_time DATA_NAME LOG_FILE
+It will extract data from LOG_FILE, creating a DATA_NAME.dat containing values and time informations.
+Available DATA_NAME can be: BOND, ANGLE, DIHED, IMPRP, ELECT, VDW, BOUNDARY, MISC, KINETIC, TOTAL, TEMP, TOTAL2, TOTAL3, TEMPAVG, PRESSURE, GPRESSURE, VOLUME, PRESSAVG, GPRESSAVG.
+So, to extract pressure from our first simulation, the command is: data_time PRESSURE namd_log
+Here is a small plot of pressure and temperature in function of time
+RMSD for individual residues
+         Click here to show/hide
+We aim at finding the average RMSD over time for each residue in the protein using VMD.
+1. We load the .psf and .dcd files obtained after the first round of simulation.
+2. In the TkCon window type:
+      source residue_rmsd.tcl
+      set sel_resid [[atomselect top "protein and alpha"] get resid]
+This will get all the residues number of all alpha-carbons in the protein. Since there is just one and only one α-carbon per residue, it is a good option.
+3. Now we will calculate the RMSD values of all atoms in the newly created selection:
+      rmsd_residue_over_time top $sel resid
+At the end of the calculation, we have a list of the avergae RMSD per residue (in the file residue_rmsd.dat)
+Remark: we updated the script residue_rmsd.tcl to be able to specify on which frames the rsmd has to be computed. Please have a look on this wiki for a more up-to-date version of the file... Command is:
+      rmsd_residue_over_time top $sel resid FIRST_FRAME LAST_FRAME
+4. In VMD, in Graphics → Representations, do the following actions:
+create two replicates: protein and resname FMN in selected atoms
+for the FMN, choose CPK as a drawing method
+for the protein, choose tube as drawing method, and user as coloring method. Now click on the Trajectory tab, and in the Color Scale Data Range, type 0.40 and 1.00.
+The protein is colored according to its average RMSD values. The residues displayed in blue are more mobile while the ones in red move less.
+Here is a movie with the protein colored according to average RMSD values: video
+5. Now we can plot the RMSD value per residue by typing in a Terminal window :
+      xmgrace residue rmsd.dat
+We obtain the following picture:
+RMSD of residue within 3 angström of the FMN
+We can see that the residues that move the most are the residue number: 425, 451, 453
+RMSD of residue within 6 angström of the FMN
+We can see that the residues that move the most are the residue number:  424, 425, 464, 468
+RMSD of selected atoms compared to initial position along time
+         Click here to show/hide
+This script was highly updated, please go to the script page if you encounter a problem!!!
+Selections are not precise here!
+We made a small TCL script to calculate RMSD from selected atoms compared to their initial position along timestep. The file can be found here . Please rename to Residue_rmsd_igem09.tcl after download.
+Example to run the script:
+     load ''.dcd'' + ''.psf'' on VMD
+     source residue_rmsd_igem09.tcl
+     set sel_resid [[atomselect top "protein and alpha"] get resid]
+     rmsd_residue_over_time top $sel_resid 0 0
+We tried to select only backbone from protein + FMN → change
+     set sel_resid [[atomselect top "backbone"] get resid]
+The script was updated to be able to define reference frame and first frame were RMSD will be calculated. We usually don't need to compute RMSD during heating, for instance. RMSD takes a lot of time. In our first run 1 frame = 100 timesteps * 2 fs*timesteps^-1 = 200 fs
+complete form for run is:
+      rmsd_residue_over_time top $sel_resid FIRST_FRAME REFERENCE_FRAME
+For our first run, if we want to select only the 295°K NPT plateau, and set its first frame as reference, we have to launch:
+     rmsd_residue_over_time top $sel_resid 1115 1115
+Here is how the script processes:
+calculate how many frames are in .dcd
+for each timestep, the script aligns (best fit) the backbone of the protein to the eference position to minimize RMDS. (Test: "and not mass 1,008000" == and noh was added in selection to remove hydrogen)
+for each residue (selected by sel_resid), RMSD is computed and the sum of all RMSD (one for each residue) is stored for current timestep
+script's output is data_rmsd.dat
+Here is a fast graph of the output of the average RMSD of the atoms in function of time. It seems normal.
+Here is what we got with FIRST_FRAME=1115 REFERENCE_FRAME=1115. Average=921.477, standard deviation=202.1708
+FIRST_FRAME=0 REFERENCE_FRAME=0. The difference of the sum probably comes from the new selection of atoms from the backbone. We should compute an average value to normalize amplitude. (fluctuation is conserved, anyway) Average=781.3913, standard deviation=118.1393
+Salt bridges
+         Click here to show/hide
+As we wanted to redo the analysis from Schulten's article, we looked for salt bridges. VMD can easily compute this, it even propose an easy GUI. Standard configuration is just fine for now. You'll have a log file containing the list of nitrogen-oxygen susceptible of forming a salt bridge. You'll also get a file for each bridge containing the distance between both atoms along the simulation.
+In the light state, we have 9 salt bridges witin the protein and 12 if we consider the protein and the flavin (use "protein or resname FMN" as selection).
+     ASP471-ARG467
+     GLU409-ARG442
+     FMN450-FMN450
+     ASP540-LYS544
+     ASP432-ARG442
+     FMN450-ARG451
+     GLU457-LYS489
+     GLU444-LYS485
+     ASP522-ARG521
+     ASP424-ARG451
+     GLU475-LYS533
+     FMN450-ARG467
+Here is a plot for one of the bridges. We have to look for the max distance for a salt bridge.
+RMSF
+         Click here to show/hide
+After changing the script [see here ], we perform an interesting analysis from these 2 files. First, we have to correct the RMSF, that can be linked to beta factor using this equation:
+If you plot beta factor and RMSF, you get such a thing.
+This is a 1 nanosecond NPT run at 300°K. We hope to see a RMSF curve identical to the beta factor. It should only be shifted higher because of the increased temperature. But having a similar tendency would mean our simulation show oscillations similar to what was observed during crystallography. This is really a quite nice validation of our run!
+Retrieved from " http://2009.igem.org/Team:EPF-Lausanne/Analysis "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

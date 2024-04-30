@@ -1,0 +1,2018 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Queens-Canada_js_prototype"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Queens-Canada/js/prototype">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Queens-Canada/js/prototype&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Queens-Canada/js/prototype&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Queens-Canada/js/prototype&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Queens-Canada/js/prototype" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Queens-Canada/js/prototype</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2010.igem.org</H3><P>/*  Prototype JavaScript framework, version 1.5.0_rc2
+</P><PRE>*  (c) 2005, 2006 Sam Stephenson &lt;sam@conio.net&gt;
+*
+*  Prototype is freely distributable under the terms of an MIT-style license.
+*  For details, see the Prototype web site: <A href="http://prototype.conio.net/" class="external free" rel="nofollow">http://prototype.conio.net/</A>
+*
+</PRE><P>/*--------------------------------------------------------------------------*/
+</P><P>var Prototype = {
+</P><PRE> Version: '1.5.0_rc2',
+ BrowserFeatures: {
+   XPath: !!document.evaluate
+ },
+</PRE><PRE> ScriptFragment: '(?:&lt;script.*?&gt;)((\n|\r|.)*?)(?:&lt;\/script&gt;)',
+ emptyFunction: function() {},
+ K: function(x) { return x }
+</PRE><P>}
+</P><P>var Class = {
+</P><PRE> create: function() {
+   return function() {
+     this.initialize.apply(this, arguments);
+   }
+ }
+</PRE><P>}
+</P><P>var Abstract = new Object();
+</P><P>Object.extend = function(destination, source) {
+</P><PRE> for (var property in source) {
+   destination[property] = source[property];
+ }
+ return destination;
+</PRE><P>}
+</P><P>Object.extend(Object, {
+</P><PRE> inspect: function(object) {
+   try {
+     if (object === undefined) return 'undefined';
+     if (object === null) return 'null';
+     return object.inspect ? object.inspect() : object.toString();
+   } catch (e) {
+     if (e instanceof RangeError) return '...';
+     throw e;
+   }
+ },
+</PRE><PRE> keys: function(object) {
+   var keys = [];
+   for (var property in object)
+     keys.push(property);
+   return keys;
+ },
+</PRE><PRE> values: function(object) {
+   var values = [];
+   for (var property in object)
+     values.push(object[property]);
+   return values;
+ },
+</PRE><PRE> clone: function(object) {
+   return Object.extend({}, object);
+ }
+</PRE><P>});
+</P><P>Function.prototype.bind = function() {
+</P><PRE> var __method = this, args = $A(arguments), object = args.shift();
+ return function() {
+   return __method.apply(object, args.concat($A(arguments)));
+ }
+</PRE><P>}
+</P><P>Function.prototype.bindAsEventListener = function(object) {
+</P><PRE> var __method = this, args = $A(arguments), object = args.shift();
+ return function(event) {
+   return __method.apply(object, [( event || window.event)].concat(args).concat($A(arguments)));
+ }
+</PRE><P>}
+</P><P>Object.extend(Number.prototype, {
+</P><PRE> toColorPart: function() {
+   var digits = this.toString(16);
+   if (this &lt; 16) return '0' + digits;
+   return digits;
+ },
+</PRE><PRE> succ: function() {
+   return this + 1;
+ },
+</PRE><PRE> times: function(iterator) {
+   $R(0, this, true).each(iterator);
+   return this;
+ }
+</PRE><P>});
+</P><P>var Try = {
+</P><PRE> these: function() {
+   var returnValue;
+</PRE><PRE>   for (var i = 0, length = arguments.length; i &lt; length; i++) {
+     var lambda = arguments[i];
+     try {
+       returnValue = lambda();
+       break;
+     } catch (e) {}
+   }
+</PRE><PRE>   return returnValue;
+ }
+</PRE><P>}
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>var PeriodicalExecuter = Class.create();
+PeriodicalExecuter.prototype = {
+</P><PRE> initialize: function(callback, frequency) {
+   this.callback = callback;
+   this.frequency = frequency;
+   this.currentlyExecuting = false;
+</PRE><PRE>   this.registerCallback();
+ },
+</PRE><PRE> registerCallback: function() {
+   this.timer = setInterval(this.onTimerEvent.bind(this), this.frequency * 1000);
+ },
+</PRE><PRE> stop: function() {
+   if (!this.timer) return;
+   clearInterval(this.timer);
+   this.timer = null;
+ },
+</PRE><PRE> onTimerEvent: function() {
+   if (!this.currentlyExecuting) {
+     try {
+       this.currentlyExecuting = true;
+       this.callback(this);
+     } finally {
+       this.currentlyExecuting = false;
+     }
+   }
+ }
+</PRE><P>}
+Object.extend(String.prototype, {
+</P><PRE> gsub: function(pattern, replacement) {
+   var result = <I>, source = this, match;</I>
+   replacement = arguments.callee.prepareReplacement(replacement);
+</PRE><PRE>   while (source.length &gt; 0) {
+     if (match = source.match(pattern)) {
+       result += source.slice(0, match.index);
+       result += (replacement(match) || <I>).toString();</I>
+       source  = source.slice(match.index + match[0].length);
+     } else {
+       result += source, source = <I>;</I>
+     }
+   }
+   return result;
+ },
+</PRE><PRE> sub: function(pattern, replacement, count) {
+   replacement = this.gsub.prepareReplacement(replacement);
+   count = count === undefined ? 1 : count;
+</PRE><PRE>   return this.gsub(pattern, function(match) {
+     if (--count &lt; 0) return match[0];
+     return replacement(match);
+   });
+ },
+</PRE><PRE> scan: function(pattern, iterator) {
+   this.gsub(pattern, iterator);
+   return this;
+ },
+</PRE><PRE> truncate: function(length, truncation) {
+   length = length || 30;
+   truncation = truncation === undefined ? '...' : truncation;
+   return this.length &gt; length ?
+     this.slice(0, length - truncation.length) + truncation : this;
+ },
+</PRE><PRE> strip: function() {
+   return this.replace(/^\s+/, <I>).replace(/\s+$/, </I>);
+ },
+</PRE><PRE> stripTags: function() {
+   return this.replace(/&lt;\/?[^&gt;]+&gt;/gi, <I>);</I>
+ },
+</PRE><PRE> stripScripts: function() {
+   return this.replace(new RegExp(Prototype.ScriptFragment, 'img'), <I>);</I>
+ },
+</PRE><PRE> extractScripts: function() {
+   var matchAll = new RegExp(Prototype.ScriptFragment, 'img');
+   var matchOne = new RegExp(Prototype.ScriptFragment, 'im');
+   return (this.match(matchAll) || []).map(function(scriptTag) {
+     return (scriptTag.match(matchOne) || [<I>, </I>])[1];
+   });
+ },
+</PRE><PRE> evalScripts: function() {
+   return this.extractScripts().map(function(script) { return eval(script) });
+ },
+</PRE><PRE> escapeHTML: function() {
+   var div = document.createElement('div');
+   var text = document.createTextNode(this);
+   div.appendChild(text);
+   return div.innerHTML;
+ },
+</PRE><PRE> unescapeHTML: function() {
+   var div = document.createElement('div');
+   div.innerHTML = this.stripTags();
+   return div.childNodes[0] ? (div.childNodes.length &gt; 1 ?
+     $A(div.childNodes).inject(<I>,function(memo,node){ return memo+node.nodeValue }) :</I>
+     div.childNodes[0].nodeValue) : <I>;</I>
+ },
+</PRE><PRE> toQueryParams: function(separator) {
+   var match = this.strip().match(/([^?#]*)(#.*)?$/);
+   if (!match) return {};
+</PRE><PRE>   return match[1].split(separator || '&amp;').inject({}, function(hash, pair) {
+     if ((pair = pair.split('='))[0]) {
+       var name = decodeURIComponent(pair[0]);
+       var value = pair[1] ? decodeURIComponent(pair[1]) : undefined;
+</PRE><PRE>       if (hash[name] !== undefined) {
+         if (hash[name].constructor != Array)
+           hash[name] = [hash[name]];
+         if (value) hash[name].push(value);
+       }
+       else hash[name] = value;
+     }
+     return hash;
+   });
+ },
+</PRE><PRE> toArray: function() {
+   return this.split(<I>);</I>
+ },
+</PRE><PRE> camelize: function() {
+   var oStringList = this.split('-');
+   if (oStringList.length == 1) return oStringList[0];
+</PRE><PRE>   var camelizedString = this.indexOf('-') == 0
+     ? oStringList[0].charAt(0).toUpperCase() + oStringList[0].substring(1)
+     : oStringList[0];
+</PRE><PRE>   for (var i = 1, length = oStringList.length; i &lt; length; i++) {
+     var s = oStringList[i];
+     camelizedString += s.charAt(0).toUpperCase() + s.substring(1);
+   }
+</PRE><PRE>   return camelizedString;
+ },
+</PRE><PRE> underscore: function() {
+   return this.gsub(/::/, '/').gsub(/([A-Z]+)([A-Z][a-z])/,'#{1}_#{2}').gsub(/([a-z\d])([A-Z])/,'#{1}_#{2}').gsub(/-/,'-').toLowerCase();
+ },
+</PRE><PRE> dasherize: function() {
+   return this.gsub(/_/,'-');
+ },
+</PRE><PRE> inspect: function(useDoubleQuotes) {
+   var escapedString = this.replace(/\\/g, '\\\\');
+   if (useDoubleQuotes)
+     return '&quot;' + escapedString.replace(/&quot;/g, '\\&quot;') + '&quot;';
+   else
+     return &quot;'&quot; + escapedString.replace(/'/g, '\\\<I>) + &quot;'&quot;;</I>
+ }
+</PRE><P>});
+</P><P>String.prototype.gsub.prepareReplacement = function(replacement) {
+</P><PRE> if (typeof replacement == 'function') return replacement;
+ var template = new Template(replacement);
+ return function(match) { return template.evaluate(match) };
+</PRE><P>}
+</P><P>String.prototype.parseQuery = String.prototype.toQueryParams;
+</P><P>var Template = Class.create();
+Template.Pattern = /(^|.|\r|\n)(#\{(.*?)\})/;
+Template.prototype = {
+</P><PRE> initialize: function(template, pattern) {
+   this.template = template.toString();
+   this.pattern  = pattern || Template.Pattern;
+ },
+</PRE><PRE> evaluate: function(object) {
+   return this.template.gsub(this.pattern, function(match) {
+     var before = match[1];
+     if (before == '\\') return match[2];
+     return before + (object[match[3]] || <I>).toString();</I>
+   });
+ }
+</PRE><P>}
+</P><P>var $break    = new Object();
+var $continue = new Object();
+</P><P>var Enumerable = {
+</P><PRE> each: function(iterator) {
+   var index = 0;
+   try {
+     this._each(function(value) {
+       try {
+         iterator(value, index++);
+       } catch (e) {
+         if (e != $continue) throw e;
+       }
+     });
+   } catch (e) {
+     if (e != $break) throw e;
+   }
+   return this;
+ },
+</PRE><PRE> eachSlice: function(number, iterator) {
+   var index = -number, slices = [], array = this.toArray();
+   while ((index += number) &lt; array.length)
+     slices.push(array.slice(index, index+number));
+   return slices.collect(iterator || Prototype.K);
+ },
+</PRE><PRE> all: function(iterator) {
+   var result = true;
+   this.each(function(value, index) {
+     result = result &amp;&amp; !!(iterator || Prototype.K)(value, index);
+     if (!result) throw $break;
+   });
+   return result;
+ },
+</PRE><PRE> any: function(iterator) {
+   var result = false;
+   this.each(function(value, index) {
+     if (result = !!(iterator || Prototype.K)(value, index))
+       throw $break;
+   });
+   return result;
+ },
+</PRE><PRE> collect: function(iterator) {
+   var results = [];
+   this.each(function(value, index) {
+     results.push(iterator(value, index));
+   });
+   return results;
+ },
+</PRE><PRE> detect: function(iterator) {
+   var result;
+   this.each(function(value, index) {
+     if (iterator(value, index)) {
+       result = value;
+       throw $break;
+     }
+   });
+   return result;
+ },
+</PRE><PRE> findAll: function(iterator) {
+   var results = [];
+   this.each(function(value, index) {
+     if (iterator(value, index))
+       results.push(value);
+   });
+   return results;
+ },
+</PRE><PRE> grep: function(pattern, iterator) {
+   var results = [];
+   this.each(function(value, index) {
+     var stringValue = value.toString();
+     if (stringValue.match(pattern))
+       results.push((iterator || Prototype.K)(value, index));
+   })
+   return results;
+ },
+</PRE><PRE> include: function(object) {
+   var found = false;
+   this.each(function(value) {
+     if (value == object) {
+       found = true;
+       throw $break;
+     }
+   });
+   return found;
+ },
+</PRE><PRE> inGroupsOf: function(number, fillWith) {
+   fillWith = fillWith || null;
+   var results = this.eachSlice(number);
+   if (results.length &gt; 0) (number - results.last().length).times(function() {
+     results.last().push(fillWith)
+   });
+   return results;
+ },
+</PRE><PRE> inject: function(memo, iterator) {
+   this.each(function(value, index) {
+     memo = iterator(memo, value, index);
+   });
+   return memo;
+ },
+</PRE><PRE> invoke: function(method) {
+   var args = $A(arguments).slice(1);
+   return this.collect(function(value) {
+     return value[method].apply(value, args);
+   });
+ },
+</PRE><PRE> max: function(iterator) {
+   var result;
+   this.each(function(value, index) {
+     value = (iterator || Prototype.K)(value, index);
+     if (result == undefined || value &gt;= result)
+       result = value;
+   });
+   return result;
+ },
+</PRE><PRE> min: function(iterator) {
+   var result;
+   this.each(function(value, index) {
+     value = (iterator || Prototype.K)(value, index);
+     if (result == undefined || value &lt; result)
+       result = value;
+   });
+   return result;
+ },
+</PRE><PRE> partition: function(iterator) {
+   var trues = [], falses = [];
+   this.each(function(value, index) {
+     ((iterator || Prototype.K)(value, index) ?
+       trues : falses).push(value);
+   });
+   return [trues, falses];
+ },
+</PRE><PRE> pluck: function(property) {
+   var results = [];
+   this.each(function(value, index) {
+     results.push(value[property]);
+   });
+   return results;
+ },
+</PRE><PRE> reject: function(iterator) {
+   var results = [];
+   this.each(function(value, index) {
+     if (!iterator(value, index))
+       results.push(value);
+   });
+   return results;
+ },
+</PRE><PRE> sortBy: function(iterator) {
+   return this.collect(function(value, index) {
+     return {value: value, criteria: iterator(value, index)};
+   }).sort(function(left, right) {
+     var a = left.criteria, b = right.criteria;
+     return a &lt; b ? -1 : a &gt; b ? 1 : 0;
+   }).pluck('value');
+ },
+</PRE><PRE> toArray: function() {
+   return this.collect(Prototype.K);
+ },
+</PRE><PRE> zip: function() {
+   var iterator = Prototype.K, args = $A(arguments);
+   if (typeof args.last() == 'function')
+     iterator = args.pop();
+</PRE><PRE>   var collections = [this].concat(args).map($A);
+   return this.map(function(value, index) {
+     return iterator(collections.pluck(index));
+   });
+ },
+</PRE><PRE> inspect: function() {
+   return '#&lt;Enumerable:' + this.toArray().inspect() + '&gt;';
+ }
+</PRE><P>}
+</P><P>Object.extend(Enumerable, {
+</P><PRE> map:     Enumerable.collect,
+ find:    Enumerable.detect,
+ select:  Enumerable.findAll,
+ member:  Enumerable.include,
+ entries: Enumerable.toArray
+</PRE><P>});
+var $A = Array.from = function(iterable) {
+</P><PRE> if (!iterable) return [];
+ if (iterable.toArray) {
+   return iterable.toArray();
+ } else {
+   var results = [];
+   for (var i = 0, length = iterable.length; i &lt; length; i++)
+     results.push(iterable[i]);
+   return results;
+ }
+</PRE><P>}
+</P><P>Object.extend(Array.prototype, Enumerable);
+</P><P>if (!Array.prototype._reverse)
+</P><PRE> Array.prototype._reverse = Array.prototype.reverse;
+</PRE><P>Object.extend(Array.prototype, {
+</P><PRE> _each: function(iterator) {
+   for (var i = 0, length = this.length; i &lt; length; i++)
+     iterator(this[i]);
+ },
+</PRE><PRE> clear: function() {
+   this.length = 0;
+   return this;
+ },
+</PRE><PRE> first: function() {
+   return this[0];
+ },
+</PRE><PRE> last: function() {
+   return this[this.length - 1];
+ },
+</PRE><PRE> compact: function() {
+   return this.select(function(value) {
+     return value != undefined || value != null;
+   });
+ },
+</PRE><PRE> flatten: function() {
+   return this.inject([], function(array, value) {
+     return array.concat(value &amp;&amp; value.constructor == Array ?
+       value.flatten() : [value]);
+   });
+ },
+</PRE><PRE> without: function() {
+   var values = $A(arguments);
+   return this.select(function(value) {
+     return !values.include(value);
+   });
+ },
+</PRE><PRE> indexOf: function(object) {
+   for (var i = 0, length = this.length; i &lt; length; i++)
+     if (this[i] == object) return i;
+   return -1;
+ },
+</PRE><PRE> reverse: function(inline) {
+   return (inline !== false ? this : this.toArray())._reverse();
+ },
+</PRE><PRE> reduce: function() {
+   return this.length &gt; 1 ? this : this[0];
+ },
+</PRE><PRE> uniq: function() {
+   return this.inject([], function(array, value) {
+     return array.include(value) ? array : array.concat([value]);
+   });
+ },
+</PRE><PRE> clone: function() {
+   return [].concat(this);
+ },
+</PRE><PRE> inspect: function() {
+   return '[' + this.map(Object.inspect).join(', ') + ']';
+ }
+</PRE><P>});
+</P><P>Array.prototype.toArray = Array.prototype.clone;
+</P><P>if(window.opera){
+</P><PRE> Array.prototype.concat = function(){
+   var array = [];
+   for(var i = 0, length = this.length; i &lt; length; i++) array.push(this[i]);
+   for(var i = 0, length = arguments.length; i &lt; length; i++) {
+     if(arguments[i].constructor == Array) {
+       for(var j = 0, arrayLength = arguments[i].length; j &lt; arrayLength; j++)
+         array.push(arguments[i][j]);
+     } else {
+       array.push(arguments[i]);
+     }
+   }
+   return array;
+ }
+</PRE><P>}
+var Hash = {
+</P><PRE> _each: function(iterator) {
+   for (var key in this) {
+     var value = this[key];
+     if (typeof value == 'function') continue;
+</PRE><PRE>     var pair = [key, value];
+     pair.key = key;
+     pair.value = value;
+     iterator(pair);
+   }
+ },
+</PRE><PRE> keys: function() {
+   return this.pluck('key');
+ },
+</PRE><PRE> values: function() {
+   return this.pluck('value');
+ },
+</PRE><PRE> merge: function(hash) {
+   return $H(hash).inject(this, function(mergedHash, pair) {
+     mergedHash[pair.key] = pair.value;
+     return mergedHash;
+   });
+ },
+</PRE><PRE> toQueryString: function() {
+   return this.map(function(pair) {
+     if (!pair.key) return null;
+</PRE><PRE>     if (pair.value &amp;&amp; pair.value.constructor == Array) {
+       pair.value = pair.value.compact();
+</PRE><PRE>       if (pair.value.length &lt; 2) {
+         pair.value = pair.value.reduce();
+       } else {
+         var key = encodeURIComponent(pair.key);
+         return pair.value.map(function(value) {
+           return key + '=' + encodeURIComponent(value);
+</PRE><P>		  	  }).join('&amp;');
+</P><PRE>       }
+     }
+</PRE><PRE>     if (pair.value == undefined) pair[1] = <I>;</I>
+     return pair.map(encodeURIComponent).join('=');
+   }).join('&amp;');
+ },
+</PRE><PRE> inspect: function() {
+   return '#&lt;Hash:{' + this.map(function(pair) {
+     return pair.map(Object.inspect).join(': ');
+   }).join(', ') + '}&gt;';
+ }
+</PRE><P>}
+</P><P>function $H(object) {
+</P><PRE> var hash = Object.extend({}, object || {});
+ Object.extend(hash, Enumerable);
+ Object.extend(hash, Hash);
+ return hash;
+</PRE><P>}
+ObjectRange = Class.create();
+Object.extend(ObjectRange.prototype, Enumerable);
+Object.extend(ObjectRange.prototype, {
+</P><PRE> initialize: function(start, end, exclusive) {
+   this.start = start;
+   this.end = end;
+   this.exclusive = exclusive;
+ },
+</PRE><PRE> _each: function(iterator) {
+   var value = this.start;
+   while (this.include(value)) {
+     iterator(value);
+     value = value.succ();
+   }
+ },
+</PRE><PRE> include: function(value) {
+   if (value &lt; this.start)
+     return false;
+   if (this.exclusive)
+     return value &lt; this.end;
+   return value &lt;= this.end;
+ }
+</PRE><P>});
+</P><P>var $R = function(start, end, exclusive) {
+</P><PRE> return new ObjectRange(start, end, exclusive);
+</PRE><P>}
+</P><P>var Ajax = {
+</P><PRE> getTransport: function() {
+   return Try.these(
+     function() {return new XMLHttpRequest()},
+     function() {return new ActiveXObject('Msxml2.XMLHTTP')},
+     function() {return new ActiveXObject('Microsoft.XMLHTTP')}
+   ) || false;
+ },
+</PRE><PRE> activeRequestCount: 0
+</PRE><P>}
+</P><P>Ajax.Responders = {
+</P><PRE> responders: [],
+</PRE><PRE> _each: function(iterator) {
+   this.responders._each(iterator);
+ },
+</PRE><PRE> register: function(responder) {
+   if (!this.include(responder))
+     this.responders.push(responder);
+ },
+</PRE><PRE> unregister: function(responder) {
+   this.responders = this.responders.without(responder);
+ },
+</PRE><PRE> dispatch: function(callback, request, transport, json) {
+   this.each(function(responder) {
+     if (typeof responder[callback] == 'function') {
+       try {
+         responder[callback].apply(responder, [request, transport, json]);
+       } catch (e) {}
+     }
+   });
+ }
+</PRE><P>};
+</P><P>Object.extend(Ajax.Responders, Enumerable);
+</P><P>Ajax.Responders.register({
+</P><PRE> onCreate: function() {
+   Ajax.activeRequestCount++;
+ },
+ onComplete: function() {
+   Ajax.activeRequestCount--;
+ }
+</PRE><P>});
+</P><P>Ajax.Base = function() {};
+Ajax.Base.prototype = {
+</P><PRE> setOptions: function(options) {
+   this.options = {
+     method:       'post',
+     asynchronous: true,
+     contentType:  'application/x-www-form-urlencoded',
+     encoding:     'UTF-8',
+     parameters:   
+   }
+   Object.extend(this.options, options || {});
+</PRE><PRE>   this.options.method = this.options.method.toLowerCase();
+   this.options.parameters = $H(typeof this.options.parameters == 'string' ?
+     this.options.parameters.toQueryParams() : this.options.parameters);
+ }
+</PRE><P>}
+</P><P>Ajax.Request = Class.create();
+Ajax.Request.Events =
+</P><PRE> ['Uninitialized', 'Loading', 'Loaded', 'Interactive', 'Complete'];
+</PRE><P>Ajax.Request.prototype = Object.extend(new Ajax.Base(), {
+</P><PRE> _complete: false,
+</PRE><PRE> initialize: function(url, options) {
+   this.transport = Ajax.getTransport();
+   this.setOptions(options);
+   this.request(url);
+ },
+</PRE><PRE> request: function(url) {
+   var params = this.options.parameters;
+   if (params.any()) params['_'] = <I>;</I></PRE><PRE>   if (!['get', 'post'].include(this.options.method)) {
+     // simulate other verbs over post
+     params['_method'] = this.options.method;
+     this.options.method = 'post';
+   }
+</PRE><PRE>   this.url = url;
+</PRE><PRE>   // when GET, append parameters to URL
+   if (this.options.method == 'get' &amp;&amp; params.any())
+     this.url += (this.url.indexOf('?') &gt;= 0 ? '&amp;' : '?') +
+       params.toQueryString();
+</PRE><PRE>   try {
+     Ajax.Responders.dispatch('onCreate', this, this.transport);
+</PRE><PRE>     this.transport.open(this.options.method.toUpperCase(), this.url,
+       this.options.asynchronous, this.options.username,
+       this.options.password);
+</PRE><PRE>     if (this.options.asynchronous)
+       setTimeout(function() { this.respondToReadyState(1) }.bind(this), 10);
+</PRE><PRE>     this.transport.onreadystatechange = this.onStateChange.bind(this);
+     this.setRequestHeaders();
+</PRE><PRE>     var body = this.options.method == 'post' ?
+       (this.options.postBody || params.toQueryString()) : null;
+</PRE><PRE>     this.transport.send(body);
+</PRE><PRE>     /* Force Firefox to handle ready state 4 for synchronous requests */
+     if (!this.options.asynchronous &amp;&amp; this.transport.overrideMimeType)
+       this.onStateChange();
+</PRE><PRE>   }
+   catch (e) {
+     this.dispatchException(e);
+   }
+ },
+</PRE><PRE> onStateChange: function() {
+   var readyState = this.transport.readyState;
+   if (readyState &gt; 1 &amp;&amp; !((readyState == 4) &amp;&amp; this._complete))
+     this.respondToReadyState(this.transport.readyState);
+ },
+</PRE><PRE> setRequestHeaders: function() {
+   var headers = {
+     'X-Requested-With': 'XMLHttpRequest',
+     'X-Prototype-Version': Prototype.Version,
+     'Accept': 'text/javascript, text/html, application/xml, text/xml, */*'
+   };
+</PRE><PRE>   if (this.options.method == 'post') {
+     headers['Content-type'] = this.options.contentType +
+       (this.options.encoding ? '; charset=' + this.options.encoding : <I>);</I></PRE><PRE>     /* Force &quot;Connection: close&quot; for older Mozilla browsers to work
+      * around a bug where XMLHttpRequest sends an incorrect
+      * Content-length header. See Mozilla Bugzilla #246651.
+      */
+     if (this.transport.overrideMimeType &amp;&amp;
+         (navigator.userAgent.match(/Gecko\/(\d{4})/) || [0,2005])[1] &lt; 2005)
+           headers['Connection'] = 'close';
+   }
+</PRE><PRE>   // user-defined headers
+   if (typeof this.options.requestHeaders == 'object') {
+     var extras = this.options.requestHeaders;
+</PRE><PRE>     if (typeof extras.push == 'function')
+       for (var i = 0, length = extras.length; i &lt; length; i += 2)
+         headers[extras[i]] = extras[i+1];
+     else
+       $H(extras).each(function(pair) { headers[pair.key] = pair.value });
+   }
+</PRE><PRE>   for (var name in headers)
+     this.transport.setRequestHeader(name, headers[name]);
+ },
+</PRE><PRE> success: function() {
+   return !this.transport.status
+       || (this.transport.status &gt;= 200 &amp;&amp; this.transport.status &lt; 300);
+ },
+</PRE><PRE> respondToReadyState: function(readyState) {
+   var state = Ajax.Request.Events[readyState];
+   var transport = this.transport, json = this.evalJSON();
+</PRE><PRE>   if (state == 'Complete') {
+     try {
+       this._complete = true;
+       (this.options['on' + this.transport.status]
+        || this.options['on' + (this.success() ? 'Success' : 'Failure')]
+        || Prototype.emptyFunction)(transport, json);
+     } catch (e) {
+       this.dispatchException(e);
+     }
+   }
+</PRE><PRE>   try {
+     (this.options['on' + state] || Prototype.emptyFunction)(transport, json);
+     Ajax.Responders.dispatch('on' + state, this, transport, json);
+   } catch (e) {
+     this.dispatchException(e);
+   }
+</PRE><PRE>   if (state == 'Complete') {
+     if ((this.getHeader('Content-type') || <I>).strip().</I>
+       match(/^(text|application)\/(x-)?(java|ecma)script(;.*)?$/i))
+         this.evalResponse();
+</PRE><PRE>     // avoid memory leak in MSIE: clean up
+     this.transport.onreadystatechange = Prototype.emptyFunction;
+   }
+ },
+</PRE><PRE> getHeader: function(name) {
+   try {
+     return this.transport.getResponseHeader(name);
+   } catch (e) { return null }
+ },
+</PRE><PRE> evalJSON: function() {
+   try {
+     var json = this.getHeader('X-JSON');
+     return json ? eval('(' + json + ')') : null;
+   } catch (e) { return null }
+ },
+</PRE><PRE> evalResponse: function() {
+   try {
+     return eval(this.transport.responseText);
+   } catch (e) {
+     this.dispatchException(e);
+   }
+ },
+</PRE><PRE> dispatchException: function(exception) {
+   (this.options.onException || Prototype.emptyFunction)(this, exception);
+   Ajax.Responders.dispatch('onException', this, exception);
+ }
+</PRE><P>});
+</P><P>Ajax.Updater = Class.create();
+</P><P>Object.extend(Object.extend(Ajax.Updater.prototype, Ajax.Request.prototype), {
+</P><PRE> initialize: function(container, url, options) {
+   this.container = {
+     success: (container.success || container),
+     failure: (container.failure || (container.success ? null : container))
+   }
+</PRE><PRE>   this.transport = Ajax.getTransport();
+   this.setOptions(options);
+</PRE><PRE>   var onComplete = this.options.onComplete || Prototype.emptyFunction;
+   this.options.onComplete = (function(transport, param) {
+     this.updateContent();
+     onComplete(transport, param);
+   }).bind(this);
+</PRE><PRE>   this.request(url);
+ },
+</PRE><PRE> updateContent: function() {
+   var receiver = this.container[this.success() ? 'success' : 'failure'];
+   var response = this.transport.responseText;
+</PRE><PRE>   if (!this.options.evalScripts) response = response.stripScripts();
+</PRE><PRE>   if (receiver = $(receiver)) {
+     if (this.options.insertion)
+       new this.options.insertion(receiver, response);
+     else
+       receiver.update(response);
+   }
+</PRE><PRE>   if (this.success()) {
+     if (this.onComplete)
+       setTimeout(this.onComplete.bind(this), 10);
+   }
+ }
+</PRE><P>});
+</P><P>Ajax.PeriodicalUpdater = Class.create();
+Ajax.PeriodicalUpdater.prototype = Object.extend(new Ajax.Base(), {
+</P><PRE> initialize: function(container, url, options) {
+   this.setOptions(options);
+   this.onComplete = this.options.onComplete;
+</PRE><PRE>   this.frequency = (this.options.frequency || 2);
+   this.decay = (this.options.decay || 1);
+</PRE><PRE>   this.updater = {};
+   this.container = container;
+   this.url = url;
+</PRE><PRE>   this.start();
+ },
+</PRE><PRE> start: function() {
+   this.options.onComplete = this.updateComplete.bind(this);
+   this.onTimerEvent();
+ },
+</PRE><PRE> stop: function() {
+   this.updater.options.onComplete = undefined;
+   clearTimeout(this.timer);
+   (this.onComplete || Prototype.emptyFunction).apply(this, arguments);
+ },
+</PRE><PRE> updateComplete: function(request) {
+   if (this.options.decay) {
+     this.decay = (request.responseText == this.lastText ?
+       this.decay * this.options.decay : 1);
+</PRE><PRE>     this.lastText = request.responseText;
+   }
+   this.timer = setTimeout(this.onTimerEvent.bind(this),
+     this.decay * this.frequency * 1000);
+ },
+</PRE><PRE> onTimerEvent: function() {
+   this.updater = new Ajax.Updater(this.container, this.url, this.options);
+ }
+</PRE><P>});
+function $(element) {
+</P><PRE> if (arguments.length &gt; 1) {
+   for (var i = 0, elements = [], length = arguments.length; i &lt; length; i++)
+     elements.push($(arguments[i]));
+   return elements;
+ }
+ if (typeof element == 'string')
+   element = document.getElementById(element);
+ return Element.extend(element);
+</PRE><P>}
+</P><P>if (Prototype.BrowserFeatures.XPath) {
+</P><PRE> document._getElementsByXPath = function(expression, parentElement) {
+   var results = [];
+   var query = document.evaluate(expression, $(parentElement) || document,
+     null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+   for (var i = 0, length = query.snapshotLength; i &lt; length; i++)
+     results.push(query.snapshotItem(i));
+   return results;
+ }
+</PRE><P>}
+</P><P>document.getElementsByClassName = function(className, parentElement) {
+</P><PRE> if (Prototype.BrowserFeatures.XPath) {
+   var q = &quot;.//*[contains(concat(' ', @class, ' '), ' &quot; + className + &quot; ')]&quot;;
+   return document._getElementsByXPath(q, parentElement);
+ } else {
+   var children = ($(parentElement) || document.body).getElementsByTagName('*');
+   var elements = [], child;
+   for (var i = 0, length = children.length; i &lt; length; i++) {
+     child = children[i];
+     if (Element.hasClassName(child, className))
+       elements.push(Element.extend(child));
+   }
+   return elements;
+ }
+</PRE><P>}
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>if (!window.Element)
+</P><PRE> var Element = new Object();
+</PRE><P>Element.extend = function(element) {
+</P><PRE> if (!element) return;
+ if (_nativeExtensions || element.nodeType == 3) return element;
+</PRE><PRE> if (!element._extended &amp;&amp; element.tagName &amp;&amp; element != window) {
+   var methods = Object.clone(Element.Methods), cache = Element.extend.cache;
+</PRE><PRE>   if (element.tagName == 'FORM')
+     Object.extend(methods, Form.Methods);
+   if (['INPUT', 'TEXTAREA', 'SELECT'].include(element.tagName))
+     Object.extend(methods, Form.Element.Methods);
+</PRE><PRE>   Object.extend(methods, Element.Methods.Simulated);
+</PRE><PRE>   for (var property in methods) {
+     var value = methods[property];
+     if (typeof value == 'function' &amp;&amp; !(property in element))
+       element[property] = cache.findOrStore(value);
+   }
+ }
+</PRE><PRE> element._extended = true;
+ return element;
+</PRE><P>}
+</P><P>Element.extend.cache = {
+</P><PRE> findOrStore: function(value) {
+   return this[value] = this[value] || function() {
+     return value.apply(null, [this].concat($A(arguments)));
+   }
+ }
+</PRE><P>}
+</P><P>Element.Methods = {
+</P><PRE> visible: function(element) {
+   return $(element).style.display != 'none';
+ },
+</PRE><PRE> toggle: function(element) {
+   element = $(element);
+   Element[Element.visible(element) ? 'hide' : 'show'](element);
+   return element;
+ },
+</PRE><PRE> hide: function(element) {
+   $(element).style.display = 'none';
+   return element;
+ },
+</PRE><PRE> show: function(element) {
+   $(element).style.display = <I>;</I>
+   return element;
+ },
+</PRE><PRE> remove: function(element) {
+   element = $(element);
+   element.parentNode.removeChild(element);
+   return element;
+ },
+</PRE><PRE> update: function(element, html) {
+   html = typeof html == 'undefined' ? <I> : html.toString();</I>
+   $(element).innerHTML = html.stripScripts();
+   setTimeout(function() {html.evalScripts()}, 10);
+   return element;
+ },
+</PRE><PRE> replace: function(element, html) {
+   element = $(element);
+   if (element.outerHTML) {
+     element.outerHTML = html.stripScripts();
+   } else {
+     var range = element.ownerDocument.createRange();
+     range.selectNodeContents(element);
+     element.parentNode.replaceChild(
+       range.createContextualFragment(html.stripScripts()), element);
+   }
+   setTimeout(function() {html.evalScripts()}, 10);
+   return element;
+ },
+</PRE><PRE> inspect: function(element) {
+   element = $(element);
+   var result = '&lt;' + element.tagName.toLowerCase();
+   $H({'id': 'id', 'className': 'class'}).each(function(pair) {
+     var property = pair.first(), attribute = pair.last();
+     var value = (element[property] || <I>).toString();</I>
+     if (value) result += ' ' + attribute + '=' + value.inspect(true);
+   });
+   return result + '&gt;';
+ },
+</PRE><PRE> recursivelyCollect: function(element, property) {
+   element = $(element);
+   var elements = [];
+   while (element = element[property])
+     if (element.nodeType == 1)
+       elements.push(Element.extend(element));
+   return elements;
+ },
+</PRE><PRE> ancestors: function(element) {
+   return $(element).recursivelyCollect('parentNode');
+ },
+</PRE><PRE> descendants: function(element) {
+   element = $(element);
+   return $A(element.getElementsByTagName('*'));
+ },
+</PRE><PRE> immediateDescendants: function(element) {
+   if (!(element = $(element).firstChild)) return [];
+   while (element &amp;&amp; element.nodeType != 1) element = element.nextSibling;
+   if (element) return [element].concat($(element).nextSiblings());
+   return [];
+ },
+</PRE><PRE> previousSiblings: function(element) {
+   return $(element).recursivelyCollect('previousSibling');
+ },
+</PRE><PRE> nextSiblings: function(element) {
+   return $(element).recursivelyCollect('nextSibling');
+ },
+</PRE><PRE> siblings: function(element) {
+   element = $(element);
+   return element.previousSiblings().reverse().concat(element.nextSiblings());
+ },
+</PRE><PRE> match: function(element, selector) {
+   element = $(element);
+   if (typeof selector == 'string')
+     selector = new Selector(selector);
+   return selector.match(element);
+ },
+</PRE><PRE> up: function(element, expression, index) {
+   return Selector.findElement($(element).ancestors(), expression, index);
+ },
+</PRE><PRE> down: function(element, expression, index) {
+   return Selector.findElement($(element).descendants(), expression, index);
+ },
+</PRE><PRE> previous: function(element, expression, index) {
+   return Selector.findElement($(element).previousSiblings(), expression, index);
+ },
+</PRE><PRE> next: function(element, expression, index) {
+   return Selector.findElement($(element).nextSiblings(), expression, index);
+ },
+</PRE><PRE> getElementsBySelector: function() {
+   var args = $A(arguments), element = $(args.shift());
+   return Selector.findChildElements(element, args);
+ },
+</PRE><PRE> getElementsByClassName: function(element, className) {
+   element = $(element);
+   return document.getElementsByClassName(className, element);
+ },
+</PRE><PRE> readAttribute: function(element, name) {
+   return $(element).getAttribute(name);
+ },
+</PRE><PRE> getHeight: function(element) {
+   element = $(element);
+   return element.offsetHeight;
+ },
+</PRE><PRE> classNames: function(element) {
+   return new Element.ClassNames(element);
+ },
+</PRE><PRE> hasClassName: function(element, className) {
+   if (!(element = $(element))) return;
+   var elementClassName = element.className;
+   if (elementClassName.length == 0) return false;
+   if (elementClassName == className ||
+       elementClassName.match(new RegExp(&quot;(^|\\s)&quot; + className + &quot;(\\s|$)&quot;)))
+     return true;
+   return false;
+ },
+</PRE><PRE> addClassName: function(element, className) {
+   if (!(element = $(element))) return;
+   Element.classNames(element).add(className);
+   return element;
+ },
+</PRE><PRE> removeClassName: function(element, className) {
+   if (!(element = $(element))) return;
+   Element.classNames(element).remove(className);
+   return element;
+ },
+</PRE><PRE> observe: function() {
+   Event.observe.apply(Event, arguments);
+   return $A(arguments).first();
+ },
+</PRE><PRE> stopObserving: function() {
+   Event.stopObserving.apply(Event, arguments);
+   return $A(arguments).first();
+ },
+</PRE><PRE> // removes whitespace-only text node children
+ cleanWhitespace: function(element) {
+   element = $(element);
+   var node = element.firstChild;
+   while (node) {
+     var nextNode = node.nextSibling;
+     if (node.nodeType == 3 &amp;&amp; !/\S/.test(node.nodeValue))
+       element.removeChild(node);
+     node = nextNode;
+   }
+   return element;
+ },
+</PRE><PRE> empty: function(element) {
+   return $(element).innerHTML.match(/^\s*$/);
+ },
+</PRE><PRE> childOf: function(element, ancestor) {
+   element = $(element), ancestor = $(ancestor);
+   while (element = element.parentNode)
+     if (element == ancestor) return true;
+   return false;
+ },
+</PRE><PRE> scrollTo: function(element) {
+   element = $(element);
+   var x = element.x ? element.x : element.offsetLeft,
+       y = element.y ? element.y : element.offsetTop;
+   window.scrollTo(x, y);
+   return element;
+ },
+</PRE><PRE> getStyle: function(element, style) {
+   element = $(element);
+   var inline = (style == 'float' ?
+     (typeof element.style.styleFloat != 'undefined' ? 'styleFloat' : 'cssFloat') : style);
+   var value = element.style[inline.camelize()];
+   if (!value) {
+     if (document.defaultView &amp;&amp; document.defaultView.getComputedStyle) {
+       var css = document.defaultView.getComputedStyle(element, null);
+       value = css ? css.getPropertyValue(style) : null;
+     } else if (element.currentStyle) {
+       value = element.currentStyle[inline.camelize()];
+     }
+   }
+</PRE><PRE>   if((value == 'auto') &amp;&amp; ['width','height'].include(style) &amp;&amp; (element.getStyle('display') != 'none'))
+     value = element['offset'+style.charAt(0).toUpperCase()+style.substring(1)] + 'px';
+</PRE><PRE>   if (window.opera &amp;&amp; ['left', 'top', 'right', 'bottom'].include(style))
+     if (Element.getStyle(element, 'position') == 'static') value = 'auto';
+</PRE><PRE>   return value == 'auto' ? null : value;
+ },
+</PRE><PRE> setStyle: function(element, style) {
+   element = $(element);
+   for (var name in style)
+     element.style[ (name == 'float' ?
+       ((typeof element.style.styleFloat != 'undefined') ? 'styleFloat' : 'cssFloat') : name).camelize()
+     ] = style[name];
+   return element;
+ },
+</PRE><PRE> getDimensions: function(element) {
+   element = $(element);
+   if (Element.getStyle(element, 'display') != 'none')
+     return {width: element.offsetWidth, height: element.offsetHeight};
+</PRE><PRE>   // All *Width and *Height properties give 0 on elements with display none,
+   // so enable the element temporarily
+   var els = element.style;
+   var originalVisibility = els.visibility;
+   var originalPosition = els.position;
+   els.visibility = 'hidden';
+   els.position = 'absolute';
+   els.display = <I>;</I>
+   var originalWidth = element.clientWidth;
+   var originalHeight = element.clientHeight;
+   els.display = 'none';
+   els.position = originalPosition;
+   els.visibility = originalVisibility;
+   return {width: originalWidth, height: originalHeight};
+ },
+</PRE><PRE> makePositioned: function(element) {
+   element = $(element);
+   var pos = Element.getStyle(element, 'position');
+   if (pos == 'static' || !pos) {
+     element._madePositioned = true;
+     element.style.position = 'relative';
+     // Opera returns the offset relative to the positioning context, when an
+     // element is position relative but top and left have not been defined
+     if (window.opera) {
+       element.style.top = 0;
+       element.style.left = 0;
+     }
+   }
+   return element;
+ },
+</PRE><PRE> undoPositioned: function(element) {
+   element = $(element);
+   if (element._madePositioned) {
+     element._madePositioned = undefined;
+     element.style.position =
+       element.style.top =
+       element.style.left =
+       element.style.bottom =
+       element.style.right = <I>;</I>
+   }
+   return element;
+ },
+</PRE><PRE> makeClipping: function(element) {
+   element = $(element);
+   if (element._overflow) return element;
+   element._overflow = element.style.overflow || 'auto';
+   if ((Element.getStyle(element, 'overflow') || 'visible') != 'hidden')
+     element.style.overflow = 'hidden';
+   return element;
+ },
+</PRE><PRE> undoClipping: function(element) {
+   element = $(element);
+   if (!element._overflow) return element;
+   element.style.overflow = element._overflow == 'auto' ? <I> : element._overflow;</I>
+   element._overflow = null;
+   return element;
+ }
+</PRE><P>}
+</P><P>Element.Methods.Simulated = {
+</P><PRE> hasAttribute: function(element, attribute) {
+   return $(element).getAttributeNode(attribute).specified;
+ }
+</PRE><P>}
+</P><P>// IE is missing .innerHTML support for TABLE-related elements
+if(document.all){
+</P><PRE> Element.Methods.update = function(element, html) {
+   element = $(element);
+   html = typeof html == 'undefined' ? <I> : html.toString();</I>
+   var tagName = element.tagName.toUpperCase();
+   if (['THEAD','TBODY','TR','TD'].include(tagName)) {
+     var div = document.createElement('div');
+     switch (tagName) {
+       case 'THEAD':
+       case 'TBODY':
+</PRE>
+          div.innerHTML = '<TABLE>&lt;tbody&gt;' +  html.stripScripts() + '&lt;/tbody&gt;</TABLE>';
+<PRE>         depth = 2;
+         break;
+       case 'TR':
+</PRE>
+          div.innerHTML = '<TABLE>&lt;tbody&gt;<TBODY><TR>' +  html.stripScripts() + '</TR>&lt;/tbody&gt;</TBODY></TABLE>';
+<PRE>         depth = 3;
+         break;
+       case 'TD':
+</PRE>
+          div.innerHTML = '<TABLE>&lt;tbody&gt;<TBODY><TR><TD>' +  html.stripScripts() + '</TD></TR>&lt;/tbody&gt;</TBODY></TABLE>';
+<PRE>         depth = 4;
+     }
+     $A(element.childNodes).each(function(node){
+       element.removeChild(node)
+     });
+     depth.times(function(){ div = div.firstChild });
+</PRE><PRE>     $A(div.childNodes).each(
+       function(node){ element.appendChild(node) });
+   } else {
+     element.innerHTML = html.stripScripts();
+   }
+   setTimeout(function() {html.evalScripts()}, 10);
+   return element;
+ }
+</PRE><P>}
+</P><P>Object.extend(Element, Element.Methods);
+</P><P>var _nativeExtensions = false;
+</P><P>if(/Konqueror|Safari|KHTML/.test(navigator.userAgent))
+</P><PRE> [<I>, 'Form', 'Input', 'TextArea', 'Select'].each(function(tag) {</I>
+   var className = 'HTML' + tag + 'Element';
+   if(window[className]) return;
+   var klass = window[className] = {};
+   klass.prototype = document.createElement(tag ? tag.toLowerCase() : 'div').__proto__;
+ });
+</PRE><P>Element.addMethods = function(methods) {
+</P><PRE> Object.extend(Element.Methods, methods || {});
+</PRE><PRE> function copy(methods, destination, onlyIfAbsent) {
+   onlyIfAbsent = onlyIfAbsent || false;
+   var cache = Element.extend.cache;
+   for (var property in methods) {
+     var value = methods[property];
+     if (!onlyIfAbsent || !(property in destination))
+       destination[property] = cache.findOrStore(value);
+   }
+ }
+</PRE><PRE> if (typeof HTMLElement != 'undefined') {
+   copy(Element.Methods, HTMLElement.prototype);
+   copy(Element.Methods.Simulated, HTMLElement.prototype, true);
+   copy(Form.Methods, HTMLFormElement.prototype);
+   [HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement].each(function(klass) {
+     copy(Form.Element.Methods, klass.prototype);
+   });
+   _nativeExtensions = true;
+ }
+</PRE><P>}
+</P><P>var Toggle = new Object();
+Toggle.display = Element.toggle;
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>Abstract.Insertion = function(adjacency) {
+</P><PRE> this.adjacency = adjacency;
+</PRE><P>}
+</P><P>Abstract.Insertion.prototype = {
+</P><PRE> initialize: function(element, content) {
+   this.element = $(element);
+   this.content = content.stripScripts();
+</PRE><PRE>   if (this.adjacency &amp;&amp; this.element.insertAdjacentHTML) {
+     try {
+       this.element.insertAdjacentHTML(this.adjacency, this.content);
+     } catch (e) {
+       var tagName = this.element.tagName.toUpperCase();
+       if (['TBODY', 'TR'].include(tagName)) {
+         this.insertContent(this.contentFromAnonymousTable());
+       } else {
+         throw e;
+       }
+     }
+   } else {
+     this.range = this.element.ownerDocument.createRange();
+     if (this.initializeRange) this.initializeRange();
+     this.insertContent([this.range.createContextualFragment(this.content)]);
+   }
+</PRE><PRE>   setTimeout(function() {content.evalScripts()}, 10);
+ },
+</PRE><PRE> contentFromAnonymousTable: function() {
+   var div = document.createElement('div');
+</PRE>
+    div.innerHTML = '<TABLE>&lt;tbody&gt;' + this.content + '&lt;/tbody&gt;</TABLE>';
+<PRE>   return $A(div.childNodes[0].childNodes[0].childNodes);
+ }
+</PRE><P>}
+</P><P>var Insertion = new Object();
+</P><P>Insertion.Before = Class.create();
+Insertion.Before.prototype = Object.extend(new Abstract.Insertion('beforeBegin'), {
+</P><PRE> initializeRange: function() {
+   this.range.setStartBefore(this.element);
+ },
+</PRE><PRE> insertContent: function(fragments) {
+   fragments.each((function(fragment) {
+     this.element.parentNode.insertBefore(fragment, this.element);
+   }).bind(this));
+ }
+</PRE><P>});
+</P><P>Insertion.Top = Class.create();
+Insertion.Top.prototype = Object.extend(new Abstract.Insertion('afterBegin'), {
+</P><PRE> initializeRange: function() {
+   this.range.selectNodeContents(this.element);
+   this.range.collapse(true);
+ },
+</PRE><PRE> insertContent: function(fragments) {
+   fragments.reverse(false).each((function(fragment) {
+     this.element.insertBefore(fragment, this.element.firstChild);
+   }).bind(this));
+ }
+</PRE><P>});
+</P><P>Insertion.Bottom = Class.create();
+Insertion.Bottom.prototype = Object.extend(new Abstract.Insertion('beforeEnd'), {
+</P><PRE> initializeRange: function() {
+   this.range.selectNodeContents(this.element);
+   this.range.collapse(this.element);
+ },
+</PRE><PRE> insertContent: function(fragments) {
+   fragments.each((function(fragment) {
+     this.element.appendChild(fragment);
+   }).bind(this));
+ }
+</PRE><P>});
+</P><P>Insertion.After = Class.create();
+Insertion.After.prototype = Object.extend(new Abstract.Insertion('afterEnd'), {
+</P><PRE> initializeRange: function() {
+   this.range.setStartAfter(this.element);
+ },
+</PRE><PRE> insertContent: function(fragments) {
+   fragments.each((function(fragment) {
+     this.element.parentNode.insertBefore(fragment,
+       this.element.nextSibling);
+   }).bind(this));
+ }
+</PRE><P>});
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>Element.ClassNames = Class.create();
+Element.ClassNames.prototype = {
+</P><PRE> initialize: function(element) {
+   this.element = $(element);
+ },
+</PRE><PRE> _each: function(iterator) {
+   this.element.className.split(/\s+/).select(function(name) {
+     return name.length &gt; 0;
+   })._each(iterator);
+ },
+</PRE><PRE> set: function(className) {
+   this.element.className = className;
+ },
+</PRE><PRE> add: function(classNameToAdd) {
+   if (this.include(classNameToAdd)) return;
+   this.set($A(this).concat(classNameToAdd).join(' '));
+ },
+</PRE><PRE> remove: function(classNameToRemove) {
+   if (!this.include(classNameToRemove)) return;
+   this.set($A(this).without(classNameToRemove).join(' '));
+ },
+</PRE><PRE> toString: function() {
+   return $A(this).join(' ');
+ }
+</PRE><P>}
+</P><P>Object.extend(Element.ClassNames.prototype, Enumerable);
+var Selector = Class.create();
+Selector.prototype = {
+</P><PRE> initialize: function(expression) {
+   this.params = {classNames: []};
+   this.expression = expression.toString().strip();
+   this.parseExpression();
+   this.compileMatcher();
+ },
+</PRE><PRE> parseExpression: function() {
+   function abort(message) { throw 'Parse error in selector: ' + message; }
+</PRE><PRE>   if (this.expression == <I>)  abort('empty expression');</I></PRE><PRE>   var params = this.params, expr = this.expression, match, modifier, clause, rest;
+   while (match = expr.match(/^(.*)\[([a-z0-9_:-]+?)(?:([~\|!]?=)(?:&quot;([^&quot;]*)&quot;|([^\]\s]*)))?\]$/i)) {
+     params.attributes = params.attributes || [];
+     params.attributes.push({name: match[2], operator: match[3], value: match[4] || match[5] || <I>});</I>
+     expr = match[1];
+   }
+</PRE><PRE>   if (expr == '*') return this.params.wildcard = true;
+</PRE><PRE>   while (match = expr.match(/^([^a-z0-9_-])?([a-z0-9_-]+)(.*)/i)) {
+     modifier = match[1], clause = match[2], rest = match[3];
+     switch (modifier) {
+       case '#':       params.id = clause; break;
+       case '.':       params.classNames.push(clause); break;
+       case <I>:</I>
+       case undefined: params.tagName = clause.toUpperCase(); break;
+       default:        abort(expr.inspect());
+     }
+     expr = rest;
+   }
+</PRE><PRE>   if (expr.length &gt; 0) abort(expr.inspect());
+ },
+</PRE><PRE> buildMatchExpression: function() {
+   var params = this.params, conditions = [], clause;
+</PRE><PRE>   if (params.wildcard)
+     conditions.push('true');
+   if (clause = params.id)
+     conditions.push('element.id == ' + clause.inspect());
+   if (clause = params.tagName)
+     conditions.push('element.tagName.toUpperCase() == ' + clause.inspect());
+   if ((clause = params.classNames).length &gt; 0)
+     for (var i = 0, length = clause.length; i &lt; length; i++)
+       conditions.push('Element.hasClassName(element, ' + clause[i].inspect() + ')');
+   if (clause = params.attributes) {
+     clause.each(function(attribute) {
+       var value = 'element.getAttribute(' + attribute.name.inspect() + ')';
+       var splitValueBy = function(delimiter) {
+         return value + ' &amp;&amp; ' + value + '.split(' + delimiter.inspect() + ')';
+       }
+</PRE><PRE>       switch (attribute.operator) {
+         case '=':       conditions.push(value + ' == ' + attribute.value.inspect()); break;
+         case '~=':      conditions.push(splitValueBy(' ') + '.include(' + attribute.value.inspect() + ')'); break;
+         case '|=':      conditions.push(
+                           splitValueBy('-') + '.first().toUpperCase() == ' + attribute.value.toUpperCase().inspect()
+                         ); break;
+         case '!=':      conditions.push(value + ' != ' + attribute.value.inspect()); break;
+         case <I>:</I>
+         case undefined: conditions.push(value + ' != null'); break;
+         default:        throw 'Unknown operator ' + attribute.operator + ' in selector';
+       }
+     });
+   }
+</PRE><PRE>   return conditions.join(' &amp;&amp; ');
+ },
+</PRE><PRE> compileMatcher: function() {
+   this.match = new Function('element', 'if (!element.tagName) return false; \
+     return ' + this.buildMatchExpression());
+ },
+</PRE><PRE> findElements: function(scope) {
+   var element;
+</PRE><PRE>   if (element = $(this.params.id))
+     if (this.match(element))
+       if (!scope || Element.childOf(element, scope))
+         return [element];
+</PRE><PRE>   scope = (scope || document).getElementsByTagName(this.params.tagName || '*');
+</PRE><PRE>   var results = [];
+   for (var i = 0, length = scope.length; i &lt; length; i++)
+     if (this.match(element = scope[i]))
+       results.push(Element.extend(element));
+</PRE><PRE>   return results;
+ },
+</PRE><PRE> toString: function() {
+   return this.expression;
+ }
+</PRE><P>}
+</P><P>Object.extend(Selector, {
+</P><PRE> matchElements: function(elements, expression) {
+   var selector = new Selector(expression);
+   return elements.select(selector.match.bind(selector)).collect(Element.extend);
+ },
+</PRE><PRE> findElement: function(elements, expression, index) {
+   if (typeof expression == 'number') index = expression, expression = false;
+   return Selector.matchElements(elements, expression || '*')[index || 0];
+ },
+</PRE><PRE> findChildElements: function(element, expressions) {
+   return expressions.map(function(expression) {
+     return expression.strip().split(/\s+/).inject([null], function(results, expr) {
+       var selector = new Selector(expr);
+       return results.inject([], function(elements, result) {
+         return elements.concat(selector.findElements(result || element));
+       });
+     });
+   }).flatten();
+ }
+</PRE><P>});
+</P><P>function $$() {
+</P><PRE> return Selector.findChildElements(document, $A(arguments));
+</PRE><P>}
+var Form = {
+</P><PRE> reset: function(form) {
+   $(form).reset();
+   return form;
+ },
+</PRE><PRE> serializeElements: function(elements) {
+   return elements.inject([], function(queryComponents, element) {
+     var queryComponent = Form.Element.serialize(element);
+     if (queryComponent) queryComponents.push(queryComponent);
+     return queryComponents;
+   }).join('&amp;');
+ }
+</PRE><P>};
+</P><P>Form.Methods = {
+</P><PRE> serialize: function(form) {
+   return Form.serializeElements($(form).getElements());
+ },
+</PRE><PRE> getElements: function(form) {
+   return $A($(form).getElementsByTagName('*')).inject([],
+     function(elements, child) {
+       if (Form.Element.Serializers[child.tagName.toLowerCase()])
+         elements.push(Element.extend(child));
+       return elements;
+     }
+   );
+ },
+</PRE><PRE> getInputs: function(form, typeName, name) {
+   form = $(form);
+   var inputs = form.getElementsByTagName('input');
+</PRE><PRE>   if (!typeName &amp;&amp; !name)
+     return inputs;
+</PRE><PRE>   var matchingInputs = new Array();
+   for (var i = 0, length = inputs.length; i &lt; length; i++) {
+     var input = inputs[i];
+     if ((typeName &amp;&amp; input.type != typeName) ||
+         (name &amp;&amp; input.name != name))
+       continue;
+     matchingInputs.push(Element.extend(input));
+   }
+</PRE><PRE>   return matchingInputs;
+ },
+</PRE><PRE> disable: function(form) {
+   form = $(form);
+   form.getElements().each(function(element) {
+     element.blur();
+     element.disabled = 'true';
+   });
+   return form;
+ },
+</PRE><PRE> enable: function(form) {
+   form = $(form);
+   form.getElements().each(function(element) {
+     element.disabled = <I>;</I>
+   });
+   return form;
+ },
+</PRE><PRE> findFirstElement: function(form) {
+   return $(form).getElements().find(function(element) {
+     return element.type != 'hidden' &amp;&amp; !element.disabled &amp;&amp;
+       ['input', 'select', 'textarea'].include(element.tagName.toLowerCase());
+   });
+ },
+</PRE><PRE> focusFirstElement: function(form) {
+   form = $(form);
+   form.findFirstElement().activate();
+   return form;
+ }
+</PRE><P>}
+</P><P>Object.extend(Form, Form.Methods);
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>Form.Element = {
+</P><PRE> focus: function(element) {
+   $(element).focus();
+   return element;
+ },
+</PRE><PRE> select: function(element) {
+   $(element).select();
+   return element;
+ }
+</PRE><P>}
+</P><P>Form.Element.Methods = {
+</P><PRE> serialize: function(element) {
+   element = $(element);
+   if (element.disabled) return <I>;</I>
+   var method = element.tagName.toLowerCase();
+   var parameter = Form.Element.Serializers[method](element);
+</PRE><PRE>   if (parameter) {
+     var key = encodeURIComponent(parameter[0]);
+     if (key.length == 0) return;
+</PRE><PRE>     if (parameter[1].constructor != Array)
+       parameter[1] = [parameter[1]];
+</PRE><PRE>     return parameter[1].map(function(value) {
+       return key + '=' + encodeURIComponent(value);
+     }).join('&amp;');
+   }
+ },
+</PRE><PRE> getValue: function(element) {
+   element = $(element);
+   var method = element.tagName.toLowerCase();
+   var parameter = Form.Element.Serializers[method](element);
+</PRE><PRE>   if (parameter)
+     return parameter[1];
+ },
+</PRE><PRE> clear: function(element) {
+   $(element).value = <I>;</I>
+   return element;
+ },
+</PRE><PRE> present: function(element) {
+   return $(element).value != <I>;</I>
+ },
+</PRE><PRE> activate: function(element) {
+   element = $(element);
+   element.focus();
+   if (element.select &amp;&amp; ( element.tagName.toLowerCase() != 'input' ||
+     !['button', 'reset', 'submit'].include(element.type) ) )
+     element.select();
+   return element;
+ },
+</PRE><PRE> disable: function(element) {
+   element = $(element);
+   element.disabled = true;
+   return element;
+ },
+</PRE><PRE> enable: function(element) {
+   element = $(element);
+   element.blur();
+   element.disabled = false;
+   return element;
+ }
+</PRE><P>}
+</P><P>Object.extend(Form.Element, Form.Element.Methods);
+var Field = Form.Element;
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>Form.Element.Serializers = {
+</P><PRE> input: function(element) {
+   switch (element.type.toLowerCase()) {
+     case 'checkbox':
+     case 'radio':
+       return Form.Element.Serializers.inputSelector(element);
+     default:
+       return Form.Element.Serializers.textarea(element);
+   }
+   return false;
+ },
+</PRE><PRE> inputSelector: function(element) {
+   if (element.checked)
+     return [element.name, element.value];
+ },
+</PRE><PRE> textarea: function(element) {
+   return [element.name, element.value];
+ },
+</PRE><PRE> select: function(element) {
+   return Form.Element.Serializers[element.type == 'select-one' ?
+     'selectOne' : 'selectMany'](element);
+ },
+</PRE><PRE> selectOne: function(element) {
+   var value = <I>, opt, index = element.selectedIndex;</I>
+   if (index &gt;= 0) {
+     opt = Element.extend(element.options[index]);
+     // Uses the new potential extension if hasAttribute isn't native.
+     value = opt.hasAttribute('value') ? opt.value : opt.text;
+   }
+   return [element.name, value];
+ },
+</PRE><PRE> selectMany: function(element) {
+   var value = [];
+   for (var i = 0, length = element.length; i &lt; length; i++) {
+     var opt = Element.extend(element.options[i]);
+     if (opt.selected)
+       // Uses the new potential extension if hasAttribute isn't native.
+       value.push(opt.hasAttribute('value') ? opt.value : opt.text);
+   }
+   return [element.name, value];
+ }
+</PRE><P>}
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>var $F = Form.Element.getValue;
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>Abstract.TimedObserver = function() {}
+Abstract.TimedObserver.prototype = {
+</P><PRE> initialize: function(element, frequency, callback) {
+   this.frequency = frequency;
+   this.element   = $(element);
+   this.callback  = callback;
+</PRE><PRE>   this.lastValue = this.getValue();
+   this.registerCallback();
+ },
+</PRE><PRE> registerCallback: function() {
+   setInterval(this.onTimerEvent.bind(this), this.frequency * 1000);
+ },
+</PRE><PRE> onTimerEvent: function() {
+   var value = this.getValue();
+   if (this.lastValue != value) {
+     this.callback(this.element, value);
+     this.lastValue = value;
+   }
+ }
+</PRE><P>}
+</P><P>Form.Element.Observer = Class.create();
+Form.Element.Observer.prototype = Object.extend(new Abstract.TimedObserver(), {
+</P><PRE> getValue: function() {
+   return Form.Element.getValue(this.element);
+ }
+</PRE><P>});
+</P><P>Form.Observer = Class.create();
+Form.Observer.prototype = Object.extend(new Abstract.TimedObserver(), {
+</P><PRE> getValue: function() {
+   return Form.serialize(this.element);
+ }
+</PRE><P>});
+</P><P>/*--------------------------------------------------------------------------*/
+</P><P>Abstract.EventObserver = function() {}
+Abstract.EventObserver.prototype = {
+</P><PRE> initialize: function(element, callback) {
+   this.element  = $(element);
+   this.callback = callback;
+</PRE><PRE>   this.lastValue = this.getValue();
+   if (this.element.tagName.toLowerCase() == 'form')
+     this.registerFormCallbacks();
+   else
+     this.registerCallback(this.element);
+ },
+</PRE><PRE> onElementEvent: function() {
+   var value = this.getValue();
+   if (this.lastValue != value) {
+     this.callback(this.element, value);
+     this.lastValue = value;
+   }
+ },
+</PRE><PRE> registerFormCallbacks: function() {
+   Form.getElements(this.element).each(this.registerCallback.bind(this));
+ },
+</PRE><PRE> registerCallback: function(element) {
+   if (element.type) {
+     switch (element.type.toLowerCase()) {
+       case 'checkbox':
+       case 'radio':
+         Event.observe(element, 'click', this.onElementEvent.bind(this));
+         break;
+       default:
+         Event.observe(element, 'change', this.onElementEvent.bind(this));
+         break;
+     }
+   }
+ }
+</PRE><P>}
+</P><P>Form.Element.EventObserver = Class.create();
+Form.Element.EventObserver.prototype = Object.extend(new Abstract.EventObserver(), {
+</P><PRE> getValue: function() {
+   return Form.Element.getValue(this.element);
+ }
+</PRE><P>});
+</P><P>Form.EventObserver = Class.create();
+Form.EventObserver.prototype = Object.extend(new Abstract.EventObserver(), {
+</P><PRE> getValue: function() {
+   return Form.serialize(this.element);
+ }
+</PRE><P>});
+if (!window.Event) {
+</P><PRE> var Event = new Object();
+</PRE><P>}
+</P><P>Object.extend(Event, {
+</P><PRE> KEY_BACKSPACE: 8,
+ KEY_TAB:       9,
+ KEY_RETURN:   13,
+ KEY_ESC:      27,
+ KEY_LEFT:     37,
+ KEY_UP:       38,
+ KEY_RIGHT:    39,
+ KEY_DOWN:     40,
+ KEY_DELETE:   46,
+ KEY_HOME:     36,
+ KEY_END:      35,
+ KEY_PAGEUP:   33,
+ KEY_PAGEDOWN: 34,
+</PRE><PRE> element: function(event) {
+   return event.target || event.srcElement;
+ },
+</PRE><PRE> isLeftClick: function(event) {
+   return (((event.which) &amp;&amp; (event.which == 1)) ||
+           ((event.button) &amp;&amp; (event.button == 1)));
+ },
+</PRE><PRE> pointerX: function(event) {
+   return event.pageX || (event.clientX +
+     (document.documentElement.scrollLeft || document.body.scrollLeft));
+ },
+</PRE><PRE> pointerY: function(event) {
+   return event.pageY || (event.clientY +
+     (document.documentElement.scrollTop || document.body.scrollTop));
+ },
+</PRE><PRE> stop: function(event) {
+   if (event.preventDefault) {
+     event.preventDefault();
+     event.stopPropagation();
+   } else {
+     event.returnValue = false;
+     event.cancelBubble = true;
+   }
+ },
+</PRE><PRE> // find the first node with the given tagName, starting from the
+ // node the event was triggered on; traverses the DOM upwards
+ findElement: function(event, tagName) {
+   var element = Event.element(event);
+   while (element.parentNode &amp;&amp; (!element.tagName ||
+       (element.tagName.toUpperCase() != tagName.toUpperCase())))
+     element = element.parentNode;
+   return element;
+ },
+</PRE><PRE> observers: false,
+</PRE><PRE> _observeAndCache: function(element, name, observer, useCapture) {
+   if (!this.observers) this.observers = [];
+   if (element.addEventListener) {
+     this.observers.push([element, name, observer, useCapture]);
+     element.addEventListener(name, observer, useCapture);
+   } else if (element.attachEvent) {
+     this.observers.push([element, name, observer, useCapture]);
+     element.attachEvent('on' + name, observer);
+   }
+ },
+</PRE><PRE> unloadCache: function() {
+   if (!Event.observers) return;
+   for (var i = 0, length = Event.observers.length; i &lt; length; i++) {
+     Event.stopObserving.apply(this, Event.observers[i]);
+     Event.observers[i][0] = null;
+   }
+   Event.observers = false;
+ },
+</PRE><PRE> observe: function(element, name, observer, useCapture) {
+   element = $(element);
+   useCapture = useCapture || false;
+</PRE><PRE>   if (name == 'keypress' &amp;&amp;
+       (navigator.appVersion.match(/Konqueror|Safari|KHTML/)
+       || element.attachEvent))
+     name = 'keydown';
+</PRE><PRE>   Event._observeAndCache(element, name, observer, useCapture);
+ },
+</PRE><PRE> stopObserving: function(element, name, observer, useCapture) {
+   element = $(element);
+   useCapture = useCapture || false;
+</PRE><PRE>   if (name == 'keypress' &amp;&amp;
+       (navigator.appVersion.match(/Konqueror|Safari|KHTML/)
+       || element.detachEvent))
+     name = 'keydown';
+</PRE><PRE>   if (element.removeEventListener) {
+     element.removeEventListener(name, observer, useCapture);
+   } else if (element.detachEvent) {
+     try {
+       element.detachEvent('on' + name, observer);
+     } catch (e) {}
+   }
+ }
+</PRE><P>});
+</P><P>/* prevent memory leaks in IE */
+if (navigator.appVersion.match(/\bMSIE\b/))
+</P><PRE> Event.observe(window, 'unload', Event.unloadCache, false);
+</PRE><P>var Position = {
+</P><PRE> // set to true if needed, warning: firefox performance problems
+ // NOT neeeded for page scrolling, only if draggable contained in
+ // scrollable elements
+ includeScrollOffsets: false,
+</PRE><PRE> // must be called before calling withinIncludingScrolloffset, every time the
+ // page is scrolled
+ prepare: function() {
+   this.deltaX =  window.pageXOffset
+               || document.documentElement.scrollLeft
+               || document.body.scrollLeft
+               || 0;
+   this.deltaY =  window.pageYOffset
+               || document.documentElement.scrollTop
+               || document.body.scrollTop
+               || 0;
+ },
+</PRE><PRE> realOffset: function(element) {
+   var valueT = 0, valueL = 0;
+   do {
+     valueT += element.scrollTop  || 0;
+     valueL += element.scrollLeft || 0;
+     element = element.parentNode;
+   } while (element);
+   return [valueL, valueT];
+ },
+</PRE><PRE> cumulativeOffset: function(element) {
+   var valueT = 0, valueL = 0;
+   do {
+     valueT += element.offsetTop  || 0;
+     valueL += element.offsetLeft || 0;
+     element = element.offsetParent;
+   } while (element);
+   return [valueL, valueT];
+ },
+</PRE><PRE> positionedOffset: function(element) {
+   var valueT = 0, valueL = 0;
+   do {
+     valueT += element.offsetTop  || 0;
+     valueL += element.offsetLeft || 0;
+     element = element.offsetParent;
+     if (element) {
+       if(element.tagName=='BODY') break;
+       var p = Element.getStyle(element, 'position');
+       if (p == 'relative' || p == 'absolute') break;
+     }
+   } while (element);
+   return [valueL, valueT];
+ },
+</PRE><PRE> offsetParent: function(element) {
+   if (element.offsetParent) return element.offsetParent;
+   if (element == document.body) return element;
+</PRE><PRE>   while ((element = element.parentNode) &amp;&amp; element != document.body)
+     if (Element.getStyle(element, 'position') != 'static')
+       return element;
+</PRE><PRE>   return document.body;
+ },
+</PRE><PRE> // caches x/y coordinate pair to use with overlap
+ within: function(element, x, y) {
+   if (this.includeScrollOffsets)
+     return this.withinIncludingScrolloffsets(element, x, y);
+   this.xcomp = x;
+   this.ycomp = y;
+   this.offset = this.cumulativeOffset(element);
+</PRE><PRE>   return (y &gt;= this.offset[1] &amp;&amp;
+           y &lt;  this.offset[1] + element.offsetHeight &amp;&amp;
+           x &gt;= this.offset[0] &amp;&amp;
+           x &lt;  this.offset[0] + element.offsetWidth);
+ },
+</PRE><PRE> withinIncludingScrolloffsets: function(element, x, y) {
+   var offsetcache = this.realOffset(element);
+</PRE><PRE>   this.xcomp = x + offsetcache[0] - this.deltaX;
+   this.ycomp = y + offsetcache[1] - this.deltaY;
+   this.offset = this.cumulativeOffset(element);
+</PRE><PRE>   return (this.ycomp &gt;= this.offset[1] &amp;&amp;
+           this.ycomp &lt;  this.offset[1] + element.offsetHeight &amp;&amp;
+           this.xcomp &gt;= this.offset[0] &amp;&amp;
+           this.xcomp &lt;  this.offset[0] + element.offsetWidth);
+ },
+</PRE><PRE> // within must be called directly before
+ overlap: function(mode, element) {
+   if (!mode) return 0;
+   if (mode == 'vertical')
+     return ((this.offset[1] + element.offsetHeight) - this.ycomp) /
+       element.offsetHeight;
+   if (mode == 'horizontal')
+     return ((this.offset[0] + element.offsetWidth) - this.xcomp) /
+       element.offsetWidth;
+ },
+</PRE><PRE> page: function(forElement) {
+   var valueT = 0, valueL = 0;
+</PRE><PRE>   var element = forElement;
+   do {
+     valueT += element.offsetTop  || 0;
+     valueL += element.offsetLeft || 0;
+</PRE><PRE>     // Safari fix
+     if (element.offsetParent==document.body)
+       if (Element.getStyle(element,'position')=='absolute') break;
+</PRE><PRE>   } while (element = element.offsetParent);
+</PRE><PRE>   element = forElement;
+   do {
+     if (!window.opera || element.tagName=='BODY') {
+       valueT -= element.scrollTop  || 0;
+       valueL -= element.scrollLeft || 0;
+     }
+   } while (element = element.parentNode);
+</PRE><PRE>   return [valueL, valueT];
+ },
+</PRE><PRE> clone: function(source, target) {
+   var options = Object.extend({
+     setLeft:    true,
+     setTop:     true,
+     setWidth:   true,
+     setHeight:  true,
+     offsetTop:  0,
+     offsetLeft: 0
+   }, arguments[2] || {})
+</PRE><PRE>   // find page position of source
+   source = $(source);
+   var p = Position.page(source);
+</PRE><PRE>   // find coordinate system to use
+   target = $(target);
+   var delta = [0, 0];
+   var parent = null;
+   // delta [0,0] will do fine with position: fixed elements,
+   // position:absolute needs offsetParent deltas
+   if (Element.getStyle(target,'position') == 'absolute') {
+     parent = Position.offsetParent(target);
+     delta = Position.page(parent);
+   }
+</PRE><PRE>   // correct by body offsets (fixes Safari)
+   if (parent == document.body) {
+     delta[0] -= document.body.offsetLeft;
+     delta[1] -= document.body.offsetTop;
+   }
+</PRE><PRE>   // set position
+   if(options.setLeft)   target.style.left  = (p[0] - delta[0] + options.offsetLeft) + 'px';
+   if(options.setTop)    target.style.top   = (p[1] - delta[1] + options.offsetTop) + 'px';
+   if(options.setWidth)  target.style.width = source.offsetWidth + 'px';
+   if(options.setHeight) target.style.height = source.offsetHeight + 'px';
+ },
+</PRE><PRE> absolutize: function(element) {
+   element = $(element);
+   if (element.style.position == 'absolute') return;
+   Position.prepare();
+</PRE><PRE>   var offsets = Position.positionedOffset(element);
+   var top     = offsets[1];
+   var left    = offsets[0];
+   var width   = element.clientWidth;
+   var height  = element.clientHeight;
+</PRE><PRE>   element._originalLeft   = left - parseFloat(element.style.left  || 0);
+   element._originalTop    = top  - parseFloat(element.style.top || 0);
+   element._originalWidth  = element.style.width;
+   element._originalHeight = element.style.height;
+</PRE><PRE>   element.style.position = 'absolute';
+   element.style.top    = top + 'px';;
+   element.style.left   = left + 'px';;
+   element.style.width  = width + 'px';;
+   element.style.height = height + 'px';;
+ },
+</PRE><PRE> relativize: function(element) {
+   element = $(element);
+   if (element.style.position == 'relative') return;
+   Position.prepare();
+</PRE><PRE>   element.style.position = 'relative';
+   var top  = parseFloat(element.style.top  || 0) - (element._originalTop || 0);
+   var left = parseFloat(element.style.left || 0) - (element._originalLeft || 0);
+</PRE><PRE>   element.style.top    = top + 'px';
+   element.style.left   = left + 'px';
+   element.style.height = element._originalHeight;
+   element.style.width  = element._originalWidth;
+ }
+</PRE><P>}
+</P><P>// Safari returns margins on body which is incorrect if the child is absolutely
+// positioned.  For performance reasons, redefine Position.cumulativeOffset for
+// KHTML/WebKit only.
+if (/Konqueror|Safari|KHTML/.test(navigator.userAgent)) {
+</P><PRE> Position.cumulativeOffset = function(element) {
+   var valueT = 0, valueL = 0;
+   do {
+     valueT += element.offsetTop  || 0;
+     valueL += element.offsetLeft || 0;
+     if (element.offsetParent == document.body)
+       if (Element.getStyle(element, 'position') == 'absolute') break;
+</PRE><PRE>     element = element.offsetParent;
+   } while (element);
+</PRE><PRE>   return [valueL, valueT];
+ }
+</PRE><P>}
+</P><P>Element.addMethods();
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2010.igem.org/Team:Queens-Canada/js/prototype">http://2010.igem.org/Team:Queens-Canada/js/prototype</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Queens-Canada/js/prototype" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Queens-Canada/js/prototype" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Queens-Canada/js/prototype&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Queens-Canada/js/prototype&amp;oldid=10777" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2010.igem.org:Privacy_policy" title="2010.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2010.igem.org:General_disclaimer" title="2010.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

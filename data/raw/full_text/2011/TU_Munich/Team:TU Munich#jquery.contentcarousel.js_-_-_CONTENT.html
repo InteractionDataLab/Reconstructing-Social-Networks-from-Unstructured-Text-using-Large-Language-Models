@@ -1,0 +1,233 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_TU_Munich_jquery_contentcarousel_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:TU_Munich/jquery.contentcarousel.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:TU_Munich/jquery.contentcarousel.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:TU_Munich/jquery.contentcarousel.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:TU_Munich/jquery.contentcarousel.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:TU_Munich/jquery.contentcarousel.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:TU Munich/jquery.contentcarousel.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2011.igem.org</H3><P>(function($) {
+	var	aux		= {
+			// navigates left / right
+			navigate	: function( dir, $el, $wrapper, opts, cache ) {
+</P><P>				var scroll		= opts.scroll,
+					factor		= 1,
+					idxClicked	= 0;
+</P><P>				if( cache.expanded ) {
+					scroll		= 1; // scroll is always 1 in full mode
+					factor		= 3; // the width of the expanded item will be 3 times bigger than 1 collapsed item	
+					idxClicked	= cache.idxClicked; // the index of the clicked item
+				}
+</P><P>				// clone the elements on the right / left and append / prepend them according to dir and scroll
+				if( dir === 1 ) {
+					$wrapper.find('div.ca-item:lt(' + scroll + ')').each(function(i) {
+						$(this).clone(true).css( 'left', ( cache.totalItems - idxClicked + i ) * cache.itemW * factor + 'px' ).appendTo( $wrapper );
+					});
+				}
+				else {
+					var $first	= $wrapper.children().eq(0);
+</P><P>					$wrapper.find('div.ca-item:gt(' + ( cache.totalItems  - 1 - scroll ) + ')').each(function(i) {
+						// insert before $first so they stay in the right order
+						$(this).clone(true).css( 'left', - ( scroll - i + idxClicked ) * cache.itemW * factor + 'px' ).insertBefore( $first );
+					});
+				}
+</P><P>				// animate the left of each item
+				// the calculations are dependent on dir and on the cache.expanded value
+				$wrapper.find('div.ca-item').each(function(i) {
+					var $item	= $(this);
+					$item.stop().animate({
+						left	:  ( dir === 1 ) ? '-=' + ( cache.itemW * factor * scroll ) + 'px' : '+=' + ( cache.itemW * factor * scroll ) + 'px'
+					}, opts.sliderSpeed, opts.sliderEasing, function() {
+						if( ( dir === 1 &amp;&amp; $item.position().left &lt; - idxClicked * cache.itemW * factor ) || ( dir === -1 &amp;&amp; $item.position().left &gt; ( ( cache.totalItems - 1 - idxClicked ) * cache.itemW * factor ) ) ) {
+							// remove the item that was cloned
+							$item.remove();
+						}						
+						cache.isAnimating	= false;
+					});
+				});
+</P><P>			},
+			// opens an item (animation) -&gt; opens all the others
+			openItem	: function( $wrapper, $item, opts, cache ) {
+				cache.idxClicked	= $item.index();
+				// the item's position (1, 2, or 3) on the viewport (the visible items) 
+				cache.winpos		= aux.getWinPos( $item.position().left, cache );
+				$wrapper.find('div.ca-item').not( $item ).hide();
+				$item.find('div.ca-content-wrapper').css( 'left', cache.itemW + 'px' ).stop().animate({
+					width	: cache.itemW * 2 + 'px',
+					left	: cache.itemW + 'px'
+				}, opts.itemSpeed, opts.itemEasing)
+				.end()
+				.stop()
+				.animate({
+					left	: '0px'
+				}, opts.itemSpeed, opts.itemEasing, function() {
+					cache.isAnimating	= false;
+					cache.expanded		= true;
+</P><P>					aux.openItems( $wrapper, $item, opts, cache );
+				});
+</P><P>			},
+			// opens all the items
+			openItems	: function( $wrapper, $openedItem, opts, cache ) {
+				var openedIdx	= $openedItem.index();
+</P><P>				$wrapper.find('div.ca-item').each(function(i) {
+					var $item	= $(this),
+						idx		= $item.index();
+</P><P>					if( idx !== openedIdx ) {
+						$item.css( 'left', - ( openedIdx - idx ) * ( cache.itemW * 3 ) + 'px' ).show().find('div.ca-content-wrapper').css({
+							left	: cache.itemW + 'px',
+							width	: cache.itemW * 2 + 'px'
+						});
+</P><P>						// hide more link
+						aux.toggleMore( $item, false );
+					}
+				});
+			},
+			// show / hide the item's more button
+			toggleMore	: function( $item, show ) {
+				( show ) ? $item.find('a.ca-more').show() : $item.find('a.ca-more').hide();	
+			},
+			// close all the items
+			// the current one is animated
+			closeItems	: function( $wrapper, $openedItem, opts, cache ) {
+				var openedIdx	= $openedItem.index();
+</P><P>				$openedItem.find('div.ca-content-wrapper').stop().animate({
+					width	: '0px'
+				}, opts.itemSpeed, opts.itemEasing)
+				.end()
+				.stop()
+				.animate({
+					left	: cache.itemW * ( cache.winpos - 1 ) + 'px'
+				}, opts.itemSpeed, opts.itemEasing, function() {
+					cache.isAnimating	= false;
+					cache.expanded		= false;
+				});
+</P><P>				// show more link
+				aux.toggleMore( $openedItem, true );
+</P><P>				$wrapper.find('div.ca-item').each(function(i) {
+					var $item	= $(this),
+						idx		= $item.index();
+</P><P>					if( idx !== openedIdx ) {
+						$item.find('div.ca-content-wrapper').css({
+							width	: '0px'
+						})
+						.end()
+						.css( 'left', ( ( cache.winpos - 1 ) - ( openedIdx - idx ) ) * cache.itemW + 'px' )
+						.show();
+</P><P>						// show more link
+						aux.toggleMore( $item, true );
+					}
+				});
+			},
+			// gets the item's position (1, 2, or 3) on the viewport (the visible items)
+			// val is the left of the item
+			getWinPos	: function( val, cache ) {
+				switch( val ) {
+					case 0 					: return 1; break;
+					case cache.itemW 		: return 2; break;
+					case cache.itemW * 2 	: return 3; break;
+				}
+			}
+		},
+		methods = {
+			init 		: function( options ) {
+</P><P>				if( this.length ) {
+</P><P>					var settings = {
+						sliderSpeed		: 500,			// speed for the sliding animation
+						sliderEasing	: 'easeOutExpo',// easing for the sliding animation
+						itemSpeed		: 500,			// speed for the item animation (open / close)
+						itemEasing		: 'easeOutExpo',// easing for the item animation (open / close)
+						scroll			: 1				// number of items to scroll at a time
+					};
+</P><P>					return this.each(function() {
+</P><P>						// if options exist, lets merge them with our default settings
+						if ( options ) {
+							$.extend( settings, options );
+						}
+</P><P>						var $el 			= $(this),
+							$wrapper		= $el.find('div.ca-wrapper'),
+							$items			= $wrapper.children('div.ca-item'),
+							cache			= {};
+</P><P>						// save the with of one item	
+						cache.itemW			= $items.width();
+						// save the number of total items
+						cache.totalItems	= $items.length;
+</P><P>						// add navigation buttons
+						if( cache.totalItems &gt; 3 )	
+</P>
+							$el.prepend('<DIV class="ca-nav"><SPAN class="ca-nav-prev">Previous</SPAN><SPAN class="ca-nav-next">Next</SPAN></DIV>')	
+<P>						// control the scroll value
+						if( settings.scroll &lt; 1 )
+							settings.scroll = 1;
+						else if( settings.scroll &gt; 3 )
+							settings.scroll = 3;	
+</P><P>						var $navPrev		= $el.find('span.ca-nav-prev'),
+							$navNext		= $el.find('span.ca-nav-next');
+</P><P>						// hide the items except the first 3
+						$wrapper.css( 'overflow', 'hidden' );
+</P><P>						// the items will have position absolute 
+						// calculate the left of each item
+						$items.each(function(i) {
+							$(this).css({
+								position	: 'absolute',
+								left		: i * cache.itemW + 'px'
+							});
+						});
+</P><P>						// click to open the item(s)
+						$el.find('a.ca-more').live('click.contentcarousel', function( event ) {
+							if( cache.isAnimating ) return false;
+							cache.isAnimating	= true;
+							$(this).hide();
+							var $item	= $(this).closest('div.ca-item');
+							aux.openItem( $wrapper, $item, settings, cache );
+							return false;
+						});
+</P><P>						// click to close the item(s)
+						$el.find('a.ca-close').live('click.contentcarousel', function( event ) {
+							if( cache.isAnimating ) return false;
+							cache.isAnimating	= true;
+							var $item	= $(this).closest('div.ca-item');
+							aux.closeItems( $wrapper, $item, settings, cache );
+							return false;
+						});
+</P><P>						// navigate left
+						$navPrev.bind('click.contentcarousel', function( event ) {
+							if( cache.isAnimating ) return false;
+							cache.isAnimating	= true;
+							aux.navigate( -1, $el, $wrapper, settings, cache );
+						});
+</P><P>						// navigate right
+						$navNext.bind('click.contentcarousel', function( event ) {
+							if( cache.isAnimating ) return false;
+							cache.isAnimating	= true;
+							aux.navigate( 1, $el, $wrapper, settings, cache );
+						});
+</P><P>						// adds events to the mouse
+						$el.bind('mousewheel.contentcarousel', function(e, delta) {
+							if(delta &gt; 0) {
+								if( cache.isAnimating ) return false;
+								cache.isAnimating	= true;
+								aux.navigate( -1, $el, $wrapper, settings, cache );
+							}	
+							else {
+								if( cache.isAnimating ) return false;
+								cache.isAnimating	= true;
+								aux.navigate( 1, $el, $wrapper, settings, cache );
+							}	
+							return false;
+						});
+</P><P>					});
+				}
+			}
+		};
+</P><P>	$.fn.contentcarousel = function(method) {
+		if ( methods[method] ) {
+			return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+		} else if ( typeof method === 'object' || ! method ) {
+			return methods.init.apply( this, arguments );
+		} else {
+			$.error( 'Method ' +  method + ' does not exist on jQuery.contentcarousel' );
+		}
+	};
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2011.igem.org/Team:TU_Munich/jquery.contentcarousel.js">http://2011.igem.org/Team:TU_Munich/jquery.contentcarousel.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:TU_Munich/jquery.contentcarousel.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:TU_Munich/jquery.contentcarousel.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:TU_Munich/jquery.contentcarousel.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:TU_Munich/jquery.contentcarousel.js&amp;oldid=247935" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2011.igem.org:Privacy_policy" title="2011.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2011.igem.org:General_disclaimer" title="2011.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

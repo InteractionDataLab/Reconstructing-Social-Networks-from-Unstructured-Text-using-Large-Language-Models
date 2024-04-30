@@ -1,0 +1,100 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:USTC-China/js/inject.js
+From 2014.igem.org
+/*
+* By Minsheng Liu from HSAAHNU_Anhui, Customized by Zhen Zhang * Released under MIT License. */
+function cleanup () {
+removeNodesFromHead('style');  removeNodesFromHead('script');  removeNodesFromHead('link', function (node) {    return node.rel === 'stylesheet';  });
+document.body.innerHTML = '
+Loading...
+';
+}
+function loadResources () {
+generateResourceNodes(basicStyles, 'link', function (node, url) {    node.href = url;    node.rel = 'stylesheet';  });  generateResourceNodes(basicScripts, 'script', function (node, url) {    node.src = url;  });
+enableMobileDeviceSupport();  callHTML5Shiv();
+}
+var scriptsLoadingTime = 0; function waitForScripts () {
+var isTimeout = scriptsLoadingTime > 160;  if (isTimeout) {    alert('Loading script timeout. Refresh or check your Internet connection.');    return;  }
+var isJQueryUpdated = window.hasOwnProperty('jQuery') && $.fn.jquery === '1.11.1';  var isNProgressLoaded = window.hasOwnProperty('NProgress');
+if (isJQueryUpdated && isNProgressLoaded)    loadPage(parseURL(document.URL));  else {    scriptsLoadingTime ++;    setTimeout(waitForScripts, 100);  }
+}
+function loadPage (path) {
+NProgress.start();  path.fetch(function (err, data) {    if (err) {      alert('Error happens when loading page!');      return;    }
+data = selectCore(PJAXSplitter.start, PJAXSplitter.end, data);    document.body.innerHTML = data;    doPageSpecificJobs();
+NProgress.done();  });
+}
+function setupPJAXListener () {
+if (history === null) {    alert('sorry but your browser does not support history api.');    return;  }
+$('a').click(goForwardListener);
+}
+function applyMetadata (metadata) {
+metadata = JSON.parse(metadata);
+metadata.title ? document.title = metadata.title : null;
+}
+function doPageSpecificJobs () {
+setupPJAXListener();  applyMetadata(document.getElementById('metadata').innerText);
+}
+//helper functions function removeNodesFromHead (tag, constriant) {
+constriant = constriant ? constriant  : function () { return true; };  var nodes = document.head.getElementsByTagName(tag);  var failedCounter = 0;  var iterator = 0;  while (nodes.length !== failedCounter) {    var node = nodes[iterator];    if (constriant(node))      document.head.removeChild(node);    else {      failedCounter ++;      iterator ++;    }  }
+}
+function generateResourceNodes (urls, tagname, process) {
+urls.forEach(function (url) {    var node = document.createElement(tagname);    process(node, url);    document.head.appendChild(node);  });
+};
+function enableMobileDeviceSupport () {
+var meta = document.createElement('meta');  meta.name = 'viewport';  meta.content = 'width=device-width, initial-scale=1';  document.head.appendChild(meta);
+}
+var html5shiv = '/*@preserve HTML5 Shiv 3.7.2 | @afarkas @jdalton @jon_neal @rem | MIT/GPL2 Licensed*/\n!function(a,b){function c(a,b){var c=a.createElement("p"),d=a.getElementsByTagName("head")[0]||a.documentElement;return c.innerHTML="x<style>"+b+"</style>",d.insertBefore(c.lastChild,d.firstChild)}function d(){var a=t.elements;return"string"==typeof a?a.split(" "):a}function e(a,b){var c=t.elements;"string"!=typeof c&&(c=c.join(" ")),"string"!=typeof a&&(a=a.join(" ")),t.elements=c+" "+a,j(b)}function f(a){var b=s[a[q]];return b||(b={},r++,a[q]=r,s[r]=b),b}function g(a,c,d){if(c||(c=b),l)return c.createElement(a);d||(d=f(c));var e;return e=d.cache[a]?d.cache[a].cloneNode():p.test(a)?(d.cache[a]=d.createElem(a)).cloneNode():d.createElem(a),!e.canHaveChildren||o.test(a)||e.tagUrn?e:d.frag.appendChild(e)}function h(a,c){if(a||(a=b),l)return a.createDocumentFragment();c=c||f(a);for(var e=c.frag.cloneNode(),g=0,h=d(),i=h.length;i>g;g++)e.createElement(h[g]);return e}function i(a,b){b.cache||(b.cache={},b.createElem=a.createElement,b.createFrag=a.createDocumentFragment,b.frag=b.createFrag()),a.createElement=function(c){return t.shivMethods?g(c,a,b):b.createElem(c)},a.createDocumentFragment=Function("h,f","return function(){var n=f.cloneNode(),c=n.createElement;h.shivMethods&&("+d().join().replace(/[\\w\\-:]+/g,function(a){return b.createElem(a),b.frag.createElement(a),\'c("\'+a+\'")\'})+");return n}")(t,b.frag)}function j(a){a||(a=b);var d=f(a);return!t.shivCSS||k||d.hasCSS||(d.hasCSS=!!c(a,"article,aside,dialog,figcaption,figure,footer,header,hgroup,main,nav,section{display:block}mark{background:#FF0;color:#000}template{display:none}")),l||i(a,d),a}var k,l,m="3.7.2",n=a.html5||{},o=/^<|^(?:button|map|select|textarea|object|iframe|option|optgroup)$/i,p=/^(?:a|b|code|div|fieldset|h1|h2|h3|h4|h5|h6|i|label|li|ol|p|q|span|strong|style|table|tbody|td|th|tr|ul)$/i,q="_html5shiv",r=0,s={};!function(){try{var a=b.createElement("a");a.innerHTML="<xyz></xyz>",k="hidden"in a,l=1==a.childNodes.length||function(){b.createElement("a");var a=b.createDocumentFragment();return"undefined"==typeof a.cloneNode||"undefined"==typeof a.createDocumentFragment||"undefined"==typeof a.createElement}()}catch(c){k=!0,l=!0}}();var t={elements:n.elements||"abbr article aside audio bdi canvas data datalist details dialog figcaption figure footer header hgroup main mark meter nav output picture progress section summary template time video",version:m,shivCSS:n.shivCSS!==!1,supportsUnknownElements:l,shivMethods:n.shivMethods!==!1,type:"default",shivDocument:j,createElement:g,createDocumentFragment:h,addElements:e};a.html5=t,j(b)}(this,document);\n'; function callHTML5Shiv () {
+eval(html5shiv);
+}
+var pjaxCalledOnce = false; function goForwardListener (event) {
+var node = event.target;  var url = parseURL(node.href);  if (url === null)    return true;
+history.pushState(null, null, node.href);  loadPage(url);
+if (!pjaxCalledOnce) {    pjaxCalledOnce = true;    window.addEventListener('popstate', goBackListener);  }  return false;
+}
+function goBackListener (event) {
+var url = parseURL(document.URL);  if (url === null)    return;  loadPage(parseURL(document.URL));
+}
+function checkURLForPJAX (url) {
+var isOutsideLink = !startsWith(href, basePath);  if (isOutsideLink)    return;
+var current = parseURL(document.URL);  var next = parseURL(url);
+var isSamePage = current.path === next.path;  if (isSamePage)    return;  else    return next;
+}
+function parseURL (url) {
+var info = url.substr(basePath.length).split('#');  return {    path: info[0],    anchor: info[1],    fetch: function (callback) {      var url = basePath + this.path + mediaWikiRawQuery;      $.ajax(url).done(function (data) { callback(null, data); });    }  };
+}
+//utility functions function startsWith (lhs, rhs) {
+var isStartWith = lhs.substr(0, rhs.length) === rhs;  return isStartWith;
+}
+function selectCore (from, to, str) {
+return str.split(from)[1].split(to)[0];
+}
+//magic "numbers" var basicStyles = [
+' http://ricostacruz.com/nprogress/nprogress.css' ,  " http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,300,600,700 ",  " https://cdnjs.cloudflare.com/ajax/libs/foundation/5.4.6/css/foundation.min.css ",  " https://2014.igem.org/Team:USTC-China/assets/css/main.css?action=raw&ctype=text/css ",  " https://2014.igem.org/Team:USTC-China/assets/css/index.css?action=raw&ctype=text/css ",  " https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css ",  " http://ustc-igem.sacheo-dev.freeshell.ustc.edu.cn/owl2/owl.carousel.css ",  " http://ustc-igem.sacheo-dev.freeshell.ustc.edu.cn/owl2/owl.theme.default.min.css "
+];
+var basicScripts = [
+' http://ricostacruz.com/nprogress/nprogress.js' ,  ' http://code.jquery.com/jquery-1.11.1.min.js' ,  ' https://cdnjs.cloudflare.com/ajax/libs/foundation/5.4.6/js/vendor/modernizr.js' ,  " https://cdnjs.cloudflare.com/ajax/libs/foundation/5.4.6/js/vendor/jquery.js ",  " https://cdnjs.cloudflare.com/ajax/libs/foundation/5.4.6/js/foundation/foundation.min.js ",  " http://ustc-igem.sacheo-dev.freeshell.ustc.edu.cn/owl2/owl.carousel.min.js ",  " http://ustc-igem.sacheo-dev.freeshell.ustc.edu.cn/carousel.js "
+];
+var PJAXSplitter = {
+start: , end:
+};
+var basePath = ' https://2014.igem.org/Team:USTC-China' ; var mediaWikiRawQuery = '?action=raw';
+document.addEventListener('DOMContentLoaded', function () {
+cleanup();  loadResources();  waitForScripts();
+});
+Retrieved from " http://2014.igem.org/Team:USTC-China/js/inject.js "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

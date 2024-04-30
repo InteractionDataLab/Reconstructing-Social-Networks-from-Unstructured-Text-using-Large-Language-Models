@@ -1,0 +1,124 @@
+Team:Groningen/Model
+≡ Menu
+Home
+Project
+Description
+Model
+Design
+Results
+Notebook
+Future Research
+Protocols
+InterLab
+Human Practices
+Overview
+Human Practices (Silver)
+Integrated (Gold)
+Public Engagement
+Applied Design
+Future Outlook
+Safety
+Parts
+Collaborations
+Team
+Team Members
+Achievements
+Attributions
+Fun Activities
+Sponsors
+1. Spacer Determination
+  Adaptability
+  Activity
+  Off-target potential
+  Modeling
+  Model results
+2. Multiple Spacers
+  Genetic Algorithm
+  Methods
+  Limitations
+  Future perspectives
+  Source code
+3. Reporter Behavior
+References
+Modeling
+Spacer Determination
+Introduction
+Bacteria with a functioning CRISPR system defend against infection by targeting specific DNA sequences from the foreign bacteriophages. To be able to do this, the bacteria must have previously added such sequences to its library of targetable sequences. All targetable sequences are located in the genome of the bacteria in a region called the spacer array. Each targetable sequence, commonly known as spacer, is encoded in this region and is separated from other sequences by the same repeated sequence. The process of acquiring a new spacer into the array is called CRISPR adaptation and is known to be mediated by the Cas 1 and Cas 2 proteins [Amitai (2016)] . Importantly, there are spacers that are more likely to be “adapted” into the spacer array. The causes of this bias in adaptation is thought to reside in the sequence the spacer has on the original invader bacteriophage and the type of CRISPR system.  In our project, we want to detect the presence of a specific bacteriophage by using bacteriophage specific spacer that guides the activity of the CRISPR system. It would be useful to predict which sequences in the bacteriophage are most likely to be effective guides and are also most specific to the bacteriophage we wish to detect. This would allow us to pre-encode these spacers into our construct and detect the presence of the bacteriophage more effectively. We wanted to code a pipeline that takes the genome of a bacteriophage of interest and outputs which sequences are most likely to work for our specific CRISPR system.  After reviewing current literature, we found that the effectiveness of a spacer depends on:
+Adaptability: The likelihood of that spacer to be adapted into the array:
+Activity: The effectiveness of the  guide encoded by that spacer in cleaving the target bacteriophage sequence.
+Off-target potential: The ability of that spacer in detrimentally cleaving a similar sequence from the genome of the bacteria instead of the bacteriophage.
+Adaptability
+Adaptability is one of the most influential aspects that define a spacer sequence. Each CRISPR system adapts spacers with a different “motif”. This proto-spacer adjacent motif (PAM) is usually located at the boundaries of the spacer and for our S. pyogenes based system corresponds to 5’-spacer-NGG-3’ [Leenay (2016) . This means spacer size sequences in the bacteriophage that end in NGG are much more likely to be taken up as spacers by the Cas1-Cas2 complex and then integrated into the bacterial CRISPR array.    One report in E. coli also showed that the main source of spacer material for adaptation comes from excision products from a nuclease (RecBCD) that participates in DNA repair [Levy (2015)] . When a region of the DNA is being transcribed or replicated it is more likely to be damaged because these processes require the temporal unwinding of the double helix into two single strands. Therefore, sequences that are more likely to be transcribed or replicated are therefore more exposed to DNA damage and are more likely to be taken up as spacers. In the same report, it was also demonstrated that CHI sequences stop the activity of the nuclease. This means that sequences upstream of a CHI sequence are slightly less likely to be taken up as spacers because they are protected from the activity of the nuclease. Because the CRISPR systems of E. coli and S. pyogenes are different we are not sure if these findings is relevant for our predictions. Intriguingly, there is an analog nuclease and an analog CHI sequence that inhibits it in S. pyogenes which suggests the analog CHI sequence may also influence the spacer acquisition in S. pyogenes [El Karoui (2000)] . If this is the case, then encoding the corresponding sequence at different locations in our constructs would protect them from incorrectly being used as spacer material.
+Activity
+By design, the sequence of the guide is critical in guiding the activity of the CRISPR system, but factors that influence this activity are still not fully characterized. In theory, spacers that attack more critical parts and "early proteins" of the bacteriophage genome would be even more effective (and therefore more likely to make the bacteria survive). Nevertheless, large studies on adaptation do not support this assumption [Savitskaya (2013)] . Still, their findings support that the spacer sequence influences the activity of the guide. For example, some spacers with correct PAM show almost no activity. This shows that there is much to learn about the mechanisms influencing activity. We decided to account for this bias by collecting information on the activity levels of different spacers sequences from the literature. Below we explain how we integrated this information into our pipeline.
+Off-target potential
+In theory, spacers that erroneously cleave the bacterial genome are less likely to be effective spacers because they reduce the fitness of the bacteria. We want to prevent these off-target effects as much as possible. From the literature, we learned that in our CRISPR system, the 13 last nucleotides of the spacer are the most important for off-target activity except for the second to last, which corresponds to the N position of the PAM. This means for example, that a spacer that ends in AGG will have the same activity on GGG, CGG, and TGG ending spacers if all else remains equal.
+Modeling
+With this information, we coded a pipeline that, taking a bacteriophage genome as input, selects the spacers that are more likely to be effective for that bacteriophage.   The pipeline follows these steps:
+Extract all possible NGG ending spacers from the target bacteriophage genome.
+Penalize spacers for which the last 13 nucleotides align to a region in the bacterial genome with less than 5 miss-matches.
+Using the collected information of spacer activity in our CRISPR system prioritize spacers that share the similar* 13 nucleotide ending with a database spacer if the database spacer is on the top 25 percentile of a measure of activity.
+Using the collected information of spacer activity in our CRISPR system penalize spacers that share the similar* 13 nucleotide ending with a database spacer if the database spacer is on the bottom 25 percentile of a measure of activity.
+Similar*: Less than 3 mismatches   The only large-scale study of spacer adaptation done on our CRISPR system was used to improve the prediction of spacers that may be more active [Heler (2015)] . It is important to mention that more data is needed to fully understand the relationship of a spacer sequence and its activity.
+Model results
+For our project, we used the protospacer predictor algorithm to select which spacers to encode into  our reporter. We used as input the genome of L. lactis (AM406671) and the genomic sequence of virus SK1 (NC_001835.1) . We obtained a list of spacers that we ranked based on a metric that unifies the  activity score and the off-target effects of such spacer using Z-scores (see code). Despite this, the  metric was not useful to rank our spacers because some spacers had unexpectedly high activity  scores. This made some spacers have a high unification score despite a high probability of off-target  effects. Instead, we selected spacers:
+AGTAGACAACGCAGGANGG
+GGCGGAAGCAATACTCNGG
+These spacers are 21 st and 22 st on the ranked list and are located in SK1 at positions 15067 and 27694  respectively. They have moderate activity scores and low chance of off-target effects.  We expect that with more activity measurements similar to the one kindly provided by Heler et al (PMC4385744) the activity score will become more informative and make the behavior of the unified  score less erratic. Another solution is to preprocess the activity score and off-target effect data to  make them more comparable. Nevertheless, the current output table informs the final user about  the activity evidence of each spacer and the possibility of off-target effects, which can assist a  decision.
+Multiple Spacers
+Our system is designed to detect a specific bacteriophage in a culture of our GMO. This is accomplished by inserting in the spacer array one sequence that will successfully cause interference to the invading bacteriophage’s DNA via CRISPR and subsequently activate a fluorescent reporter. Because the spacer array can contain more than one spacer there is the possibility that our system could be extended to detect 2 or 3 different bacteriophages. This would increase the utility of the system and could set the stage for the development of a modification where the reporter can distinguish between each virus.
+There are potential limitations of this extension, where increasing the number of detectable phages may lower the sensitivity or specificity of the system for each individual phage. Because each spacer may come from any of the phages to detect there is a wide array of combinations of spacers that may perform better for a subset or for (ideally) all phages. This can easily be translated into a computational problem.
+We used an evolutionary optimization strategy to select which spacers combination is more desirable for a system that must detect 3 phages. We used an agent model where each agent has an initial spacer collection of size 5 that is selected randomly from the output of our proto-spacer prediction algorithm (See our other entry). We evaluate each agent according to a fitness function where we test how likely it is that collection of spacers will detect all or some of the target phages. We then “mutate” each agent by making the top agents inherit some of their spacers to a new generation of agents.
+The result from this strategy is the selection of the local optimum spacer collection that guarantees the highest detection rate, given the initialized input. This collection can then be tested in vitro.
+How do genetic algorithms work?
+In principle, genetic algorithms are used to imitate the process of evolution. These algorithms are most commonly used to solve search and optimization problems. This is done by invoking operations that also take place during the process of evolution in nature. Such processes include mutation, crossover and selection.
+Selection
+The selection process is tightly coupled with the fitness calculation. During the selection step we "discard" the agents with the worst fitness. This is called elitism and it only allows the strongest of each generation to pass the genes to the next generations.
+Crossover
+Crossover is analogous to reproduction. This means that genes from two parents, who passed the selection step, will be passed on to a new agent. This process continues randomly till the population has reached its original size.
+Mutation
+The introduction of mutation is necessary to avoid local optima. In other words, mutation's purpose is preserving and introducing diversity in the population.
+Methods
+We created some agents (our population) and we used 4 viruses in total. 2 randomized and 2 real viruses, namely SK1 and JJ50. The steps we followed are described below:
+Initiation of the agents.
+Extraction of spacers from all viruses
+Assigning 2 spacers from each virus to each agent
+For every agent
+Compute how similar each spacer is from every virus (we used hamming distance to measure similarity)
+Compute the fitness of the agent
+Short agents based on their fitness
+Selection process where we discard half of the agents with the lowest fitness score
+Crossover. We mate the remaining agents at random till we reach the original population. The offsprings of these agents inherit (randomly) half spacers from each parent.
+Repeat from step 4 as many times as the desired generations
+Limitations
+We encountered some limitations when testing our algorithm. In our case the JJ50 and SK1 are phages that share similar genomes. This caused the algorithm to select the spacer that detected them both but disregarded discriminating between each two. This means that our model may not  work to discriminate between phages that are very similar in sequence.
+The second limitation is in regard of the nature of the genetic algorithms. Genetic algorithms are not designed to find the best solution but rather a good-enough solution and thus they can reach “evolutionary peaks” and converge there but not improve further. One way to overcome this issue is by implementing the mutation step but since we want specific spacers this was not an option.
+Future perspectives
+We selected our fitness function as a quick measure to test the feasibility of the genetic algorithm. Nevertheless, the fitness function should be redesigned to prioritize the detection of as much viruses as possible and take into account the false positives and false negatives when challenged with random genomes.
+Another interesting modeling opportunity is to model the kinetics of system that reports the presence of different viruses by giving a pulse of light at different frequencies, activates a combination of fluorescent markers or other. This system could also be easily transferred to other genetic engineering projects.
+Source code
+Spacer models code in a zip file.
+Reporter Behavior
+Our system will behave differently once cells get infected by a bacteriophage. It could get infected by a bacteriophage that is pre-programmed into the system, or by a novel bacteriophage. With this model we would like to evaluate if detection of a pre-programmed bacteriophage would result in a decrease of GFP, but with a stable RFP expression.   To model the infection of a pre-programmed or a non-programmed bacteriophage in a culture with our system we used a compartment model similar to the SIR model. This model has 6 compartments:
+Susceptible naive (S): Cells that are naive to both types of bacteriophages.
+Susceptible recovered from preprogrammed (Srp) : Cells that are susceptible to the non-preprogrammed.
+Susceptible recovered from non-preprogrammed (Srnp): Cells that are susceptible to the preprogrammed.
+Recovered (R): Cells that are resistant to both bacteriophages.
+Infected with preprogrammed (Ip): Infected non-dividing cells
+Infected with non-preprogrammed (Inp): Infected non-dividing cells
+The populations of cells flow from compartment to compartment as described by the flowchart. Cells in the infected compartment can die depending on the amount of virulence we specify in the system. To compensate, all susceptible compartments plus the recovered compartment slowly increase in size, simulating the normal cells divisions that occur in the real scenario.
+Scenario one: Our system gets infected with a non-programmed bacteriophage. Cells would die from the infection and later the population would recover. But throughout this process the ratio of GFP to RFP would stay the same:
+Scenario two: Our system gets infected with a pre-programmed bacteriophage. Cells would die from the infection and later the population would recover. But throughout this process the ratio of GFP to RFP would diverge and stay separate:
+Even if both infections occur at the same time the difference would be detected after both populations stabilize:
+So, according to this model, we can safely assume that our system can differentiate between detection of a pre-programmed or new bacteriophage. In this way, our system will be more robust than with only a down-regulation of GFP without constant RFP expression.
+Source code Reporter Behaviour (zip file).
+References
+Amitai, G. & Sorek, R. CRISPR-Cas adaptation: insights into the mechanism of action. Nat. Rev. Microbiol. 14, 67–76 (2016).
+Leenay, R. T. et al. Identifying and Visualizing Functional PAM Diversity across CRISPR-Cas Systems. Mol. Cell 62, 137–147 (2016).
+Levy, A. et al. CRISPR adaptation biases explain preference for acquisition of foreign DNA. Nature 520, 505–510 (2015).
+El Karoui, M. et al. Orientation specificity of the Lactococcus lactis Chi site. Genes Cells Devoted Mol. Cell. Mech. 5, 453–461 (2000).
+Savitskaya, E., Semenova, E., Dedkov, V., Metlitskaya, A. & Severinov, K. High-throughput analysis of type I-E CRISPR/Cas spacer acquisition in E. coli. RNA Biol. 10, 716–725 (2013).
+Heler, R. et al. Cas9 specifies functional viral targets during CRISPR-Cas adaptation. Nature 519, 199–202 (2015).
+Wegmann, et al. Complete Genome Sequence of the Prototype Lactic Acid Bacterium Lactococcus lactis subsp. cremoris MG1363. Journal of Bacteriology, 189(8), pp.3256-3270. (2007).
+Chandry, P. S. et al. Analysis of the DNA sequence, gene expression, origin of replication and modular structure of the Lactococcus lactis lytic bacteriophage sk1. Molecular Microbiology, 26(01), 49-64. (1997).
+Next: Design

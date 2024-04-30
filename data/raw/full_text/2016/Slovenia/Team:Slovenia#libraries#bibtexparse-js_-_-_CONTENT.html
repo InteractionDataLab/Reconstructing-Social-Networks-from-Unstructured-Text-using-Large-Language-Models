@@ -1,0 +1,465 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Slovenia_libraries_bibtexparse-js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Slovenia/libraries/bibtexparse-js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>// modified by iGEM Team Slovenia 2016
+</P><P>/* start zoteroBibtexParse 0.0.13 
+</P><PRE><A rel="nofollow" class="external free" href="https://github.com/apcshields/zotero-bibtex-parse">https://github.com/apcshields/zotero-bibtex-parse</A></PRE><UL><LI>/</LI></UL><P>// Original work by Henrik Muehe (c) 2010
+//
+// CommonJS port by Mikola Lysenko 2013
+//
+// Port to Browser lib by ORCID / RCPETERS
+//
+// Additions and slight changes by apcshields, Jul 2014.
+// (Some of which bring this back closer to Lysenko's version.)
+//
+// Issues:
+// no comment handling within strings
+// no string concatenation
+// no variable values yet
+// Grammar implemented here:
+// bibtex -&gt; (string | preamble | comment | entry)*;
+// string -&gt; '@STRING' '{' key_equals_value '}';
+// preamble -&gt; '@PREAMBLE' '{' value '}';
+// comment -&gt; '@COMMENT' '{' value '}';
+// entry -&gt; '@' key '{' key ',' key_value_list '}';
+// key_value_list -&gt; key_equals_value (',' key_equals_value)*;
+// key_equals_value -&gt; key '=' value;
+// value -&gt; value_quotes | value_braces | key;
+// value_quotes -&gt; '&quot;' .*? '&quot;'; // not quite
+// value_braces -&gt; '{' .*? '&quot;'; // not quite
+(function (exports) {
+</P><PRE>   function BibtexParser() {
+</PRE><PRE>       this.pos = 0;
+       this.input = &quot;&quot;;
+       this.entries = [];
+</PRE><PRE>       this.strings = {  // Added from Mikola Lysenko's bibtex-parser. -APCS
+           JAN: &quot;January&quot;,
+           FEB: &quot;February&quot;,
+           MAR: &quot;March&quot;,
+           APR: &quot;April&quot;,
+           MAY: &quot;May&quot;,
+           JUN: &quot;June&quot;,
+           JUL: &quot;July&quot;,
+           AUG: &quot;August&quot;,
+           SEP: &quot;September&quot;,
+           OCT: &quot;October&quot;,
+           NOV: &quot;November&quot;,
+           DEC: &quot;December&quot;
+       };
+</PRE><PRE>       this.currentEntry = &quot;&quot;;
+</PRE><PRE>       this.setInput = function (t) {
+           this.input = t;
+       };
+</PRE><PRE>       this.getEntries = function () {
+           return this.entries;
+       };
+</PRE><PRE>       this.isWhitespace = function (s) {
+           return (s == ' ' || s == '\r' || s == '\t' || s == '\n');
+       };
+</PRE><PRE>       this.match = function (s, canCommentOut) {
+           if (canCommentOut == undefined || canCommentOut == null)
+               canCommentOut = true;
+           this.skipWhitespace(canCommentOut);
+</PRE><PRE>           if (this.input.substring(this.pos, this.pos + s.length) == s) {
+               this.pos += s.length;
+           } else {
+               throw &quot;Token mismatch, expected '&quot; + s + &quot;', found '&quot;
+               + this.input.substr(this.pos, s.length) + &quot;'&quot;;
+           }
+           this.skipWhitespace(canCommentOut);
+       };
+</PRE><PRE>       this.tryMatch = function (s, canCommentOut) {
+           if (canCommentOut == undefined || canCommentOut == null)
+               canComment = true;
+           this.skipWhitespace(canCommentOut);
+           return this.input.substring(this.pos, this.pos + s.length) == s;
+       };
+</PRE><PRE>       /* when search for a match all text can be ignored, not just white space */
+       this.matchAt = function () {
+           while (this.input.length &gt; this.pos &amp;&amp; this.input[this.pos] != '@') {
+               this.pos++;
+           }
+           return this.input[this.pos] == '@';
+       };
+</PRE><PRE>       this.skipWhitespace = function (canCommentOut) {
+           while (this.isWhitespace(this.input[this.pos])) {
+               this.pos++;
+           }
+           if (this.input[this.pos] == &quot;%&quot; &amp;&amp; canCommentOut == true) {
+               while (this.input[this.pos] != &quot;\n&quot;) {
+                   this.pos++;
+               }
+               this.skipWhitespace(canCommentOut);
+           }
+       };
+</PRE><PRE>       this.value_braces = function () {
+           var bracecount = 0;
+           this.match(&quot;{&quot;, false);
+           var start = this.pos;
+           var escaped = false;
+           while (true) {
+               if (!escaped) {
+                   if (this.input[this.pos] == '}') {
+                       if (bracecount &gt; 0) {
+                           bracecount--;
+                       } else {
+                           var end = this.pos;
+                           this.match(&quot;}&quot;, false);
+                           return this.input.substring(start, end);
+                       }
+                   } else if (this.input[this.pos] == '{') {
+                       bracecount++;
+                   } else if (this.pos &gt;= this.input.length - 1) {
+                       throw &quot;Unterminated value&quot;;
+                   }
+               }
+               escaped = !!(this.input[this.pos] == '\\' &amp;&amp; escaped == false);
+               /*changed*/
+               this.pos++;
+           }
+       };
+</PRE><PRE>       this.value_comment = function () {
+           var str = <I>;</I>
+           var brcktCnt = 0;
+           while (!(this.tryMatch(&quot;}&quot;, false) &amp;&amp; brcktCnt == 0)) {
+               str = str + this.input[this.pos];
+               if (this.input[this.pos] == '{')
+                   brcktCnt++;
+               if (this.input[this.pos] == '}')
+                   brcktCnt--;
+               if (this.pos &gt;= this.input.length - 1) {
+                   throw &quot;Unterminated value:&quot; + this.input.substring(start);
+               }
+               this.pos++;
+           }
+           return str;
+       };
+</PRE><PRE>       this.value_quotes = function () {
+           this.match('&quot;', false);
+           var start = this.pos;
+           var escaped = false;
+           while (true) {
+               if (!escaped) {
+                   if (this.input[this.pos] == '&quot;') {
+                       var end = this.pos;
+                       this.match('&quot;', false);
+                       return this.input.substring(start, end);
+                   } else if (this.pos &gt;= this.input.length - 1) {
+                       throw &quot;Unterminated value:&quot; + this.input.substring(start);
+                   }
+               }
+               escaped = !!(this.input[this.pos] == '\\' &amp;&amp; escaped == false); // changed
+               this.pos++;
+           }
+       };
+</PRE><PRE>       this.single_value = function () {
+           var start = this.pos;
+           if (this.tryMatch(&quot;{&quot;)) {
+               return this.value_braces();
+           } else if (this.tryMatch('&quot;')) {
+               return this.value_quotes();
+           } else {
+               var k = this.key();
+               if (this.strings[k.toUpperCase()]) { // Added from Mikola Lysenko's bibtex-parser. -APCS
+                   return this.strings[k];
+               } else if (k.match(&quot;^[0-9]+$&quot;)) {
+                   return k;
+               } else {
+                   throw &quot;Value expected:&quot; + this.input.substring(start);
+               }
+           }
+       };
+</PRE><PRE>       this.value = function () {
+           var values = [];
+           values.push(this.single_value());
+           while (this.tryMatch(&quot;#&quot;)) {
+               this.match(&quot;#&quot;);
+               values.push(this.single_value());
+           }
+           return latexToUTF8.decodeLatex(values.join(&quot;&quot;));
+       };
+</PRE><PRE>       this.key = function () {
+           var start = this.pos;
+           while (true) {
+               if (this.pos &gt;= this.input.length) {
+                   throw &quot;Runaway key&quot;;
+               }
+               if (this.input[this.pos].match(/[a-zA-Z0-9+_:\?\.\/\[\]\-]/)) { // Added question marks to handle Zotero going sideways. -APCS
+                   this.pos++;
+               } else {
+                   return this.input.substring(start, this.pos);
+               }
+           }
+       };
+</PRE><PRE>       this.key_equals_value = function () {
+           var key = this.key();
+           if (this.tryMatch(&quot;=&quot;)) {
+               this.match(&quot;=&quot;);
+               var val = this.value();
+               return [key, val];
+           } else {
+               throw &quot;... = value expected, equals sign missing:&quot;
+               + this.input.substring(this.pos);
+           }
+       };
+</PRE><PRE>       this.key_value_list = function () {
+           var kv = this.key_equals_value();
+           this.currentEntry['entryTags'] = {};
+           this.currentEntry['entryTags'][kv[0].toLowerCase()] = kv[1];
+           while (this.tryMatch(&quot;,&quot;)) {
+               this.match(&quot;,&quot;);
+               // fixes problems with commas at the end of a list
+               if (this.tryMatch(&quot;}&quot;)) {
+                   break;
+               }
+               kv = this.key_equals_value();
+               this.currentEntry['entryTags'][kv[0].toLowerCase()] = kv[1];
+           }
+       };
+</PRE><PRE>       this.entry_body = function (d) {
+           this.currentEntry = {};
+           this.currentEntry['citationKey'] = this.key();
+           this.currentEntry['entryType'] = d.substring(1);
+           this.match(&quot;,&quot;);
+           this.key_value_list();
+           this.entries.push(this.currentEntry);
+       };
+</PRE><PRE>       this.directive = function () {
+           this.match(&quot;@&quot;);
+           return &quot;@&quot; + this.key();
+       };
+</PRE><PRE>       this.preamble = function () {
+           this.currentEntry = {};
+           this.currentEntry['entryType'] = 'PREAMBLE';
+           this.currentEntry['entry'] = this.value_comment();
+           this.entries.push(this.currentEntry);
+       };
+</PRE><PRE>       this.comment = function () {
+           this.currentEntry = {};
+           this.currentEntry['entryType'] = 'COMMENT';
+           this.currentEntry['entry'] = this.value_comment();
+           this.entries.push(this.currentEntry);
+       };
+</PRE><PRE>       this.entry = function (d) {
+           this.entry_body(d);
+       };
+</PRE><PRE>       this.bibtex = function () {
+           while (this.matchAt()) {
+               var d = this.directive();
+               this.match(&quot;{&quot;);
+               if (d == &quot;@STRING&quot;) {
+                   this.string();
+               } else if (d == &quot;@PREAMBLE&quot;) {
+                   this.preamble();
+               } else if (d == &quot;@COMMENT&quot;) {
+                   this.comment();
+               } else {
+                   this.entry(d);
+               }
+               this.match(&quot;}&quot;);
+           }
+       };
+   }
+</PRE><PRE>   function LatexToUTF8() {
+       this.uniToLatex = {};
+       this.latexToUni = {
+           &quot;`A&quot;: &quot;À&quot;, // begin grave
+           &quot;`E&quot;: &quot;È&quot;,
+           &quot;`I&quot;: &quot;Ì&quot;,
+           &quot;`O&quot;: &quot;Ò&quot;,
+           &quot;`U&quot;: &quot;Ù&quot;,
+           &quot;`a&quot;: &quot;à&quot;,
+           &quot;`e&quot;: &quot;è&quot;,
+           &quot;`i&quot;: &quot;ì&quot;,
+           &quot;`o&quot;: &quot;ò&quot;,
+           &quot;`u&quot;: &quot;ù&quot;,
+           &quot;\'A&quot;: &quot;Á&quot;, // begin acute
+           &quot;\'E&quot;: &quot;É&quot;,
+           &quot;\'I&quot;: &quot;Í&quot;,
+           &quot;\'O&quot;: &quot;Ó&quot;,
+           &quot;\'U&quot;: &quot;Ú&quot;,
+           &quot;\'Y&quot;: &quot;Ý&quot;,
+           &quot;\'a&quot;: &quot;á&quot;,
+           &quot;\'e&quot;: &quot;é&quot;,
+           &quot;\'i&quot;: &quot;í&quot;,
+           &quot;\'o&quot;: &quot;ó&quot;,
+           &quot;\'u&quot;: &quot;ú&quot;,
+           &quot;\'y&quot;: &quot;ý&quot;,
+           &quot;\&quot;A&quot;: &quot;Ä&quot;, // begin diaeresis
+           &quot;\&quot;E&quot;: &quot;Ë&quot;,
+           &quot;\&quot;I&quot;: &quot;Ï&quot;,
+           &quot;\&quot;O&quot;: &quot;Ö&quot;,
+           &quot;\&quot;U&quot;: &quot;Ü&quot;,
+           &quot;\&quot;a&quot;: &quot;ä&quot;,
+           &quot;\&quot;e&quot;: &quot;ë&quot;,
+           &quot;\&quot;i&quot;: &quot;ï&quot;,
+           &quot;\&quot;o&quot;: &quot;ö&quot;,
+           &quot;\&quot;u&quot;: &quot;ü&quot;,
+           &quot;~A&quot;: &quot;Ã&quot;, // begin tilde
+           &quot;~N&quot;: &quot;Ñ&quot;,
+           &quot;~O&quot;: &quot;Õ&quot;,
+           &quot;~a&quot;: &quot;ã&quot;,
+           &quot;~n&quot;: &quot;ñ&quot;,
+           &quot;~o&quot;: &quot;õ&quot;,
+           &quot;rU&quot;: &quot;Ů&quot;, // begin ring above
+           &quot;ru&quot;: &quot;ů&quot;,
+           &quot;vC&quot;: &quot;Č&quot;,  // begin caron
+           &quot;vD&quot;: &quot;Ď&quot;,
+           &quot;vE&quot;: &quot;Ě&quot;,
+           &quot;vN&quot;: &quot;Ň&quot;,
+           &quot;vR&quot;: &quot;Ř&quot;,
+           &quot;vS&quot;: &quot;Š&quot;,
+           &quot;vT&quot;: &quot;Ť&quot;,
+           &quot;vZ&quot;: &quot;Ž&quot;,
+           &quot;vc&quot;: &quot;č&quot;,
+           &quot;vd&quot;: &quot;ď&quot;,
+           &quot;ve&quot;: &quot;ě&quot;,
+           &quot;vn&quot;: &quot;ň&quot;,
+           &quot;vr&quot;: &quot;ř&quot;,
+           &quot;vs&quot;: &quot;š&quot;,
+           &quot;vt&quot;: &quot;ť&quot;,
+           &quot;vz&quot;: &quot;ž&quot;,
+           &quot;#&quot;: &quot;#&quot;,  // begin special symbols
+           &quot;$&quot;: &quot;$&quot;,
+           &quot;%&quot;: &quot;%&quot;,
+           &quot;&amp;&quot;: &quot;&amp;&quot;,
+           &quot;\\&quot;: &quot;\\&quot;,
+           &quot;^&quot;: &quot;^&quot;,
+           &quot;_&quot;: &quot;_&quot;,
+           &quot;{&quot;: &quot;{&quot;,
+           &quot;}&quot;: &quot;}&quot;,
+           &quot;~&quot;: &quot;~&quot;,
+           &quot;\&quot;&quot;: &quot;\&quot;&quot;,
+           &quot;\'&quot;: &quot;’&quot;, // closing single quote
+           &quot;`&quot;: &quot;‘&quot;, // opening single quote
+           &quot;AA&quot;: &quot;Å&quot;, // begin non-ASCII letters
+           &quot;AE&quot;: &quot;Æ&quot;,
+           &quot;O&quot;: &quot;Ø&quot;,
+           &quot;aa&quot;: &quot;å&quot;,
+           &quot;ae&quot;: &quot;æ&quot;,
+           &quot;o&quot;: &quot;ø&quot;,
+           &quot;ss&quot;: &quot;ß&quot;,
+           &quot;textcopyright&quot;: &quot;©&quot;,
+           &quot;textellipsis&quot;: &quot;…&quot;,
+           &quot;textemdash&quot;: &quot;—&quot;,
+           &quot;textendash&quot;: &quot;–&quot;,
+           &quot;textregistered&quot;: &quot;®&quot;,
+           &quot;texttrademark&quot;: &quot;™&quot;,
+           &quot;alpha&quot;: &quot;α&quot;, // begin greek alphabet
+           &quot;beta&quot;: &quot;β&quot;,
+           &quot;gamma&quot;: &quot;γ&quot;,
+           &quot;delta&quot;: &quot;δ&quot;,
+           &quot;epsilon&quot;: &quot;ε&quot;,
+           &quot;zeta&quot;: &quot;ζ&quot;,
+           &quot;eta&quot;: &quot;η&quot;,
+           &quot;theta&quot;: &quot;θ&quot;,
+           &quot;iota&quot;: &quot;ι&quot;,
+           &quot;kappa&quot;: &quot;κ&quot;,
+           &quot;lambda&quot;: &quot;λ&quot;,
+           &quot;mu&quot;: &quot;μ&quot;,
+           &quot;nu&quot;: &quot;ν&quot;,
+           &quot;xi&quot;: &quot;ξ&quot;,
+           &quot;omicron&quot;: &quot;ο&quot;,
+           &quot;pi&quot;: &quot;π&quot;,
+           &quot;rho&quot;: &quot;ρ&quot;,
+           &quot;sigma&quot;: &quot;ς&quot;,
+           &quot;tau&quot;: &quot;σ&quot;,
+           &quot;upsilon&quot;: &quot;τ&quot;,
+           &quot;phi&quot;: &quot;υ&quot;,
+           &quot;chi&quot;: &quot;φ&quot;,
+           &quot;psi&quot;: &quot;χ&quot;,
+           &quot;omega&quot;: &quot;ψ&quot;
+       };
+</PRE><PRE>       String.prototype.addSlashes = function () {
+           // no need to do (str+<I>) anymore because 'this' can only be a string</I>
+           return this.replace(/[\\&quot;']/g, '\\$&amp;').replace(/\u0000/g, '\\0');
+       };
+</PRE><PRE>       for (var idx in this.latexToUni) {
+           if (this.latexToUni[idx].length &gt; this.maxLatexLength)
+               this.maxLatexLength = this.latexToUni[idx].length;
+           this.uniToLatex[this.latexToUni[idx]] = idx;
+       }
+</PRE><PRE>       this.longestEscapeMatch = function (value, pos) {
+           var subStringEnd = pos + 1 + this.maxLatexLength &lt;= value.length ?
+           pos + 1 + this.maxLatexLength : value.length;
+           var subStr = value.substring(pos + 1, subStringEnd);
+           while (subStr.length &gt; 0) {
+               if (subStr in this.latexToUni) {
+                   break;
+               }
+               subStr = subStr.substring(0, subStr.length - 1);
+           }
+           return subStr;
+       };
+</PRE><PRE>       this.decodeLatex = function (value) {
+           var newVal = <I>;</I>
+           var pos = 0;
+           while (pos &lt; value.length) {
+               if (value[pos] == '\\') {
+                   var match = this.longestEscapeMatch(value, pos);
+                   if (match.length &gt; 0) {
+                       newVal += this.latexToUni[match];
+                       pos = pos + 1 + match.length;
+                   } else {
+                       newVal += value[pos];
+                       pos++;
+                   }
+               } else if (value[pos] == '{' || value[pos] == '}') {
+                   pos++;
+               } else {
+                   newVal += value[pos];
+                   pos++;
+               }
+           }
+           return newVal;
+       };
+</PRE><PRE>       this.encodeLatex = function (value) {
+           var trans = <I>;</I>
+           for (var idx = 0; idx &lt; value.length; ++idx) {
+               var c = value.charAt(idx);
+               if (c in this.uniToLatex)
+                   trans += '\\' + this.uniToLatex[c];
+               else
+                   trans += c;
+           }
+           return trans;
+       };
+</PRE><PRE>   }
+</PRE><PRE>   var latexToUTF8 = new LatexToUTF8();
+</PRE><PRE>   exports.toJSON = function (bibtex) {
+       var b = new BibtexParser();
+       b.setInput(bibtex);
+       b.bibtex();
+       return b.entries;
+   };
+</PRE><PRE>   /* added during hackathon don't hate on me */
+   exports.toBibtex = function (json) {
+       var out = <I>;</I>
+       for (var i in json) {
+           out += &quot;@&quot; + json[i].entryType;
+           out += '{';
+           if (json[i].citationKey)
+               out += json[i].citationKey + ', ';
+           if (json[i].entry)
+               out += json[i].entry;
+           if (json[i].entryTags) {
+               var tags = <I>;</I>
+               for (jdx in json[i].entryTags) {
+                   if (tags.length != 0)
+                       tags += ', ';
+                   tags += jdx + '= {' + latexToUTF8.encodeLatex(json[i].entryTags[jdx]) + '}';
+               }
+               out += tags;
+           }
+           out += '}\n\n';
+       }
+       console.log(out);
+       return out;
+</PRE><PRE>   };
+</PRE><P>})(typeof exports === 'undefined' ? this['bibtexParse'] = {} : exports);
+</P><P>/* end zoteroBibtexParse */
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

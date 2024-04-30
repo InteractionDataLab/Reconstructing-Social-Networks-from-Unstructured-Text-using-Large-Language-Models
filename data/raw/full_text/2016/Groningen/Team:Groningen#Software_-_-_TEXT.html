@@ -1,0 +1,148 @@
+Team:Groningen/Software
+CryptoGE®M
+Team
+Members Supervisors Collaborations Achievements Contact
+Project
+Tour Description Design Results Demonstrate Applications Future Notebook
+Biology
+Experiments Parts Safety Lab journal
+Computing
+Modelling Software Encoding Decoding
+Human Practices
+Human Practices Gold Silver
+Support
+Sponsors Attributions
+Software
+This article will explain in detail how the software part of     CryptoGErM works. To encrypt the message and translate it to DNA we     wrote several Javascripts. They are used in the demonstration of our    software on the Encoding and Decoding pages.    The following sections cover the same steps the software takes to    turn a text into DNA. First encryption, then translation to DNA    and finally packing it into a complete message sequence. The    examples will use Hello world as the message text, and secret for the encryption key.
+The software is divided into several modules, each in their own     file. Two of the modules were not written by us, but used under an     open source license. The encryption code, provided by the AES     module was written by Chris Veness at Movable-Type.co.uk .     The CRC implementation for computing checksums was written by     Github user chitchcock and     published as Github Gist     #5112270 . All other code was written by us and is licensed     under the MIT     license .
+An offline version of the software can be downloaded: CryptoGErM.zip .
+Encryption & Decryption
+We use the AES module for encryption and decryption, specifically:    AES counter mode. This mode allows us to encrypt (and decrypt) messages    of any length. It does this by splitting the message up into blocks    and adding a counter to every block. The first block contains an    initialization vector, which is randomized every time and also the    number of blocks that follow it. As a result of this every block    has a different cipher text, even if there are repetitions in the    original message. In fact, the cipher text for the entire message    is different, even if the same message is encrypted again.
+Encrypting our example message Hello world with the    key secret is now as easy as calling Aes.Ctr.encrypt(message, key) with (possibly) this result: ÑTyûWáû~zHP�Kúã. The    next step is to turn this cipher text into DNA.
+The AES module is in aes.js and the counter mode addition is in aes-ctr.js .
+DNA
+Before the text can be integrated into a bacterium, it needs to     be translated to DNA. Computers store letters, digits and other     characters as numbers. The numbers are translated to the symbols     you see via an encoding table. The most common encodings are ASCII     and Unicode. The cipher text from the example is encoded as     follows: 138 000 014 209 084 121 251 087 225 251 126     128 122 072 080 007 075 250 227. We use Unicode Transform     Format 8, which means that every character is encoded by 1 up to 6     bytes of 8 bits each. In binary, the bytes of the cipher text look     like this: 10001010 00000000 00001110 11010001     01010100 01111001 11111011 01010111 11100001 11111011 01111110     10000000 01111010 01001000 01010000 00000111 01001011 11111010     11100011. Binary has only two digits, 0 and 1, but DNA has     four 'digits': ACTG. This means those bytes that need eight bits,     need only 4 DNA base-pairs. The translation to DNA is done like     this:
+Lets take the letter 'm' as an example.
+The ASCII/Unicode code is 109.
+In binary it is 01101101.
+Cut off the right-most, the least significant, 2 bits: 01.
+Look up the base: 00 = A, 01 = C, 10 = T, 11 = G: C.
+Append the base to the output: C.
+The input number is now: 011011.
+Repeat steps 3 - 6 until there are no more bits left.
+The result is: CGTC.
+When we apply the above algorithm to all the characters in the     cipher text, we get: TAAG TTAT AAAA TGAA GAAG CACT     ACCC CTGC GAAG GTGT GCCC GAAG CATT GAAG GTGT TGGC TAAG AAAT TTGC     ATAC AACC GCAA GTAC GAAG TTGT GAAG GATT. This, however, is     not enough DNA to be able to decode it after extracting it from a     bacterium. The next section explains more about the meta-data that     goes with the cipher text/DNA.
+Translation to DNA is implemented in eightbit.js and dna.js .
+Message format
+Translating just the cipher text to DNA is not enough, we need    some more information in the sequence to be able to decode it after    extraction. We'll put this information in a header: a block of    DNA that precedes the cipher text DNA. The decoding machine will    first read the information in the header and use that to decode the    rest of the message.
+Start & end
+The first problem is that our sequence is inserted into other     DNA. When it is sequenced again there is also some DNA in front and    after the end of the message. We need a way to find out exactly    where our message starts.
+To solve this, every message block always starts with the same    sequence: GACCAAGCCTGC. The decoding machine looks for    this sequence and then decodes the DNA that follows it. Of course,    it is possible that this sequence appears as part of non-message    related DNA, or it may be part of the message. The next pieces of    message information help with solving this. What the decoder does is    look for the start sequence and try to decode the rest, if that    fails it will look for the next occurrence of the start sequence and    decode that. If it reaches the end of the complete sequence without    successfully decoding a message it will come to the conclusion that    there is no intact message in the sequence.
+Length
+The next issue is that the decoder needs to know the length of     the message sequence. At the end of our sequence, after the     message, is a footer: GCACCCACCGAC. This helps verify     the sequence, but it suffers from the same problem as the start of     the header: it is possible that it occurs as part of the message     sequence. So it is possible that the end is detected too soon.     Therefore we also put the length of the message sequence in the     header. After the start sequence we reserve 8 base-pairs that     encode the length of the message: 8 bases encode 16 bits, which     means that the maximum length is \(2^{16} - 1 = 65535\)    base-pairs.
+The decoder will look for the start sequence, then decode the     length and look foor the footer sequence after length number of base-pairs. In our example, the length is 108 base-pairs, which translates to AGTCAAAA in the length field of the header.
+Checksum
+Using the length and the footer is enough to verify that no     base-pairs have been inserted or deleted, but it cannot be used to    detect whether base-pairs have changed for whatever reason. To do    this we also add a checksum to the header.
+A checksum is a kind of digital summary of data. The checksum    function, in our case CRC16-CCITT, takes data of any length and    computes a checksum of fixed length. In our case the checksum is 16    bits, so 8 base-pairs.
+The encoding machine computes the checksum on the original     message sequence and places it in the header. The decoder reads the     sequenced message, computes the checksum and verifies that it     matches the one in the header. If they are, the message is     valid.
+Because the message can be of any length (up to 65535     base-pairs), but the checksum is always 8 base-pairs, multiple     messages will have the same checksum. However, due to the way the     checksum is computed, two messages that are very similar but differ     in only a few bits will have completely different checksums. So     this method is very reliable for detecting small changes in the     sequence. Note that the checksum can only be used to detect changes     between the extracted message and the original, it cannot be used to    correct them.
+The checksum of our example message is 51063, so the encoder puts GCGCGCAG as the checksum in the header. The     checksum function can be found in crc.js .
+Restriction sites
+All the previous issues regarding length and integrity are     fairly common in information exchange. Headers and checksums are     also used, for example in computer network protocols. The last     problem we face, however is specific to DNA. The full sequence may     not contain the five biobrick restriction sites of prefix and     suffix, namely:
+EcoRI: GAATTC
+PstI: CTGCAG
+XbaI: TCTAGA
+SpeI: ACTAGT
+NotI: GCGGCCGC
+To deal with this the encoder looks for occurrences of the     restriction site sequences and splices a certain number of     A-bases in the middle of each. The number of A-bases is determined     by the longest sequence of A-bases that occurs in the full sequence     already. This number is also put in the header, using 4 base-pairs,     meaning it can have a maximum value of \(2^8 - 1 = 255\). The     decoder reads this number and then removes all sequences of that    many A-bases long before decoding and verifying the message. The    encoder also puts 4 A-bases between the start sequence and the     substitution length, in case their combination would form a    restriction site.
+In our example the longest sequence of A-bases in the message     sequence is 4, so the substitution sequence     needs to be 1 base longer, which is encoded as CCAA. The restriction-substitution code is     implemented in restrict.js and the rest of the message-formatting code is in message.js .
+Conclusion
+The encoder follows these steps to create a complete message    sequence:
+Encrypt the message with the key.
+Convert the message to DNA.
+Compute the length and the checksum of the message sequence.
+Convert the length and checksum to DNA.
+Put the length, checksum, message and footer together as the tail sequence.
+Find the longest sequence of A-bases.
+Find sequences of restriction enzymes in the tail sequence.
+Splice sequences of A-bases, 1 longer than the longest found into the restriction sequences.
+Convert the substitution length to DNA.
+Put the start sequence, padding and substitution length together in front of the tail.
+Putting it all together, the full message format looks as follows:
+The start sequence: GACCAAGCCTGC.
+Padding of 4 base-pairs.
+Substitition length: 4 base-pairs.
+Length of the message sequence: 8 base-pairs.
+Message checksum: 8 base-pairs.
+The message sequence itself: length times 4 base-pairs.
+The footer: GCACCCACCGAC.
+Finally, this is our full example message sequence converted to     DNA:GACCAAGCCTGCAAAACCAAAGTCAAAAG    CGCGCAGTAAGTTATAAAATGAAGAAGCACTACCCCTGCGAAGGTGTGCCCGAAGCATTGAAGGTGT    TGGCTAAGAAATTTGCATACAACCGCAAGTACGAAGTTGTGAAGGATTGCACCCACCGAC.
+On the other end of the process the decoder takes the following     steps to get the message back from extracted DNA:
+Look for the start sequence.
+Skip the next 4 base-pairs (the padding).
+Read the 4 base-pairs that follow it as the length of the substitition sequence.
+Cut out all sequences of that number A-bases.
+Read the next 8 base-pairs as the length of the message sequence.
+Then the following 8 base-pairs as the checksum.
+Read the message sequence of length base-pairs.
+Verify that the next 12 base-pairs are equal to the footer sequence.
+Compute the checksum of the message sequence and verify it with the checksum read earlier.
+Decode the message sequence.
+Decrypt the decoded message sequence with the key that the user provides.
+While this article described the process for translating the     encrypted message to a DNA sequence, it is much the same for the     key sequence. The only difference is that the encryption and     decryption steps are not taken, but the message format is still the     same.
+A full implementation of the encoding machine is available at Encoding and the decoder can be    found at Decoding .
+Team
+Members
+Supervisors
+Collaborations
+Achievements
+Contact
+Jamboree
+Project
+Tour
+Description
+Design
+Demonstration
+Summary
+Applications
+Results
+Future Perspectives
+Biology
+Experiments
+Safety
+Decoy experiment
+Photoswitchable antibiotics
+BioBrick Characterization
+Key deletion
+Proof of concept
+Lab journal
+Plasmid construction
+Protocols
+Primer list
+Notebook
+Modelling
+Modelling
+Mutation Rates
+Random Mutation
+AI Agent model
+Decoding Fidelity
+Optimal Strain
+Computing
+Software
+Encoder
+Decoder
+Full Coding
+Human Practices
+Human Practices
+Outreach
+Social
+Legal
+Future Scenarios
+Education
+Integrated Practices
+Engagement
+Gold
+Silver
+Support
+Sponsors
+Attributions

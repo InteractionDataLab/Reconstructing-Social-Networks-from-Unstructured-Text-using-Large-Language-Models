@@ -1,0 +1,111 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Heidelberg_js_zitator skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Heidelberg/js/zitator</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>function Zitator(textSelector, bibfile) {
+</P><PRE>   if (textSelector == undefined || bibfile == undefined) {
+       console.log(&quot;Error: Not all mandatory parameters (textSelector, bibfile) given!&quot;);
+       return;
+   } else {
+       this.textSelector = textSelector;
+       this.bibfile = bibfile;
+       //document.registerElement('x-ref');
+   }
+</PRE><P>}
+</P><P>Zitator.prototype = {
+</P><PRE>   constructor: Zitator,
+</PRE><PRE>   // Puts the unordered references into a hashmap so they can accessed in expected O(1) time.
+   byCitationKey: function(unordered) {
+       var byCitationKey = {};
+       for (var i = 0; i &lt; unordered.length; ++i) {
+           var ref = unordered[i];
+           byCitationKey[ref.citationKey] = ref;
+       }
+       return byCitationKey;
+   },
+</PRE><PRE>   // Formats the bibliography entry for an article
+   formatArticle: function (tags) {
+       var retVal = &quot;&quot;;
+       if (tags.author != undefined)
+           retVal += tags.author;
+       if (tags.year != undefined)
+           retVal += &quot; (&quot; + tags.year + &quot;)&quot;;
+       if (tags.title != undefined)
+           retVal += &quot; &quot; + tags.title + &quot;.&quot;;
+       if (tags.journal != undefined)
+           retVal += &quot;<I>&quot; + tags.journal + &quot;</I>&quot;;
+       if (tags.volume != undefined)
+           retVal += &quot; <I>&quot; + tags.volume + &quot;</I>&quot;;
+       if (tags.pages != undefined)
+           retVal += &quot;, &quot; + tags.pages.replace(&quot;--&quot;, &quot;-&quot;);
+       return retVal;
+   },
+</PRE><PRE>   // Formats the bibliography entry for a book
+   formatBook: function(tags) {
+       var retVal = &quot;&quot;;
+       if (tags.author != undefined)
+           retVal += tags.author;
+       if (tags.year != undefined)
+           retVal += &quot; (&quot; + tags.year + &quot;)&quot;;
+       if (tags.title != undefined)
+           retVal += &quot; &quot; + tags.title + &quot;.&quot;;
+       if (tags.publisher != undefined)
+           retVal += &quot;<I>&quot; + tags.publisher + &quot;</I>&quot;;
+       return retVal;
+   },
+</PRE><PRE>   // Formats the bibliography entry for a website
+   formatWebsite: function(tags) {
+       return tags.author + &quot;, &quot; + tags.howpublished;
+   },
+</PRE><PRE>   // Takes a list of references and outputs a bibliography containing these references
+   formatReferences: function(refs) {
+       var html = &quot;&quot;;
+       for (var idx = 0; idx &lt; refs.length; ++idx) {
+           var ref = this.bib[refs[idx]];
+           if (ref == undefined) {
+               console.error(&quot;Missing reference: %s&quot;, refs[idx]);
+               continue;
+           }
+</PRE>
+            html += &quot;<P class="reference">&lt;a name='&quot; + ref.citationKey + &quot;'&gt;[&quot; + (Number(idx) + 1) + &quot;] &quot;;
+            if (ref.entryType.toLowerCase() == &quot;book&quot;) {
+                html += this.formatBook(ref.entryTags);
+            } else if (ref.entryType.toLowerCase() == &quot;electronic&quot;) {
+                html += this.formatWebsite(ref.entryTags);
+            } else {
+                html += this.formatArticle(ref.entryTags);
+            }
+            html += &quot;&lt;/a&gt;</P>&quot;;
+<PRE>       }
+       return html;
+   },
+</PRE><PRE>   // Callback for successfuly recievment of data
+   dataReceivedCallback: function(data) {
+           this.bib = this.byCitationKey(bibtexParse.toJSON(data));
+           var references = [];
+           var haveNumber = {};
+           var number = 1;
+           $(this.textSelector).find(&quot;x-ref&quot;).each(function (index) {
+               var refName = $(this).text();
+               if (refName in haveNumber) {
+                   console.log(refName, &quot;already has a number&quot;);
+                   $(this).html(&quot;<SUP>&lt;a href='#&quot; + refName  + &quot;'&gt;[&quot; + haveNumber[refName] + &quot;]&lt;/a&gt;</SUP>&quot;);
+               } else {
+                   $(this).html(&quot;<SUP>&lt;a href='#&quot; + refName  + &quot;'&gt;[&quot; + number + &quot;]&lt;/a&gt;</SUP>&quot;);
+                   references.push(refName);
+                   haveNumber[refName] = number;
+                   number += 1;
+               }
+           });
+           $(&quot;#references&quot;).html(this.formatReferences(references));
+   },
+</PRE><PRE>   // Fetches the bib file and builds the bibliography
+   zitiere: function () {
+       var obj = this;
+       $.get(this.bibfile, function(data) {obj.dataReceivedCallback(data)});
+   }
+</PRE><P>};
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

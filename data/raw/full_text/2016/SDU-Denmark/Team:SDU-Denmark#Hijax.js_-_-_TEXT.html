@@ -1,0 +1,119 @@
+Team:SDU-Denmark/Hijax.js
+/*
+JQuery Hijax plugin: 14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC) @product     JQuery Hijax plugin @version     1.0.1 @copyright   Copyright (c) 2010 Yaron Tadmor @site http://www.cs.yarontadmor.com/hijax @license     GPL license ( http://www.gnu.org/licenses/gpl.html ) @requires    jquery.history.js
+Revision History: 14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)~ 0.9.5 - Fixed bug on IE (extra comma in default option list). 0.9.6 - Added support for changing title on Ajax
+- Added support for proper JS handling in Hijaxed links via _hijax_ready.      - Minor bug fixes for end-cases of IE.
+0.9.7 - Changed title handling so title is in "title" tag (instead of a div)
+- Use the content of the source element instead of the element itself
+0.9.8 - Slight modification to hash saving code. Solves bug of going back and forward
+to the last page      - Fixed a bug of .live() for [hijax*=] on FireFox
+0.9.9 - Changed _hijax_ready to be an array and not a function.
+- Changed regex script, to a more efficient version, due to problems        with FF4 and Chrom 10
+- Replace hash delimiter from "/" to ":" to allow paths in URL 1.0.0 - Replaced dontAjaxInitialPage parameter of init() with initialState.
+- Hande sync of multiple hijaxing (clicking a link before ajax operation ended)        NOTE: start/end callbacks must take into account that start might be called before end has ended.      - adde "fail" parameter to endCB.      - Removed formHref. Forms url must distinguish form submit and history load via form params.      - Added support for real hash tags which cause scrolling      - Added "forceLoad" parameter to force ajax load even when url and source hasn't changed.
+1.0.1 - Fix for IE9
+TODO: - take care of HTML validity issues.
+- handle google #!      - Fix real hash support scrolling (scroll only after loaded when history changes)
+License and Disclaimer: 14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)14:10, 14 October 2016 (UTC)~~ This software is licensed under the GPL open source license. You may distribute it freely, and use it in your own software.  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPLICIT OR IMPLIED, INCLUDING BUT  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT  OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+- internal use only
+trg : {[startCB: <start load function>, ]   [endCB: <end load callback>, ]   url: <url to load>, -    src: <source ID in returned html>,
+*[formData: <if form a serialized version of form's data>]
+}
+targets: { <array of trg objects> }
+options: {  trgs: { <array of trg objects> },    selectionClass: <class to add for selected objects> }    forceLoad: <bool> (tells the plugin to load ajax even if source and url haven't changed)
+/
+(function ($) {  // global hijax params  var _init = false;  var _curHash = "*"; // This causes empty hash (initial page) to load default state (since ""!="*")  var _numPenddingAjaxLoads = 0, _pendingRequest = null, _pendingScroll = null;
+// Add hijaxing programmatically to a certain link or form. (can be done by using the hijax attr)  $.fn.hijax = function (targets) {   if (!targets)    targets = {};
+return this.each (function() {       var $this = $(this);
+// save the targets passed to us     var locTargets = $.extend (true, {}, targets);     this.hijaxTargets = locTargets;
+// register the proper event handler.    if (!$this.hasClass ("hijax")) {     if ($this.is ("a"))      $this.click ($.fn.hijax.event);     else if ($this.is ("form"))      $this.submit ($.fn.hijax.event)    }   });    }
+$.hijax = function (targets) {   // add default options per target:   for (t in targets)     targets[t] = $.extend (true, {}, $.fn.hijax.options.trgs[t], targets[t]);
+_pendingScroll = "";
+// calc resulting hash   var newHash = $.fn.hijax.buildHash (targets);
+// save new hash in history, and do ajax calls   // NOTE: Since targets might contain form data which is not saved in hashs, we disable   //       plugin for the history load and call do ajax explicitly   _init = false;   $.history.load (newHash);   _init = true;   $.fn.hijax.doAjax (targets, newHash);    }
+// handles click on hijaxed link or submit  $.fn.hijax.event = function (e) {   if (!_init)    return;
+e.preventDefault();
+// get targets of object, and override current state with object targets   var curStateTargets = $.fn.hijax.parseHash (_curHash, true);   var targets = $.fn.hijax.buildTargets.call (this);   targets = $.extend (true, curStateTargets, targets);
+_pendingScroll = "";
+// calc resulting hash   var newHash = $.fn.hijax.buildHash (targets);
+// save new hash in history, and do ajax calls   // NOTE: Since targets might contain form data which is not saved in hashs, we disable   //       plugin for the history load and call do ajax explicitly   _init = false;   $.history.load (newHash);   _init = true;   $.fn.hijax.doAjax (targets, newHash);
+}
+// handles click on links containing hash only (href="#<element>")  $.fn.hijax.hashEvent = function (e) {   if (!_init)    return;
+e.preventDefault();
+// build full hash of link with current state   var $this = $(this);
+var newHash = _curHash.split ("::");   _pendingScroll = $this.attr('href').substring(1);   newHash[0] = _pendingScroll;   newHash = newHash.join ("::");
+// save new hash in history    if (newHash == _curHash)    // browser won't refresh the history so simulate it.    $.fn.hijax.historyCB (newHash)   else    // (this will trigger doAjax())    $.history.load (newHash);    //$.fn.hijax.doAjax (targets, hash);    }
+$.fn.hijax.buildTargets = function () {   $this = $(this);
+var targets = {}
+// get target=source pairs    var connections = $this.attr("hijax");   if (connections != undefined && connections.length == 0)     connections = undefined;   if (connections != undefined)    connections = connections.split ("&");   for (connection in connections) {    connection = connections[connection];    var split = connection.split ("=");    var trg = split[0];    var src = split[1];        var newTarget = {};    newTarget[trg] = { src: src}    $.extend (true, targets, newTarget);   }
+// extend and override with targets set explicitly via $.fn.hijax   if (this.hijaxTargets)    $.extend (true, targets, this.hijaxTargets);
+// Call tag specific code to handle targets   if ($this.is ("a"))    targets = $.fn.hijax.buildTargets.a.call (this, targets);   else if ($this.is ("form"))    targets = $.fn.hijax.buildTargets.form.call (this, targets);
+// add default optinos per target   for (t in targets)     targets[t] = $.extend (true, {}, $.fn.hijax.options.trgs[t], targets[t]);
+return (targets);  }
+$.fn.hijax.buildTargets.a = function (targets) {   $this = $(this);
+// get url and set it to all requested targets   var url = $this.attr("href");   for (trg in targets)    targets[trg] = $.extend (true, {}, { url: url }, targets[trg]);
+return (targets);  }
+$.fn.hijax.buildTargets.form = function (targets) {   $this = $(this);
+// url, alternative href and form data and set to targets   var url = $this.attr("action");      var formData = $this.serialize();   for (trg in targets)    targets[trg] = $.extend (true, { }, { url: url, formData: formData }, targets[trg]);
+return (targets);  }
+$.fn.hijax.buildHash = function (targets) {   var hash = "";   for (trg in targets) {    var trgData = targets[trg];
+// if no sourc element or url available, we can't process the target    if (!trgData.src || !trgData.url)     continue;
+hash += "::" + trg;    hash += ":" + trgData.src;    hash += ":" + trgData.url;   }
+return (hash);  }
+$.fn.hijax.parseHash = function (hash, withDefaults) {   // load the default state   var targets = {};   if (withDefaults)    targets = $.extend (true, {}, $.fn.hijax.options.trgs);
+// parse pars of hash   parts = hash.split ("::");   parts.shift(); // will always be empty, or not interesting   for (part in parts) {    part = parts[part];    subParts = part.split (":", 3);    var trg = subParts[0];    var src = subParts[1];    var url = subParts[2];
+var newTarget = {};    newTarget[trg] = {url: url, src: src};    $.extend (true, targets, newTarget);   }
+return (targets);  }
+$.fn.hijax.doAjax = function (targets, hash) {   // if there are still pending requests, wait until they end.   if (_numPenddingAjaxLoads > 0) {    _pendingRequest = { targets: targets, hash: hash };    return;   }
+// reset pending ajax   _numPenddingAjaxLoads = 0;
+// get current state   var curTargets = $.fn.hijax.parseHash (_curHash, false);
+// loop and update all targets   for (trg in targets) {    var trgData = targets[trg];
+// if target hasn't changed and was not forced, ignore it    var curTrgData = curTargets[trg];    if (curTrgData && trgData.src == curTrgData.src && trgData.url == curTrgData.url && !trgData.formData && !$.fn.hijax.options.forceLoad)     continue;
+if (!trgData.src || !trgData.url)     continue;
+// add "ajax" var to URL    var url = trgData.url;    if (url.search (/\?/) == -1)     url += "?ajax";    else     url += "&ajax";
+$.fn.hijax.doAjaxHelper (url, trg, trgData);   }
+if (_numPenddingAjaxLoads == 0)    $.fn.hijax.allAjaxLoaded();
+// change state   _curHash = hash;   $.fn.hijax.doSelection(targets);
+return;  }
+$.fn.hijax.doAjaxHelper = function (url, trg, trgData) {   _numPenddingAjaxLoads++;
+// setup local data copies for internal functions   var trgDataLoc = $.extend (true, {}, trgData);   var trgLocal = trg;   var $trgLocal = $("#"+trgLocal);
+trgDataLoc.startCB.call ($trgLocal, function () {    var ajaxLoader = $.post(url, trgDataLoc.formData)     .success (function (data, status, res) {      var regex_script = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;      var regex_head = /<head\b[^<]*(?:(?!<\/head>)<[^<]*)*<\/head>/gi;      var regex_title = /<title\b[^<]*(?:(?!<\/title>)<[^<]*)*<\/title>/gi;
+// extract title data, and remove head      var titleData = data.match (regex_title);      data = data.replace (regex_head, "");
+// append result to DOM.      if (trgDataLoc.src && trgDataLoc.src.length) {       var $tmpDiv = $("<div />").append(data);       $trgLocal.html ($tmpDiv.find("#"+trgDataLoc.src).contents());      }      else       $trgLocal.html (data);
+// copy title data      var trgTitleAttr = "hijax"+trgLocal;      if (titleData) {       titleData = titleData[0];       $titleData = $(titleData);       var titleText = $titleData.attr("hijaxTitle");       if (titleText)        $("title").attr ("hijaxTitle", titleText);       var trgTitleText = $titleData.attr (trgTitleAttr);       if (trgTitleText)        $("title").attr (trgTitleAttr, trgTitleText);      }
+// trigger the loaded event for the target      var $trg = $("#"+trgLocal);      $trg.trigger ('hijaxReadyEvent');
+// setup title      $.fn.hijax.doTitle();
+// end callback      trgDataLoc.endCB.call($trgLocal, true);     })     .error (function() {      // end callback      trgDataLoc.endCB.call($trgLocal, false);     })     .complete (function() {      _numPenddingAjaxLoads--;      if (_numPenddingAjaxLoads == 0)       $.fn.hijax.allAjaxLoaded();     });   });   }
+$.fn.hijax.allAjaxLoaded = function ()  {   // if there's a pending request, load it.   if (_pendingRequest) {    var tmp = _pendingRequest;    _pendingRequest = null;    $.fn.hijax.doAjax (tmp.targets, tmp.hash);   }
+// handle scrolling   if (_pendingScroll) {    if (typeof (_pendingScroll) === typeof ("")) {     if (_pendingScroll.length > 0) {      var $targetElem = $("#"+_pendingScroll);      if ($targetElem[0]) {       var offset = $targetElem.offset();       $('html, body').scrollTop (offset.top);      }     }    }    else {     $('html,body').scrollTop(_pendingScroll)    }
+_pendingScroll = null;   }
+}
+// handles adding selection attribute by loaded page  $.fn.hijax.doSelection = function (curTargets) {   $("[hijax*=], [hijaxTargets*=]").each (function() {    var objTargets = $.fn.hijax.buildTargets.call (this);    var match = true;     var hasTargets = false;    for (trg in objTargets) {     hasTargets = true;     if (objTargets[trg].src != curTargets[trg].src ||      objTargets[trg].url != curTargets[trg].url ||      objTargets[trg].formData) {      match = false;      break;     }    }
+// get object to change    $obj = $(this);    var selectionTarget = $obj.attr("hijaxSelectionTarget");    if (selectionTarget)     var $obj = $obj.closest(selectionTarget);
+// change selection    if (match && hasTargets)     $obj.addClass ($.fn.hijax.options.selectionClass);    else     $obj.removeClass ($.fn.hijax.options.selectionClass);   });
+}
+// handles setting the title  $.fn.hijax.doTitle = function () {    var $title = $("title");
+// If we have hijax title on, parse all targets for the text.   var titleText = $title.attr ("hijaxTitle");   if (titleText) {    for (trg in $.fn.hijax.options.trgs) {     // get text for target     var trgTitleAtr = "hijax"+trg;     var trgTitleTxt = $title.attr (trgTitleAtr);     if (!trgTitleTxt)      continue;
+// put target's text in title     titleText = titleText.replace ("#"+trg, trgTitleTxt);    }
+// if we have text for ALL titles, we can use it.    if (titleText.search ("#") == -1)     document.title = titleText;   }
+}
+$.fn.hijax.historyCB = function (hash) {   if (!_init)    return;
+// save current scroll position   var curScroll = $('body').scrollTop()
+// get targets by hash   var targets = $.fn.hijax.parseHash (hash, true);   // load the state   $.fn.hijax.doAjax (targets, hash);
+// remember scroll position, so we can reset it back after loading
+// restore current scroll position until all ajax is done   if (_numPenddingAjaxLoads > 0) {    _pendingScroll = $('body').scrollTop();    $('html,body').scrollTop(curScroll)   }
+}
+$.hijax.init = function (options, initialState) {   if (_init)    return;
+// update options   $.extend (true, $.fn.hijax.options, options || {});
+// init targets with default values if needed   var defaultTargetOptions = { src: null,          url: null,          startCB: $.fn.hijax.defaultStartCB,          endCB: $.fn.hijax.defaultEndCB           };   for (trg in $.fn.hijax.options.trgs) {    $.fn.hijax.options.trgs[trg] = $.extend (true, {}, defaultTargetOptions, $.fn.hijax.options.trgs[trg]);   }
+// init the history module   if (initialState === true)    initialState = $.extend (true, {}, $.fn.hijax.options.trgs);   if (initialState) {    _curHash = $.fn.hijax.buildHash (initialState);    $.fn.hijax.doSelection (initialState);   }
+_init = true;
+$.history.init($.fn.hijax.historyCB, { unescape: true });  }
+// BW compat  $.fn.hijax.init = function (options, initialState) {   alert ("HIJAX ERROR:\nCode is written for an older version of the Hijax plugin.\n"+     "You must change your site code accordingly:\n"+     "- Init function changed from $.fn.hijax.init to $.hijax.init\n" +     "- 'defaults' option was removed.\n"+     "- 'defaults' options was removed.\n"+     "- formHref and href attribute on form is no longer supported,\n" +     "  You should make sure your form url knows when form was submitted\n" +     "  and when it was loaded via history according to form parameters.\n" +     "\n\nPlease see docs for more information.\n\n");
+}
+$.fn.hijax.defaultStartCB = function (cb) {   cb();  }
+$.fn.hijax.defaultEndCB = function () {  }
+// basic options so we have call backs.  $.fn.hijax.options = {trgs: {},        selectionClass: "selected",        forceLoad: false};
+// Install handler to catch all hijax HTML elements (the *= is to allow empty attribute)  if ($.browser.msie && parseFloat ($.browser.version) < 9) {   $("a[hijax*=]").live ("click", $.fn.hijax.event);   $("form[hijax*=]").live ("submit", $.fn.hijax.event);  }  else {   $("a[hijax]").live ("click", $.fn.hijax.event);   $("form[hijax]").live ("submit", $.fn.hijax.event);  }
+// install handlers to catch hash only links  $("a[href^=#]").live ("click", $.fn.hijax.hashEvent);
+}) (jQuery);

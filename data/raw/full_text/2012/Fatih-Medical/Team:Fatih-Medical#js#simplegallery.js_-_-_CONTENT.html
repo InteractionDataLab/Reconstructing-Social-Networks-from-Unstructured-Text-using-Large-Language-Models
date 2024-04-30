@@ -1,0 +1,240 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Fatih-Medical_js_simplegallery_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Fatih-Medical/js/simplegallery.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Fatih-Medical/js/simplegallery.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Fatih-Medical/js/simplegallery.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Fatih-Medical/js/simplegallery.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Fatih-Medical/js/simplegallery.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Fatih-Medical/js/simplegallery.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>//** Simple Controls Gallery- (c) Dynamic Drive DHTML code library: <A href="http://www.dynamicdrive.com" class="external free" rel="nofollow">http://www.dynamicdrive.com</A>
+//** Dec 7th, 08'- Script created
+//** February 6th, 09'- Updated to v 1.3:
+	//1) Adds Description Panel to optionally show a textual description for each slide
+	//2) In Auto Play mode, you can now set the number of cycles before gallery stops.
+	//3) Inside oninit() and onslide(), keyword &quot;this&quot; now references the current gallery instance
+</P><P>//** May 16th, 11'- Updated to v 1.4: Adds ability to show image gallery only after all images within gallery has been loaded. Requires jQuery 1.5+
+</P><P>var simpleGallery_navpanel={
+	loadinggif: '<A href="https://static.igem.org/mediawiki/2012/8/8f/Ajaxload.gif'" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/8/8f/Ajaxload.gif'</A>, //full path or URL to loading gif image
+	panel: {height:'45px', opacity:0.5, paddingTop:'5px', fontStyle:'bold 11px Verdana'}, //customize nav panel container
+	images: [ '<A href="https://static.igem.org/mediawiki/2012/9/95/Slideshow-Left.gif'" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/9/95/Slideshow-Left.gif'</A>, '<A href="https://static.igem.org/mediawiki/2012/6/69/Slideshow-Play.gif'" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/6/69/Slideshow-Play.gif'</A>, '<A href="https://static.igem.org/mediawiki/2012/0/0d/Slideshow-Right.gif'" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/0/0d/Slideshow-Right.gif'</A>, '<A href="https://static.igem.org/mediawiki/2012/b/bb/Pause.gif'" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/b/bb/Pause.gif'</A>], //nav panel images (in that order)
+	imageSpacing: {offsetTop:[-4, 0, -4], spacing:10}, //top offset of left, play, and right images, PLUS spacing between the 3 images
+	slideduration: 500 //duration of slide up animation to reveal panel
+}
+</P><P>function simpleGallery(settingarg){
+	this.setting=settingarg
+	settingarg=null
+	var setting=this.setting
+	setting.panelheight=(parseInt(setting.navpanelheight)&gt;5)? parseInt(setting.navpanelheight) : parseInt(simpleGallery_navpanel.panel.height)
+	setting.fadeduration=parseInt(setting.fadeduration)
+	setting.curimage=(setting.persist)? simpleGallery.routines.getCookie(&quot;gallery-&quot;+setting.wrapperid) : 0
+	setting.curimage=setting.curimage || 0 //account for curimage being null if cookie is empty
+	setting.preloadfirst=(!jQuery.Deferred)? false : (typeof setting.preloadfirst!=&quot;undefined&quot;)? setting.preloadfirst : true //Boolean on whether to preload all images before showing gallery
+	setting.ispaused=!setting.autoplay[0] //ispaused reflects current state of gallery, autoplay[0] indicates whether gallery is set to auto play
+	setting.currentstep=0 //keep track of # of slides slideshow has gone through
+	setting.totalsteps=setting.imagearray.length*setting.autoplay[2] //Total steps limit: # of images x # of user specified cycles
+	setting.fglayer=0, setting.bglayer=1 //index of active and background layer (switches after each change of slide)
+	setting.oninit=setting.oninit || function(){}
+	setting.onslide=setting.onslide || function(){}
+	var preloadimages=[], longestdesc=null, loadedimages=0
+	var dfd = (setting.preloadfirst)? jQuery.Deferred() : {resolve:function(){}, done:function(f){f()}} //create real deferred object unless preloadfirst setting is false or browser doesn't support it
+	setting.longestdesc=&quot;&quot; //get longest description of all slides. If no desciptions defined, variable contains &quot;&quot;
+	setting.$loadinggif=(function(){ //preload and ref ajax loading gif
+		var loadgif=new Image()
+		loadgif.src=simpleGallery_navpanel.loadinggif
+		return jQuery(loadgif).css({verticalAlign:'middle'}).wrap('&lt;div style=&quot;position:absolute;text-align:center;width:100%;height:100%&quot; /&gt;').parent()
+	})()
+	for (var i=0; i&lt;setting.imagearray.length; i++){  //preload slideshow images
+		preloadimages[i]=new Image()
+		preloadimages[i].src=setting.imagearray[i][0]
+		if (setting.imagearray[i][3] &amp;&amp; setting.imagearray[i][3].length&gt;setting.longestdesc.length)
+			setting.longestdesc=setting.imagearray[i][3]
+		jQuery(preloadimages[i]).bind('load error', function(){
+			loadedimages++
+			if (loadedimages==setting.imagearray.length){
+				dfd.resolve() //indicate all images have been loaded
+			}
+		})
+	}
+	var slideshow=this
+	jQuery(document).ready(function($){
+		var setting=slideshow.setting
+		setting.$wrapperdiv=$('#'+setting.wrapperid).css({position:'relative', visibility:'visible', background:'black', overflow:'hidden', width:setting.dimensions[0], height:setting.dimensions[1]}).empty() //main gallery DIV
+		if (setting.$wrapperdiv.length==0){ //if no wrapper DIV found
+			alert(&quot;Error: DIV with ID \&quot;&quot;+setting.wrapperid+&quot;\&quot; not found on page.&quot;)
+			return
+		}
+</P>
+		setting.$gallerylayers=$('') //two stacked DIVs to display the actual slide 
+<P>			.css({position:'absolute', left:0, top:0})
+			.appendTo(setting.$wrapperdiv)
+		setting.$loadinggif.css({top:setting.dimensions[1]/2-30}).appendTo(setting.$wrapperdiv) //30 is assumed height of ajax loading gif
+		setting.gallerylayers=setting.$gallerylayers.get() //cache stacked DIVs as DOM objects
+		setting.navbuttons=simpleGallery.routines.addnavpanel(setting) //get 4 nav buttons DIVs as DOM objects
+		if (setting.longestdesc!=&quot;&quot;) //if at least one slide contains a description (feature is enabled)
+			setting.descdiv=simpleGallery.routines.adddescpanel(setting)
+		$(setting.navbuttons).filter('img.navimages').css({opacity:0.8})
+			.bind('mouseover mouseout', function(e){
+				$(this).css({opacity:(e.type==&quot;mouseover&quot;)? 1 : 0.8})
+			})
+			.bind('click', function(e){
+				var keyword=e.target.title.toLowerCase()
+				slideshow.navigate(keyword) //assign behavior to nav images
+			})
+		dfd.done(function(){ //execute when all images have loaded
+			setting.$loadinggif.remove()
+			setting.$wrapperdiv.bind('mouseenter', function(){slideshow.showhidenavpanel('show')})
+			setting.$wrapperdiv.bind('mouseleave', function(){slideshow.showhidenavpanel('hide')})
+			slideshow.showslide(setting.curimage) //show initial slide
+			setting.oninit.call(slideshow) //trigger oninit() event
+			$(window).bind('unload', function(){ //clean up and persist
+				$(slideshow.setting.navbuttons).unbind()
+				if (slideshow.setting.persist) //remember last shown image's index
+					simpleGallery.routines.setCookie(&quot;gallery-&quot;+setting.wrapperid, setting.curimage)
+				jQuery.each(slideshow.setting, function(k){
+					if (slideshow.setting[k] instanceof Array){
+						for (var i=0; i&lt;slideshow.setting[k].length; i++){
+							if (slideshow.setting[k][i].tagName==&quot;DIV&quot;) //catches 2 gallerylayer divs, gallerystatus div
+								slideshow.setting[k][i].innerHTML=null
+							slideshow.setting[k][i]=null
+						}
+					}
+					if (slideshow.setting[k].innerHTML) //catch gallerydesctext div
+						slideshow.setting[k].innerHTML=null
+					slideshow.setting[k]=null
+				})
+				slideshow=slideshow.setting=null
+			})
+		}) //end deferred code
+	}) //end jQuery domload
+}
+</P><P>simpleGallery.prototype={
+</P><P>	navigate:function(keyword){
+		clearTimeout(this.setting.playtimer)
+		this.setting.totalsteps=100000 //if any of the nav buttons are clicked on, set totalsteps limit to an &quot;unreachable&quot; number 
+		if (!isNaN(parseInt(keyword))){
+			this.showslide(parseInt(keyword))
+		}
+		else if (/(prev)|(next)/i.test(keyword)){
+			this.showslide(keyword.toLowerCase())
+		}
+		else{ //if play|pause button
+			var slideshow=this
+			var $playbutton=$(this.setting.navbuttons).eq(1)
+			if (!this.setting.ispaused){ //if pause Gallery
+				this.setting.autoplay[0]=false
+				$playbutton.attr({title:'Play', src:simpleGallery_navpanel.images[1]})
+			}
+			else if (this.setting.ispaused){ //if play Gallery
+				this.setting.autoplay[0]=true
+				this.setting.playtimer=setTimeout(function(){slideshow.showslide('next')}, this.setting.autoplay[1])
+				$playbutton.attr({title:'Pause', src:simpleGallery_navpanel.images[3]})
+			}
+			slideshow.setting.ispaused=!slideshow.setting.ispaused
+		}
+	},
+</P><P>	showslide:function(keyword){
+		var slideshow=this
+		var setting=slideshow.setting
+		var totalimages=setting.imagearray.length
+		var imgindex=(keyword==&quot;next&quot;)? (setting.curimage&lt;totalimages-1? setting.curimage+1 : 0)
+			: (keyword==&quot;prev&quot;)? (setting.curimage&gt;0? setting.curimage-1 : totalimages-1)
+			: Math.min(keyword, totalimages-1)
+		setting.gallerylayers[setting.bglayer].innerHTML=simpleGallery.routines.getSlideHTML(setting.imagearray[imgindex])
+		setting.$gallerylayers.eq(setting.bglayer).css({zIndex:1000, opacity:0}) //background layer becomes foreground
+			.stop().css({opacity:0}).animate({opacity:1}, setting.fadeduration, function(){ //Callback function after fade animation is complete:
+				clearTimeout(setting.playtimer)
+				setting.gallerylayers[setting.bglayer].innerHTML=null  //empty bglayer (previously fglayer before setting.fglayer=setting.bglayer was set below)
+				try{
+					setting.onslide.call(slideshow, setting.gallerylayers[setting.fglayer], setting.curimage)
+				}catch(e){
+					alert(&quot;Simple Controls Gallery: An error has occured somwhere in your code attached to the \&quot;onslide\&quot; event: &quot;+e)
+				}
+				setting.currentstep+=1
+				if (setting.autoplay[0]){
+					if (setting.currentstep&lt;=setting.totalsteps)
+						setting.playtimer=setTimeout(function(){slideshow.showslide('next')}, setting.autoplay[1])
+					else
+						slideshow.navigate(&quot;play/pause&quot;)
+				}
+			}) //end callback function
+		setting.gallerylayers[setting.fglayer].style.zIndex=999 //foreground layer becomes background
+		setting.fglayer=setting.bglayer
+		setting.bglayer=(setting.bglayer==0)? 1 : 0
+		setting.curimage=imgindex
+		setting.navbuttons[3].innerHTML=(setting.curimage+1) + '/' + setting.imagearray.length
+		if (setting.imagearray[imgindex][3]){ //if this slide contains a description
+			setting.$descpanel.css({visibility:'visible'})
+			setting.descdiv.innerHTML=setting.imagearray[imgindex][3]
+		}
+		else if (setting.longestdesc!=&quot;&quot;){ //if at least one slide contains a description (feature is enabled)
+			setting.descdiv.innerHTML=null
+			setting.$descpanel.css({visibility:'hidden'})
+</P><P>		}
+	},
+</P><P>	showhidenavpanel:function(state){
+		var setting=this.setting
+		var endpoint=(state==&quot;show&quot;)? setting.dimensions[1]-setting.panelheight : this.setting.dimensions[1]
+		setting.$navpanel.stop().animate({top:endpoint}, simpleGallery_navpanel.slideduration)
+		if (setting.longestdesc!=&quot;&quot;) //if at least one slide contains a description (feature is enabled)
+			this.showhidedescpanel(state)
+	},
+</P><P>	showhidedescpanel:function(state){
+		var setting=this.setting
+		var endpoint=(state==&quot;show&quot;)? 0 : -setting.descpanelheight
+		setting.$descpanel.stop().animate({top:endpoint}, simpleGallery_navpanel.slideduration)
+	}
+}
+</P><P>simpleGallery.routines={
+</P><P>	getSlideHTML:function(imgelement){
+		var layerHTML=(imgelement[1])? '&lt;a href=&quot;'+imgelement[1]+'&quot; target=&quot;'+imgelement[2]+'&quot;&gt;\n' : <I> //hyperlink slide?</I>
+		layerHTML+='&lt;img src=&quot;'+imgelement[0]+'&quot; style=&quot;border-width:0&quot; /&gt;'
+		layerHTML+=(imgelement[1])? '&lt;/a&gt;' : 
+		return layerHTML //return HTML for this layer
+	},
+</P><P>	addnavpanel:function(setting){
+		var interfaceHTML=
+		for (var i=0; i&lt;3; i++){
+			var imgstyle='position:relative; border:0; cursor:hand; cursor:pointer; top:'+simpleGallery_navpanel.imageSpacing.offsetTop[i]+'px; margin-right:'+(i!=2? simpleGallery_navpanel.imageSpacing.spacing+'px' : 0)
+			var title=(i==0? 'Prev' : (i==1)? (setting.ispaused? 'Play' : 'Pause') : 'Next')
+			var imagesrc=(i==1)? simpleGallery_navpanel.images[(setting.ispaused)? 1 : 3] : simpleGallery_navpanel.images[i]
+			interfaceHTML+='&lt;img class=&quot;navimages&quot; title=&quot;' + title + '&quot; src=&quot;'+ imagesrc +'&quot; style=&quot;'+imgstyle+'&quot; /&gt; '
+		}
+</P>
+		interfaceHTML+='<DIV class="gallerystatus" style="margin-top:1px">' + (setting.curimage+1) + '/' + setting.imagearray.length + '</DIV>'
+		setting.$navpanel=$('')
+<P>			.css({position:'absolute', width:'100%', height:setting.panelheight, left:0, top:setting.dimensions[1], font:simpleGallery_navpanel.panel.fontStyle, zIndex:'1001'})
+			.appendTo(setting.$wrapperdiv)
+</P>
+		$('') //create inner nav panel DIVs
+<P>			.css({position:'absolute', left:0, top:0, width:'100%', height:'100%'})
+			.eq(0).css({background:'black', opacity:simpleGallery_navpanel.panel.opacity}).end() //&quot;navpanelbg&quot; div
+			.eq(1).css({paddingTop:simpleGallery_navpanel.panel.paddingTop, textAlign:'center', color:'white'}).html(interfaceHTML).end() //&quot;navpanelfg&quot; div
+			.appendTo(setting.$navpanel)
+		return setting.$navpanel.find('img.navimages, div.gallerystatus').get() //return 4 nav related images and DIVs as DOM objects
+	},
+</P><P>	adddescpanel:function(setting){
+</P>
+		setting.$descpanel=$('')
+<P>			.css({position:'absolute', width:'100%', left:0, top:-1000, zIndex:'1001'})
+			.find('div').css({position:'absolute', left:0, top:0, width:'100%'})
+			.eq(0).css({background:'black', opacity:simpleGallery_navpanel.panel.opacity}).end() //&quot;gallerydescbg&quot; div
+			.eq(1).css({color:'white'}).end() //&quot;gallerydescfg&quot; div
+			.eq(2).html(setting.longestdesc).end().end()
+			.appendTo(setting.$wrapperdiv)
+		var $gallerydesctext=setting.$descpanel.find('div.gallerydesctext')
+		setting.descpanelheight=$gallerydesctext.outerHeight()
+		setting.$descpanel.css({top:-setting.descpanelheight, height:setting.descpanelheight}).find('div').css({height:'100%'})
+		return setting.$descpanel.find('div.gallerydesctext').get(0) //return gallery description DIV as a DOM object
+	},
+</P><P>	getCookie:function(Name){ 
+		var re=new RegExp(Name+&quot;=[^;]+&quot;, &quot;i&quot;); //construct RE to search for target name/value pair
+		if (document.cookie.match(re)) //if cookie found
+			return document.cookie.match(re)[0].split(&quot;=&quot;)[1] //return its value
+		return null
+	},
+</P><P>	setCookie:function(name, value){
+		document.cookie = name+&quot;=&quot; + value + &quot;;path=/&quot;
+	}
+}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Fatih-Medical/js/simplegallery.js">http://2012.igem.org/Team:Fatih-Medical/js/simplegallery.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Fatih-Medical/js/simplegallery.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Fatih-Medical/js/simplegallery.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Fatih-Medical/js/simplegallery.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Fatih-Medical/js/simplegallery.js&amp;oldid=183629" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

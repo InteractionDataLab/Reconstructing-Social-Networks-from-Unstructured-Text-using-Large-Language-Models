@@ -1,0 +1,251 @@
+Team:Exeter/Model
+Lab
+Lab Project
+Lab Book
+Safety
+Parts
+Team
+InterLab
+Human Practices
+Integrated
+Public Engagement
+& Education
+Log
+Attributions
+Awards
+Medals
+Special pages
+HP Silver
+HP Gold
+Models
+Collaborations
+0
+Modelling
+Introduction KillerRed/
+KillerOrange Enzymatic
+Killswitches
+Introduction
+As part of our project we have developed two intracellular models to describe our systems. Both codes that we developed used the same protein production mechanism which takes transcription, translation, degradation, maturation, cell division and multiple ribosome binding sites into account. These features are built on top of code that keeps track of the amount of E. Coli and its respective mRNA. This code was made by Joel Burton-Lowe and Andy Wild. It gave the same results for a specific set of parameters and assumptions, and could be independently checked and verified.
+The KillerRed/KillerOrange model attempts to look at the phototoxicity caused by reactive oxygen species which are induced by light at specific wavelengths, together with how long it takes for cell death.
+The enzymatic model looks at the rate of degradation caused by ‘Lysozyme C’, and can be expanded to any other enzyme with a substrate vital to the survival of the cell, providing a certain set of parameters are known.
+KillerRed/KillerOrange
+Protein production:
+At the outset, multiple assumptions were made to simplify the system, enabling suitable definition of  appropriate variables and rates. Mutations were also ignored to eradicate this further layer of complexity. Mindful that the timeframe considered was much larger than the replication time of E. coli,  the amount of mRNA, Protein etc was adjusted accordingly by assuming that it splits evenly and halving the amount every time replication occurs, also affecting the amount of plasmids. However,  as cited in (Nordström and Dasgupta, 2006), the frequency of replication is variable to maintain a constant amount. Therefore, in the case of our plasmid pSB1C3, which had a high copy number ~300, the amount was kept constant even after replication of the E. Coli.
+We then isolated one cell and listed the major factors in the production of reactive oxygen species (ROS) starting from the transcription of mRNA.
+k1 is the rate of transcription.
+k2 is the rate of mRNA degradation
+k3 is the rate of protein production
+k4 is the rate of degradation of the protein
+k6 is the rate of ROS production
+From this, we isolated the Transcription/Translation mechanism (k1 & k3) along with the degradation (k2 & k4) to obtain a protein production time.
+K1 was calculated to be 22.175s, taking the total number of base pairs of the plasmid (887) and dividing through by the transcription rate of 40 base pairs per second for the T7 promoter (García and Molineux, 1995).
+K3 was calculated in a similar way to be 28.690s. As the value found for the rate of 8.4 amino acids per seconds (Siwiak and Zielenkiewicz, 2013) is given in amino acids and not base pairs, this result was arrived at by taking the total number of base pairs of the protein coding region (723) and dividing by 3, given that a conversion of 3 base pairs = 1 amino acid is viable.
+K2 was found to be 3-8 minutes for 80% of mRNA (Bernstein et al., 2002). 5 minutes was used as an approximation of the median time as the actual number fluctuates.
+K4 was initially estimated to be greater than 10 hours using protparam on expasy.org. 10 hours was used as the degradation time as this exceed the observed time taken for death of the cell.
+Simbiology, a modelling app for Matlab, was used to model the flow diagram with the above rate parameters. Running the simulation, a rate for mRNA and protein production could be found. Two issues were identified, one, that the degradation times affected the transcription/translation rate directly and two, that as soon as mRNA production started, protein production was initialised. This suggested that when the mRNA was undergoing transcription, translation had already started. This could not be the case, as transcription could not begin with a non integer amount of mRNA.
+To correct this, the mRNA was altered to be a step function, limiting the amount to whole integers such that production of the protein was restricted until the first mRNA was produced. However, this only served to add a delay to the overall protein production and multiply it by the mRNA amount as seen in Figure 1. This highlights another problem. As shown in in Figure 2 below. It takes ~28 s to produce a protein (K3) after the mRNA has been made, suggesting that it should occur at  ~54s however, the second mRNA is produced in advance of this, increasing the rate at which the proteins are produced, initiating at  ~53s. This correctly describes the overall protein production rate of the system, but is incorrect in finding the time at which they are made, as each mRNA is independent of any other. This means that each mRNA required  individual consideration, based on each having a separate protein production mechanism that contributes to a total protein quantity.
+Figure 1: A graph showing the mRNA amount in blue over 100 seconds and the overall rate of Protein production in red over 100 seconds.
+Figure 2: A plot of the overall protein production in blue and the rate at which the first mRNA independently produces a protein in red. Creating proteins at ~53s and ~54s respectively.
+To enable this we moved away from Simbiology and attempted to use Simulink. However, after careful consideration, we decided instead to write the process in C. This allowed us to handle each mRNA and its creation time separately and have it produce proteins up to the time in which the protein was induced. An array was used with each element representing a second; every time a protein was created the corresponding time element would increase by one. The total of all elements were then taken to find an overall amount of protein.
+The next step was to include degradation. This was achieved by limiting the protein production of an individual mRNA to its respective degradation time. For protein degradation, the amount of time left from the time of creation until the overall run time (in our case the point at which we started shining light on the cultures) was compared to the degradation time; if the difference was greater, the protein degrades and is subtracted from the total.
+Further, we took into account multiple ribosomes on one mRNA (polyribosome) and maturation. Polyribosomes were included in the code by restricting the first protein created by each mRNA to the the calculated translation rate found above (~28s). Then for the following proteins we used a modified rate where we divided the rate by the amount of ribosomes, which was found to be 3.46 per 100 codons (Siwiak and Zielenkiewicz, 2013). In this case, it was calculated to be 8 if we rounded down to the nearest integer. As the degradation and the ability to produce ROS applies to only folded proteins, we wanted to know how many mature proteins there would be. Calculating of a new run time was achieved by  taking away both the maturation time in addition to the time taken to make one mRNA and protein,  suggesting that the proteins made in the new run time were created and matured and ready to produce ROS if they had not degraded.
+Examining the degradation time for the protein, we adjusted the previously estimated value to be that of green fluorescent protein (GFP), as KillerRed is a homologue to provide a more accurate degradation time. However, able to only find a half-life of the protein, we used equation (1) to calculate the degradation.
+T
+=
+T
+1
+2
+ln
+&InvisibleTimes;
+2
+(1)
+Running the initial model provided an overall protein quantity of under 3 million and mRNA at a maximum of 4200 (Thermofisher.com, 2016), which fits within the expected amount. This suggests  that the rates and process are a good, basic approximation of protein production.
+ROS production:
+The next step was to look at the rate of ROS production (k5). Using the equations provided by (Song et al, 1995).
+S
++
+h
+ν
+→
+S
+∗
+k
+a
+Activation
+S
+∗
+→
+S
++
+h
+ν
+k
+f
+Fluorescence emission
+S
+∗
+→
+S
+k
+i
+c
+=
+6.9
+×
+10
+10
+s
+−
+1
+Internal conversion
+S
+∗
+→
+T
+∗
+k
+i
+s
+c
+=
+6.6
+×
+10
+6
+s
+−
+1
+Intersystem crossing
+T
+∗
+→
+S
+k
+r
+d
+=
+50
+s
+−
+1
+Radiationless deactivation
+T
+∗
++
+O
+2
+→
+S
++
+O
+2
+∙
+−
+k
+p
+q
+=
+1.56
+×
+10
+9
+M
+−
+1
+s
+−
+1
+Physical quenching
+T
+∗
++
+2
+O
+2
+→
+X
++
+O
+2
+∙
+−
+k
+c
+q
+=
+1.4
+×
+10
+8
+M
+−
+1
+s
+−
+1
+Chemical quenching
+Assumptions were once again made to simplify the system. The first of these being that all singlets are assumed to be in the excited states as there is an excess of photons with an energy exceeding that of activation. As well as this, we assumed that one chromophore produces one ROS before ‘resetting’ to produce the next. Lastly, the damage done by the ROs is negated when the cell splits.
+Combining all assumptions in Simbiology gave the value of k5 to be 8.24x10$^{-6}\text{s}$
+From this we can determine the estimated time of cell death by reading the time off at the first occurrence of the internal ROS threshold. However, a well-documented threshold could not be found meaning that a time could not be estimated.
+Future
+Future improvements of this code would include:
+Implementing a photobleaching rate degrading mature proteins, this will depend on the amount of ROS.
+Doing further research on the internal limit of ROS to determine a threshold. This would allow a time of cell death to be estimated.
+Improving the process to reduce the amount of assumptions, or constrain the model to limits where these assumptions are minimised.
+Enzymatic Models
+mRNA production in Enzymatic kill switches
+The change from software such as Simbiology and Simulink called for a more fundamental method of modelling cell death. Preliminary research     showed kill switches producing the proteins “Lysozyme c” and “DNase 1” both had very similar mechanisms; as both are enzymes. Therefore, it     was decided that the two models would use the same code to simulate mRNA and protein production.
+Initially, following advice from biologists and biochemists on our team, the first code incorporated two step functions, the first of these     modelled mRNA production by a single E. coli cell. To calculate protein made by each mRNA a secondary step function triggered each time an mRNA     was produced, the sum of these functions gave the total amount of protein. This program was simple with the only input variables being the production time of     mRNA and the respective protein.    The initial model was presented to the rest of the team receiving plenty of feedback, the most prevalent point being that the code modelled a single     cell system with a single plasmid whilst it should model a single cell system that duplicates and has multiple plasmids. It was suggested the following factors were added to the model:
+Plasmid production
+Degradation of mRNA and protein
+Maturation of protein
+Duplication rate of E. coli
+The initial feedback called for a re-write of the code as a considerable amount of the suggestions came in stages before mRNA production.    A second version of the code was written which incorporated all main steps between the splitting of E. coli to the degradation rate of protein.
+Assumptions
+It is important to outline the factors that were overlooked due to research finding their effect on the model would be negligible. Firstly, after     researching the production time of plasmids in E. coli it was found that plasmids will reproduce at a variable rate to maintain a constant population    determined by their copy number (Nordström and Dasgupta, 2006). To address this, the production rate of plasmids was overlooked, allowing for a     constant value of plasmids to be maintained throughout the simulation. In experiments a pSB1C3 strain was used - a high copy number plasmid;     therefore the copy number was set to 300.      Secondly, both enzymatic models will assume that travel time of protein to the substrate is negligible. Protein diffusing through the cytoplasm of E. coli have a diffusion coefficient on the scale of $10 \mu \text{m}^2 \text{s}^{-1}$ (Elowitz et al., 1998). Considering the surface area of E. coli is approximately     $10 \mu \text{m}^2$, the protein will reach the cell wall in a several seconds which is several magnitudes of order smaller than the simulation time. Lastly, the models     will assume no mutations occur; the aim of the simulations is to determine whether kill switches are a plausible method of biosafety, if the models show     a kill switch is not a reliable way to terminate GMO’s then accounting for mutations will only that enforce statement.
+Features
+Research showed that there is an upper limit of mRNA in E. coli,    therefore an upper limit of $4 \times 10^3$ mRNA per E. coli cell (Thermofisher.com, 2016) has been included in the model. The lifetime of mRNA can be found     from the observed half life of approximately 5 minutes or $300\text{s}$ (Bernstein et al., 2002), resulting in an average lifetime of $430\text{s}$. The production rate of     mRNA along with ribosomes per coding region will be worked out for both the lysozyme and DNase models independently. In addition to this, both     enzymatic models use the well known duplication time of E. coli - 17 minutes, at which point both the mRNA and protein is assumed to split among the two cells equally,.
+$T_{(mRNA)} = \frac{T_{(mRNA) \frac{1}{2}}}{ln(2)} = \frac{300\text{s}}{ln(2)} = 430\text{s (2sf)}$(Hyperphysics.phy-astr.gsu.edu, 2016) $T_{(mRNA)}$: Lifetime of mRNA [$\text{s}$]
+$T_{(mRNA) \frac{1}{2}}$: Half life of mRNA [$\text{s}$]
+Lysozyme Model
+In the case of the “Lysozyme c” kill switch the mechanisms beyond producing mRNA need to be modelled separately from the DNase model. There are several     assumptions that will be made, the first of these is that enzymatic reactions can be modelled by Michaelis-Menten kinetics. Secondly, the temperature     of the constants taken imply that this model is running in the range of $37-40^o\text{C}$ at an optimal pH for E. coli growth. The model will assume that when E. coli splits, the contents of the cell and damage of the cell wall is shared equally among the two resulting E. coli. Lastly, it will assume that lysozyme does not degrade     throughout the simulation.
+The plasmid used to produce lysozyme has a PCR with a length of $507\text{bp}$ with the promoter, RBS and terminator totalling a further $164\text{bp}$. Therefore the     production rates of mRNA and lysozyme can be calculated using translation and transcription rates of $V_{translation} = 8.4\text{aas}^{-1}$     (Siwiak and Zielenkiewicz, 2013) and $V_{transcription} = 40\text{bps}^{-1}$ (García and Molineux, 1995) respectively. The translation time is for E. coli at $37^o\text{C}$, other values     have been taken at $40^o\text{C}$ as this was the closest temperature that could be found. All reaction rates have been rounded to the nearest second as this     reduces calculation times.
+$t_{lysozyme} = \frac{L_{protein}}{V_{translation}} = \frac{\frac{507\text{bp}}{3}}{8.4\text{aas}^{-1}} = 20\text{s (2sf)}$
+$t_{mRNA} = \frac{L_{plasmid}}{V_{transcription}} = \frac{507\text{bp} + 164\text{bp}}{40\text{bps}^{-1}} = 17\text{s (2sf)}$ $t_{lysozyme}$: Time to produce one lysozyme protein [$\text{s}$]
+$t_{mRNA}$: Time to produce one mRNA [$\text{s}$]
+$L_{plasmid}\text{, }L_{protein}$: Length of plasmid and protein coding region [$\text{bp}$]
+To supplement the production of lysozyme, the program will implement the affects of multiple ribosomes on the coding site of lysozyme. For E. coli it has been found there are 3.46 codons per $100\text{bp}$ (Siwiak and Zielenkiewicz, 2013). The PCR used for lysozyme production has a length of $507\text{bp}$, meaning     there are approximately 5.8 codons which will be rounded down to 5 as not to overproduce lysozyme.
+“Lysozyme c” is an enzyme that hydrolyses bonds holding together peptidoglycan in the cell wall, this is explained in detail on the project page . The     next task of the lysozyme model is to connect the amount of protein at each time to the degradation of the E. coli cell wall, to do this     Michaelis-Menten kinetics were applied, which gives the reaction rate of one enzyme (Berg et al., 2002).
+$k_{(cat)} = \frac{[S]k_{(cat)max}}{[S] + K_M}$ $k_{(cat)}$: Reaction rate of one lysozyme [$\text{s}^{-1}$]
+$k_{(cat)max}$: Maximum reaction rate of one lysozyme [$\text{s}^{-1}$]
+$[S]$: Substrate concentration [$\text{M}$]
+$K_M$: Michaelis constant [$\text{M}$]
+To use this model two constants are required, the Michaelis constant ($K_M$), the concentration of the substrate when the reaction rate is exactly one half of the maximum reaction rate.     The average reaction rate assumed to be $k_{(cat)avg} = (k_{(cat)max}/2$). The logarithms of both of these     values has been calculated at $40^oC$ to be $-log(K_M) = 5.18 \pm 0.3$M and $-log(k_{cat}^{obs}) = 0.15 \pm 0.005$s$^{-1}$ (Banerjee et al., 1975). Giving values of:
+$K_M = 5.6\text{mM}$ (2sf)
+$k_{(cat)avg} = \frac{k_{(cat)max}}{2} \approx \frac{k_{(cat)}^{obs}}{2} = \frac{0.86\text{s}^{-1}}{2} = 0.43\text{s}^{-1}$ (2sf)
+Lastly, the initial concentration of the substrate peptidoglycan is calculated. An assumption is made that determines that all the peptidoglycan in E. coli is spread out over the entire volume of the cell. Peptidoglycan or murein amount has been calculated to be approximately $3.5\text{x}10^6$ molecules     per cell in a strain of E. coli (Vollmer and Höltje, 2004). Using an approximate volume of E. coli of $0.7 \mu \text{m}^3$, the concentration of peptidoglycan is:
+$[Pep]_{int} = \frac{\frac{N_{pep}}{N_A}}{V_{E. coli}} = \frac{\frac{3.5\text{x}10^6}{6.02\text{x}10^{23}}}{0.7 \mu \text{m}^3} = 8.3\text{mM}$ (2sf) $[Pep]_{int}$: Initial concentration of peptidoglycan [$\text{mM}$]
+$N_{pep}$: Amount of peptidoglycan [molecules]
+$N_A$: Avogadro's constant [molecules/mole]
+$V_{\textit{E. coli}}$: Volume of E. coli [$\mu\text{m}^3$]
+This calculation gives a value in the same order of magnitude as the Michaelis constant, which represents the concentration of substrate when the     reaction rate is at half of its maximum value.
+Results
+Fig. 1. Using Michaelis-Menten kinetics the reaction rate of each lysozyme enzyme has       been plotted for each peptidoglycan substrate concentration. The       average reaction rate of $0.43\text{s}^{-1}$ occurs when the concentration is equal to $K_M = 0.0056\text{M}$.       The maximum or initial concentration $[Pep]_{int} = 0.0083\text{M}$ of the substrate causes a reaction rate of $0.51\text{s}^{-1}$.
+Enzyme reaction rates have been modelled by the Michaelis-Menten kinetics model in Fig. 1, therefore the reaction     rate decreases as the substrate concentration decreases. This graph shows that the reaction     rate will be greatest at the beginning of the simulation and approach zero when the cell wall is most damaged.
+Fig. 2. The percentage of peptidoglycan compared to the original concentration plotted against time.
+Fig. 3. Plots a smaller range of times as Fig. 2. To show the rapid decrease in peptidoglycan concentration.
+The model predicted the complete degradation of the cell wall to be within the first generation     of E. coli, Fig. 2. The reaction rate is slow at first due to the cell having no initial lysozyme,     this slowly increases, until the low concentration of the substrate casues     the reaction rate of lysozyme to slow considerably. The peptidoglycan concentration in the cell is     negligible until 17 minutes at which point the E. coli splits sharing the cell wall damage equally     between the two daughter cells, hence cell damage drops from almost 100% to 50%. The immediate concern     is that in this model cell death would occur far before it is able to duplicate, meaning that     assuming no mutations the cell would terminate before 17 minutes.
+The cell death threshold of peptidoglycan concentration in the cell wall is not well defined from     research. Fig. 3 demonstrates that any threshold that is chosen is likely to fall in between 2     and 5 minutes of the simulation which is well before the reproduction rate of E. coli of 17     minutes. Therefore it is a reasonable assumption that given no mutations were to occur that the     cell would be terminated before the E. coli could reproduce.
+References
+Nordström, K. and Dasgupta, S. (2006). Copy-number control of the Escherichia coli chromosome: a plasmidologist's view. EMBO Rep, [online] 7(5), pp.484-489. Available at: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1479556/ [Accessed 6 Sep. 2016].
+Elowitz, M., Surette, M., Wolf, P., Stock, J. and Leibler, S. (1998) ‘Protein mobility in the cytoplasm of Escherichia coli’, Journal of bacteriology., 181(1), pp. 197–203 [Accessed 6 Sep. 2016].
+Thermofisher.com. (2016). Macromolecular Components of E. coli and HeLa Cells | Thermo Fisher Scientific. [online] Available at: https://www.thermofisher.com/uk/en/home/references/ambion-tech-support/rna-tools-and-calculators/macromolecular-components-of-e.html# [Accessed 6 Sep. 2016].
+Bernstein, J., Khodursky, A., Lin, P., Lin-Chao, S. and Cohen, S. (2002). Global analysis of mRNA decay and abundance in Escherichia coli at single-gene resolution using two-color fluorescent DNA microarrays. Proceedings of the National Academy of Sciences, [online] 99(15), pp.9697-9702. Available at: http://www.pnas.org/content/99/15/9697.long [Accessed 6 Sep. 2016].
+Berg, J., Tymoczko, J., Stryer, L. and Stryer, L. (2002). Biochemistry. New York: W.H. Freeman, pp.Section 8.4 - Equation (23).
+Banerjee, S., Holler, E., Hess, G. and Rupley, J. (1975). Reaction of N-acetylglucosamine oligosaccharides with lysozyme. Temperature, pH, and solvent deuterium isotope effects; equilbrium, steady state, and pre-steady state measurements*. Journal of Biological Chemistry, [online] 250(11), pp.4357, Figure 2 and 4359, Table I. Available at: http://www.jbc.org/content/250/11/4355.long [Accessed 7 Sep. 2016].
+Vollmer, W. and Höltje, J. (2004). The Architecture of the Murein (Peptidoglycan) in Gram-Negative Bacteria: Vertical Scaffold or Horizontal Layer(s)?. Journal of Bacteriology, [online] 186(18), p.5980. Available at: http://jb.asm.org/content/186/18/5978 [Accessed 7 Sep. 2016].
+Siwiak, M. and Zielenkiewicz, P. (2013) ‘Transimulation - protein Biosynthesis web service’, PLoS ONE, 8(9), p. e73943. doi: 10.1371/journal.pone.0073943. [Accessed 7 Sep. 2016]
+García, L. and Molineux, I. (1995) ‘Rate of translocation of bacteriophage T7 DNA across the membranes of Escherichia coli’, Journal of bacteriology., 177(14), pp. 4066–76.[Accessed 7 Sep. 2016]
+Siwiak, M. and Zielenkiewicz, P. (2013). Transimulation - Protein Biosynthesis Web Service. PLoS ONE, [online] 8(9), p.3, left column, second paragraph. Available at: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3764131/ [Accessed 7 Sep. 2016].
+Hyperphysics.phy-astr.gsu.edu. (2016). Mean Lifetime for Particle Decay. [online] Available at: http://hyperphysics.phy-astr.gsu.edu/hbase/nuclear/meanlif.html [Accessed 10 Sep. 2016].
+Song L, Hennink EJ, Young IT and Tanke HJ. Photobleaching Kinetics of Fluorescein in Quantitative Fluorescence Microscopy. Biophys. J. 1995 68: 2588-2600. [Accessed 10 Sep. 2016].

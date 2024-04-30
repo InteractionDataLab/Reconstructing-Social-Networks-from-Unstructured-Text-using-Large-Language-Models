@@ -1,0 +1,344 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Evry_main_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Evry/main.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Evry/main.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/main.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/main.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Evry/main.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Evry/main.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>(function($){
+</P><PRE> var Renderer = function(elt){
+   var dom = $(elt)
+   var canvas = dom.get(0)
+   var ctx = canvas.getContext(&quot;2d&quot;);
+   var gfx = arbor.Graphics(canvas)
+   var sys = null
+</PRE><PRE>   var _vignette = null
+   var selected = null,
+       nearest = null,
+       _mouseP = null;
+</PRE><PRE>   var that = {
+     init:function(pSystem){
+       sys = pSystem
+       sys.screen({size:{width:dom.width(), height:dom.height()},
+                   padding:[36,60,36,60]})
+</PRE><PRE>       $(window).resize(that.resize)
+       that.resize()
+       that._initMouseHandling()
+</PRE><PRE>       if (document.referrer.match(/Goldenbricks|Plasmids|AIDSystem/)){
+         // if we got here by hitting the back button in one of the Benchwork, 
+         // start with the Benchwork section pre-selected
+         that.switchSection('Benchwork')
+       }
+     },
+     resize:function(){
+       //canvas.width = $(window).width()
+       //canvas.height = .75* $(window).height()
+       sys.screen({size:{width:canvas.width, height:canvas.height}})
+       _vignette = null
+       that.redraw()
+     },
+     redraw:function(){
+       gfx.clear()
+       sys.eachEdge(function(edge, p1, p2){
+         if (edge.source.data.alpha * edge.target.data.alpha == 0) return
+         gfx.line(p1, p2, {stroke:&quot;#b2b19d&quot;, width:3, alpha:edge.target.data.alpha})
+       })
+       sys.eachNode(function(node, pt){
+         var w = Math.max(20, 20+gfx.textWidth(node.name) )
+         if (node.data.alpha===0) return
+         if (node.data.shape=='dot'){
+           gfx.oval(pt.x-w/2, pt.y-w/2, w, w, {fill:node.data.color, alpha:node.data.alpha})
+           gfx.text(node.name, pt.x, pt.y+7, {color:&quot;white&quot;, align:&quot;center&quot;, font:&quot;Arial&quot;, size:12})
+         }else{
+           gfx.rect(pt.x-w/2, pt.y-8, w, 20, 4, {fill:node.data.color, alpha:node.data.alpha})
+           gfx.text(node.name, pt.x, pt.y+9, {color:&quot;white&quot;, align:&quot;center&quot;, font:&quot;Arial&quot;, size:12})
+         }
+       })
+       that._drawVignette()
+     },
+     
+     _drawVignette:function(){
+       var w = canvas.width
+       var h = canvas.height
+       var r = 20
+</PRE><PRE>       if (!_vignette){
+         var top = ctx.createLinearGradient(0,0,0,r)
+         top.addColorStop(0, &quot;#e0e0e0&quot;)
+         top.addColorStop(.7, &quot;rgba(255,255,255,0)&quot;)
+</PRE><PRE>         var bot = ctx.createLinearGradient(0,h-r,0,h)
+         bot.addColorStop(0, &quot;rgba(255,255,255,0)&quot;)
+         bot.addColorStop(1, &quot;white&quot;)
+</PRE><PRE>         _vignette = {bot:bot}
+       }
+       
+       // top
+       ctx.fillStyle = _vignette.top
+       ctx.fillRect(0,0, w,r)
+</PRE><PRE>       // bot
+       ctx.fillStyle = _vignette.bot
+       ctx.fillRect(0,h-r, w,r)
+     },
+</PRE><PRE>     switchMode:function(e){
+       if (e.mode=='hidden'){
+         dom.stop(true).fadeTo(e.dt,0, function(){
+           if (sys) sys.stop()
+           $(this).hide()
+         })
+       }else if (e.mode=='visible'){
+         dom.stop(true).css('opacity',0).show().fadeTo(e.dt,1,function(){
+           that.resize()
+         })
+         if (sys) sys.start()
+       }
+     },
+     
+     switchSection:function(newSection){
+       var parent = sys.getEdgesFrom(newSection)[0].source
+       var children = $.map(sys.getEdgesFrom(newSection), function(edge){
+         return edge.target
+       })
+       
+       sys.eachNode(function(node){
+         if (node.data.shape=='dot') return // skip all but leafnodes
+</PRE><PRE>         var nowVisible = ($.inArray(node, children)&gt;=0)
+         var newAlpha = (nowVisible) ? 1 : 0
+         var dt = (nowVisible) ? .5 : .5
+         sys.tweenNode(node, dt, {alpha:newAlpha})
+</PRE><PRE>         if (newAlpha==1){
+           node.p.x = parent.p.x + .05*Math.random() - .025
+           node.p.y = parent.p.y + .05*Math.random() - .025
+           node.tempMass = .001
+         }
+       })
+     },
+     
+     
+     _initMouseHandling:function(){
+       // no-nonsense drag and drop (thanks springy.js)
+       selected = null;
+       nearest = null;
+       var dragged = null;
+       var oldmass = 1
+</PRE><PRE>       var _section = null
+</PRE><PRE>       var handler = {
+         moved:function(e){
+           var pos = $(canvas).offset();
+           _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+           nearest = sys.nearest(_mouseP);
+</PRE><PRE>           if (!nearest.node) return false
+</PRE><P>//            if (nearest.node.data.shape!='dot'){
+</P><PRE>             selected = (nearest.distance &lt; 50) ? nearest : null
+             if (selected){
+                dom.addClass('linkable')
+                window.status = selected.node.data.link//.replace(/^\//,&quot;http://&quot;+window.location.host+&quot;/&quot;)//.replace(/^#/,<I>)</I>
+             }
+             else{
+                dom.removeClass('linkable')
+                window.status = 
+             }
+</PRE><P>//            }else 
+</P><PRE>           if ($.inArray(nearest.node.name, ['French Froggies','Human Practice','Modeling','Benchwork']) &gt;=0 ){
+             if (nearest.node.name!=_section){
+               _section = nearest.node.name
+               that.switchSection(_section)
+             }
+             dom.removeClass('linkable')
+             window.status = 
+           }
+           
+           return false
+         },
+         clicked:function(e){
+           var pos = $(canvas).offset();
+           _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+           nearest = dragged = sys.nearest(_mouseP);
+           
+           if (nearest &amp;&amp; selected &amp;&amp; nearest.node===selected.node){
+             var link = selected.node.data.link
+             if (link.match(/^#/)){
+                $(that).trigger({type:&quot;navigate&quot;, path:link.substr(1)})
+             }else{
+                window.location = link
+             }
+             return false
+           }
+           
+           
+           if (dragged &amp;&amp; dragged.node !== null) dragged.node.fixed = true
+</PRE><PRE>           $(canvas).unbind('mousemove', handler.moved);
+           $(canvas).bind('mousemove', handler.dragged)
+           $(window).bind('mouseup', handler.dropped)
+</PRE><PRE>           return false
+         },
+         dragged:function(e){
+           var old_nearest = nearest &amp;&amp; nearest.node._id
+           var pos = $(canvas).offset();
+           var s = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+</PRE><PRE>           if (!nearest) return
+           if (dragged !== null &amp;&amp; dragged.node !== null){
+             var p = sys.fromScreen(s)
+             dragged.node.p = p
+           }
+</PRE><PRE>           return false
+         },
+</PRE><PRE>         dropped:function(e){
+           if (dragged===null || dragged.node===undefined) return
+           if (dragged.node !== null) dragged.node.fixed = false
+           dragged.node.tempMass = 1000
+           dragged = null;
+           // selected = null
+           $(canvas).unbind('mousemove', handler.dragged)
+           $(window).unbind('mouseup', handler.dropped)
+           $(canvas).bind('mousemove', handler.moved);
+           _mouseP = null
+           return false
+         }
+</PRE><PRE>       }
+</PRE><PRE>       $(canvas).mousedown(handler.clicked);
+       $(canvas).mousemove(handler.moved);
+</PRE><PRE>     }
+   }
+   
+   return that
+ }
+ 
+ 
+ var Nav = function(elt){
+   var dom = $(elt)
+</PRE><PRE>   var _path = null
+   
+   var that = {
+     init:function(){
+       $(window).bind('popstate',that.navigate)
+       dom.find('&gt; a').click(that.back)
+       $('.more').one('click',that.more)
+       
+       $('#Model dl:not(.datastructure) dt').click(that.reveal)
+       that.update()
+       return that
+     },
+     more:function(e){
+       $(this).removeAttr('href').addClass('less').html(' ').siblings().fadeIn()
+       $(this).next('h2').find('a').one('click', that.less)
+       
+       return false
+     },
+     less:function(e){
+       var more = $(this).closest('h2').prev('a')
+       $(this).closest('h2').prev('a')
+       .nextAll().fadeOut(function(){
+         $(more).text('creation &amp; use').removeClass('less').attr('href','#')
+       })
+       $(this).closest('h2').prev('a').one('click',that.more)
+       
+       return false
+     },
+     reveal:function(e){
+       $(this).next('dd').fadeToggle('fast')
+       return false
+     },
+     back:function(){
+       _path = &quot;/&quot;
+       if (window.history &amp;&amp; window.history.pushState){
+         window.history.pushState({path:_path}, &quot;&quot;, _path);
+       }
+       that.update()
+       return false
+     },
+     navigate:function(e){
+       var oldpath = _path
+       if (e.type=='navigate'){
+         _path = e.path
+         if (window.history &amp;&amp; window.history.pushState){
+            window.history.pushState({path:_path}, &quot;&quot;, _path);
+         }else{
+           that.update()
+         }
+       }else if (e.type=='popstate'){
+         var state = e.originalEvent.state || {}
+         _path = state.path || window.location.pathname.replace(/^\//,<I>)</I>
+       }
+       if (_path != oldpath) that.update()
+     },
+     update:function(){
+       var dt = 'slow'
+       if (_path===null){
+         // this is the original page load. don't animate anything just jump
+         // to the proper state
+         _path = window.location.pathname.replace(/^\//,<I>)</I>
+         dt = 0
+         dom.find('p').css('opacity',0).show().fadeTo('slow',1)
+       }
+</PRE><PRE>       switch (_path){
+         case <I>:</I>
+         case '/':
+</PRE><P>//          dom.find('p').text('a graph visualization library using web workers and jQuery')
+</P><PRE>         dom.find('&gt; a').removeClass('active').attr('href','#')
+</PRE><PRE>         $('#Model').fadeTo('fast',0, function(){
+           $(this).hide()
+           $(that).trigger({type:'mode', mode:'visible', dt:dt})
+         })
+         document.title = &quot;FRENCH FROGGIES&quot;
+         break
+         
+       }
+       
+     }
+   }
+   return that
+ }
+ 
+ $(document).ready(function(){
+   var CLR = {
+     branch:&quot;#b2b19d&quot;,
+     level3benchwork:&quot;#FFBF3E&quot;,
+     level3model:&quot;#4B86C7&quot;
+   }
+</PRE><PRE>   var theUI = {
+     nodes:{&quot;FRENCH FROGGIES&quot;:{color:&quot;#51C215&quot;, shape:&quot;dot&quot;, alpha:1, link:'Project'}, 
+     
+            Benchwork:{color:&quot;#FF963E&quot;, shape:&quot;dot&quot;, alpha:1}, 
+            &quot;Synthetic hormone&quot;:{color:CLR.level3benchwork, alpha:0, link:'AIDSystem'},
+            &quot;Goldenbrick&quot;:{color:CLR.level3benchwork, alpha:0, link:'GB'},
+            &quot;Xenopus : A multicellular chassis&quot;:{color:CLR.level3benchwork, alpha:0, link:'FrenchFrog'},
+</PRE><PRE>            Modeling:{color:&quot;#1A5291&quot;, shape:&quot;dot&quot;, alpha:1, link:'Modeling'}, 
+            &quot;Auxin transport and diffusion&quot;:{color:CLR.level3model, alpha:0, link:'auxin_pde'},
+            &quot;Experimental protocol&quot;:{color:CLR.level3model, alpha:0, link:'plasmid_splitting'},
+            &quot;Cellular model : auxin production&quot;:{color:CLR.level3model, alpha:0, link:'Auxin_production'},
+            &quot;Cellular model : auxin detection&quot;:{color:CLR.level3model, alpha:0, link:'Auxin_detection'},
+</PRE><PRE>            &quot;Human Pratice&quot;:{color:&quot;#A94AC7&quot;, shape:&quot;dot&quot;, alpha:1, link:'HumanPractice'}
+           },
+     edges:{
+</PRE><PRE>       &quot;FRENCH FROGGIES&quot;:{
+           Benchwork:{&quot;length&quot;:0.5,&quot;weight&quot;:1},
+           Modeling:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Human Pratice&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:3}
+       },
+       Benchwork:{
+           &quot;Synthetic hormone&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:1},
+           &quot;Goldenbrick&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Xenopus : A multicellular chassis&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:3}
+       },
+       Modeling:{
+           &quot;Auxin transport and diffusion&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Experimental protocol&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Cellular model : auxin production&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Cellular model : auxin detection&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2}
+       },
+       &quot;Human Pratice&quot;:{}
+     }
+   }
+</PRE><PRE>   var sys = arbor.ParticleSystem()
+   sys.parameters({stiffness:900, repulsion:50, gravity:true, dt:0.015})
+   sys.renderer = Renderer(&quot;#sitemap&quot;)
+   sys.graft(theUI)
+   
+   var nav = Nav(&quot;#nav&quot;)
+   $(sys.renderer).bind('navigate', nav.navigate)
+   $(nav).bind('mode', sys.renderer.switchMode)
+   nav.init()
+ })
+</PRE><P>})(this.jQuery)
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Evry/main.js">http://2012.igem.org/Team:Evry/main.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Evry/main.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Evry/main.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Evry/main.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Evry/main.js&amp;oldid=179439" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

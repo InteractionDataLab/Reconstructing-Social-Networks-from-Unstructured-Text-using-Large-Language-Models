@@ -1,0 +1,1024 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_NYMU-Taipei_Frontpage_Slider_jquery_flexslider_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>/*
+</P><PRE>* jQuery FlexSlider v2.2.0
+* Copyright 2012 WooThemes
+* Contributing Author: Tyler Smith
+*/
+</PRE><P>(function ($) {
+</P><PRE> //FlexSlider: Object Instance
+ $.flexslider = function(el, options) {
+   var slider = $(el);
+</PRE><PRE>   // making variables public
+   slider.vars = $.extend({}, $.flexslider.defaults, options);
+</PRE><PRE>   var namespace = slider.vars.namespace,
+       msGesture = window.navigator &amp;&amp; window.navigator.msPointerEnabled &amp;&amp; window.MSGesture,
+       touch = (( &quot;ontouchstart&quot; in window ) || msGesture || window.DocumentTouch &amp;&amp; document instanceof DocumentTouch) &amp;&amp; slider.vars.touch,
+       // depricating this idea, as devices are being released with both of these events
+       //eventType = (touch) ? &quot;touchend&quot; : &quot;click&quot;,
+       eventType = &quot;click touchend MSPointerUp&quot;,
+       watchedEvent = &quot;&quot;,
+       watchedEventClearTimer,
+       vertical = slider.vars.direction === &quot;vertical&quot;,
+       reverse = slider.vars.reverse,
+       carousel = (slider.vars.itemWidth &gt; 0),
+       fade = slider.vars.animation === &quot;fade&quot;,
+       asNav = slider.vars.asNavFor !== &quot;&quot;,
+       methods = {},
+       focused = true;
+</PRE><PRE>   // Store a reference to the slider object
+   $.data(el, &quot;flexslider&quot;, slider);
+</PRE><PRE>   // Private slider methods
+   methods = {
+     init: function() {
+       slider.animating = false;
+       // Get current slide and make sure it is a number
+       slider.currentSlide = parseInt( ( slider.vars.startAt ? slider.vars.startAt : 0) );
+       if ( isNaN( slider.currentSlide ) ) slider.currentSlide = 0;
+       slider.animatingTo = slider.currentSlide;
+       slider.atEnd = (slider.currentSlide === 0 || slider.currentSlide === slider.last);
+       slider.containerSelector = slider.vars.selector.substr(0,slider.vars.selector.search(' '));
+       slider.slides = $(slider.vars.selector, slider);
+       slider.container = $(slider.containerSelector, slider);
+       slider.count = slider.slides.length;
+       // SYNC:
+       slider.syncExists = $(slider.vars.sync).length &gt; 0;
+       // SLIDE:
+       if (slider.vars.animation === &quot;slide&quot;) slider.vars.animation = &quot;swing&quot;;
+       slider.prop = (vertical) ? &quot;top&quot; : &quot;marginLeft&quot;;
+       slider.args = {};
+       // SLIDESHOW:
+       slider.manualPause = false;
+       slider.stopped = false;
+       //PAUSE WHEN INVISIBLE
+       slider.started = false;
+       slider.startTimeout = null;
+       // TOUCH/USECSS:
+       slider.transitions = !slider.vars.video &amp;&amp; !fade &amp;&amp; slider.vars.useCSS &amp;&amp; (function() {
+         var obj = document.createElement('div'),
+             props = ['perspectiveProperty', 'WebkitPerspective', 'MozPerspective', 'OPerspective', 'msPerspective'];
+         for (var i in props) {
+           if ( obj.style[ props[i] ] !== undefined ) {
+             slider.pfx = props[i].replace('Perspective',<I>).toLowerCase();</I>
+             slider.prop = &quot;-&quot; + slider.pfx + &quot;-transform&quot;;
+             return true;
+           }
+         }
+         return false;
+       }());
+       // CONTROLSCONTAINER:
+       if (slider.vars.controlsContainer !== &quot;&quot;) slider.controlsContainer = $(slider.vars.controlsContainer).length &gt; 0 &amp;&amp; $(slider.vars.controlsContainer);
+       // MANUAL:
+       if (slider.vars.manualControls !== &quot;&quot;) slider.manualControls = $(slider.vars.manualControls).length &gt; 0 &amp;&amp; $(slider.vars.manualControls);
+</PRE><PRE>       // RANDOMIZE:
+       if (slider.vars.randomize) {
+         slider.slides.sort(function() { return (Math.round(Math.random())-0.5); });
+         slider.container.empty().append(slider.slides);
+       }
+</PRE><PRE>       slider.doMath();
+</PRE><PRE>       // INIT
+       slider.setup(&quot;init&quot;);
+</PRE><PRE>       // CONTROLNAV:
+       if (slider.vars.controlNav) methods.controlNav.setup();
+</PRE><PRE>       // DIRECTIONNAV:
+       if (slider.vars.directionNav) methods.directionNav.setup();
+</PRE><PRE>       // KEYBOARD:
+       if (slider.vars.keyboard &amp;&amp; ($(slider.containerSelector).length === 1 || slider.vars.multipleKeyboard)) {
+         $(document).bind('keyup', function(event) {
+           var keycode = event.keyCode;
+           if (!slider.animating &amp;&amp; (keycode === 39 || keycode === 37)) {
+             var target = (keycode === 39) ? slider.getTarget('next') :
+                          (keycode === 37) ? slider.getTarget('prev') : false;
+             slider.flexAnimate(target, slider.vars.pauseOnAction);
+           }
+         });
+       }
+       // MOUSEWHEEL:
+       if (slider.vars.mousewheel) {
+         slider.bind('mousewheel', function(event, delta, deltaX, deltaY) {
+           event.preventDefault();
+           var target = (delta &lt; 0) ? slider.getTarget('next') : slider.getTarget('prev');
+           slider.flexAnimate(target, slider.vars.pauseOnAction);
+         });
+       }
+</PRE><PRE>       // PAUSEPLAY
+       if (slider.vars.pausePlay) methods.pausePlay.setup();
+</PRE><PRE>       //PAUSE WHEN INVISIBLE
+       if (slider.vars.slideshow &amp;&amp; slider.vars.pauseInvisible) methods.pauseInvisible.init();
+</PRE><PRE>       // SLIDSESHOW
+       if (slider.vars.slideshow) {
+         if (slider.vars.pauseOnHover) {
+           slider.hover(function() {
+             if (!slider.manualPlay &amp;&amp; !slider.manualPause) slider.pause();
+           }, function() {
+             if (!slider.manualPause &amp;&amp; !slider.manualPlay &amp;&amp; !slider.stopped) slider.play();
+           });
+         }
+         // initialize animation
+         //If we're visible, or we don't use PageVisibility API
+         if(!slider.vars.pauseInvisible || !methods.pauseInvisible.isHidden()) {
+           (slider.vars.initDelay &gt; 0) ? slider.startTimeout = setTimeout(slider.play, slider.vars.initDelay) : slider.play();
+         }
+       }
+</PRE><PRE>       // ASNAV:
+       if (asNav) methods.asNav.setup();
+</PRE><PRE>       // TOUCH
+       if (touch &amp;&amp; slider.vars.touch) methods.touch();
+</PRE><PRE>       // FADE&amp;&amp;SMOOTHHEIGHT || SLIDE:
+       if (!fade || (fade &amp;&amp; slider.vars.smoothHeight)) $(window).bind(&quot;resize orientationchange focus&quot;, methods.resize);
+</PRE><PRE>       slider.find(&quot;img&quot;).attr(&quot;draggable&quot;, &quot;false&quot;);
+</PRE><PRE>       // API: start() Callback
+       setTimeout(function(){
+         slider.vars.start(slider);
+       }, 200);
+     },
+     asNav: {
+       setup: function() {
+         slider.asNav = true;
+         slider.animatingTo = Math.floor(slider.currentSlide/slider.move);
+         slider.currentItem = slider.currentSlide;
+         slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(slider.currentItem).addClass(namespace + &quot;active-slide&quot;);
+         if(!msGesture){
+             slider.slides.click(function(e){
+               e.preventDefault();
+               var $slide = $(this),
+                   target = $slide.index();
+               var posFromLeft = $slide.offset().left - $(slider).scrollLeft(); // Find position of slide relative to left of slider container
+               if( posFromLeft &lt;= 0 &amp;&amp; $slide.hasClass( namespace + 'active-slide' ) ) {
+                 slider.flexAnimate(slider.getTarget(&quot;prev&quot;), true);
+               } else if (!$(slider.vars.asNavFor).data('flexslider').animating &amp;&amp; !$slide.hasClass(namespace + &quot;active-slide&quot;)) {
+                 slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+                 slider.flexAnimate(target, slider.vars.pauseOnAction, false, true, true);
+               }
+             });
+         }else{
+             el._slider = slider;
+             slider.slides.each(function (){
+                 var that = this;
+                 that._gesture = new MSGesture();
+                 that._gesture.target = that;
+                 that.addEventListener(&quot;MSPointerDown&quot;, function (e){
+                     e.preventDefault();
+                     if(e.currentTarget._gesture)
+                         e.currentTarget._gesture.addPointer(e.pointerId);
+                 }, false);
+                 that.addEventListener(&quot;MSGestureTap&quot;, function (e){
+                     e.preventDefault();
+                     var $slide = $(this),
+                         target = $slide.index();
+                     if (!$(slider.vars.asNavFor).data('flexslider').animating &amp;&amp; !$slide.hasClass('active')) {
+                         slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+                         slider.flexAnimate(target, slider.vars.pauseOnAction, false, true, true);
+                     }
+                 });
+             });
+         }
+       }
+     },
+     controlNav: {
+       setup: function() {
+         if (!slider.manualControls) {
+           methods.controlNav.setupPaging();
+         } else { // MANUALCONTROLS:
+           methods.controlNav.setupManual();
+         }
+       },
+       setupPaging: function() {
+         var type = (slider.vars.controlNav === &quot;thumbnails&quot;) ? 'control-thumbs' : 'control-paging',
+             j = 1,
+             item,
+             slide;
+</PRE>
+          slider.controlNavScaffold = $('');
+<PRE>         if (slider.pagingCount &gt; 1) {
+           for (var i = 0; i &lt; slider.pagingCount; i++) {
+             slide = slider.slides.eq(i);
+             item = (slider.vars.controlNav === &quot;thumbnails&quot;) ? '&lt;img src=&quot;' + slide.attr( 'data-thumb' ) + '&quot;/&gt;' : '&lt;a&gt;' + j + '&lt;/a&gt;';
+             if ( 'thumbnails' === slider.vars.controlNav &amp;&amp; true === slider.vars.thumbCaptions ) {
+               var captn = slide.attr( 'data-thumbcaption' );
+               if ( <I> != captn &amp;&amp; undefined != captn ) item += '<SPAN class="' + namespace + 'caption">' + captn + '</SPAN>';</I>
+             }
+</PRE>
+              slider.controlNavScaffold.append('<LI>' + item + '&lt;/li&gt;');
+              j++;
+            }
+          }
+
+          // CONTROLSCONTAINER:
+          (slider.controlsContainer) ? $(slider.controlsContainer).append(slider.controlNavScaffold) : slider.append(slider.controlNavScaffold);
+          methods.controlNav.set();
+
+          methods.controlNav.active();
+
+          slider.controlNavScaffold.delegate('a, img', eventType, function(event) {
+            event.preventDefault();
+
+            if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+              var $this = $(this),
+                  target = slider.controlNav.index($this);
+
+              if (!$this.hasClass(namespace + 'active')) {
+                slider.direction = (target &gt; slider.currentSlide) ? &quot;next&quot; : &quot;prev&quot;;
+                slider.flexAnimate(target, slider.vars.pauseOnAction);
+              }
+            }
+
+            // setup flags to prevent event duplication
+            if (watchedEvent === &quot;&quot;) {
+              watchedEvent = event.type;
+            }
+            methods.setToClearWatchedEvent();
+
+          });
+        },
+        setupManual: function() {
+          slider.controlNav = slider.manualControls;
+          methods.controlNav.active();
+
+          slider.controlNav.bind(eventType, function(event) {
+            event.preventDefault();
+
+            if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+              var $this = $(this),
+                  target = slider.controlNav.index($this);
+
+              if (!$this.hasClass(namespace + 'active')) {
+                (target &gt; slider.currentSlide) ? slider.direction = &quot;next&quot; : slider.direction = &quot;prev&quot;;
+                slider.flexAnimate(target, slider.vars.pauseOnAction);
+              }
+            }
+
+            // setup flags to prevent event duplication
+            if (watchedEvent === &quot;&quot;) {
+              watchedEvent = event.type;
+            }
+            methods.setToClearWatchedEvent();
+          });
+        },
+        set: function() {
+          var selector = (slider.vars.controlNav === &quot;thumbnails&quot;) ? 'img' : 'a';
+          slider.controlNav = $('.' + namespace + 'control-nav li ' + selector, (slider.controlsContainer) ? slider.controlsContainer : slider);
+        },
+        active: function() {
+          slider.controlNav.removeClass(namespace + &quot;active&quot;).eq(slider.animatingTo).addClass(namespace + &quot;active&quot;);
+        },
+        update: function(action, pos) {
+          if (slider.pagingCount &gt; 1 &amp;&amp; action === &quot;add&quot;) {
+            slider.controlNavScaffold.append($('</LI><LI>&lt;a&gt;' + slider.count + '&lt;/a&gt;&lt;/li&gt;'));
+          } else if (slider.pagingCount === 1) {
+            slider.controlNavScaffold.find('li').remove();
+          } else {
+            slider.controlNav.eq(pos).closest('li').remove();
+          }
+          methods.controlNav.set();
+          (slider.pagingCount &gt; 1 &amp;&amp; slider.pagingCount !== slider.controlNav.length) ? slider.update(pos, action) : methods.controlNav.active();
+        }
+      },
+      directionNav: {
+        setup: function() {
+          var directionNavScaffold = $('</LI><LI>&lt;a class=&quot;' + namespace + 'prev&quot; href=&quot;#&quot;&gt;' + slider.vars.prevText + '&lt;/a&gt;</LI><LI>&lt;a class=&quot;' + namespace + 'next&quot; href=&quot;#&quot;&gt;' + slider.vars.nextText + '&lt;/a&gt;</LI>');
+<PRE>         // CONTROLSCONTAINER:
+         if (slider.controlsContainer) {
+           $(slider.controlsContainer).append(directionNavScaffold);
+           slider.directionNav = $('.' + namespace + 'direction-nav li a', slider.controlsContainer);
+         } else {
+           slider.append(directionNavScaffold);
+           slider.directionNav = $('.' + namespace + 'direction-nav li a', slider);
+         }
+</PRE><PRE>         methods.directionNav.update();
+</PRE><PRE>         slider.directionNav.bind(eventType, function(event) {
+           event.preventDefault();
+           var target;
+</PRE><PRE>           if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+             target = ($(this).hasClass(namespace + 'next')) ? slider.getTarget('next') : slider.getTarget('prev');
+             slider.flexAnimate(target, slider.vars.pauseOnAction);
+           }
+</PRE><PRE>           // setup flags to prevent event duplication
+           if (watchedEvent === &quot;&quot;) {
+             watchedEvent = event.type;
+           }
+           methods.setToClearWatchedEvent();
+         });
+       },
+       update: function() {
+         var disabledClass = namespace + 'disabled';
+         if (slider.pagingCount === 1) {
+           slider.directionNav.addClass(disabledClass).attr('tabindex', '-1');
+         } else if (!slider.vars.animationLoop) {
+           if (slider.animatingTo === 0) {
+             slider.directionNav.removeClass(disabledClass).filter('.' + namespace + &quot;prev&quot;).addClass(disabledClass).attr('tabindex', '-1');
+           } else if (slider.animatingTo === slider.last) {
+             slider.directionNav.removeClass(disabledClass).filter('.' + namespace + &quot;next&quot;).addClass(disabledClass).attr('tabindex', '-1');
+           } else {
+             slider.directionNav.removeClass(disabledClass).removeAttr('tabindex');
+           }
+         } else {
+           slider.directionNav.removeClass(disabledClass).removeAttr('tabindex');
+         }
+       }
+     },
+     pausePlay: {
+       setup: function() {
+</PRE>
+          var pausePlayScaffold = $('<DIV class="' + namespace + 'pauseplay">&lt;a&gt;&lt;/a&gt;</DIV>');
+<PRE>         // CONTROLSCONTAINER:
+         if (slider.controlsContainer) {
+           slider.controlsContainer.append(pausePlayScaffold);
+           slider.pausePlay = $('.' + namespace + 'pauseplay a', slider.controlsContainer);
+         } else {
+           slider.append(pausePlayScaffold);
+           slider.pausePlay = $('.' + namespace + 'pauseplay a', slider);
+         }
+</PRE><PRE>         methods.pausePlay.update((slider.vars.slideshow) ? namespace + 'pause' : namespace + 'play');
+</PRE><PRE>         slider.pausePlay.bind(eventType, function(event) {
+           event.preventDefault();
+</PRE><PRE>           if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+             if ($(this).hasClass(namespace + 'pause')) {
+               slider.manualPause = true;
+               slider.manualPlay = false;
+               slider.pause();
+             } else {
+               slider.manualPause = false;
+               slider.manualPlay = true;
+               slider.play();
+             }
+           }
+</PRE><PRE>           // setup flags to prevent event duplication
+           if (watchedEvent === &quot;&quot;) {
+             watchedEvent = event.type;
+           }
+           methods.setToClearWatchedEvent();
+         });
+       },
+       update: function(state) {
+         (state === &quot;play&quot;) ? slider.pausePlay.removeClass(namespace + 'pause').addClass(namespace + 'play').html(slider.vars.playText) : slider.pausePlay.removeClass(namespace + 'play').addClass(namespace + 'pause').html(slider.vars.pauseText);
+       }
+     },
+     touch: function() {
+       var startX,
+         startY,
+         offset,
+         cwidth,
+         dx,
+         startT,
+         scrolling = false,
+         localX = 0,
+         localY = 0,
+         accDx = 0;
+</PRE><PRE>       if(!msGesture){
+           el.addEventListener('touchstart', onTouchStart, false);
+</PRE><PRE>           function onTouchStart(e) {
+             if (slider.animating) {
+               e.preventDefault();
+             } else if ( ( window.navigator.msPointerEnabled ) || e.touches.length === 1 ) {
+               slider.pause();
+               // CAROUSEL:
+               cwidth = (vertical) ? slider.h : slider. w;
+               startT = Number(new Date());
+               // CAROUSEL:
+</PRE><PRE>               // Local vars for X and Y points.
+               localX = e.touches[0].pageX;
+               localY = e.touches[0].pageY;
+</PRE><PRE>               offset = (carousel &amp;&amp; reverse &amp;&amp; slider.animatingTo === slider.last) ? 0 :
+                        (carousel &amp;&amp; reverse) ? slider.limit - (((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo) :
+                        (carousel &amp;&amp; slider.currentSlide === slider.last) ? slider.limit :
+                        (carousel) ? ((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.currentSlide :
+                        (reverse) ? (slider.last - slider.currentSlide + slider.cloneOffset) * cwidth : (slider.currentSlide + slider.cloneOffset) * cwidth;
+               startX = (vertical) ? localY : localX;
+               startY = (vertical) ? localX : localY;
+</PRE><PRE>               el.addEventListener('touchmove', onTouchMove, false);
+               el.addEventListener('touchend', onTouchEnd, false);
+             }
+           }
+</PRE><PRE>           function onTouchMove(e) {
+             // Local vars for X and Y points.
+</PRE><PRE>             localX = e.touches[0].pageX;
+             localY = e.touches[0].pageY;
+</PRE><PRE>             dx = (vertical) ? startX - localY : startX - localX;
+             scrolling = (vertical) ? (Math.abs(dx) &lt; Math.abs(localX - startY)) : (Math.abs(dx) &lt; Math.abs(localY - startY));
+</PRE><PRE>             var fxms = 500;
+</PRE><PRE>             if ( ! scrolling || Number( new Date() ) - startT &gt; fxms ) {
+               e.preventDefault();
+               if (!fade &amp;&amp; slider.transitions) {
+                 if (!slider.vars.animationLoop) {
+                   dx = dx/((slider.currentSlide === 0 &amp;&amp; dx &lt; 0 || slider.currentSlide === slider.last &amp;&amp; dx &gt; 0) ? (Math.abs(dx)/cwidth+2) : 1);
+                 }
+                 slider.setProps(offset + dx, &quot;setTouch&quot;);
+               }
+             }
+           }
+</PRE><PRE>           function onTouchEnd(e) {
+             // finish the touch by undoing the touch session
+             el.removeEventListener('touchmove', onTouchMove, false);
+</PRE><PRE>             if (slider.animatingTo === slider.currentSlide &amp;&amp; !scrolling &amp;&amp; !(dx === null)) {
+               var updateDx = (reverse) ? -dx : dx,
+                   target = (updateDx &gt; 0) ? slider.getTarget('next') : slider.getTarget('prev');
+</PRE><PRE>               if (slider.canAdvance(target) &amp;&amp; (Number(new Date()) - startT &lt; 550 &amp;&amp; Math.abs(updateDx) &gt; 50 || Math.abs(updateDx) &gt; cwidth/2)) {
+                 slider.flexAnimate(target, slider.vars.pauseOnAction);
+               } else {
+                 if (!fade) slider.flexAnimate(slider.currentSlide, slider.vars.pauseOnAction, true);
+               }
+             }
+             el.removeEventListener('touchend', onTouchEnd, false);
+</PRE><PRE>             startX = null;
+             startY = null;
+             dx = null;
+             offset = null;
+           }
+       }else{
+           el.style.msTouchAction = &quot;none&quot;;
+           el._gesture = new MSGesture();
+           el._gesture.target = el;
+           el.addEventListener(&quot;MSPointerDown&quot;, onMSPointerDown, false);
+           el._slider = slider;
+           el.addEventListener(&quot;MSGestureChange&quot;, onMSGestureChange, false);
+           el.addEventListener(&quot;MSGestureEnd&quot;, onMSGestureEnd, false);
+</PRE><PRE>           function onMSPointerDown(e){
+               e.stopPropagation();
+               if (slider.animating) {
+                   e.preventDefault();
+               }else{
+                   slider.pause();
+                   el._gesture.addPointer(e.pointerId);
+                   accDx = 0;
+                   cwidth = (vertical) ? slider.h : slider. w;
+                   startT = Number(new Date());
+                   // CAROUSEL:
+</PRE><PRE>                   offset = (carousel &amp;&amp; reverse &amp;&amp; slider.animatingTo === slider.last) ? 0 :
+                       (carousel &amp;&amp; reverse) ? slider.limit - (((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo) :
+                           (carousel &amp;&amp; slider.currentSlide === slider.last) ? slider.limit :
+                               (carousel) ? ((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.currentSlide :
+                                   (reverse) ? (slider.last - slider.currentSlide + slider.cloneOffset) * cwidth : (slider.currentSlide + slider.cloneOffset) * cwidth;
+               }
+           }
+</PRE><PRE>           function onMSGestureChange(e) {
+               e.stopPropagation();
+               var slider = e.target._slider;
+               if(!slider){
+                   return;
+               }
+               var transX = -e.translationX,
+                   transY = -e.translationY;
+</PRE><PRE>               //Accumulate translations.
+               accDx = accDx + ((vertical) ? transY : transX);
+               dx = accDx;
+               scrolling = (vertical) ? (Math.abs(accDx) &lt; Math.abs(-transX)) : (Math.abs(accDx) &lt; Math.abs(-transY));
+</PRE><PRE>               if(e.detail === e.MSGESTURE_FLAG_INERTIA){
+                   setImmediate(function (){
+                       el._gesture.stop();
+                   });
+</PRE><PRE>                   return;
+               }
+</PRE><PRE>               if (!scrolling || Number(new Date()) - startT &gt; 500) {
+                   e.preventDefault();
+                   if (!fade &amp;&amp; slider.transitions) {
+                       if (!slider.vars.animationLoop) {
+                           dx = accDx / ((slider.currentSlide === 0 &amp;&amp; accDx &lt; 0 || slider.currentSlide === slider.last &amp;&amp; accDx &gt; 0) ? (Math.abs(accDx) / cwidth + 2) : 1);
+                       }
+                       slider.setProps(offset + dx, &quot;setTouch&quot;);
+                   }
+               }
+           }
+</PRE><PRE>           function onMSGestureEnd(e) {
+               e.stopPropagation();
+               var slider = e.target._slider;
+               if(!slider){
+                   return;
+               }
+               if (slider.animatingTo === slider.currentSlide &amp;&amp; !scrolling &amp;&amp; !(dx === null)) {
+                   var updateDx = (reverse) ? -dx : dx,
+                       target = (updateDx &gt; 0) ? slider.getTarget('next') : slider.getTarget('prev');
+</PRE><PRE>                   if (slider.canAdvance(target) &amp;&amp; (Number(new Date()) - startT &lt; 550 &amp;&amp; Math.abs(updateDx) &gt; 50 || Math.abs(updateDx) &gt; cwidth/2)) {
+                       slider.flexAnimate(target, slider.vars.pauseOnAction);
+                   } else {
+                       if (!fade) slider.flexAnimate(slider.currentSlide, slider.vars.pauseOnAction, true);
+                   }
+               }
+</PRE><PRE>               startX = null;
+               startY = null;
+               dx = null;
+               offset = null;
+               accDx = 0;
+           }
+       }
+     },
+     resize: function() {
+       if (!slider.animating &amp;&amp; slider.is(':visible')) {
+         if (!carousel) slider.doMath();
+</PRE><PRE>         if (fade) {
+           // SMOOTH HEIGHT:
+           methods.smoothHeight();
+         } else if (carousel) { //CAROUSEL:
+           slider.slides.width(slider.computedW);
+           slider.update(slider.pagingCount);
+           slider.setProps();
+         }
+         else if (vertical) { //VERTICAL:
+           slider.viewport.height(slider.h);
+           slider.setProps(slider.h, &quot;setTotal&quot;);
+         } else {
+           // SMOOTH HEIGHT:
+           if (slider.vars.smoothHeight) methods.smoothHeight();
+           slider.newSlides.width(slider.computedW);
+           slider.setProps(slider.computedW, &quot;setTotal&quot;);
+         }
+       }
+     },
+     smoothHeight: function(dur) {
+       if (!vertical || fade) {
+         var $obj = (fade) ? slider : slider.viewport;
+         (dur) ? $obj.animate({&quot;height&quot;: slider.slides.eq(slider.animatingTo).height()}, dur) : $obj.height(slider.slides.eq(slider.animatingTo).height());
+       }
+     },
+     sync: function(action) {
+       var $obj = $(slider.vars.sync).data(&quot;flexslider&quot;),
+           target = slider.animatingTo;
+</PRE><PRE>       switch (action) {
+         case &quot;animate&quot;: $obj.flexAnimate(target, slider.vars.pauseOnAction, false, true); break;
+         case &quot;play&quot;: if (!$obj.playing &amp;&amp; !$obj.asNav) { $obj.play(); } break;
+         case &quot;pause&quot;: $obj.pause(); break;
+       }
+     },
+     pauseInvisible: {
+       visProp: null,
+       init: function() {
+         var prefixes = ['webkit','moz','ms','o'];
+</PRE><PRE>         if ('hidden' in document) return 'hidden';
+         for (var i = 0; i &lt; prefixes.length; i++) {
+           if ((prefixes[i] + 'Hidden') in document) 
+           methods.pauseInvisible.visProp = prefixes[i] + 'Hidden';
+         }
+         if (methods.pauseInvisible.visProp) {
+           var evtname = methods.pauseInvisible.visProp.replace(/[H|h]idden/,<I>) + 'visibilitychange';</I>
+           document.addEventListener(evtname, function() {
+             if (methods.pauseInvisible.isHidden()) {
+               if(slider.startTimeout) clearTimeout(slider.startTimeout); //If clock is ticking, stop timer and prevent from starting while invisible
+               else slider.pause(); //Or just pause
+             }
+             else {
+               if(slider.started) slider.play(); //Initiated before, just play
+               else (slider.vars.initDelay &gt; 0) ? setTimeout(slider.play, slider.vars.initDelay) : slider.play(); //Didn't init before: simply init or wait for it
+             }
+           });
+         }       
+       },
+       isHidden: function() {
+         return document[methods.pauseInvisible.visProp] || false;
+       }
+     },
+     setToClearWatchedEvent: function() {
+       clearTimeout(watchedEventClearTimer);
+       watchedEventClearTimer = setTimeout(function() {
+         watchedEvent = &quot;&quot;;
+       }, 3000);
+     }
+   }
+</PRE><PRE>   // public methods
+   slider.flexAnimate = function(target, pause, override, withSync, fromNav) {
+     if (!slider.vars.animationLoop &amp;&amp; target !== slider.currentSlide) {
+       slider.direction = (target &gt; slider.currentSlide) ? &quot;next&quot; : &quot;prev&quot;;
+     }
+</PRE><PRE>     if (asNav &amp;&amp; slider.pagingCount === 1) slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+</PRE><PRE>     if (!slider.animating &amp;&amp; (slider.canAdvance(target, fromNav) || override) &amp;&amp; slider.is(&quot;:visible&quot;)) {
+       if (asNav &amp;&amp; withSync) {
+         var master = $(slider.vars.asNavFor).data('flexslider');
+         slider.atEnd = target === 0 || target === slider.count - 1;
+         master.flexAnimate(target, true, false, true, fromNav);
+         slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+         master.direction = slider.direction;
+</PRE><PRE>         if (Math.ceil((target + 1)/slider.visible) - 1 !== slider.currentSlide &amp;&amp; target !== 0) {
+           slider.currentItem = target;
+           slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(target).addClass(namespace + &quot;active-slide&quot;);
+           target = Math.floor(target/slider.visible);
+         } else {
+           slider.currentItem = target;
+           slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(target).addClass(namespace + &quot;active-slide&quot;);
+           return false;
+         }
+       }
+</PRE><PRE>       slider.animating = true;
+       slider.animatingTo = target;
+</PRE><PRE>       // SLIDESHOW:
+       if (pause) slider.pause();
+</PRE><PRE>       // API: before() animation Callback
+       slider.vars.before(slider);
+</PRE><PRE>       // SYNC:
+       if (slider.syncExists &amp;&amp; !fromNav) methods.sync(&quot;animate&quot;);
+</PRE><PRE>       // CONTROLNAV
+       if (slider.vars.controlNav) methods.controlNav.active();
+</PRE><PRE>       // !CAROUSEL:
+       // CANDIDATE: slide active class (for add/remove slide)
+       if (!carousel) slider.slides.removeClass(namespace + 'active-slide').eq(target).addClass(namespace + 'active-slide');
+</PRE><PRE>       // INFINITE LOOP:
+       // CANDIDATE: atEnd
+       slider.atEnd = target === 0 || target === slider.last;
+</PRE><PRE>       // DIRECTIONNAV:
+       if (slider.vars.directionNav) methods.directionNav.update();
+</PRE><PRE>       if (target === slider.last) {
+         // API: end() of cycle Callback
+         slider.vars.end(slider);
+         // SLIDESHOW &amp;&amp; !INFINITE LOOP:
+         if (!slider.vars.animationLoop) slider.pause();
+       }
+</PRE><PRE>       // SLIDE:
+       if (!fade) {
+         var dimension = (vertical) ? slider.slides.filter(':first').height() : slider.computedW,
+             margin, slideString, calcNext;
+</PRE><PRE>         // INFINITE LOOP / REVERSE:
+         if (carousel) {
+           //margin = (slider.vars.itemWidth &gt; slider.w) ? slider.vars.itemMargin * 2 : slider.vars.itemMargin;
+           margin = slider.vars.itemMargin;
+           calcNext = ((slider.itemW + margin) * slider.move) * slider.animatingTo;
+           slideString = (calcNext &gt; slider.limit &amp;&amp; slider.visible !== 1) ? slider.limit : calcNext;
+         } else if (slider.currentSlide === 0 &amp;&amp; target === slider.count - 1 &amp;&amp; slider.vars.animationLoop &amp;&amp; slider.direction !== &quot;next&quot;) {
+           slideString = (reverse) ? (slider.count + slider.cloneOffset) * dimension : 0;
+         } else if (slider.currentSlide === slider.last &amp;&amp; target === 0 &amp;&amp; slider.vars.animationLoop &amp;&amp; slider.direction !== &quot;prev&quot;) {
+           slideString = (reverse) ? 0 : (slider.count + 1) * dimension;
+         } else {
+           slideString = (reverse) ? ((slider.count - 1) - target + slider.cloneOffset) * dimension : (target + slider.cloneOffset) * dimension;
+         }
+         slider.setProps(slideString, &quot;&quot;, slider.vars.animationSpeed);
+         if (slider.transitions) {
+           if (!slider.vars.animationLoop || !slider.atEnd) {
+             slider.animating = false;
+             slider.currentSlide = slider.animatingTo;
+           }
+           slider.container.unbind(&quot;webkitTransitionEnd transitionend&quot;);
+           slider.container.bind(&quot;webkitTransitionEnd transitionend&quot;, function() {
+             slider.wrapup(dimension);
+           });
+         } else {
+           slider.container.animate(slider.args, slider.vars.animationSpeed, slider.vars.easing, function(){
+             slider.wrapup(dimension);
+           });
+         }
+       } else { // FADE:
+         if (!touch) {
+           //slider.slides.eq(slider.currentSlide).fadeOut(slider.vars.animationSpeed, slider.vars.easing);
+           //slider.slides.eq(target).fadeIn(slider.vars.animationSpeed, slider.vars.easing, slider.wrapup);
+</PRE><PRE>           slider.slides.eq(slider.currentSlide).css({&quot;zIndex&quot;: 1}).animate({&quot;opacity&quot;: 0}, slider.vars.animationSpeed, slider.vars.easing);
+           slider.slides.eq(target).css({&quot;zIndex&quot;: 2}).animate({&quot;opacity&quot;: 1}, slider.vars.animationSpeed, slider.vars.easing, slider.wrapup);
+</PRE><PRE>         } else {
+           slider.slides.eq(slider.currentSlide).css({ &quot;opacity&quot;: 0, &quot;zIndex&quot;: 1 });
+           slider.slides.eq(target).css({ &quot;opacity&quot;: 1, &quot;zIndex&quot;: 2 });
+           slider.wrapup(dimension);
+         }
+       }
+       // SMOOTH HEIGHT:
+       if (slider.vars.smoothHeight) methods.smoothHeight(slider.vars.animationSpeed);
+     }
+   }
+   slider.wrapup = function(dimension) {
+     // SLIDE:
+     if (!fade &amp;&amp; !carousel) {
+       if (slider.currentSlide === 0 &amp;&amp; slider.animatingTo === slider.last &amp;&amp; slider.vars.animationLoop) {
+         slider.setProps(dimension, &quot;jumpEnd&quot;);
+       } else if (slider.currentSlide === slider.last &amp;&amp; slider.animatingTo === 0 &amp;&amp; slider.vars.animationLoop) {
+         slider.setProps(dimension, &quot;jumpStart&quot;);
+       }
+     }
+     slider.animating = false;
+     slider.currentSlide = slider.animatingTo;
+     // API: after() animation Callback
+     slider.vars.after(slider);
+   }
+</PRE><PRE>   // SLIDESHOW:
+   slider.animateSlides = function() {
+     if (!slider.animating &amp;&amp; focused ) slider.flexAnimate(slider.getTarget(&quot;next&quot;));
+   }
+   // SLIDESHOW:
+   slider.pause = function() {
+     clearInterval(slider.animatedSlides);
+     slider.animatedSlides = null;
+     slider.playing = false;
+     // PAUSEPLAY:
+     if (slider.vars.pausePlay) methods.pausePlay.update(&quot;play&quot;);
+     // SYNC:
+     if (slider.syncExists) methods.sync(&quot;pause&quot;);
+   }
+   // SLIDESHOW:
+   slider.play = function() {
+     if (slider.playing) clearInterval(slider.animatedSlides);
+     slider.animatedSlides = slider.animatedSlides || setInterval(slider.animateSlides, slider.vars.slideshowSpeed);
+     slider.started = slider.playing = true;
+     // PAUSEPLAY:
+     if (slider.vars.pausePlay) methods.pausePlay.update(&quot;pause&quot;);
+     // SYNC:
+     if (slider.syncExists) methods.sync(&quot;play&quot;);
+   }
+   // STOP:
+   slider.stop = function () {
+     slider.pause();
+     slider.stopped = true;
+   }
+   slider.canAdvance = function(target, fromNav) {
+     // ASNAV:
+     var last = (asNav) ? slider.pagingCount - 1 : slider.last;
+     return (fromNav) ? true :
+            (asNav &amp;&amp; slider.currentItem === slider.count - 1 &amp;&amp; target === 0 &amp;&amp; slider.direction === &quot;prev&quot;) ? true :
+            (asNav &amp;&amp; slider.currentItem === 0 &amp;&amp; target === slider.pagingCount - 1 &amp;&amp; slider.direction !== &quot;next&quot;) ? false :
+            (target === slider.currentSlide &amp;&amp; !asNav) ? false :
+            (slider.vars.animationLoop) ? true :
+            (slider.atEnd &amp;&amp; slider.currentSlide === 0 &amp;&amp; target === last &amp;&amp; slider.direction !== &quot;next&quot;) ? false :
+            (slider.atEnd &amp;&amp; slider.currentSlide === last &amp;&amp; target === 0 &amp;&amp; slider.direction === &quot;next&quot;) ? false :
+            true;
+   }
+   slider.getTarget = function(dir) {
+     slider.direction = dir;
+     if (dir === &quot;next&quot;) {
+       return (slider.currentSlide === slider.last) ? 0 : slider.currentSlide + 1;
+     } else {
+       return (slider.currentSlide === 0) ? slider.last : slider.currentSlide - 1;
+     }
+   }
+</PRE><PRE>   // SLIDE:
+   slider.setProps = function(pos, special, dur) {
+     var target = (function() {
+       var posCheck = (pos) ? pos : ((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo,
+           posCalc = (function() {
+             if (carousel) {
+               return (special === &quot;setTouch&quot;) ? pos :
+                      (reverse &amp;&amp; slider.animatingTo === slider.last) ? 0 :
+                      (reverse) ? slider.limit - (((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo) :
+                      (slider.animatingTo === slider.last) ? slider.limit : posCheck;
+             } else {
+               switch (special) {
+                 case &quot;setTotal&quot;: return (reverse) ? ((slider.count - 1) - slider.currentSlide + slider.cloneOffset) * pos : (slider.currentSlide + slider.cloneOffset) * pos;
+                 case &quot;setTouch&quot;: return (reverse) ? pos : pos;
+                 case &quot;jumpEnd&quot;: return (reverse) ? pos : slider.count * pos;
+                 case &quot;jumpStart&quot;: return (reverse) ? slider.count * pos : pos;
+                 default: return pos;
+               }
+             }
+           }());
+</PRE><PRE>           return (posCalc * -1) + &quot;px&quot;;
+         }());
+</PRE><PRE>     if (slider.transitions) {
+       target = (vertical) ? &quot;translate3d(0,&quot; + target + &quot;,0)&quot; : &quot;translate3d(&quot; + target + &quot;,0,0)&quot;;
+       dur = (dur !== undefined) ? (dur/1000) + &quot;s&quot; : &quot;0s&quot;;
+       slider.container.css(&quot;-&quot; + slider.pfx + &quot;-transition-duration&quot;, dur);
+     }
+</PRE><PRE>     slider.args[slider.prop] = target;
+     if (slider.transitions || dur === undefined) slider.container.css(slider.args);
+   }
+</PRE><PRE>   slider.setup = function(type) {
+     // SLIDE:
+     if (!fade) {
+       var sliderOffset, arr;
+</PRE><PRE>       if (type === &quot;init&quot;) {
+</PRE>
+          slider.viewport = $('').css({&quot;overflow&quot;: &quot;hidden&quot;, &quot;position&quot;: &quot;relative&quot;}).appendTo(slider).append(slider.container);
+<PRE>         // INFINITE LOOP:
+         slider.cloneCount = 0;
+         slider.cloneOffset = 0;
+         // REVERSE:
+         if (reverse) {
+           arr = $.makeArray(slider.slides).reverse();
+           slider.slides = $(arr);
+           slider.container.empty().append(slider.slides);
+         }
+       }
+       // INFINITE LOOP &amp;&amp; !CAROUSEL:
+       if (slider.vars.animationLoop &amp;&amp; !carousel) {
+         slider.cloneCount = 2;
+         slider.cloneOffset = 1;
+         // clear out old clones
+         if (type !== &quot;init&quot;) slider.container.find('.clone').remove();
+         slider.container.append(slider.slides.first().clone().addClass('clone').attr('aria-hidden', 'true')).prepend(slider.slides.last().clone().addClass('clone').attr('aria-hidden', 'true'));
+       }
+       slider.newSlides = $(slider.vars.selector, slider);
+</PRE><PRE>       sliderOffset = (reverse) ? slider.count - 1 - slider.currentSlide + slider.cloneOffset : slider.currentSlide + slider.cloneOffset;
+       // VERTICAL:
+       if (vertical &amp;&amp; !carousel) {
+         slider.container.height((slider.count + slider.cloneCount) * 200 + &quot;%&quot;).css(&quot;position&quot;, &quot;absolute&quot;).width(&quot;100%&quot;);
+         setTimeout(function(){
+           slider.newSlides.css({&quot;display&quot;: &quot;block&quot;});
+           slider.doMath();
+           slider.viewport.height(slider.h);
+           slider.setProps(sliderOffset * slider.h, &quot;init&quot;);
+         }, (type === &quot;init&quot;) ? 100 : 0);
+       } else {
+         slider.container.width((slider.count + slider.cloneCount) * 200 + &quot;%&quot;);
+         slider.setProps(sliderOffset * slider.computedW, &quot;init&quot;);
+         setTimeout(function(){
+           slider.doMath();
+           slider.newSlides.css({&quot;width&quot;: slider.computedW, &quot;float&quot;: &quot;left&quot;, &quot;display&quot;: &quot;block&quot;});
+           // SMOOTH HEIGHT:
+           if (slider.vars.smoothHeight) methods.smoothHeight();
+         }, (type === &quot;init&quot;) ? 100 : 0);
+       }
+     } else { // FADE:
+       slider.slides.css({&quot;width&quot;: &quot;100%&quot;, &quot;float&quot;: &quot;left&quot;, &quot;marginRight&quot;: &quot;-100%&quot;, &quot;position&quot;: &quot;relative&quot;});
+       if (type === &quot;init&quot;) {
+         if (!touch) {
+           //slider.slides.eq(slider.currentSlide).fadeIn(slider.vars.animationSpeed, slider.vars.easing);
+           slider.slides.css({ &quot;opacity&quot;: 0, &quot;display&quot;: &quot;block&quot;, &quot;zIndex&quot;: 1 }).eq(slider.currentSlide).css({&quot;zIndex&quot;: 2}).animate({&quot;opacity&quot;: 1},slider.vars.animationSpeed,slider.vars.easing);
+         } else {
+           slider.slides.css({ &quot;opacity&quot;: 0, &quot;display&quot;: &quot;block&quot;, &quot;webkitTransition&quot;: &quot;opacity &quot; + slider.vars.animationSpeed / 1000 + &quot;s ease&quot;, &quot;zIndex&quot;: 1 }).eq(slider.currentSlide).css({ &quot;opacity&quot;: 1, &quot;zIndex&quot;: 2});
+         }
+       }
+       // SMOOTH HEIGHT:
+       if (slider.vars.smoothHeight) methods.smoothHeight();
+     }
+     // !CAROUSEL:
+     // CANDIDATE: active slide
+     if (!carousel) slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(slider.currentSlide).addClass(namespace + &quot;active-slide&quot;);
+   }
+</PRE><PRE>   slider.doMath = function() {
+     var slide = slider.slides.first(),
+         slideMargin = slider.vars.itemMargin,
+         minItems = slider.vars.minItems,
+         maxItems = slider.vars.maxItems;
+</PRE><PRE>     slider.w = (slider.viewport===undefined) ? slider.width() : slider.viewport.width();
+     slider.h = slide.height();
+     slider.boxPadding = slide.outerWidth() - slide.width();
+</PRE><PRE>     // CAROUSEL:
+     if (carousel) {
+       slider.itemT = slider.vars.itemWidth + slideMargin;
+       slider.minW = (minItems) ? minItems * slider.itemT : slider.w;
+       slider.maxW = (maxItems) ? (maxItems * slider.itemT) - slideMargin : slider.w;
+       slider.itemW = (slider.minW &gt; slider.w) ? (slider.w - (slideMargin * (minItems - 1)))/minItems :
+                      (slider.maxW &lt; slider.w) ? (slider.w - (slideMargin * (maxItems - 1)))/maxItems :
+                      (slider.vars.itemWidth &gt; slider.w) ? slider.w : slider.vars.itemWidth;
+</PRE><PRE>       slider.visible = Math.floor(slider.w/(slider.itemW));
+       slider.move = (slider.vars.move &gt; 0 &amp;&amp; slider.vars.move &lt; slider.visible ) ? slider.vars.move : slider.visible;
+       slider.pagingCount = Math.ceil(((slider.count - slider.visible)/slider.move) + 1);
+       slider.last =  slider.pagingCount - 1;
+       slider.limit = (slider.pagingCount === 1) ? 0 :
+                      (slider.vars.itemWidth &gt; slider.w) ? (slider.itemW * (slider.count - 1)) + (slideMargin * (slider.count - 1)) : ((slider.itemW + slideMargin) * slider.count) - slider.w - slideMargin;
+     } else {
+       slider.itemW = slider.w;
+       slider.pagingCount = slider.count;
+       slider.last = slider.count - 1;
+     }
+     slider.computedW = slider.itemW - slider.boxPadding;
+   }
+</PRE><PRE>   slider.update = function(pos, action) {
+     slider.doMath();
+</PRE><PRE>     // update currentSlide and slider.animatingTo if necessary
+     if (!carousel) {
+       if (pos &lt; slider.currentSlide) {
+         slider.currentSlide += 1;
+       } else if (pos &lt;= slider.currentSlide &amp;&amp; pos !== 0) {
+         slider.currentSlide -= 1;
+       }
+       slider.animatingTo = slider.currentSlide;
+     }
+</PRE><PRE>     // update controlNav
+     if (slider.vars.controlNav &amp;&amp; !slider.manualControls) {
+       if ((action === &quot;add&quot; &amp;&amp; !carousel) || slider.pagingCount &gt; slider.controlNav.length) {
+         methods.controlNav.update(&quot;add&quot;);
+       } else if ((action === &quot;remove&quot; &amp;&amp; !carousel) || slider.pagingCount &lt; slider.controlNav.length) {
+         if (carousel &amp;&amp; slider.currentSlide &gt; slider.last) {
+           slider.currentSlide -= 1;
+           slider.animatingTo -= 1;
+         }
+         methods.controlNav.update(&quot;remove&quot;, slider.last);
+       }
+     }
+     // update directionNav
+     if (slider.vars.directionNav) methods.directionNav.update();
+</PRE><PRE>   }
+</PRE><PRE>   slider.addSlide = function(obj, pos) {
+     var $obj = $(obj);
+</PRE><PRE>     slider.count += 1;
+     slider.last = slider.count - 1;
+</PRE><PRE>     // append new slide
+     if (vertical &amp;&amp; reverse) {
+       (pos !== undefined) ? slider.slides.eq(slider.count - pos).after($obj) : slider.container.prepend($obj);
+     } else {
+       (pos !== undefined) ? slider.slides.eq(pos).before($obj) : slider.container.append($obj);
+     }
+</PRE><PRE>     // update currentSlide, animatingTo, controlNav, and directionNav
+     slider.update(pos, &quot;add&quot;);
+</PRE><PRE>     // update slider.slides
+     slider.slides = $(slider.vars.selector + ':not(.clone)', slider);
+     // re-setup the slider to accomdate new slide
+     slider.setup();
+</PRE><PRE>     //FlexSlider: added() Callback
+     slider.vars.added(slider);
+   }
+   slider.removeSlide = function(obj) {
+     var pos = (isNaN(obj)) ? slider.slides.index($(obj)) : obj;
+</PRE><PRE>     // update count
+     slider.count -= 1;
+     slider.last = slider.count - 1;
+</PRE><PRE>     // remove slide
+     if (isNaN(obj)) {
+       $(obj, slider.slides).remove();
+     } else {
+       (vertical &amp;&amp; reverse) ? slider.slides.eq(slider.last).remove() : slider.slides.eq(obj).remove();
+     }
+</PRE><PRE>     // update currentSlide, animatingTo, controlNav, and directionNav
+     slider.doMath();
+     slider.update(pos, &quot;remove&quot;);
+</PRE><PRE>     // update slider.slides
+     slider.slides = $(slider.vars.selector + ':not(.clone)', slider);
+     // re-setup the slider to accomdate new slide
+     slider.setup();
+</PRE><PRE>     // FlexSlider: removed() Callback
+     slider.vars.removed(slider);
+   }
+</PRE><PRE>   //FlexSlider: Initialize
+   methods.init();
+ }
+</PRE><PRE> // Ensure the slider isn't focussed if the window loses focus.
+ $( window ).blur( function ( e ) {
+   focused = false;
+ }).focus( function ( e ) {
+   focused = true;
+ });
+</PRE><PRE> //FlexSlider: Default Settings
+ $.flexslider.defaults = {
+   namespace: &quot;flex-&quot;,             //{NEW} String: Prefix string attached to the class of every element generated by the plugin
+   selector: &quot;.slides &gt; li&quot;,       //{NEW} Selector: Must match a simple pattern. '{container} &gt; {slide}' -- Ignore pattern at your own peril
+   animation: &quot;fade&quot;,              //String: Select your animation type, &quot;fade&quot; or &quot;slide&quot;
+   easing: &quot;swing&quot;,                //{NEW} String: Determines the easing method used in jQuery transitions. jQuery easing plugin is supported!
+   direction: &quot;horizontal&quot;,        //String: Select the sliding direction, &quot;horizontal&quot; or &quot;vertical&quot;
+   reverse: false,                 //{NEW} Boolean: Reverse the animation direction
+   animationLoop: true,            //Boolean: Should the animation loop? If false, directionNav will received &quot;disable&quot; classes at either end
+   smoothHeight: false,            //{NEW} Boolean: Allow height of the slider to animate smoothly in horizontal mode
+   startAt: 0,                     //Integer: The slide that the slider should start on. Array notation (0 = first slide)
+   slideshow: true,                //Boolean: Animate slider automatically
+   slideshowSpeed: 7000,           //Integer: Set the speed of the slideshow cycling, in milliseconds
+   animationSpeed: 600,            //Integer: Set the speed of animations, in milliseconds
+   initDelay: 0,                   //{NEW} Integer: Set an initialization delay, in milliseconds
+   randomize: false,               //Boolean: Randomize slide order
+   thumbCaptions: false,           //Boolean: Whether or not to put captions on thumbnails when using the &quot;thumbnails&quot; controlNav.
+</PRE><PRE>   // Usability features
+   pauseOnAction: true,            //Boolean: Pause the slideshow when interacting with control elements, highly recommended.
+   pauseOnHover: false,            //Boolean: Pause the slideshow when hovering over slider, then resume when no longer hovering
+   pauseInvisible: true,   		//{NEW} Boolean: Pause the slideshow when tab is invisible, resume when visible. Provides better UX, lower CPU usage.
+   useCSS: true,                   //{NEW} Boolean: Slider will use CSS3 transitions if available
+   touch: true,                    //{NEW} Boolean: Allow touch swipe navigation of the slider on touch-enabled devices
+   video: false,                   //{NEW} Boolean: If using video in the slider, will prevent CSS3 3D Transforms to avoid graphical glitches
+</PRE><PRE>   // Primary Controls
+   controlNav: true,               //Boolean: Create navigation for paging control of each clide? Note: Leave true for manualControls usage
+   directionNav: true,             //Boolean: Create navigation for previous/next navigation? (true/false)
+   prevText: &quot;Previous&quot;,           //String: Set the text for the &quot;previous&quot; directionNav item
+   nextText: &quot;Next&quot;,               //String: Set the text for the &quot;next&quot; directionNav item
+</PRE><PRE>   // Secondary Navigation
+   keyboard: true,                 //Boolean: Allow slider navigating via keyboard left/right keys
+   multipleKeyboard: false,        //{NEW} Boolean: Allow keyboard navigation to affect multiple sliders. Default behavior cuts out keyboard navigation with more than one slider present.
+   mousewheel: false,              //{UPDATED} Boolean: Requires jquery.mousewheel.js (<A href="https://github.com/brandonaaron/jquery-mousewheel" class="external free" rel="nofollow">https://github.com/brandonaaron/jquery-mousewheel</A>) - Allows slider navigating via mousewheel
+   pausePlay: false,               //Boolean: Create pause/play dynamic element
+   pauseText: &quot;Pause&quot;,             //String: Set the text for the &quot;pause&quot; pausePlay item
+   playText: &quot;Play&quot;,               //String: Set the text for the &quot;play&quot; pausePlay item
+</PRE><PRE>   // Special properties
+   controlsContainer: &quot;&quot;,          //{UPDATED} jQuery Object/Selector: Declare which container the navigation elements should be appended too. Default container is the FlexSlider element. Example use would be $(&quot;.flexslider-container&quot;). Property is ignored if given element is not found.
+   manualControls: &quot;&quot;,             //{UPDATED} jQuery Object/Selector: Declare custom control navigation. Examples would be $(&quot;.flex-control-nav li&quot;) or &quot;#tabs-nav li img&quot;, etc. The number of elements in your controlNav should match the number of slides/tabs.
+   sync: &quot;&quot;,                       //{NEW} Selector: Mirror the actions performed on this slider with another slider. Use with care.
+   asNavFor: &quot;&quot;,                   //{NEW} Selector: Internal property exposed for turning the slider into a thumbnail navigation for another slider
+</PRE><PRE>   // Carousel Options
+   itemWidth: 0,                   //{NEW} Integer: Box-model width of individual carousel items, including horizontal borders and padding.
+   itemMargin: 0,                  //{NEW} Integer: Margin between carousel items.
+   minItems: 1,                    //{NEW} Integer: Minimum number of carousel items that should be visible. Items will resize fluidly when below this.
+   maxItems: 0,                    //{NEW} Integer: Maxmimum number of carousel items that should be visible. Items will resize fluidly when above this limit.
+   move: 0,                        //{NEW} Integer: Number of carousel items that should move on animation. If 0, slider will move all visible items.
+   allowOneSlide: true,           //{NEW} Boolean: Whether or not to allow a slider comprised of a single slide
+</PRE><PRE>   // Callback API
+   start: function(){},            //Callback: function(slider) - Fires when the slider loads the first slide
+   before: function(){},           //Callback: function(slider) - Fires asynchronously with each slider animation
+   after: function(){},            //Callback: function(slider) - Fires after each slider animation completes
+   end: function(){},              //Callback: function(slider) - Fires when the slider reaches the last slide (asynchronous)
+   added: function(){},            //{NEW} Callback: function(slider) - Fires after a slide is added
+   removed: function(){}           //{NEW} Callback: function(slider) - Fires after a slide is removed
+ }
+</PRE><PRE> //FlexSlider: Plugin Function
+ $.fn.flexslider = function(options) {
+   if (options === undefined) options = {};
+</PRE><PRE>   if (typeof options === &quot;object&quot;) {
+     return this.each(function() {
+       var $this = $(this),
+           selector = (options.selector) ? options.selector : &quot;.slides &gt; li&quot;,
+           $slides = $this.find(selector);
+</PRE><PRE>     if ( ( $slides.length === 1 &amp;&amp; options.allowOneSlide === true ) || $slides.length === 0 ) {
+         $slides.fadeIn(400);
+         if (options.start) options.start($this);
+       } else if ($this.data('flexslider') === undefined) {
+         new $.flexslider(this, options);
+       }
+     });
+   } else {
+     // Helper strings to quickly perform functions on the slider
+     var $slider = $(this).data('flexslider');
+     switch (options) {
+       case &quot;play&quot;: $slider.play(); break;
+       case &quot;pause&quot;: $slider.pause(); break;
+       case &quot;stop&quot;: $slider.stop(); break;
+       case &quot;next&quot;: $slider.flexAnimate($slider.getTarget(&quot;next&quot;), true); break;
+       case &quot;prev&quot;:
+       case &quot;previous&quot;: $slider.flexAnimate($slider.getTarget(&quot;prev&quot;), true); break;
+       default: if (typeof options === &quot;number&quot;) $slider.flexAnimate(options, true);
+     }
+   }
+ }
+</PRE><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js">http://2013.igem.org/Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:NYMU-Taipei/Frontpage/Slider/jquery.flexslider.js&amp;oldid=346284" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

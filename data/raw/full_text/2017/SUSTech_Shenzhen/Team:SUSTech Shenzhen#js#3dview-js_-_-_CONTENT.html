@@ -1,0 +1,213 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SUSTech_Shenzhen_js_3dview-js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SUSTech Shenzhen/js/3dview-js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>ControlsTrackball = AMI.default.Controls.Trackball;
+HelpersLut = AMI.default.Helpers.Lut;
+HelpersVR = AMI.default.Helpers.VolumeRendering;
+LoadersVolume = AMI.default.Loaders.Volume;
+// standard global letiables
+let controls;
+let threeD;
+let renderer;
+let camera;
+let scene;
+let vrHelper;
+let lut;
+let ready = false;
+let modified = false;
+let wheel = null;
+let wheelTO = null;
+</P><P>let myStack = {
+</P><PRE> lut: 'random',
+ opacity: 'random',
+ steps: 256,
+ alphaCorrection: 0.5,
+ frequence: 0,
+ amplitude: 0,
+ interpolation: 1,
+</PRE><P>};
+</P><P>function onStart(event) {
+</P><PRE> if (vrHelper &amp;&amp; vrHelper.uniforms &amp;&amp; !wheel) {
+   vrHelper.uniforms.uSteps.value = Math.floor(myStack.steps / 2);
+   vrHelper.interpolation = 0;
+   modified = true;
+ }
+</PRE><P>}
+</P><P>function onEnd(event) {
+</P><PRE> if (vrHelper &amp;&amp; vrHelper.uniforms &amp;&amp; !wheel) {
+   vrHelper.uniforms.uSteps.value = myStack.steps;
+   vrHelper.interpolation = myStack.interpolation;
+   modified = true;
+ }
+</PRE><P>}
+</P><P>function onWheel() {
+</P><PRE> if (!wheel) {
+   vrHelper.uniforms.uSteps.value = Math.floor(myStack.steps / 2);
+   vrHelper.interpolation = 0;
+   wheel = Date.now();
+ }
+</PRE><PRE> if (Date.now() - wheel &lt; 300) {
+   clearTimeout(wheelTO);
+   wheelTO = setTimeout(function() {
+     vrHelper.uniforms.uSteps.value = myStack.steps;
+     vrHelper.interpolation = myStack.interpolation;
+     wheel = null;
+     modified = true;
+   }, 300);
+ }
+</PRE><PRE> modified = true;
+</PRE><P>}
+</P><P>function onWindowResize() {
+</P><PRE> // update the camera
+ camera.aspect = threeD.offsetWidth / threeD.offsetHeight;
+ camera.updateProjectionMatrix();
+</PRE><PRE> // notify the renderer of the size change
+ renderer.setSize(threeD.offsetWidth, threeD.offsetHeight);
+ modified = true;
+</PRE><P>}
+</P><P>function buildGUI() {
+</P><PRE> let gui = new dat.GUI({
+     autoPlace: false,
+   });
+</PRE><PRE> let customContainer = document.getElementById('my-gui-container');
+ customContainer.appendChild(gui.domElement);
+</PRE><PRE> let stackFolder = gui.addFolder('Settings');
+ let lutUpdate = stackFolder.add(myStack, 'lut', lut.lutsAvailable());
+ lutUpdate.onChange(function(value) {
+     lut.lut = value;
+     vrHelper.uniforms.uTextureLUT.value.dispose();
+     vrHelper.uniforms.uTextureLUT.value = lut.texture;
+     modified = true;
+   });
+ // init LUT
+ lut.lut = myStack.lut;
+ vrHelper.uniforms.uTextureLUT.value.dispose();
+ vrHelper.uniforms.uTextureLUT.value = lut.texture;
+</PRE><PRE> let opacityUpdate = stackFolder.add(myStack, 'opacity', lut.lutsAvailable('opacity'));
+ opacityUpdate.onChange(function(value) {
+     lut.lutO = value;
+     vrHelper.uniforms.uTextureLUT.value.dispose();
+     vrHelper.uniforms.uTextureLUT.value = lut.texture;
+     modified = true;
+   });
+</PRE><PRE> let stepsUpdate = stackFolder.add(myStack, 'steps', 0, 512).step(1);
+ stepsUpdate.onChange(function(value) {
+     if (vrHelper.uniforms) {
+       vrHelper.uniforms.uSteps.value = value;
+       modified = true;
+     }
+   });
+</PRE><PRE> let alphaCorrrectionUpdate = stackFolder.add(myStack, 'alphaCorrection', 0, 1).step(0.01);
+ alphaCorrrectionUpdate.onChange(function(value) {
+     if (vrHelper.uniforms) {
+       vrHelper.uniforms.uAlphaCorrection.value = value;
+       modified = true;
+     }
+   });
+</PRE><PRE> let interpolationUpdate = stackFolder.add(vrHelper, 'interpolation', 0, 1).step(1);
+ interpolationUpdate.onChange(function(value) {
+   if (vrHelper.uniforms) {
+     modified = true;
+   }
+ });
+</PRE><PRE> stackFolder.open();
+</PRE><P>}
+</P><P>function init() {
+</P><PRE> // this function is executed on each animation frame
+ function animate() {
+   // render
+   controls.update();
+</PRE><PRE>   if (ready &amp;&amp; modified) {
+     renderer.render(scene, camera);
+     modified = false;
+   }
+</PRE><PRE>   // request new frame
+   requestAnimationFrame(function() {
+     animate();
+   });
+ }
+</PRE><PRE> // renderer
+ threeD = document.getElementById('r3d');
+ renderer = new THREE.WebGLRenderer({
+   alpha: true,
+ });
+ renderer.setSize(threeD.offsetWidth, threeD.offsetHeight);
+ threeD.appendChild(renderer.domElement);
+</PRE><PRE> // scene
+ scene = new THREE.Scene();
+</PRE><PRE> // camera
+ camera = new THREE.PerspectiveCamera(45, threeD.offsetWidth / threeD.offsetHeight, 0.1, 100000);
+ camera.position.x = 166;
+ camera.position.y = -471;
+ camera.position.z = 153;
+ camera.up.set(-0.42, 0.86, 0.26);
+</PRE><PRE> // controls
+ controls = new ControlsTrackball(camera, threeD);
+ controls.rotateSpeed = 5.5;
+ controls.zoomSpeed = 1.2;
+ controls.panSpeed = 0.8;
+ controls.staticMoving = true;
+ controls.dynamicDampingFactor = 0.3;
+ controls.addEventListener('change', () =&gt; {
+   modified = true;
+ });
+ controls.addEventListener('start', onStart);
+ controls.addEventListener('end', onEnd);
+</PRE><PRE> window.addEventListener('resize', onWindowResize, false);
+ renderer.domElement.addEventListener('wheel', onWheel);
+ // start rendering loop
+ animate();
+</PRE><P>}
+</P><P>window.onload = function() {
+</P><PRE> // init threeJS
+ init();
+</PRE><PRE> let filename = '<A rel="nofollow" class="external free" href="https://static.igem.org/mediawiki/2017/9/9e/SUSTech_test.nii.pdf'">https://static.igem.org/mediawiki/2017/9/9e/SUSTech_test.nii.pdf'</A>;
+</PRE><PRE> // load sequence for each file
+ // instantiate the loader
+ let loader = new LoadersVolume(threeD);
+ loader.load(filename)
+ .then(() =&gt; {
+   let series = loader.data[0].mergeSeries(loader.data)[0];
+   loader.free();
+   loader = null;
+   // get first stack from series
+   let stack = series.stack[0];
+</PRE><PRE>   vrHelper = new HelpersVR(stack);
+   // scene
+   scene.add(vrHelper);
+</PRE><PRE>   // CREATE LUT
+   lut = new HelpersLut('my-lut-canvases');
+   lut.luts = HelpersLut.presetLuts();
+   lut.lutsO = HelpersLut.presetLutsO();
+   // update related uniforms
+   vrHelper.uniforms.uTextureLUT.value = lut.texture;
+   vrHelper.uniforms.uLut.value = 1;
+</PRE><PRE>   // update camrea's and interactor's target
+   let centerLPS = stack.worldCenter();
+   camera.lookAt(centerLPS.x, centerLPS.y, centerLPS.z);
+   camera.updateProjectionMatrix();
+   controls.target.set(centerLPS.x, centerLPS.y, centerLPS.z);
+</PRE><PRE>   // create GUI
+   buildGUI();
+</PRE><PRE>   // screenshot experiment
+   let screenshotElt = document.getElementById('screenshot');
+   screenshotElt.addEventListener('click', function() {
+     controls.update();
+</PRE><PRE>     if (ready) {
+       renderer.render(scene, camera);
+     }
+</PRE><PRE>     let screenshot = renderer.domElement.toDataURL();
+     screenshotElt.download = 'AMI-' + Date.now() + '.png';
+     screenshotElt.href = screenshot;
+   });
+</PRE><PRE>   // good to go
+   ready = true;
+   modified = true;
+ })
+ .catch((error) =&gt; window.console.log(error));
+</PRE><P>};
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,249 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_NJU-China_Javascript_instagram-stream skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:NJU-China/Javascript:instagram-stream</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/* 
+</P><PRE>* jQuery plugin for creating small widget like Instagram gallery with text.
+* 
+* Author: Pixel Industry
+* Website: <A rel="nofollow" class="external free" href="http://pixel-industry.com">http://pixel-industry.com</A>
+* Version: 1.0.3
+*
+* Licensed under the MIT license.
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>
+*
+*/
+</PRE><P>
+(function ($) {
+</P><PRE>   $.fn.instagramstream = function (options) {
+       var defaults = {
+           username: 'pixel_industry', // Instagram username
+           limit: 10, // how many photos to show
+           overlay: true, // add overlay div
+           textContainer: '.is-text', // selector or jQuery object of div with text
+           textPosition: '4', // position of text in grid of photos
+           textSize: '1', // size of text e.g. 1 - has size like one image; 2 - has size of two images etc.
+           imageQuality: 'standard', // standard | low | thumbnail; standard: 640 x 640px; low: 320 x 320px; thumbnail: 150 x 150px
+           accessToken: 
+       };
+       var options = $.extend(defaults, options);
+</PRE><PRE>       return this.each(function () {
+           var object = $(this);
+</PRE>
+            object.append(&quot;&quot;)
+<PRE>           // check if access token is set
+           if ((typeof (options.accessToken) != &quot;undefined&quot;) &amp;&amp; options.accessToken != &quot;&quot;) {
+               var access_token = options.accessToken;
+           } else {
+               console.warn(&quot;Instagram Access Token is not set. Please enter it in plugin init call.&quot;);
+               return;
+           }
+</PRE><PRE>           var url = &quot;<A rel="nofollow" class="external free" href="https://api.instagram.com/v1/users/search?q=">https://api.instagram.com/v1/users/search?q=</A>&quot; + options.username + &quot;&amp;access_token=&quot; + access_token + &quot;&amp;count=1&amp;callback=?&quot;;
+           $.getJSON(url, function (data) {
+</PRE><PRE>               $.each(data.data, function (i, shot) {
+                   var instagram_username = shot.username;
+                   if (instagram_username == options.username) {
+                       var user_id = shot.id;
+</PRE><PRE>                       if (user_id != &quot;&quot;) {
+                           url = &quot;<A rel="nofollow" class="external free" href="https://api.instagram.com/v1/users/">https://api.instagram.com/v1/users/</A>&quot; + user_id + &quot;/media/recent/?access_token=&quot; + access_token + &quot;&amp;count=&quot; + options.limit + &quot;&amp;callback=?&quot;;
+                           $.getJSON(url, function (data) {
+                               $.each(data.data, function (i, shot) {
+</PRE><PRE>                                   // image quality
+                                   if (options.imageQuality == 'standard') {
+</PRE><PRE>                                       var imgQuality = 'standard_resolution';
+                                   } else if (options.imageQuality == 'low') {
+</PRE><PRE>                                       var imgQuality = 'low_resolution';
+                                   } else if (options.imageQuality == 'thumbnail') {
+</PRE><PRE>                                       var imgQuality = 'thumbnail';
+                                   }
+</PRE><PRE>                                   var photo_src = shot.images[imgQuality].url;
+                                   var photo_url = shot.link;
+</PRE><PRE>                                   var photo_title = &quot;&quot;;
+                                   if (shot.caption != null) {
+                                       photo_title = shot.caption.text;
+                                   }
+</PRE><PRE>                                   var photo_container = $('&lt;img/&gt;').attr({
+                                       src: photo_src,
+                                       alt: photo_title
+                                   });
+                                   var url_container = $('&lt;a/&gt;').attr({
+                                       href: photo_url,
+                                       target: '_blank',
+                                       title: photo_title
+                                   });
+                                   //var tmp = $(url_container).append(photo_container);
+                                   if (options.overlay) {
+                                       var overlay_div = $('&lt;div/&gt;').addClass('img-overlay');
+                                       $(url_container).append(overlay_div);
+                                   }
+</PRE><PRE>                                   // reduce by one because array stars from 0
+                                   var textPos = parseInt(options.textPosition) - 1;
+</PRE><PRE>                                   var $container = $('.instagram-list');
+</PRE><PRE>                                   // image size
+                                   var textSizeWidth = ($container.width() / 8) * options.textSize;
+                                   var textSizeHeight = ($container.width() / 8);
+</PRE><PRE>                                   // add text to stream
+                                   // if we are on desired position, add text
+                                   if (i == textPos) {
+</PRE><PRE>                                       // check if text is jQuery object
+                                       if (jQuery.type(options.textContainer) == 'object') {
+</PRE>
+                                            var text_li = $('<LI>')
+                                                    .attr({
+                                                        class: 'is-text'
+                                                    })
+                                                    .append(options.textContainer.html());
+
+                                            $(&quot;ul&quot;, object).append(text_li);
+
+                                            // remove original element
+                                            options.textContainer.remove();
+
+                                            // otherwise check if user passed selector
+                                        } else if (jQuery.type(options.textContainer) == 'string') {
+
+                                            // find element in DOM
+                                            var textHtml = jQuery(options.textContainer);
+
+                                            // append HTML if it exists
+                                            if (typeof (textHtml) != 'undefined') {
+                                                var text_li = $('</LI><LI>')
+                                                        .attr({
+                                                            class: 'is-text'
+                                                        })
+                                                        .append(textHtml.html());
+
+                                                $(&quot;ul&quot;, object).append(text_li);
+
+                                                // remove original element
+                                                textHtml.remove();
+                                            }
+                                        }
+                                    }
+
+                                    var li = $('</LI><LI>').css('background-image', 'url(' + photo_src + ')').append(url_container);
+                                    $(&quot;ul&quot;, object).append(li);
+
+                                });
+
+                                // calculate image and text size
+                                onResize();
+                            });
+                        }
+                    }
+                });
+
+            });
+
+            /**
+             * Resize event
+             */
+            $(window).resize(function () {
+                onResize();
+            });
+
+            /**
+             * Change image size on screen resize
+             * 
+             * @returns void
+             */
+            function onResize() {
+
+                var windowWidth = $(window).width();
+
+                // container
+                var $container = $('.instagram-list');
+
+                // loop through each gallery
+                $container.each(function () {
+
+                    var $this = $(this);
+
+                    // image size
+                    if (windowWidth &lt; 320) {
+
+                        var imageSizeWidth = 100;
+                        var imageSizeHeight = $this.outerWidth();
+
+                        if (options.textSize &gt; 1) {
+                            var textSizeWidth = (imageSizeWidth);
+                            var textSizeHeight = (imageSizeHeight);
+                        }
+
+                        // smartphones
+                    } else if (windowWidth &gt; 320 &amp;&amp; windowWidth &lt; 479) {
+
+                        var imageSizeWidth = 100;
+                        var imageSizeHeight = $this.outerWidth();
+                        var imageSize = imageSizeHeight;
+
+                        if (options.textSize &gt; 1) {
+                            var textSizeWidth = (imageSizeWidth);
+                            var textSizeHeight = (imageSizeHeight);
+                        }
+
+                        // smartphones and tables
+                    } else if (windowWidth &gt; 480 &amp;&amp; windowWidth &lt; 767) {
+
+                        var imageSizeWidth = (100 / 2);
+                        var imageSizeHeight = $this.outerWidth() / 2;
+                        var imageSize = imageSizeHeight;
+
+                        if (options.textSize &gt;= 2) {
+                            var textSizeWidth = imageSizeWidth;
+                            var textSizeHeight = imageSizeHeight;
+                        }
+
+                        // tablets
+                    } else if (windowWidth &gt; 768 &amp;&amp; windowWidth &lt; 991) {
+
+                        var imageSizeWidth = (100 / 4);
+                        var imageSizeHeight = $this.outerWidth() / 4;
+                        var imageSize = imageSizeHeight;
+
+                        if (options.textSize &gt;= 2) {
+                            var textSizeWidth = imageSizeWidth * 2;
+                            var textSizeHeight = imageSizeHeight;
+                        }
+
+                        // smaller screen desktops
+                    } else if (windowWidth &gt; 992 &amp;&amp; windowWidth &lt; 1199) {
+
+                        var imageSizeWidth = (100 / 6);
+                        var imageSizeHeight = $this.outerWidth() / 6;
+                        var imageSize = imageSizeHeight;
+
+                        if (options.textSize &gt;= 3) {
+                            var textSizeWidth = imageSizeWidth * 3;
+                            var textSizeHeight = imageSizeHeight;
+                        } else if (options.textSize == 2) {
+                            var textSizeWidth = imageSizeWidth * 2;
+                            var textSizeHeight = imageSizeHeight;
+                        }
+
+                        // large screen desktops
+                    } else if (windowWidth &gt; 1200) {
+
+                        var imageSizeWidth = (100 / 8);
+                        var imageSizeHeight = $this.outerWidth() / 8;
+                        var imageSize = imageSizeHeight;
+
+                        var textSizeWidth = imageSizeWidth * options.textSize;
+                        var textSizeHeight = imageSizeHeight;
+                    }
+
+                    // change image width and height
+                    object.find('li:not(.is-text)').width(imageSizeWidth + &quot;%&quot;).height(imageSizeHeight);
+
+                    // change text width and height
+                    object.find('li.is-text').outerWidth(textSizeWidth + &quot;%&quot;).outerHeight(textSizeHeight);
+                });
+
+            }
+
+        });
+    };
+})(jQuery);</LI></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

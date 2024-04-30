@@ -1,0 +1,100 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:INSA-Lyon/CurliSynthesis
+From 2014.igem.org
+Curly'on - IGEM 2014 INSA-LYON
+PROJECT
+PROJECT
+PROJECT SUMMARY
+ACHIEVEMENTS
+WETLAB
+WETLAB
+WETLAB SUMMARY
+RESULTS
+NOTEBOOK
+PROTOCOLS
+DATA PAGE
+MODELING
+MODELING
+MODELING SUMMARY
+MOLECULAR MODELISATION
+CURLI SYNTHESIS
+  HUMAN PRACTICE
+HUMAN
+PRACTICE
+HUMAN PRACTICE SUMMARY
+SYNBIO PERCEPTION
+PROJECT'S INTEREST
+TEAM
+TEAM
+MEMBERS & ATTRIBUTIONS
+SPONSORS
+PARTNERSHIPS
+HAVE FUN WITH IGEM
+GALLERY
+CURLI SYNTHESIS
+MODELINGSUMMARY
+MOLECULARMODELISATION
+CURLISYNTHESIS
+As functional amyloid fibers biosynthesis is still not totally understood, there aren't many models other than descriptive sketches that represent the curli formation. From these observations we decided to gather the information we could and build models from them as incomplete as they may be, in order to provide future teams working on engineered CsgA with a basis to start from. We therefore were able to build up two models:
+the CurLy'on Simulator, a computed simulation of CsgA secretion and polymerization that, provided with the right parameters, could make for a good alternative to a mathematical model for a protein kinetics study;
+the implementation of the only two mathematical models we could find in the literature that seemed relevant (with biological justification) in describing in vitro CsgA polymerisation in C language in a fashion that can be given to a numerical solver, as these models require a heavy calculation power.
+CurLy'on Simulator
+Principle
+The CurLy'on Simulator is based on the principles of Tim Hutton's artificial chemistry. In this way of modeling, every particle in the environment, be it a protein, an inorganic molecule or simply an atom, is represented as a spherical particle, characterized by a radius, a type (that we will represent by a letter) that can never change and a state (represented by a number) that may change when encountering other particles. Their movements are brownian, and their interactions abide by a set of basic "rules" provided by the user. These rules specify how two particles of given types and states may interact. These interactions may involve states modification, bonding or unbonding, both state modification and bonding, etc.; and of course if the two particles that collide do not satisfy the requirements of any rule, they do not react.
+For instance let's say that we have an environment containing only particles of the 'a' type in state 0, and the set of rules
+\left\{   \begin{array}{lcl}     x0+x1 &\rightarrow &x0.x42 \\     x0.x42 &\rightarrow &x0+x42\\   \end{array} \right.
+where '+' means that the particles are not bound together, while '.' means that the two particles are bound together. Then what may happen is something like this :
+Then, by creating lots of rules like that, involving many particles with different types and states, it is possible to schematically reproduce various biological phenomena, which is what we did for CsgA polymerization.
+The simulator
+CurLy'on Simulator - iGEM INSA-Lyon 2014
+Since for this model most of the work was coding in C++ language, we won't explain the whole process behind the program as it wouldn't bring any enlightenment about the model here. The program also has a few additional features:
+before launching it, you can specify the initial composition of the environment: which particles are present, where, and which ones are linked together;
+you can add a flow of particles from above (modeling the arrival of nickel ions for instance), or from below (for the production rate of your protein for example);
+it can be paused.
+However, the work on this program is still in progress, as there are many more features we would like to add for it to be a good starting point for any future team who would want to use our work.
+Mathematical model
+We also found a publication by John S. Schreck and Jian-Min Yuan where two mathematical models for in vitro soluble CsgA polymerization were treated. Seeing how such models are scarce, we wanted to reproduce their results so that future teams working on this kind of issue may use our work and integrate it in a more complex differential equations system involving gene expression and protein secretion for instance. The two models we studied will be referred to as the Smoluchowski model and the Knowles model. Though the expression may differ, both models' main idea is to follow the evolution throughout time of all of the concentrations c_r of the fibers of length r (containing r polymerized CsgA), where r goes from one (soluble CsgA) to a maximum length fixed by the user since a numerical resolution cannot go to the infinity. We can then visualize the global evolution of the fibers through three variables:
+The mass (quantity) of CsgA that polymerized into a fiber
+M(t) = \sum_{r=2}^{r=\infty}rc_r
+The number of fibers
+P(t) = \sum_{r=2}^{r=\infty}c_r
+The average length of the fibers
+L(t) = \frac{M(t)}{P(t)}
+Moreover, after exchanging a few mails with the authors, we were told that in order to get the same results as them, we should use a solver with a precision on par with the Runge-Kutta-Fehlberg fourth-fifth order Runge-Kutta method, as well as consider the fibers to be able to at least grow up to 30,000 in length. This means that for both models we had to solve over thirty thousand differential equations at a time, which is as you can guess, extremely resource-consuming for any computer. For this reason, as we didn't have such power to our disposal, we unfortunately weren't able to carry out any satisfying simulation for these models. However we are confident that the research undertaken about this matter will be useful to other teams in the future.
+The Smoluchowski model
+The Smoluchowski model is quite heavy as it takes into consideration every possible way for a fiber of length r to form, either by combination of two smaller fibers or by the breaking of a bigger one. First, the expression of the mass flux from aggregate concentrations c_r(t) and c_s(t) going to c_{r+s}(t) can be written as :
+W_{r+s}(t) = k_+c_r(t)c_s(t) - k_-c_{r+s}(t)
+where the 'k' are respectively the aggregation and disintegration constants, that we will suppose identical for any couple {r,s}. From there it is easy to deduce the expression of every combination of two smaller fibers into one of length r, as well as the rate of formation of fibers longer than r from a fiber of r length. The cases of soluble CsgA and of dimeric fibrils are particular since the term of smaller fibers combination cannot apply, we have for r>2:
+\frac{dc_r(t)}{dt} = \frac{1}{2}\sum_{s=1}^{r_1}W_{s,r-s}(t) - \sum_{s=1}^{+\infty}W_{r,s}
+As for r=2, the combination of two soluble CsgA gets its own aggregation constant as the polymerization can obviously be a bit different than when an already polymerized CsgA is involved. Finally, the soluble CsgA concentration corresponds to the total variation that cannot be explained by the interaction of two existing fibers. Hence for the Smoluchowski model we get the system:
+\left\{   \begin{array}{lcl}     \frac{dc_r(t)}{dt} = \frac{1}{2}\sum_{s=1}^{r-1}W_{s,r-s}(t) - \sum_{s=1}^{+\infty}W_{r,s} &for & r>=3 \\     \frac{dc_2(t)}{dt} = k_nc_1(t)^2 - \sum_{s=1}^{+\infty}W_{2,s}\\     \frac{dc_1(t)}{dt} = - \sum_{j=2}^{+\infty}j\frac{dc_r(t)}{dt}\\   \end{array} \right.
+This model leads to a stabilized polymerized mass of CsgA as well as average length of the fibers, so we would rather advise to use this one over the Knowles model, though it's way heavier. However, since both models were able to fit quite well to experimental data in the publication, we thought it may still be interesting to develop Knowles model as well.
+The Knowles model
+The Knowles model is simpler than the Smoluchowski model as it only considers the addition of one soluble CsgA at a time for the fiber growth, and doesn't try to trace the sizes of the pieces from a fiber breakdown. Thus we have the system for this model:
+\left\{   \begin{array}{ll}     \frac{dc_r(t)}{dt} = &2k_+c_1(t)[c_{r-1}(t)-c_r(t)] - k_-[(r-1)c_r(t)\\ &+\sum_{i=r+1}^{+\infty}c_i(t)]+ k_nc_1(t)^2*\delta_{r,2} \\ &for\ r>1\ and\ \delta_{r,2}=1\ only\ if\ r=2,\ and\ 0\ otherwise \\     \frac{dc_1(t)}{dt} = &- \sum_{j=2}^{+\infty}j\frac{dc_r(t)}{dt}\\   \end{array} \right.
+Please notice that here the "k" values have a different meaning than in the Smoluchowski model: they stand for the monomer addition rate, and for the rate constant of any type of breakdown of an aggregate into two pieces, regardless of the sizes of the fragments. Though simpler, this model somehow leads to an equilibrium where the fibers are mostly dimeric, which isn't what can be observed on the cell's surface. That is the reason why we think the Smoluchowski model may be more relevant for the study of curli synthesis.
+What is left to do
+Unfortunately, as we lacked both time and the means to measure several parameters, both the CurLy'On Simulator and the mathematical models are not perfect yet. Indeed, for the simulator, it is regrettable that we couldn't find anywhere the values of parameters such as the diffusion speed of soluble CsgA in the medium or its secretion rate through the CsgG channels. We also wished we had more time to add some features that we thought might bring even more modeling possibilities, like the implementation of an easy way to (cleanly) include differential equations in the speed calculation of specific particles to lead their movements and thus may represent phenomena such as attraction or protein targeting. Still, we believe our simulator to be a great tool for modeling, although it might prove a bit hard to get used to at first, and we would like to thank DUCHEMIN Louis and BERTHELIER Anthony who developed this program with us despite not being on the team. As for the differential equations model, as mentioned earlier, what makes us most sorry is that we couldn't actually test the models since we didn't have computers powerful enough to take on the tremendous calculations required. However, once the verification is done, the next step for anyone willing to use it as base for their work would be to use it in a system involving CsgA production (with parameters specific to the used promoter) and secretion (delayed differential equations for the boldest ones, yay!), and maybe also involving the actions of CsgB.
+INSA ADN Concept Club
+INSA de Lyon - Bâtiment Louis Pasteur
+11 avenue Jean Capelle
+69621 - VILLEURBANNE CEDEX
+Mail : ia2c.asso@gmail.com
+©2014 IGEM.ORG INSA-LYON - DESIGNED BY ALICE BLOT
+Retrieved from " http://2014.igem.org/Team:INSA-Lyon/CurliSynthesis "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

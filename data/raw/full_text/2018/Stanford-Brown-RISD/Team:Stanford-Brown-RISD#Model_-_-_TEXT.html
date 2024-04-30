@@ -1,0 +1,123 @@
+Team:Stanford-Brown-RISD/Model
+HOME
+TEAM
+Team Members
+Collaborations
+PROJECT
+Description
+Design
+Experiments
+Results
+Notebook
+Mission Architecture
+InterLab
+Model
+Demonstrate
+Improve
+Attributions
+PARTS
+Parts Overview
+Basic Parts
+Composite Parts
+Part Collection
+SAFETY
+HUMAN PRACTICES
+Human Practices
+Education & Engagement
+AWARDS
+Applied Design
+Measurement
+Model
+Software
+JUDGING FORM ⇗
+Abstract & Introduction
+Mycelium is an ideal candidate for the construction of building materials on Mars due in most part to its replicability; a builder will end up with more material than he brought with him. However, while concrete and rebar are not easily transported, they are conveniently measured in volume and in weight, and a builder can precisely simulate the things that he can build given his material constraints. The model developed for our project attempts to confer this ease of measurability onto mycelium in order to better understand its utility as a building material—given a starting amount of mycelium, how much can a builder grow given his time constraints? Alternately, if a builder brings fillable molds and a starter colony of mycelium—how long will it take for his fungus to fill the mold? I constructed a Python model to answer these questions, and to simulate the fractal and competitive growth pattern of mycelial hyphae, in the hopes that it will be used to inform others’ efforts in growing mycelium in the future.
+Materials and Methods
+To begin, we got growth data—a few weeks’ worth—from the team members responsible for actually growing mycelium in the lab. We put this data into a spreadsheet and ran various regression analyses on it. We found that an exponential model fit the data with high fidelity, with an R2 value of 0.93. We devised an exponential growth model in Python and ran several simulations. However, we found that the data for the quantity of mycelium grown was dubious as growth periods grew longer, giving enormous values that did not reflect the data gathered in the lab.
+We began researching models online, and eventually found a tumor growth model, called the “Eden Model” (after the person who initially developed it; the link to the literature we referenced is given in the “Discussion” section of this page). We were interested in tweaking the Eden model for mycelial growth, because the way that tumors grow is remarkably similar to mycelial proliferation: both incorporate substrate adjacent to their borders into their bodies, initially growing incredibly quickly but becoming “crowded out” by their own bodily projections as they grow ever larger.
+We had to code a model into Python from the ground up. The first successful model that we devised was for unconstrained, 2-dimensional growth of mycelium. While this was an exciting development, we doubted this model’s utility for our purposes, because in our lab we’d been growing mycelium within molds (which are both constrained and 3-dimensional). So—could we tweak the 2-D model to more accurately reflect the lab’s objectives?
+Luckily, the “3-tiered” growth pattern that we’d incorporated into our 2-D model provided the solution. The 3 tiers of the model were “grown”—sites that have grown mycelium—; “growthsites”—sites that will grow mycelium—; and “target”—sites that might grow mycelium. On each day of growth, each “grown” site has the opportunity to stake its claim on a “growthsite”/”target”. It becomes increasingly less likely that a new target site will be found by a grown site as the grown site finds itself more crowded by other grown sites (this accounts for the competition between hyphae in mycelial growth).
+We’d found in the lab that 3-D growth generally does not occur in a mold until the mycelium has filled the base of the mold. Therefore, we inserted a provision that “target” sites could be neither “growthsites” nor “grown” sites until the area encompassed by the “grown” sites was equivalent to the base area of the mold. Only then could the mycelium grow upward. How could upward growth be modeled? Once the base of the mold had been filled, the model would change the parameters of the “target” sites: “target” sites could only be “grown” sites. This ensured that the mycelium could only grow on top of itself, and only upward. The competition provision—that a “grown” site could not secure a “target” site if that site had already been claimed as a “growthsite” by another “grown” site—was still intact during this new, upward period of growth. This was the most involved period of coding, and involved five separate attempts before a suitable sixth model was developed.
+Results
+The model has utility for anyone trying to grow mycelium within a mold. The user will input the size of the initial sample, the size of the mold, and the number of days given to grow. The model will tell the user whether the mold would be filled or not. Furthermore, the model will tell the user how much mycelium was grown in the time given.
+Discussion
+Before this model, there had been no published model to accurately simulate mycelial growth, let alone within the constraints of a mold. The Eden model was a necessary but insufficient starting point for this model, and the reference used can be found at this link: http://www.jfgouyet.fr/fractal/fractauk/chapter4.pdf. Overall, the ability to accurately simulate mycelial growth is useful for anyone attempting to use mycelium as a building material. The model was able to simulate mycelial growth accurately, adhering to the results obtained in the lab with high fidelity. The code base is given in plaintext below. Finally, the code is extensively commented. Please refer to the code base below if you require further clarification.
+#this version is a model of 3d growth in a mold, telling you if your mycelium will fill the mold/how much mycelium you can grow in a given time.
+#author: Arvind Veluvali
+import random
+import math
+init = float(input("In square meters--what is the area of your original sample? "))
+x=float(input("In meters--what is the thickness of your original sample? "))
+#x represents the initial thickness of a mycelium sample/sheet. This was estimated in the lab as being around a millimeter, but is an input variable depending on whether we want to play with thickness.
+growperiod = int(input("To the nearest integer--how many full days of growth will your sample have? "))
+base = float(input("In square meters--what is the area of the base of your mold? "))
+height = float(input("In meters--what is the height of your mold? "))
+initvol=x*init
+if init > base:
+print("Try again with an initial sample smaller than the base of your mold.")
+import sys
+sys.exit()
+if x > height:
+print("Try again with an initial sample shorter than the height of your mold.")
+import sys
+sys.exit()
+#initialize
+s = (0,0)
+grown = []
+growthsites = []
+grown.append(s)
+for mcs in range(growperiod):
+for n in range(len(grown)):
+i = random.randrange(0,len(grown), 1)
+s = grown[i]
+r = random.randrange(0,3,1)
+if r == 0:
+target = (s[0],s[1]-1)
+elif r == 1:
+target = (s[0],s[1]+1)
+elif r == 2:
+target = (s[0]-1,s[1])
+elif r == 3:
+target = (s[0]+1,s[1])
+#these statements give options of where the spore can grow next: up, down, left, right.
+if ((target not in grown) and
+(target not in growthsites)) and (len(grown) < base):
+growthsites.append(target)
+#this is the period in which the mycelia is filling the base of the mold, spreading outward but not upward.
+if ((len(grown) >= base) and (target in grown)) and (target not in growthsites):
+growthsites.append(target)
+#this is the period of "double growth"--when new hyphae can only grow on, and are growing on top of, already-established hyphae--hence why target must be in "grown." From what we've observed in the lab, mycelia will fill the base of the mold before it begins growing upward.
+#still, competition between hyphae still prevails--hence why target cannot be in growthsites.
+#in addition, mycelia grow more quickly outward than they do upward--hence why upward growth is subject to randomization, and isn't a sure thing (continuous upward growth doesn't really occur--this is likely a result of substrate channeling against the force of gravity).
+grown.extend(growthsites)
+#this represents a "growth period" in which growthsites are converted into mycelia.
+#these sites are fully integrated members of the grown list--hence the use of the extend function.
+growthsites = []
+#print growth stats data
+fin = (len(grown))*init
+finvol = fin*x
+moldvol = math.ceil(base*height)
+#this is the volume of the mold, rounded up to the nearest integer. This will make it possible to find the convergence of this with len(grown)
+#the grown list contains a list of points. Each point corresponds to a square occupied by mycelia in the list. Thus, counting the points, subtracting one (for the initial sample) and multiplying that number by the size of the original sample will give you the final sample size.
+print(" ")
+#this puts in a line break between the inputs and the output
+if finvol < moldvol and len(grown) < base:
+print("After growing your initial sample of", init*x, "cubic meters for a period of", growperiod, "days, you will have grown", finvol, "cubic meters of mycelium.")
+print("Your mycelium will not have filled your mold in the allotted time.")
+print("However, your mycelium has grown from an area of", init, "square meters to an area of", fin, "square meters.")
+#the mycelium will only grow upward once it's filled the base area. Thus, if base area isn't filled, you're ok using fin, which would otherwise include 3d growth.
+if finvol < moldvol and len(grown) >= base:
+print("After growing your initial sample of", init*x, "cubic meters for a period of", growperiod, "days, you will have grown", finvol, "cubic meters of mycelium.")
+print("Your mycelium will not have filled your mold in the allotted time.")
+print("However, your mycelium has grown from an area of", init, "square meters to an area of", base, "square meters, completely covering the base of your mold.")
+if finvol >= moldvol:
+print("After growing your initial sample of", init*x, "cubic meters for a period of", growperiod, "days, you will have grown", moldvol, "cubic meters of mycelium.")
+#this statement serves to constrain the growth of the mycelium to the mold--you won't ever have more cubic meters of mycelium than your mold can contain.
+print("Your mycelium has completely filled your mold and will not grow further unless removed from the mold.")
+daystofill = str(mcs)
+usefultime = "It took you " + daystofill + " days to fill the mold."
+#this will tell you how much of your growth time was actually utilized by your mycelium--how long it took you to fill the mold.
+print(usefultime)
+#CITE: This review paper on Eden growth models was an influence on this model. The link can be found here: http://www.jfgouyet.fr/fractal/fractauk/chapter4.pdf.
+#This code was written by Arvind Veluvali. For questions, contact arvindveluvali@gmail.com.
+If the reader wishes to test out the model in its capacity as a software tool, a link to an online IDLE environment is provided here complete with the code base. To run the model, simply click on the green box in the upper left-hand corner marked "run", and follow the prompts given in the output box.

@@ -1,0 +1,92 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:ESBS-Strasbourg/Results/Modeling
+From 2010.igem.org
+{|
+ESBS - Strasbourg
+  HOME
+  TEAM
+Overview
+Students
+Advisors
+Strasbourg
+  PROJECT
+Overview
+Strategy
+Application
+Acknowledgment
+Reference
+  RESULTS
+Biobricks
+Characterization
+Modeling
+Lighting device
+  NOTEBOOK
+Synthetic Photoreceptors
+Microfluidics
+Lab-book
+  SPONSORS
+System’s modeling
+1. Introduction
+2. Behavioral model
+3. Signal flow model
+4. Conclusion
+System’s modeling
+1. Introduction
+To automate the process of creation of new synthetic bio-systems an interesting point is to develop a specific design flow like in microelectronics. One of the main assets in microelectronic design ﬂow for digital systems is the ability to describe a system at different abstraction level.
+For our system we focus the modeling at two different level of abstraction. The first one introduced is a high-level model and then the second one is a low-level model. For each model we show the simulation results and as conclusion we discuss the potential of the purposed models.
+2. Behavioral model
+As in digital electronics, multiple abstraction levels can be deﬁned. The highest consists in the function of the system. This model, also called logical model, because it is based on logical equations, is a high level model. It is interesting to use high-level models, with fast simulations, to validate the concept of a bio-system.
+The specifications of our system are the followings:
+• At a 730 nm light, the system is in an inactive state and doesn’t degrade the TAG-protein
+• At a 660 nm light, the system is active and degrade the TAG-protein
+Based on these specifications, we deduce a group of logical equations. To make the model we use VHDL language, which is a hardware description language (HDL). The following VHDL code corresponds to our model:
+We simulate this VHDL code with Dolphin SMASH 5.12 and we obtain followings results:
+We see that when the light has a 730 nm wavelength the TAG-protein is not degraded. When the light passed to 660 nm, the TAG-protein is degraded after a 10 second delay, which corresponds to the time of phytochrome activation and is arbitrarily fixed in the model. This delay was introduced after the low-level simulation to make this model fit the low-level ones.
+This model uses mathematical tools to calculate the levels of species involved. This has some advantages: fast simulations, use of Boolean algebra and tools existing in electronics, such as logic synthesis or formal checking tools.
+Otherwise, it presents drawbacks. First, concentrations of proteins are not taken into account, which causes accuracy problems. Then, it is too basic compared to the complexity of a bio-system, but it quickly allows us to get an idea of the outcome of such a system without launching slow and complex simulations.
+3. Signal flow model
+a. Principle of this model
+The signal ﬂow model is a low-level model. This kind of model is used to predict its behavior with accuracy and is based on equations to compute different concentrations. All biological mechanisms are based on chemical equations linking the concentration of chemical species involved. These chemical equations can be transformed into ordinary differential equations (ODEs), which are integrated to the model.
+First we will see a presentation of the system and the different interactions between states. Then we will explain the biological equations used to make the model and for each systems part we will show simulation results.
+b. Systems presentation
+Our system is composed by a block named Phyto (including ClpP, ClpX and the phytochrome) and another block, the DAS_GPF_ PIF chain where GFP is the TAG protein which is used to illustrate the mechanism. This system can be boiled down to the following four states scheme:
+The first state is the state where Phyto and DAS_GFP_PIF are free. Then the phytochrome can form a complex with DAS, Phyto_DAS, with k1,0 the coefficient of this complexation, or with PIF, Phyto_PIF, with k0,1 the coefficient of this complexation. The last state is the Phyto_DAS_PIF complex which is reached from Phyto_DAS state by the complexation coefficient k0,1*c1,1 or from Phyto_PIF by k1,0*c1,1, where c1,1 is the the coupling factor between the two sites of complexation.
+The TAG protein can only be degraded in Phyto_DAS or Phyto_DAS_PIF conformation, because DAS must be linked to launch the protein degradation process. This is why there are single arrows between states Phyto and Phyto_DAS and between Phyto_PIF and Phyto_DAS_PIF.
+c. Biological mechanisms
+• Light-sensitive coefficient
+k1,0 is very small so the formation of Phyto_DAS is scarce. k0,1 is a coefficient which depends on the lights wavelength and this variance corresponds to the different physical structure of the PIF receptor (active or passive). At a 660 nm red light, PIF receptor is active and this coefficient is high but at a 730 nm infra-red light, PIF receptor is inactive and k0,1 becomes very small. So to model this coefficient we use a Gaussian function centered on 660:
+where μ = 660, σ = 5 and "light" the wavelength of the light. k730 is the constant of complexation at 730 nm and is very small.
+• Complexation reactions
+To find the ODEs for the different reactions of complexation brought into play, we start with a simple complexation between two species A and B:
+where kon is the coefficient of the complex’s formation and koff the coefficient of the complex’s dissociation. The ODE of this reaction which gives the concentration of the complex AB is the following:
+kdegr is just the constant of natural degradation of the complex. Using the same principle, we deduced the following equations for our system:
+We insert these equations into our model and we obtained these simulation results:
+• Computed concentrations of present species
+To start, we will see the protein synthesis mechanism. We consider the synthesis of a P protein regulated by a set of protein Xp. We obtain a set of two equations. The transcription of DNA into mRNA is based on Hill’s equation:
+where ktr is the kinetic constant of transcription, Kp the Hill’s constant representing strength of the activator or repressor, np the Hill’s coefﬁcient (positive for an activator and negative for a repressor) and dmRNA the degradation’s coefﬁcient of mRNA.
+By the same way, the synthesis of P protein from mRNA is deﬁned by:
+where ktl is the kinetic constant of translation and dP the degradation coefﬁcient of protein P.
+For each species, Phyto, PIF and DAS, we use this mechanism to compute the species concentration produced, respectively Phyto_prod, PIF_prod and DAS_prod. We must now compute the effective concentration of these species with these equations:
+Where PIF_l and DAS_l are the concentrations of PIF and DAS linked in the DAS_GFP_PIF chain already complexed at the other boundary (respectively DAS and PIF). We obtain the same equation for the different species. This is because we compute separately DAS, PIF and phytochrome’s concentrations for the complexation mechanism but we have well the same DAS_GFP_PIF free chain concentration as the free phytochrome concentration. So for the simulation results we just show the phytochrome and the DAS_GFP_PIF concentration because DAS and PIF concentrations are the same:
+• TAG protein degradation
+The last but the most important concentration to show is TAG protein, the GFP concentration. First we compute the concentration of GFP produced, GFP_prod by the same mechanism introduced in the previous part. Next the concentration of phytochrome fixed GFP (ready to be degraded), GFP_l, is given by:
+Finally we obtain the effective concentration of GFP by the following equation, including the degradation (with dGFP degradation coefficient) of the fixed GFP:
+The simulation of these equations gives the following result:
+4. Conclusion
+Retrieved from " http://2010.igem.org/Team:ESBS-Strasbourg/Results/Modeling "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

@@ -1,0 +1,411 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Evry_main-img_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Evry/main-img.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Evry/main-img.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/main-img.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/main-img.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Evry/main-img.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Evry/main-img.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>(function($){
+</P><PRE> var Renderer = function(elt){
+   var dom = $(elt)
+   var canvas = dom.get(0)
+   var ctx = canvas.getContext(&quot;2d&quot;);
+   var gfx = arbor.Graphics(canvas)
+   var sys = null
+</PRE><PRE>   var _vignette = null
+   var selected = null,
+       nearest = null,
+       _mouseP = null;
+</PRE><PRE>   var that = {
+     init:function(pSystem){
+       sys = pSystem
+       sys.screen({size:{width:dom.width(), height:dom.height()},padding:[36,60,36,60]})
+</PRE><PRE>       $(window).resize(that.resize)
+       that.resize()
+       that._initMouseHandling()
+</PRE><PRE>       if (document.referrer.match(/GoldenBricksxxxxxxxx|Plasmids|AIDSystem/)){
+         // if we got here by hitting the back button in one of the Benchwork, 
+         // start with the Benchwork section pre-selected
+         that.switchSection('Benchwork')
+       }
+     },
+     resize:function(){
+       // canvas.width = .5* $(window).width()
+       // canvas.height = .5* $(window).height()
+       sys.screen({size:{width:canvas.width, height:canvas.height}})
+       _vignette = null
+       that.redraw()
+     },
+     redraw:function(){
+       gfx.clear()
+       sys.eachEdge(function(edge, p1, p2){
+         if (edge.source.data.alpha * edge.target.data.alpha == 0) return
+         gfx.line(p1, p2, {stroke:&quot;#b2b19d&quot;, width:3, alpha:edge.target.data.alpha})
+       })
+       sys.eachNode(function(node, pt){
+         var w = Math.max(20, 20+gfx.textWidth(node.name) )
+         if (node.data.alpha===0) return
+</PRE><PRE>         if (node.data.shape=='img'){
+</PRE><P>	    var img_elem = new Image();
+	    img_elem.src = node.data.url;
+	    ctx.drawImage(img_elem, pt.x-w/2, pt.y-w/2, w, w); // Redimensionnement de l'image prévue comme tu le souhaitais !
+</P><PRE>           gfx.oval(pt.x-w/2, pt.y-w/2, w, w, {fill:node.data.color, alpha:0})
+         }
+</PRE><PRE>         else if (node.data.shape=='dot'){
+           gfx.oval(pt.x-w/2, pt.y-w/2, w, w, {fill:node.data.color, alpha:node.data.alpha})
+           gfx.text(node.name, pt.x, pt.y+7, {color:&quot;white&quot;, align:&quot;center&quot;, font:&quot;Arial&quot;, weight:&quot;bold&quot;, size:12})      
+         }
+</PRE><PRE>         else{
+           gfx.rect(pt.x-w/2, pt.y-8, w, 20, 4, {fill:node.data.color, alpha:node.data.alpha})
+           gfx.text(node.name, pt.x, pt.y+9, {color:&quot;white&quot;, align:&quot;center&quot;, font:&quot;Arial&quot;, size:12})
+           gfx.text(node.name, pt.x, pt.y+9, {color:&quot;white&quot;, align:&quot;center&quot;, font:&quot;Arial&quot;, size:12})
+         }
+       })
+       that._drawVignette()
+     },
+     
+     _drawVignette:function(){
+       var w = canvas.width
+       var h = canvas.height
+       var r = 20
+</PRE><PRE>       if (!_vignette){
+        var top = ctx.createLinearGradient(0,0,0,r)
+         top.addColorStop(0, &quot;#e0e0e0&quot;)
+         top.addColorStop(.7, &quot;rgba(255,255,255,0)&quot;)
+</PRE><PRE>         var bot = ctx.createLinearGradient(0,h-r,0,h)
+         bot.addColorStop(0, &quot;rgba(255,255,255,0)&quot;)
+         bot.addColorStop(1, &quot;white&quot;)
+</PRE><PRE>         _vignette = {bot:bot}
+       }
+       
+       // top
+       ctx.fillStyle = _vignette.top
+       ctx.fillRect(0,0, w,r)
+</PRE><PRE>       // bot
+       ctx.fillStyle = _vignette.bot
+       ctx.fillRect(0,h-r, w,r)
+     },
+</PRE><PRE>     switchMode:function(e){
+       if (e.mode=='hidden'){
+         dom.stop(true).fadeTo(e.dt,0, function(){
+           if (sys) sys.stop()
+           $(this).hide()
+         })
+       }else if (e.mode=='visible'){
+         dom.stop(true).css('opacity',0).show().fadeTo(e.dt,1,function(){
+           that.resize()
+         })
+         if (sys) sys.start()
+       }
+     },
+     
+     switchSection:function(newSection){
+       var parent = sys.getEdgesFrom(newSection)[0].source
+       var children = $.map(sys.getEdgesFrom(newSection), function(edge){
+         return edge.target
+       })
+       
+       sys.eachNode(function(node){
+         if (node.data.shape=='dot') return // skip all but leafnodes
+         if (node.data.shape=='img') return // skip all but leafnodes
+         var nowVisible = ($.inArray(node, children)&gt;=0)
+         var newAlpha = (nowVisible) ? 1 : 0
+         var dt = (nowVisible) ? .5 : .5
+         sys.tweenNode(node, dt, {alpha:newAlpha})
+</PRE><PRE>         if (newAlpha==1){
+           node.p.x = parent.p.x + .05*Math.random() - .025
+           node.p.y = parent.p.y + .05*Math.random() - .025
+           node.tempMass = .001
+         }
+       })
+     },
+     
+     
+     _initMouseHandling:function(){
+       // no-nonsense drag and drop (thanks springy.js)
+       selected = null;
+       nearest = null;
+       var dragged = null;
+       var oldmass = 1
+</PRE><PRE>       var _section = null
+</PRE><PRE>       var handler = {
+         moved:function(e){
+           var pos = $(canvas).offset();
+           _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+           nearest = sys.nearest(_mouseP);
+</PRE><PRE>           if (!nearest.node) return false
+</PRE><P>//            if (nearest.node.data.shape!='dot'){
+</P><PRE>             selected = (nearest.distance &lt; 50) ? nearest : null
+             if (selected){
+                dom.addClass('linkable')
+                window.status = selected.node.data.link//.replace(/^\//,&quot;http://&quot;+window.location.host+&quot;/&quot;)//.replace(/^#/,<I>)</I>
+             }
+             else{
+                dom.removeClass('linkable')
+                window.status = 
+             }
+</PRE><P>//            }else 
+</P><PRE>           if ($.inArray(nearest.node.name, ['The French Froggies Project!','Xenopus as a chassis','Hormonal Communicati','Modelingxxxxxxxxxxxx','GoldenBricksxxxxxxxx', 'Human Practicexxxxxx', 'The Teamxxxxxxxxxxxx']) &gt;=0 ){
+             if (nearest.node.name!=_section){
+               _section = nearest.node.name
+               that.switchSection(_section)
+             }
+             dom.removeClass('linkable')
+             window.status = 
+           }
+           
+           return false
+         },
+         clicked:function(e){
+           var pos = $(canvas).offset();
+           _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+           nearest = dragged = sys.nearest(_mouseP);
+           
+           if (nearest &amp;&amp; selected &amp;&amp; nearest.node===selected.node){
+             var link = selected.node.data.link
+             if (link.match(/^#/)){
+                $(that).trigger({type:&quot;navigate&quot;, path:link.substr(1)})
+             }else{
+                window.location = link
+             }
+             return false
+           }
+           
+           
+           if (dragged &amp;&amp; dragged.node !== null) dragged.node.fixed = true
+</PRE><PRE>           $(canvas).unbind('mousemove', handler.moved);
+           $(canvas).bind('mousemove', handler.dragged)
+           $(window).bind('mouseup', handler.dropped)
+</PRE><PRE>           return false
+         },
+         dragged:function(e){
+           var old_nearest = nearest &amp;&amp; nearest.node._id
+           var pos = $(canvas).offset();
+           var s = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+</PRE><PRE>           if (!nearest) return
+           if (dragged !== null &amp;&amp; dragged.node !== null){
+             var p = sys.fromScreen(s)
+             dragged.node.p = p
+           }
+</PRE><PRE>           return false
+         },
+</PRE><PRE>         dropped:function(e){
+           if (dragged===null || dragged.node===undefined) return
+           if (dragged.node !== null) dragged.node.fixed = false
+           dragged.node.tempMass = 1000
+           dragged = null;
+           // selected = null
+           $(canvas).unbind('mousemove', handler.dragged)
+           $(window).unbind('mouseup', handler.dropped)
+           $(canvas).bind('mousemove', handler.moved);
+           _mouseP = null
+           return false
+         }
+</PRE><PRE>       }
+</PRE><PRE>       $(canvas).mousedown(handler.clicked);
+       $(canvas).mousemove(handler.moved);
+</PRE><PRE>     }
+   }
+   
+   return that
+ }
+ 
+ 
+ var Nav = function(elt){
+   var dom = $(elt)
+</PRE><PRE>   var _path = null
+   
+   var that = {
+     init:function(){
+       $(window).bind('popstate',that.navigate)
+       dom.find('&gt; a').click(that.back)
+       $('.more').one('click',that.more)
+       
+       $('#Model dl:not(.datastructure) dt').click(that.reveal)
+       that.update()
+       return that
+     },
+     more:function(e){
+       $(this).removeAttr('href').addClass('less').html(' ').siblings().fadeIn()
+       $(this).next('h2').find('a').one('click', that.less)
+       
+       return false
+     },
+     less:function(e){
+       var more = $(this).closest('h2').prev('a')
+       $(this).closest('h2').prev('a')
+       .nextAll().fadeOut(function(){
+         $(more).text('creation &amp; use').removeClass('less').attr('href','#')
+       })
+       $(this).closest('h2').prev('a').one('click',that.more)
+       
+       return false
+     },
+     reveal:function(e){
+       $(this).next('dd').fadeToggle('fast')
+       return false
+     },
+     back:function(){
+       _path = &quot;/&quot;
+       if (window.history &amp;&amp; window.history.pushState){
+         window.history.pushState({path:_path}, &quot;&quot;, _path);
+       }
+       that.update()
+       return false
+     },
+     navigate:function(e){
+       var oldpath = _path
+       if (e.type=='navigate'){
+         _path = e.path
+         if (window.history &amp;&amp; window.history.pushState){
+            window.history.pushState({path:_path}, &quot;&quot;, _path);
+         }else{
+           that.update()
+         }
+       }else if (e.type=='popstate'){
+         var state = e.originalEvent.state || {}
+         _path = state.path || window.location.pathname.replace(/^\//,<I>)</I>
+       }
+       if (_path != oldpath) that.update()
+     },
+     update:function(){
+       var dt = 'slow'
+       if (_path===null){
+         // this is the original page load. don't animate anything just jump
+         // to the proper state
+         _path = window.location.pathname.replace(/^\//,<I>)</I>
+         dt = 0
+         dom.find('p').css('opacity',0).show().fadeTo('slow',1)
+       }
+</PRE><PRE>       switch (_path){
+         case <I>:</I>
+         case '/':
+</PRE><P>//          dom.find('p').text('a graph visualization library using web workers and jQuery')
+</P><PRE>         dom.find('&gt; a').removeClass('active').attr('href','#')
+</PRE><PRE>         $('#Model').fadeTo('fast',0, function(){
+           $(this).hide()
+           $(that).trigger({type:'mode', mode:'visible', dt:dt})
+         })
+         document.title = &quot;The French Froggies Project!&quot;
+         break
+         
+       }
+       
+     }
+   }
+   return that
+ }
+ 
+ $(document).ready(function(){
+   var CLR = {
+     branch:&quot;#b2b19d&quot;,
+     level3benchwork:&quot;#FFBF3E&quot;,
+     level3model:&quot;#4B86C7&quot;
+   }
+</PRE><P>	/*Thibault BEGIN*/
+</P><PRE>   var theUI = {
+</PRE><PRE>      // ['The French Froggies Project!','Xenopus as a chassis','Hormonal Communicati','Modelingxxxxxxxxxxxx','GoldenBricksxxxxxxxx', 'Human Practicexxxxxx', 'The Teamxxxxxxxxxxxx']
+</PRE><PRE>     nodes:{&quot;The French Froggies Project!&quot;:{color:&quot;#51C215&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/Project'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Project'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/c/cf/French.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/c/cf/French.png'}</A>, //Attribut url pour l'image ajouté /*Thibault*/
+</PRE><PRE>            &quot;Xenopus as a chassis&quot;:{color:&quot;#63a358&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/FrenchFrog'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/FrenchFrog'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/b/bd/Xenope.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/b/bd/Xenope.png'}</A>,  //Attribut url pour l'image ajouté /*Thibault*/
+                &quot;Xenopus plasmids&quot;:{color:&quot;#63a358&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/FrenchFrog#plasmid'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/FrenchFrog#plasmid'}</A>,
+                &quot;Injection in Xenopus&quot;:{color:&quot;#63a358&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/InjectionTuto'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/InjectionTuto'}</A>,
+                &quot;Development stages&quot;:{color:&quot;#63a358&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Stages'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Stages'}</A>,
+                &quot;Characterization&quot;:{color:&quot;#63a358&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Tadpole_injection1'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Tadpole_injection1'}</A>,
+                &quot;Collaboration with Slovenia&quot;:{color:&quot;#63a358&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/TeamSlovenia_collaboration'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/TeamSlovenia_collaboration'}</A>,
+</PRE><PRE>            &quot;Hormonal Communicati&quot;:{color:&quot;#852c2b&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/AIDSystem'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/AIDSystem'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/e/e2/Hormone.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/e/e2/Hormone.png'}</A>,  //Attribut url pour l'image ajouté /*Thibault*/
+                &quot;Auxin emitter&quot;:{color:&quot;#852c2b&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/AIDSystem#auxin'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/AIDSystem#auxin'}</A>,
+                &quot;Auxin receiver&quot;:{color:&quot;#852c2b&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/AIDSystem#AID'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/AIDSystem#AID'}</A>,
+                &quot;Auxin toxicity&quot;:{color:&quot;#852c2b&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/AuxinTOX'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/AuxinTOX'}</A>,
+                &quot;Auxin uptake&quot;:{color:&quot;#852c2b&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/auxin_uptake'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/auxin_uptake'}</A>,
+                &quot;Degron system caracterization&quot;:{color:&quot;#852c2b&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/TirISystemCaracterization'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/TirISystemCaracterization'}</A>,
+</PRE><PRE>            &quot;Modelingxxxxxxxxxxxx&quot;:{color:&quot;#1A5291&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/Modeling'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Modeling'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/5/5b/ModelingDHIUHEIUHD.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/5/5b/ModelingDHIUHEIUHD.png'}</A>,  //Attribut url pour l'image ajouté /*Thibault*/
+                &quot;General Model&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/ODE_model'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/ODE_model'}</A>,
+                &quot;ODEs derivations&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/auxin_pde'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/auxin_pde'}</A>,
+                &quot;Diffusion&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Auxin_diffusion'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Auxin_diffusion'}</A>,
+                &quot;Auxin production&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/auxin_production'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/auxin_production'}</A>,
+                &quot;Auxin reception&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/auxin_detection'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/auxin_detection'}</A>,
+                &quot;Plasmid diffusion&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/plasmid_splitting'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/plasmid_splitting'}</A>,
+                &quot;Model integration&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/model_integration'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/model_integration'}</A>,
+                &quot;Parameters measurements&quot;:{color:CLR.level3model, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Experimentals_Parameters'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Experimentals_Parameters'}</A>,
+</PRE><PRE>            &quot;GoldenBricksxxxxxxxx&quot;:{color:&quot;#1A5291&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/GB'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/GB'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/a/a4/GoldeN.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/a/a4/GoldeN.png'}</A>,  //Attribut url pour l'image ajouté /*Thibault*/
+</PRE><PRE>            &quot;Human Practicexxxxxx&quot;:{color:&quot;#a6953f&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/b/ba/HumanPractice.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/b/ba/HumanPractice.png'}</A>,  //Attribut url pour l'image ajouté /*Thibault*/
+                &quot;Hi Xenope!&quot;:{color:&quot;#a6953f&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice/Introduction'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice/Introduction'}</A>,
+                &quot;Be a chassis?&quot;:{color:&quot;#a6953f&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice/modelorganism'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice/modelorganism'}</A>,
+                &quot;Free the frogs!&quot;:{color:&quot;#a6953f&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice/freedthefrogs'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice/freedthefrogs'}</A>,
+                &quot;A chassis, really?&quot;:{color:&quot;#a6953f&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice/chassis'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice/chassis'}</A>,
+                &quot;Work with Xenopus again?&quot;:{color:&quot;#a6953f&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice/future'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice/future'}</A>,
+                &quot;What the laws says...&quot;:{color:&quot;#a6953f&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/HumanPractice/others'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/HumanPractice/others'}</A>,
+</PRE><PRE>            &quot;The Teamxxxxxxxxxxxx&quot;:{color:&quot;#632e8c&quot;, shape:&quot;img&quot;, alpha:1, link:'<A href="https://2012.igem.org/Team:Evry/Team'" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Team'</A>, url:'<A href="https://static.igem.org/mediawiki/2012/9/93/TeamEVRY.png'}" class="external free" rel="nofollow">https://static.igem.org/mediawiki/2012/9/93/TeamEVRY.png'}</A>,  //Attribut url pour l'image ajouté /*Thibault*/
+                &quot;Our Team&quot;:{color:&quot;#632e8c&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Team'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Team'}</A>,
+                &quot;Our Sponsors&quot;:{color:&quot;#632e8c&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Sponsors'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Sponsors'}</A>,
+                &quot;Attributions&quot;:{color:&quot;#632e8c&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Attributions'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Attributions'}</A>,
+                &quot;Official profile&quot;:{color:&quot;#632e8c&quot;, alpha:0, link:'<A href="https://igem.org/Team.cgi?year=2012'}" class="external free" rel="nofollow">https://igem.org/Team.cgi?year=2012'}</A>,
+                &quot;Collaborations&quot;:{color:&quot;#632e8c&quot;, alpha:0, link:'<A href="https://2012.igem.org/Team:Evry/Collaborations'}" class="external free" rel="nofollow">https://2012.igem.org/Team:Evry/Collaborations'}</A>
+           },
+</PRE><PRE>     edges:{
+</PRE><PRE>       &quot;The French Froggies Project!&quot;:{
+           &quot;Xenopus as a chassis&quot;:{&quot;length&quot;:0.8,&quot;weight&quot;:2},
+           &quot;Hormonal Communicati&quot;:{&quot;length&quot;:0.8,&quot;weight&quot;:2},
+           &quot;Modelingxxxxxxxxxxxx&quot;:{&quot;length&quot;:0.8,&quot;weight&quot;:2},
+           &quot;GoldenBricksxxxxxxxx&quot;:{&quot;length&quot;:1.5,&quot;weight&quot;:2},
+           &quot;Human Practicexxxxxx&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:2},
+           &quot;The Teamxxxxxxxxxxxx&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2}
+       },
+</PRE><PRE>       &quot;Xenopus as a chassis&quot;:{
+           &quot;Xenopus plasmids&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:1},
+           &quot;Injection in Xenopus&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:2},
+           &quot;Development stages&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:2},
+           &quot;Characterization&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:2},
+           &quot;Collaboration with Slovenia&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:2}
+       },
+       &quot;Hormonal Communicati&quot;:{
+           &quot;Auxin emitter&quot;:{&quot;length&quot;:1,&quot;weight&quot;:2},
+           &quot;Auxin receiver&quot;:{&quot;length&quot;:1,&quot;weight&quot;:2},
+           &quot;Auxin toxicity&quot;:{&quot;length&quot;:1,&quot;weight&quot;:2},
+           &quot;Auxin uptake&quot;:{&quot;length&quot;:1,&quot;weight&quot;:2},
+           &quot;Degron system caracterization&quot;:{&quot;length&quot;:1,&quot;weight&quot;:2}
+           
+       },
+</PRE><PRE>       &quot;Modelingxxxxxxxxxxxx&quot;:{
+           &quot;General Model&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;ODEs derivations&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Diffusion&quot;:{&quot;length&quot;:0.75,&quot;weight&quot;:2},
+           &quot;Auxin production&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Auxin reception&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Plasmid diffusion&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Model integration&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Parameters measurements&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2}
+       },
+</PRE><PRE>       &quot;GoldenBricksxxxxxxxx&quot;:{},
+</PRE><PRE>       &quot;Human Practicexxxxxx&quot;:{
+           &quot;Hi Xenope!&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Be a chassis?&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Free the frogs!&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;A chassis, really?&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Work with Xenopus again?&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;What the laws says...&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2}
+       },
+</PRE><PRE>       &quot;The Teamxxxxxxxxxxxx&quot;:{
+           &quot;Our Team&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Our Sponsors&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Attributions&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Official profile&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2},
+           &quot;Collaborations&quot;:{&quot;length&quot;:0.5,&quot;weight&quot;:2}
+       }
+     }
+   }
+</PRE><P>	/*Thibault END*/
+</P><PRE>   var sys = arbor.ParticleSystem()
+   sys.parameters({stiffness:900, repulsion:50, gravity:true, dt:0.015})
+   sys.renderer = Renderer(&quot;#sitemap&quot;)
+   sys.graft(theUI)
+   
+   var nav = Nav(&quot;#nav&quot;)
+   $(sys.renderer).bind('navigate', nav.navigate)
+   $(nav).bind('mode', sys.renderer.switchMode)
+   nav.init()
+ })
+</PRE><P>})(this.jQuery)
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Evry/main-img.js">http://2012.igem.org/Team:Evry/main-img.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Evry/main-img.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Evry/main-img.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Evry/main-img.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Evry/main-img.js&amp;oldid=296380" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

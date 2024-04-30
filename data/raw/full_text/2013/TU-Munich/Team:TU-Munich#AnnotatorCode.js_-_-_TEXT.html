@@ -1,0 +1,641 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:TU-Munich/AnnotatorCode.js
+From 2013.igem.org
+/**
+*  DATA VALUES */
+var amino_acids = {A:0,R:0,N:0,D:0,C:0,Q:0,E:0,G:0,I:0,H:0,K:0,L:0,M:0,F:0,P:0,S:0,T:0,W:0,Y:0,V:0};
+// amino acid weights - http://web.expasy.org/findmod/findmod_masses.html#AA var amino_weights = {      "A":  71.0788,      "C": 103.1388,      "D": 115.0886,      "E": 129.1155,      "F": 147.1766,      "G":  57.0519,      "H": 137.1411,      "I": 113.1594,      "K": 128.1741,      "L": 113.1594,      "M": 131.1926,      "N": 114.1038,      "P":  97.1167,      "Q": 128.1307,      "R": 156.1875,      "S":  87.0782,      "T": 101.1051,      "V":  99.1326,      "W": 186.2132,      "Y": 163.1760      }; var water_weight = 18.01528; //average molecular weight of one molecule of water
+// Extinction coefficients for Y(Tyr) and W(Trp), as well as Cystine (formed by disulfide bond of two Cysteine) var extinction = { Y:1490 , W:5500 , Cystine:125 };
+//Kyte & Doolittle index of hydrophobicity // see http://www.sciencedirect.com/science/article/pii/0022283682905150 var k_d_hydrophobicity = {    'A': 1.8, 'R':-4.5, 'N':-3.5, 'D':-3.5, 'C': 2.5,
+'Q':-3.5, 'E':-3.5, 'G':-0.4, 'H':-3.2, 'I': 4.5,      'L': 3.8, 'K':-3.9, 'M': 1.9, 'F': 2.8, 'P':-1.6,      'S':-0.8, 'T':-0.7, 'W':-0.9, 'Y':-1.3, 'V': 4.2 };
+//For the computation of the charge plot // following http://emboss.sourceforge.net/apps/release/6.5/emboss/apps/charge.html var emboss_charge = {     'A': 0, 'R':+1, 'N': 0, 'D': -1, 'C': 0,        'Q': 0, 'E':-1, 'G': 0, 'H':0.5, 'I': 0,        'L': 0, 'K':+1, 'M': 0, 'F':  0, 'P': 0,        'S': 0, 'T': 0, 'W': 0, 'Y':  0, 'V': 0 };
+// Data for the calculation of the Isoelectric Point /* pK values are from:
+* Bjellqvist, B.,Hughes, G.J., Pasquali, Ch., Paquet, N., Ravier, F., Sanchez,
+J.-Ch., Frutiger, S. & Hochstrasser, D.F.   The focusing positions of polypeptides in immobilized pH gradients can be predicted   from their amino acid sequences. Electrophoresis 1993, 14, 1023-1031.  * Bjellqvist, B., Basse, B., Olsen, E. and Celis, J.E.   Reference points for comparisons of two-dimensional maps of proteins from   different human cell types defined in a pH scale where isoelectric points correlate   with polypeptide compositions. Electrophoresis 1994, 15, 529-539.
+/
+var positive_pKs = {'Nterm': 7.5 , 'K': 10.0, 'R': 12.0, 'H': 5.98           }; var negative_pKs = {'Cterm': 3.55, 'D': 4.05, 'E': 4.45, 'C': 9.0 , 'Y': 10.0}; // For some amino acids at the n-terminus the pK value is changed: var pKnterminal = {'A': 7.59, 'M': 7.0, 'S': 6.93, 'P': 8.36, 'T': 6.82, 'V': 7.44, 'E': 7.7}; //if one of these is N-terminal, this replaces the usual 7.5 for Nterm
+var charged_aas = ['K', 'R', 'H', 'D', 'E', 'C', 'Y'];
+var translation_table = {       'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L', 'TCT': 'S',       'TCC': 'S', 'TCA': 'S', 'TCG': 'S', 'TAT': 'Y', 'TAC': 'Y',       'TGT': 'C', 'TGC': 'C', 'TGG': 'W', 'CTT': 'L', 'CTC': 'L',       'CTA': 'L', 'CTG': 'L', 'CCT': 'P', 'CCC': 'P', 'CCA': 'P',       'CCG': 'P', 'CAT': 'H', 'CAC': 'H', 'CAA': 'Q', 'CAG': 'Q',       'CGT': 'R', 'CGC': 'R', 'CGA': 'R', 'CGG': 'R', 'ATT': 'I',       'ATC': 'I', 'ATA': 'I', 'ATG': 'M', 'ACT': 'T', 'ACC': 'T',       'ACA': 'T', 'ACG': 'T', 'AAT': 'N', 'AAC': 'N', 'AAA': 'K',       'AAG': 'K', 'AGT': 'S', 'AGC': 'S', 'AGA': 'R', 'AGG': 'R',       'GTT': 'V', 'GTC': 'V', 'GTA': 'V', 'GTG': 'V', 'GCT': 'A',       'GCC': 'A', 'GCA': 'A', 'GCG': 'A', 'GAT': 'D', 'GAC': 'D',       'GAA': 'E', 'GAG': 'E', 'GGT': 'G', 'GGC': 'G', 'GGA': 'G',       'GGG': 'G',        'TAA': '*',  //STOP CODONS, shouldn't appear and already be removed       'TAG': '*',        'TGA': '*' };
+var reverse_translation_table = {   "A": ["GCT","GCC","GCA","GCG"],      "C": ["TGT","TGC"],      "D": ["GAT","GAC"],      "E": ["GAA","GAG"],      "F": ["TTT","TTC"],      "G": ["GGT","GGC","GGA","GGG"],      "H": ["CAT","CAC"],      "I": ["ATT","ATC","ATA"],      "K": ["AAA","AAG"],      "L": ["TTA","TTG","CTT","CTC","CTA","CTG"],      "M": ["ATG"],      "N": ["AAT","AAC"],      "P": ["CCT","CCC","CCA","CCG"],      "Q": ["CAA","CAG"],      "R": ["CGT","CGC","CGA","CGG","AGA","AGG"],      "S": ["TCT","TCC","TCA","TCG","AGT","AGC"],      "T": ["ACT","ACC","ACA","ACG"],      "V": ["GTT","GTC","GTA","GTG"],      "W": ["TGG"],      "Y": ["TAT","TAC"] };
+var stop_codons =  {'TAA':0,'TAG':0, 'TGA' :0};
+var non_synonymous_codons = { //these are excluded from the calculation of the CAI   'ATG':0, 'TGG':0 }; var non_synonymous_acids = { //these are ignored in the calculation of the tRNA usage   'M':0, 'W':0 };
+var atomic_composition_of_aa = { // [ C , H , N , O , S ]   // helpful: http://www.matrixscience.com/help/aa_help.html A: [3, 5,1,1,0],   R: [6,12,4,1,0],   N: [4, 6,2,2,0],   D: [4, 5,1,3,0],   C: [3, 5,1,1,1],   Q: [5, 8,2,2,0],   E: [5, 7,1,3,0],   G: [2, 3,1,1,0],   H: [6, 7,3,1,0],   I: [6,11,1,1,0],   L: [6,11,1,1,0],   K: [6,12,2,1,0],   M: [5, 9,1,1,1],   F: [9, 9,1,1,0],   P: [5, 7,1,1,0],   S: [3, 5,1,2,0],   T: [4, 7,1,2,0],   W: [11,10,2,1,0],   Y: [9, 9,1,2,0],   V: [5, 9,1,1,0]};
+// weights for the calculation of the CAI (codon adaptation index), see e.g. http://www.ihes.fr/~carbone/papers/Bioinformatics.pdf // method based on: Sharp,P.M. and Li,W-H. (1987) The codon adaptation index—a measure of directional synonymous codon usage bias, and its potential applications var E_coli_codon_weights = {    //from http://www.kazusa.or.jp/codon/cgi-bin/showcodon.cgi?species=37762&aa=1&style=N for E.coli & computing the weights for CAI calculation       'TTT': 1,   'TTC': 36/64,  'TTA': 18/38,  'TTG': 13/38,  'TCT': 18/20,       'TCC': 14/20,  'TCA': 18/20,  'TCG': 11/20,  'TAT': 1,   'TAC': 35/65,       'TGT': 1,   'TGC': 48/52,  'TGG': 1,   'CTT': 15/38,  'CTC': 10/38,       'CTA': 6/38,  'CTG': 1,   'CCT': 24/37,  'CCC': 16/37,  'CCA': 23/37,       'CCG': 1,   'CAT': 1,   'CAC': 37/63,  'CAA': 35/65,  'CAG': 1,       'CGT': 1,   'CGC': 26/30,  'CGA': 9/30,  'CGG': 15/30,  'ATT': 1,       'ATC': 31/47,  'ATA': 21/47,  'ATG': 1,   'ACT': 22/31,  'ACC': 1,       'ACA': 25/31,  'ACG': 22/31,  'AAT': 1,   'AAC': 41/59,  'AAA': 1,       'AAG': 29/71,  'AGT': 18/20,  'AGC': 1,   'AGA': 13/30,  'AGG': 7/30, 'GTT': 1,   'GTC': 19/32,  'GTA': 19/32,  'GTG': 29/32,  'GCT': 22/27,       'GCC': 26/27,  'GCA': 1,   'GCG': 25/27, 'GAT': 1,   'GAC': 35/65,       'GAA': 1,   'GAG': 36/64, 'GGT': 1,   'GGC': 29/34,  'GGA': 19/34,       'GGG': 18/34,        'TAA': 1,  //STOP CODONS, shouldn't appear and already be removed       'TAG': 9/58,        'TGA': 33/58 };
+var Mouse_codon_weights = {    //from http://www.kazusa.or.jp/codon/cgi-bin/showcodon.cgi?species=10090&aa=1&style=N for mus musculus & computing the weights for CAI calculation       'TTT': 44/56,  'TTC': 1,   'TTA': 7/39,  'TTG': 13/39,  'TCT': 20/24,       'TCC': 22/24,  'TCA': 14/24,  'TCG': 5/24,  'TAT': 43/57,  'TAC': 1,       'TGT': 48/52,  'TGC': 1,   'TGG': 1,   'CTT': 13/39,  'CTC': 20/39,       'CTA': 8/39,  'CTG': 1,   'CCT': 1,   'CCC': 30/31,  'CCA': 29/31,       'CCG': 10/31,  'CAT': 41/59,  'CAC': 1,   'CAA': 26/74,  'CAG': 1,       'CGT': 8/22,  'CGC': 17/22,  'CGA': 12/22,  'CGG': 19/22,  'ATT': 34/50,       'ATC': 1,   'ATA': 16/50,  'ATG': 1,   'ACT': 25/35,  'ACC': 1,       'ACA': 29/35,  'ACG': 10/35,  'AAT': 43/57,  'AAC': 1,   'AAA': 39/61,       'AAG': 1,   'AGT': 15/24,  'AGC': 1,   'AGA': 1,   'AGG': 1,       'GTT': 17/46,  'GTC': 25/46,  'GTA': 12/46,  'GTG': 1,   'GCT': 29/38,       'GCC': 1,   'GCA': 23/38,  'GCG': 9/38, 'GAT': 45/55,  'GAC': 1,       'GAA': 41/59,  'GAG': 1,  'GGT': 18/33,  'GGC': 1,   'GGA': 26/33,       'GGG': 23/33,        'TAA': 28/49,  //STOP CODONS, shouldn't appear and already be removed       'TAG': 23/49,        'TGA': 1 };
+var Yeast_codon_weights = {    //from http://www.kazusa.or.jp/codon/cgi-bin/showcodon.cgi?species=4932&aa=1&style=N for Saccharomyces cerevisiae & computing the weights for CAI calculation       'TTT': 1,   'TTC': 41/59,  'TTA': 28/29,  'TTG': 1,   'TCT': 1,       'TCC': 16/26,  'TCA': 21/26,  'TCG': 10/26,  'TAT': 1,   'TAC': 44/56,       'TGT': 1,   'TGC': 37/63,  'TGG': 1,   'CTT': 13/29,  'CTC': 6/29,       'CTA': 14/29,  'CTG': 11/29, 'CCT': 31/42,  'CCC': 15/42,  'CCA': 1,       'CCG': 12/42,  'CAT': 1,   'CAC': 36/64,  'CAA': 1,   'CAG': 31/69,       'CGT': 14/48,  'CGC': 6/48,  'CGA': 7/48,  'CGG': 4/48,  'ATT': 1,       'ATC': 26/46, 'ATA': 27/46,  'ATG': 1,   'ACT': 1,   'ACC': 22/35,       'ACA': 30/35,  'ACG': 14/35,  'AAT': 1,   'AAC': 41/59,  'AAA': 1,       'AAG': 42/58,  'AGT': 16/26,  'AGC': 11/26,  'AGA': 1,   'AGG': 21/48,       'GTT': 1,   'GTC': 21/39,  'GTA': 21/39,  'GTG': 19/39, 'GCT': 1,       'GCC': 22/38,  'GCA': 29/38,  'GCG': 11/38, 'GAT': 1,   'GAC': 35/65,       'GAA': 1,   'GAG': 30/70, 'GGT': 1,   'GGC': 19/47,  'GGA': 22/47,       'GGG': 12/47,        'TAA': 1,  //STOP CODONS, shouldn't appear and already be removed       'TAG': 23/47,        'TGA': 30/47 };
+var Arabidopsis_codon_weights = {    // from http://www.kazusa.or.jp/codon/cgi-bin/showcodon.cgi?species=3702&aa=1&style=N 'TTT': 1,   'TTC': 49/51,  'TTA': 14/26,  'TTG': 22/26,  'TCT': 1,       'TCC': 13/28,  'TCA': 20/28,  'TCG': 10/28,  'TAT': 1,   'TAC': 48/52,       'TGT': 1,   'TGC': 40/60,  'TGG': 1,   'CTT': 1,   'CTC': 17/26,       'CTA': 11/26,  'CTG': 11/26, 'CCT': 1,   'CCC': 11/38,  'CCA': 33/38,       'CCG': 18/38,  'CAT': 1,   'CAC': 39/61,  'CAA': 1,   'CAG': 44/56,       'CGT': 17/35,  'CGC': 7/35,  'CGA': 12/35,  'CGG':9/35,  'ATT': 1,       'ATC': 35/41, 'ATA': 24/41,  'ATG': 1,   'ACT': 1,   'ACC': 20/34,       'ACA': 31/34,  'ACG': 15/34,  'AAT': 1,   'AAC': 48/52,  'AAA': 49/51,       'AAG': 1,   'AGT': 16/28,  'AGC': 13/28,  'AGA': 1,   'AGG': 20/35,       'GTT': 1,   'GTC': 19/40,  'GTA': 15/40,  'GTG': 26/40, 'GCT': 1, 'GCC': 16/43,  'GCA': 27/43,  'GCG': 14/43, 'GAT': 1,   'GAC': 32/68,       'GAA': 1,   'GAG': 48/52, 'GGT': 34/37,  'GGC': 14/37,  'GGA': 1,       'GGG': 16/37,        'TAA': 36/44,  //STOP CODONS, shouldn't appear and already be removed       'TAG': 20/44,        'TGA': 1 };
+var Subtilis_codon_weights = {    // http://www.kazusa.or.jp/codon/cgi-bin/showcodon.cgi?species=1423&aa=1&style=N 'TTT': 1,   'TTC': 32/68,  'TTA': 21/24,  'TTG': 16/24,  'TCT': 20/23,       'TCC': 13/23,  'TCA': 1,   'TCG': 10/23,  'TAT': 1,   'TAC': 35/65,       'TGT': 46/54,  'TGC': 1,   'TGG': 1,   'CTT': 23/24,  'CTC': 11/24,       'CTA': 5/24,  'CTG': 1,   'CCT': 28/44,  'CCC': 9/44,  'CCA': 19/44,       'CCG': 1,   'CAT': 1,   'CAC': 32/68,  'CAA': 1,   'CAG': 48/52,       'CGT': 18/25,  'CGC': 20/25,  'CGA': 10/25,  'CGG': 17/25,  'ATT': 1,       'ATC': 37/49,  'ATA': 13/49,  'ATG': 1,   'ACT': 16/40,  'ACC': 17/40,       'ACA': 1,   'ACG': 27/40,  'AAT': 1,   'AAC': 44/56,  'AAA': 1,       'AAG': 30/70,  'AGT': 11/23,  'AGC': 1,   'AGA': 1,   'AGG': 10/25,       'GTT': 1,   'GTC': 26/28,  'GTA': 20/28,  'GTG': 26/28,  'GCT': 24/28,       'GCC': 22/28,  'GCA': 1,   'GCG': 26/28, 'GAT': 1,   'GAC': 36/64,       'GAA': 1,   'GAG': 32/68, 'GGT': 19/34,  'GGC': 1,   'GGA': 31/34,       'GGG': 16/34,        'TAA': 1,  //STOP CODONS, shouldn't appear and already be removed       'TAG': 15/61,        'TGA': 24/61 };
+var Physco_codon_weights = {   // http://www.kazusa.or.jp/codon/cgi-bin/showcodon.cgi?species=3218&aa=1&style=N 'TTT': 42/58,  'TTC': 1,   'TTA': 9/26,  'TTG': 1,   'TCT': 1,       'TCC': 16/20,  'TCA': 15/20,  'TCG': 17/20,  'TAT': 38/62,  'TAC': 1,       'TGT': 42/58,  'TGC': 1,   'TGG': 1,   'CTT': 18/26,  'CTC': 15/26,       'CTA': 8/26,  'CTG': 24/26, 'CCT': 1,   'CCC': 23/32,  'CCA': 25/32,       'CCG': 20/32,  'CAT': 49/51,  'CAC': 1,   'CAA': 43/57,  'CAG': 1,       'CGT': 14/19,  'CGC': 15/19,  'CGA': 17/19,  'CGG': 17/19,  'ATT': 41/43,       'ATC': 1,  'ATA': 16/43,  'ATG': 1,   'ACT': 1,   'ACC': 23/30,       'ACA': 24/30,  'ACG': 24/30,  'AAT': 47/53, 'AAC': 1,   'AAA': 35/65,       'AAG': 1,   'AGT': 14/20,  'AGC': 18/20,  'AGA': 17/19, 'AGG': 1,       'GTT': 25/43,  'GTC': 18/43,  'GTA': 13/43,  'GTG': 1,  'GCT': 1,       'GCC': 22/31,  'GCA': 25/31,  'GCG': 22/31, 'GAT': 1,   'GAC': 47/53,       'GAA': 39/61,  'GAG': 1,  'GGT': 25/30,  'GGC': 24/30,  'GGA': 1,       'GGG': 21/30,        'TAA': 27/37,  //STOP CODONS, shouldn't appear and already be removed       'TAG': 1,        'TGA': 36/37 };
+var list_of_features = {   "TG":"RFC25 scar (shown in bold)",   "RRRRR":"Arg5-tag",   "AWRHPQFGG":"Strep-tag I",   "WSHPQFEK":"Strep-tag II",   "DYKDHDGDYKDHDIDYKDDDDK":"3xFlag-tag",   "DYKDDDDK":"Flag-tag",   "YPYDVPDYA":"HA-tag",   "HHHHHH":"His6-tag",   "HHHHH":"His5-tag",   "EQKLISEEDL":"c-Myc-tag",   "KETAAAKFERQHMDS":"S-tag",   "KDHLIHNVHKEFHAHAHNK":"HAT-tag",   "KRRWKKNFIAVSAANRFKKISSSGAL":"Calmodulin-binding-peptide",   "TDKDMTITFTNKKDAE":"Isopep-tag",   "AHIVMVDAYKPTK":"Spy-tag",   "TNPGVSAWQVNTAYTAGQLVTYNGKTYKCLQPHTSLAGWEPSNVPALWQLQ":"Chitin-binding domain",   "MDEKTTGWRGGHVVEGLAGELEQLRARLEHHPQGQREP":"SBP-tag",   "GLNDIFEAQKIEWHE":"Avitag",   "DDDDK":"Enterokinase cleavage site",   "IDGR":"Factor Xa cleavage site",   "IEGR":"Factor Xa cleavage site",   "LVPRGS":"Thrombin cleavage site",   "LEVLFQGP":"PreScission cleavage site",   "ENLYFQG":"TEV cleavage site",   "ENLYFQS":"TEV cleavage site",   "ETVRFQGS":"TVMV cleavage site",   "PKKKRKV":"SV40 nuclear localization sequence"   //Note: to extend this list also need to extend search_regexp below!!! };
+var search_regexp = /(RRRRR|AWRHPQFGG|WSHPQFEK|DYKDHDGDYKDHDIDYKDDDDK|DYKDDDDK|YPYDVPDYA|HHHHHH|HHHHH|EQKLISEEDL|KETAAAKFERQHMDS|KDHLIHNVHKEFHAHAHNK|KRRWKKNFIAVSAANRFKKISSSGAL|TDKDMTITFTNKKDAE|AHIVMVDAYKPTK|TNPGVSAWQVNTAYTAGQLVTYNGKTYKCLQPHTSLAGWEPSNVPALWQLQ|MDEKTTGWRGGHVVEGLAGELEQLRARLEHHPQGQREP|GLNDIFEAQKIEWHE|DDDDK|IDGR|IEGR|LVPRGS|LEVLFQGP|ENLYFQG|ENLYFQS|ETVRFQGS|PKKKRKV)/g ;
+/**
+*  FUNCTIONS */
+//The function called initially. This handles interaction with the registry server to obtain the sequence function get_sequence(){  try{   // Show loading graphic   var loading = $('<div id="autoannotator-computing" />');   $(loading).html('<img src="
+" />
+The AutoAnnotator is computing ...');   $('#htmlTable div').remove();   $('#htmlTable').append(loading);
+//---put together the url from which to get the sequence   var entered_bb_number = document.getElementById("EnteredBioBrick").value;   var numeric_start = entered_bb_number.search(/[0-9]/);   if (numeric_start == 0){    alert("Not a valid BioBrick name nor a nucleotide sequence. The BioBrick name must contain one letter followed by digits");    return;   }   if (numeric_start == -1){ //so entered a sequence    //interpret the entered bb number as sequence    bb_number = ""; //GLOBAL VARIABLE    main_table_calc(entered_bb_number);   }   else{ //entered a BioBrick number, so try to get the sequence from the Registry    bb_number = entered_bb_number.substr(numeric_start - 1); //GLOBAL VARIABLE    bb_number = bb_number.toUpperCase();    var bb_url = " http://parts.igem.org/das/parts/dna/?segment=BBa_ " + bb_number;
+try{     jQuery.ajax({      url: bb_url,      type: 'GET',      success:        function(res) {        try{         var a = res.responseText;         var b=a.indexOf("<body>");
+var c=a.indexOf("
+",b);         var d=a.indexOf("
+",c);
+var obtained_sequence = a.substr(c+3,d-c-3); }        catch(err){         var txt = "Couldn't get the sequence from the registry. The BioBrick does not exist in the data base.";         txt = txt + "\n";         txt = txt + "\nPlease restart and enter the nucleotide sequence manually instead of the BioBrick number!";         alert(txt);         return; //to end program
+}
+//---call the main function with the sequence information---        if (obtained_sequence == ""){         prompt("The sequence obtained from the registry data base is empty, it might not have been updated yet!\nPlease restart and enter the sequence manually instead of the BioBrick number!\n\nYou can get the sequence from this link:"," http://parts.igem.org/wiki/index.php?title=Part:BBa_ " + bb_number);         return; //to end the program         //sequence = prompt(prompttxt,""); //if couldn't get the sequence in this way, ask user to enter it manually        }        main_table_calc(obtained_sequence);       } //end of the function called on success     });    }    catch(error){     alert(error);    }   }  }  catch(err){   txt="There was an error on this page in get_sequence().\n\n";   txt=txt + "Error description: \n" + err + "\n\n";   txt=txt + "Click OK to continue. \n\n";   alert(txt);  }; }
+//the main function, which calls the necessary functions to compute the table entries and puts the table together function main_table_calc(sequence) {   try{   entered_nuc_sequence = clean_sequence(sequence); //GLOBAL VARIABLE   reading_frame = find_reading_frame(entered_nuc_sequence); //GLOBAL VARIABLE   reading_frame_start = reading_frame[0]; //the A in the ATG start codon //GLOBAL VARIABLE   reading_frame_end   = reading_frame[1]; //last nucleotide to be translated //GLOBAL VARIABLE   //recall internal indexing starts at 0, external indexing at 1
+entered_nuc_length = entered_nuc_sequence.length; //GLOBAL VARIABLE   if (reading_frame_start == -9 && (reading_frame_end > entered_nuc_length - 1) ){ //so RFC 25 coding_nuc_sequence = "ATGGCCGGC" + entered_nuc_sequence + "ACCGGT"; //add prefix and suffix //GLOBAL VARIABLE    RFC_standard = " RFC 25 , so ATGGCCGGC and ACCGGT were added (in italics) to the 5' and 3' ends: (underlined part encodes the protein)"; //GLOBAL VARIABLE    nuc_sequence_to_display_html = " " + "ATGGCCGGC" + entered_nuc_sequence.substr(0,9) + " ... " + entered_nuc_sequence.substr(entered_nuc_length-9) +"ACCGGT" ; //GLOBAL VARIABLE   }   else if ( reading_frame_end == entered_nuc_length + 5 ){ //stop codon in RFC 25 suffix    coding_nuc_sequence = entered_nuc_sequence.substr(reading_frame_start) + "ACCGGT"; //GLOBAL VARIABLE    RFC_standard = " RFC 25 N-Part using the stop codon in the suffix, so ACCGGT was added (in italics) to the 3' end: (underlined part encodes the protein)"; //GLOBAL VARIABLE    nuc_sequence_to_display_html = " " + entered_nuc_sequence.substr(0,reading_frame_start) + "" + entered_nuc_sequence.substr(reading_frame_start,9) + " ... " + entered_nuc_sequence.substr(entered_nuc_length-9) +"ACCGGT" ; //GLOBAL VARIABLE   }   else if ( reading_frame_end == entered_nuc_length + 2 ){ //stop codon in RFC 10 suffix    coding_nuc_sequence = entered_nuc_sequence.substr(reading_frame_start) + "TAC"; //GLOBAL VARIABLE    RFC_standard = " RFC 10 using the stop codon in the suffix, so TAC was added (in italics) to the 3' end: (underlined part encodes the protein)"; //GLOBAL VARIABLE    nuc_sequence_to_display_html = " " + entered_nuc_sequence.substr(0,reading_frame_start) + "" + entered_nuc_sequence.substr(reading_frame_start,9) + " ... " + entered_nuc_sequence.substr(entered_nuc_length-9) +"TAC" ; //GLOBAL VARIABLE   }   else {    coding_nuc_sequence = entered_nuc_sequence.substr( reading_frame_start , reading_frame_end - reading_frame_start + 1); //GLOBAL VARIABLE    RFC_standard = " RFC 10 : (underlined part encodes the protein)"; //GLOBAL VARIABLE    nuc_sequence_to_display_html = " " + entered_nuc_sequence.substr(0,reading_frame_start) + "" + entered_nuc_sequence.substr(reading_frame_start,9) + " ... " + entered_nuc_sequence.substr(reading_frame_end-8,9) +"" + entered_nuc_sequence.substr(reading_frame_end+1); //GLOBAL VARIABLE   }
+var trans_result = translate_to_aa_and_codon_count(coding_nuc_sequence);   amino_sequence = trans_result[0]; //GLOBAL VARIABLE   codon_count = trans_result[1]; //GLOBAL VARIABLE
+md5sum = hex_md5(amino_sequence); //GLOBAL VARIABLE
+/*  //for test purposes, contains all sequence features (except RFC 25 scar) (as of 25/08/13)   amino_sequence = "RRRRRGGAWRHPQFGGWSHPQFEKDYKDHDGDYKDHDIDYKDDDDKDYKDDDDKYPYDVPDYAHHHHHHEQKLISEEDLHHHHHKETAAAKFERQHMDSKDHLIHNVHKEFHAHAHNKKRRWKKNFIAVSAANRFKKISSSGAL" +   "TDKDMTITFTNKKDAEAHIVMVDAYKPTKTNPGVSAWQVNTAYTAGQLVTYNGKTYKCLQPHTSLAGWEPSNVPALWQLQMDEKTTGWRGGHVVEGLAGELEQLRARLEHHPQGQREPGLNDIFEAQKIEWHEDDDDK" +   "IDGRIEGRLVPRGSLEVLFQGPENLYFQGETVRFQGS";
+/
+SequenceCollection = {}; //GLOBAL VARIABLE   SequenceFeatures = find_sequence_features(coding_nuc_sequence,amino_sequence); //GLOBAL VARIABLE   FeatureStarts = []; //GLOBAL VARIABLE   FeatureEnds = []; //GLOBAL VARIABLE   for (f in SequenceFeatures){ //f is in the start of the feature in the amino acid sequence starting from 1    var feat_start_num = parseInt(f);    var feat_seq = SequenceFeatures[f]; // the aa sequence of the feature    var feat_length = feat_seq.length;    var feat_end_num = feat_start_num + feat_length - 1; //the last aa of the feature (starting from 1)
+// Check for unwanted overlap information    if ((feat_seq == "HHHHH") && (amino_sequence.substr(feat_start_num - 2, 6) == "HHHHHH")){     continue; //so is a His5-Tag and we already have the His6-Tag, so we skip it    }    if ((feat_seq == "HHHHHH") && (amino_sequence.substr(feat_start_num - 2, 6) == "HHHHHH")){     continue; //so is a His6-Tag overlapping with a previous His6-Tag, so we skip it    }    if ((feat_seq == "RRRRR") && (amino_sequence.substr(feat_start_num - 2, 5) == "RRRRR")){     continue; //so is a Arg5-Tag overlapping with a previous Arg5-Tag, so we skip it    }    if ((feat_seq == "DYKDDDDK") && (amino_sequence.substr(feat_start_num - 15, 22) == "DYKDHDGDYKDHDIDYKDDDDK")){     continue; //so is a Flag-Tag in a 3xFlag-Tag, so we skip it    }
+FeatureStarts.push(feat_start_num); //all the feature starts and features ends in amino acid sequence starting from 1    FeatureEnds.push(feat_end_num);  //are collected in these arrays
+if (SequenceCollection[list_of_features[SequenceFeatures[f]]]){ //so there already is something in the list     SequenceCollection[list_of_features[SequenceFeatures[f]]].push(feat_start_num);     SequenceCollection[list_of_features[SequenceFeatures[f]]].push(feat_end_num);    }    else{     SequenceCollection[list_of_features[SequenceFeatures[f]]] = [feat_start_num,feat_end_num] ;    }   }
+var counting_result = count_amino_acids(amino_sequence);   amino_content = counting_result[0]; //GLOBAL VARIABLE   amino_freq = counting_result[1]; //GLOBAL VARIABLE   total_aminos = amino_sequence.length; //GLOBAL VARIABLE
+//GLOBAL VARIABLE   codon_usage = analyze_codons(codon_count,amino_content); // 0 -> E_coli, 1 -> Yeast, 2 -> Mammalian, 3 -> Subtilis, 4 -> Arabidopsis, 5 -> Physco
+var composition_results = compute_molecular_weight_and_atomic_composition(amino_content);   molecular_weight = composition_results[0]; //GLOBAL VARIABLE   atomic_composition = composition_results[1]; //GLOBAL VARIABLE
+pI = compute_pI(amino_sequence,amino_content); //GLOBAL VARIABLE   extinction_coeffs = compute_extinction_coeff(amino_content); //GLOBAL VARIABLE
+hydrophobicity_charge_plot = compute_hydrophobicity_charge_plot(amino_sequence); //GLOBAL VARIABLE   // array of arrays, in outer array 0 -> average hydrophobicity over window_size (5 for now)   //     in outer array 1 -> average charge over window_size (5 for now)   //     inner array is indexed by start of the different windows
+call_rost_server();
+}  catch(err){   txt="There was an error while computing the parameters.\n\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }   alert(txt);   return; //to end execution  } };
+function call_rost_server(){  try{   //md5sum = "c4aa8c65029392e1968c2d1ff028f98b"; //for test purposes   //sequ = "MALEKSLVRLLLLVLILLVLGWVQPSLGKESRAKKFQRQHMDSDSSPSSSSTYCNQMMRRRNMTQGRCKPVNTFVHEPLVDVQNVCFQEKVTCKNGQGNCYKSNSSMHITDCRLTNGSRYPNCAYRTSPKERHIIVACEGSPYVPVHFDASVEDST";   //md5sum = "6c76ac1239fccf8ab203891b01d8bee5";   //sequ = "MVSLLCCGPKLAACGIVISVWGVIMLILLGVFFNVHSAVLIEDVPFTEEDIFEDPNPPAKMYRLYEQVSYNCFIAAAIYIVLGGFSFCQVRLNKRKEYMVR";   //total_aminos = sequ.length; //for test purposes   //compile addresses of the different queries   url_localization   = " http://www.rostlab.org/%7Eroos/get/lc2/?md5= " + md5sum;           //Examples of md5sums in the database   url_gene_ontology  = " http://www.rostlab.org/%7Eroos/get/metastudent/?md5= " + md5sum;   //c75924eebc204d66f8069fcfc3bf3514   url_alignments     = " http://www.rostlab.org/%7Eroos/get/blastPsiRdb/?md5= " + md5sum;     //7092948cd4a8ecb626e2612731a24912   url_disulfidbridge = " http://www.rostlab.org/%7Eroos/get/disulfinder/?md5= " + md5sum;   url_transmembrane  = " http://www.rostlab.org/%7Eroos/get/phdRdb/?md5= " + md5sum;   url_sec_and_acc    = " http://www.rostlab.org/%7Eroos/get/profRdb/?md5= " + md5sum; //SECondary structure and solvent ACCessibility
+$.when($.ajax(     {      url: url_localization,      type: 'GET'     }    ),     $.ajax(     {      url: url_gene_ontology,      type: 'GET'     }    ),    $.ajax(     {      url: url_alignments,      type: 'GET'     }    ),    $.ajax(     {      url: url_disulfidbridge,      type: 'GET'     }    ),    $.ajax(     {      url: url_transmembrane,      type: 'GET'     }    ),    $.ajax(     {      url: url_sec_and_acc,      type: 'GET'     }     )   ).then(    //in the case of success    parse_results
+,
+//second in case of failure     function(){     try{      alert("Couldn't connect to database, direct computations only");
+loc_results = "no_data"; //GLOBAL VARIABLE      go_results = "no_data"; //GLOBAL VARIABLE      ali_results = "no_data"; //GLOBAL VARIABLE      dis_results = "no_data"; //GLOBAL VARIABLE      trans_results = "no_data"; //GLOBAL VARIABLE      sec_results = "no_data"; //GLOBAL VARIABLE
+compile_output(); //declare elements without content OR put up a flag, which skips relevant parts of compile_output();     }     catch(err){      // ADD ERROR HANDLING, compile_output() WON'T THROW ANY ERRORS      return;     }    }   );  }  catch(err){   txt="There was an error while calling the database.\n\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }   alert(txt);   return; //to end execution  } }
+function parse_results( localization , gene_ontology , alignments , disulfidbridge , transmembrane , sec_and_acc ){  try{     /* The arguments (in the listed sequence) are        arguments resolved for the first, second,...       ajax requests, respectively.         Each argument is an array with the following         structure: [ data, statusText, jqXHR ] */     var localization_readout = localization[0];     var gene_ontology_readout = gene_ontology[0];     var alignments_readout = alignments[0];     var disulfidbridge_readout = disulfidbridge[0];     var transmembrane_readout = transmembrane[0];     var sec_and_acc_readout = sec_and_acc[0];
+// 1. parse the localization results     var loc_readout = (localization_readout.results).toString();     loc_readout = loc_readout.replace(/\s/g,"");     loc_results = []; //GLOBAL VARIABLE
+var loc_tabletag_pos = loc_readout.indexOf("
+");     if (loc_tabletag_pos == -1){ //so no results in the database for this sequence      //maybe do something to calculate it      loc_results = "no_data";     }     else{ //so there is data in the database      var a = loc_readout.indexOf("
+",loc_tabletag_pos + 9); //find the second row of the table      var b = loc_readout.indexOf("</td><td>",a+1);      var c = loc_readout.indexOf("</td><td>",b+1);      var d = loc_readout.indexOf("</td><td>",c+1);      var e = loc_readout.indexOf("</td><td>",d+1);      var f = loc_readout.indexOf("</td><td>",e+1);      var g = loc_readout.indexOf("</td><td>",f+1);      var h = loc_readout.indexOf("</td>
+",g+1);            loc_results[0] = loc_readout.substring(b+12,c-4);      loc_results[1] = loc_readout.substring(c+12,d-4);      loc_results[2] = loc_readout.substring(d+12,e-4);      loc_results[3] = loc_readout.substring(e+12,f-4);      loc_results[4] = loc_readout.substring(f+12,g-4);      loc_results[5] = loc_readout.substring(g+12,h-4);     }     // end of localization results          // 2. parse the gene ontology results     var go_readout = (gene_ontology_readout.results).toString();     go_readout = go_readout.replace(/\s{2,}/g,""); //remove all occurences of multiple white space     go_results = []; //GLOBAL VARIABLE     var go_id_pos = go_readout.indexOf("<td/><td/>"); //this only appears in the case of NO data     if ((go_id_pos === -1) && (go_readout !== "")){ //so there are results      var a = go_readout.indexOf("</tr><tr>"); //find the second row of the table      var b = go_readout.indexOf("</td><td",a+1); //find the second column there (MFO)      if (go_readout.substr(b+5,5) == "<td/>"){ //then there is nothing in the second column       var mfo_raw = "";       var c = go_readout.indexOf("<td",b+7); //find the third column (BPO)       if (go_readout.substr(c,5) == "<td/>"){ //then there are no results in the third column        var bpo_raw = "";       }       else{        var d = go_readout.indexOf("</td></tr>",c+1); //the end of the third column        var bpo_raw = go_readout.substring(c+7,d-4);       }      }      else{       var c = go_readout.indexOf("<td",b+7); //find the third column (BPO)       var mfo_raw = go_readout.substring(b+12,c-4);       if (go_readout.substr(c,5) == "<td/>"){ //then there are no results in the third column        var bpo_raw = "";       }       else{        var d = go_readout.indexOf("</td></tr>",c+1); //the end of the third column        var bpo_raw = go_readout.substring(c+7,d-4);       }      }      var num_of_mfos = Math.floor(mfo_raw.length/16);      var num_of_bpos = Math.floor(bpo_raw.length/16);      var mfo_results = [];      for ( j=0 ; j<num_of_mfos ; j++){       mfo_results.push([mfo_raw.substring(j*16,j*16+10),mfo_raw.substring(j*16+11,j*16+15)]);      }      mfo_results.sort(readout_result_sorter); //sort the results in descending order of       mfo_results.splice(2); //only keep the top two results            var bpo_results = [];      for ( j=0 ; j<num_of_bpos ; j++){       bpo_results.push([bpo_raw.substring(j*16,j*16+10),bpo_raw.substring(j*16+11,j*16+15)]);      }      bpo_results.sort(readout_result_sorter); //sort the results in descending order of       bpo_results.splice(2); //only keep the top two results            go_results = [mfo_results,bpo_results];     }     else{ //so no results in the database for this sequence      //maybe do something to calculate them      go_results="no_data";     }     //end of gene ontology results          // 3. parse the alignment results     var ali_readout = (alignments_readout.results).toString();          ali_readout = ali_readout.replace(/\s{2,}/g,""); //remove all occurences of multiple white space          ali_results = []; //GLOBAL VARIABLE     var ali_validation = ali_readout.indexOf("#SEQLENGTH");     if (ali_validation > -1){ // so entry exists in data base      var ali_search_regexp = /(pdb\|pdb\||sp\||tr\|)/g ;            var matched_pdb_entries = [];      var matched_sp_entries = [];      var matched_tr_entries = [];      var done_pdb_entries = {};            while ((match = ali_search_regexp.exec(ali_readout)) != null) {       var a = ali_readout.indexOf(" ",match.index); // position of the first white space after the protein name       var b = ali_readout.indexOf(" ",a+1); // position of the second white space after the protein name       var c = ali_readout.indexOf(" ",b+1); // position of the third white space after the protein name       var d = ali_readout.indexOf(" ",c+1);       var e = ali_readout.indexOf(" ",d+1);     if (match[0] == "pdb|pdb|"){      //so is a pdb entry      var end_of_id = ali_readout.indexOf("_",match.index);      var matched_prot_name = ali_readout.substring(match.index+8,end_of_id);            if (matched_prot_name in done_pdb_entries){       //do nothing entry already exists      }      else{       done_pdb_entries[matched_prot_name]=" ";       matched_pdb_entries.push( [matched_prot_name, ali_readout.substring(b+1,c), ali_readout.substring(d+1,e)] );      }     }     else if (match[0] == "sp|"){      //so is a SwissProt entry      var end_of_id = ali_readout.indexOf("|",match.index+4);      var matched_prot_name = ali_readout.substring(match.index+3,end_of_id);      matched_sp_entries.push([matched_prot_name, ali_readout.substring(b+1,c), ali_readout.substring(d+1,e)] );     }     else{      //so is a TrEMBL entry      var end_of_id = ali_readout.indexOf("|",match.index+4);      var matched_prot_name = ali_readout.substring(match.index+3,end_of_id);      matched_tr_entries.push( [matched_prot_name, ali_readout.substring(b+1,c), ali_readout.substring(d+1,e)] );     }    }            if (matched_pdb_entries.length > 0){ //avoid sorting empty array -> endless       matched_pdb_entries.sort(readout_result_sorter);      }      if (matched_sp_entries.length > 0){ //avoid sorting empty array -> endless             matched_sp_entries.sort(readout_result_sorter);      }      if (matched_tr_entries.length > 0){ //avoid sorting empty array -> endless       matched_tr_entries.sort(readout_result_sorter);      }            for ( j=2 ; j<matched_pdb_entries.length ; j++ ){       if( matched_pdb_entries[j][1] < 98 ){ //keep those which have a higher identity        matched_pdb_entries.splice(j);        break;       }       if (j==10){        matched_pdb_entries.splice(10);        break;       }      }      for ( j=2 ; j<matched_sp_entries.length ; j++ ){       if( matched_sp_entries[j][1] < 98 ){ //keep those which have a higher identity        matched_sp_entries.splice(j);        break;       }       if (j==10){        matched_sp_entries.splice(10);        break;       }      }      for ( j=2 ; j<matched_tr_entries.length ; j++ ){       if( matched_tr_entries[j][1] < 98 ){ //keep those which have a higher identity        matched_tr_entries.splice(j);        break;       }       if (j==10){        matched_tr_entries.splice(10);        break;       }      }      ali_results= [ matched_sp_entries, matched_tr_entries, matched_pdb_entries ] ; //GLOBAL VARIABLE     }     else{ //so no results in the database for this sequence      //maybe do something to calculate them      ali_results="no_data";     }     //end of alignment results          // 4. parse the disulfid bridge prediction     var dis_readout = (disulfidbridge_readout.results).toString();     dis_readout = dis_readout.replace(/\s{2,}/g,"");     var dis_validation = dis_readout.indexOf("
+");     dis_results = []; //GLOBAL VARIABLE          if (dis_validation > -1){      var dis_search_regexp = /"#DB_bond">DB_bond</g ;      while ((match = dis_search_regexp.exec(dis_readout)) != null) {       var komma_pos = dis_readout.indexOf(",",match.index+27);       var bracket_close_pos = dis_readout.indexOf(")",komma_pos);       //alert(dis_readout.substring(match.index+27,komma_pos));       //alert(dis_readout.substring(komma_pos+1,bracket_close_pos));       dis_results.push([dis_readout.substring(match.index+27,komma_pos),dis_readout.substring(komma_pos+1,bracket_close_pos)]);      }     }     else{ //so no results in the database for this sequence      //maybe do something to calculate them      dis_results = "no_data";     }     //end of disulfid bridge prediction          // 5. parse transmembrane results     var trans_readout = (transmembrane_readout.results).toString();     trans_readout = trans_readout.replace(/\s{2,}/g,""); //remove excessive white space          trans_results = []; //GLOBAL VARIABLE       /*  var NHTM_index = trans_readout.indexOf("# NHTM_BEST : ");     var NHTM_end = trans_readout.indexOf(" (",NHTM_index);     predicted_number_of_transmembrane_helices = trans_readout.substring(NHTM_index+14,NHTM_end); //GLOBAL VARIABLE  */        var reliability_index = trans_readout.indexOf("# REL_BEST : ");          if (reliability_index > -1){      var reliability_end = trans_readout.indexOf(" (",reliability_index);      reliability_of_tm_prediction = trans_readout.substring(reliability_index+13,reliability_end); //GLOBAL VARIABLE            var prhl = [];      var pito = [];            var b = trans_readout.indexOf("1S 1S 1S ",reliability_end);      var a = b + 8;            for ( j=0 ; j<total_aminos ; j++ ){       var a1 = trans_readout.indexOf(" ",a +1); //first space (between AA_number and AA)       var a2 = trans_readout.indexOf(" ",a1+1); //...       var a3 = trans_readout.indexOf(" ",a2+1);       var a4 = trans_readout.indexOf(" ",a3+1);       var a5 = trans_readout.indexOf(" ",a4+1);       var a6 = trans_readout.indexOf(" ",a5+1);       var a7 = trans_readout.indexOf(" ",a6+1);       var a8 = trans_readout.indexOf(" ",a7+1);       var a9 = trans_readout.indexOf(" ",a8+1);       var a0 = trans_readout.indexOf(" ",a9+1); //tenth space              var a = trans_readout.indexOf(" ",a0+1); //space between the lines of the table, i.e. seperates the AAs              prhl.push(trans_readout.substr(a8+1,1));       pito.push(trans_readout.substr(a0+1,1));      }            var counter = 0;      var curr_pos = prhl[0];      var curr_conf = pito[0]; // i for inside, o for outside, T for transmembrane      if (curr_pos=="H"){       var helix_start = 0;      }      while ( counter < total_aminos ){       if (curr_pos == "L"){        var helix_start = jQuery.inArray("H",prhl,counter+1);        curr_pos = "H";        counter = helix_start;       }       else if (curr_pos == "H"){        var after_helix_end = jQuery.inArray("L",prhl,counter+1);        if (after_helix_end == -1){         var helix_end = total_aminos; //so transmembrane till end        }        else{         var helix_end = after_helix_end - 1;        }        curr_pos = "L";        counter = after_helix_end;        if (curr_conf == "i"){         var conf_description = "outwards";         var curr_conf = "o";        }        else if (curr_conf == "o"){         var conf_description = "inwards";         var curr_conf = "i";        }        else{         var end_conf = pito[counter];         if (end_conf == "o"){          var conf_description = "outwards";         }         else if (end_conf == "i"){          var conf_description = "inwards";         }         else{          var conf_description = "unknown";         }        }        trans_results.push([helix_start+1,helix_end+1,conf_description]); //back to external counting       }       else{        //DO SOMETHING FOR THIS CASE        alert("bad data in database");         break;       }              if (counter == -1){        counter = total_aminos; //so terminate the while loop       }      }     }     else{ //so no results in the database for this sequence      //maybe do something to calculate them      trans_results = "no_data";     }     //end of transmembrane prediction          // 6. parse the secondary structure prediction     var sec_readout = (sec_and_acc_readout.results).toString();     sec_readout = sec_readout.replace(/\s{2,}/g,"");     var sec_validation = sec_readout.indexOf("Perl-RDB");     sec_results = []; //GLOBAL VARIABLE          if (sec_validation > -1){ //so there's data      var table_start = sec_readout.indexOf("Ot8 Ot9");      sec_readout = sec_readout.substr(table_start + 8);      var sec = [];      var acc = [];      var sec_array = sec_readout.split(" ");      for ( j=0 ; j<total_aminos ; j++ ){       sec.push(sec_array[j*30 + 3]);       acc.push(sec_array[j*30 + 16]);      }            //SECondary structure output generation      var sec_counter = 0;      var sec_output = [];      while ( sec_counter < total_aminos ){       var sec_start = sec[sec_counter];       if (sec_start == "E"){        var feat = "E";        var feat_start = sec_counter;        }       else if (sec_start == "H"){        var feat = "H";        var feat_start = sec_counter;       }       else{        var feat = "L";       }       if (feat == "E"){        var aL = jQuery.inArray("L",sec,sec_counter);        var aH = jQuery.inArray("H",sec,sec_counter);        if (aL == -1){         aL = total_aminos;        }        if (aH == -1){         aH = total_aminos;        }        var feat_end = Math.min(aL-1,aH-1);        sec_counter = feat_end + 1;        sec_output.push(["E",feat_start+1,feat_end+1]);       }       else if (feat == "H"){        var aL = jQuery.inArray("L",sec,sec_counter);        var aE = jQuery.inArray("E",sec,sec_counter);        if (aL == -1){         aL = total_aminos;        }        if (aE == -1){         aE = total_aminos;        }        var feat_end = Math.min(aL-1,aE-1);        sec_counter = feat_end + 1;        sec_output.push(["H",feat_start+1,feat_end+1]);       }       else{ //so feat should be L, i.e. loop, which we don't care about        var aE = jQuery.inArray("E",sec,sec_counter);        var aH = jQuery.inArray("H",sec,sec_counter);        if (aE == -1){         aE = total_aminos;        }        if (aH == -1){         aH = total_aminos;        }        var feat_end = Math.min(aE-1,aH-1);        sec_counter = feat_end + 1;        //do not care about this in the output       }      }            //solvent ACCessability output generation      var acc_counter = 0;      var acc_output = [];      while ( acc_counter < total_aminos ){       var acc_start = acc[acc_counter];       if (acc_start == "b"){ //b for buried        var feat = "b";        var feat_start = acc_counter;        }       else if (acc_start == "e"){ //e for exposed        var feat = "e";        var feat_start = acc_counter;       }       else{        var feat = "i"; //i for intermediate       }       if (feat == "b"){        var ai = jQuery.inArray("i",acc,acc_counter);        var ae = jQuery.inArray("e",acc,acc_counter);        if (ai == -1){         ai = total_aminos;        }        if (ae == -1){         ae = total_aminos;        }        var feat_end = Math.min(ae-1,ai-1);        acc_counter = feat_end + 1;        acc_output.push(["b",feat_start+1,feat_end+1]);       }       else if (feat == "e"){        var ai = jQuery.inArray("i",acc,acc_counter);        var ab = jQuery.inArray("b",acc,acc_counter);        if (ai == -1){         ai = total_aminos;        }        if (ab == -1){         ab = total_aminos;        }        var feat_end = Math.min(ab-1,ai-1);        acc_counter = feat_end + 1;        acc_output.push(["e",feat_start+1,feat_end+1]);       }       else{ //so feat should be i, i.e. intermediate, which we don't care about        var ab = jQuery.inArray("b",acc,acc_counter);        var ae = jQuery.inArray("e",acc,acc_counter);        if (ab == -1){         ab = total_aminos;        }        if (ae == -1){         ae = total_aminos;        }        var feat_end = Math.min(ab-1,ae-1);        acc_counter = feat_end + 1;        //do not care about this in the output       }      }      sec_results = [sec_output,acc_output];     }     else{ //so no results in the database for this sequence      //maybe do something to calculate them      sec_results = "no_data";     }     //end of SECondary structure and solvent ACCessability prediction          compile_output();  }  catch(err){   // ADD ERROR HANDLING, compile_output() WON'T THROW ANY ERRORS   return;  } }  function compile_output(){  try{   creation_time = new Date(); //time stamp //GLOBAL VARIABLE      var SequenceFeatureTable = "
+";      var number_of_features = 0;   for (feature in SequenceCollection){    if ( SequenceCollection.hasOwnProperty(feature) ){     number_of_features ++;    }    SequenceFeatureTable = SequenceFeatureTable + "
+" + feature + ": 
+";
+for ( i=0 ; i<(SequenceCollection[feature].length /2) ; i++ ){     SequenceFeatureTable = SequenceFeatureTable + SequenceCollection[feature][(2*i)].toString() + " to " + SequenceCollection[feature][(2*i) + 1].toString();     if (i+1 < (SequenceCollection[feature].length /2)){      // so not last entry      SequenceFeatureTable = SequenceFeatureTable + ", ";     }    }
+SequenceFeatureTable = SequenceFeatureTable + "
+";   }   if (number_of_features == 0){ //so no features, so write something, so it doesn't appear empty    SequenceFeatureTable = SequenceFeatureTable + "
+None of the supported features appeared in the sequence
+";
+}
+SequenceFeatureTable = SequenceFeatureTable + "
+";
+//now add underline/bold to amino_output   var Feature_Markups = FeatureStarts.concat(FeatureEnds);
+//sort function needed for the sort below to work properly   function sortNumber(a,b) {       return a - b;   }   Feature_Markups.sort(sortNumber); //sort it   //determine in which lines there is some markup to be done   var Feature_Markups_lines = [];   for ( i=0 ; i < Feature_Markups.length ; i++){    Feature_Markups_lines.push(Math.floor((Feature_Markups[i] - 1)/100));   }
+// -- Prepare the output for the amino acid sequence --   var output_amino_sequence = amino_sequence + "*";   // first break the aa sequence into lines of 100 AAs   var amino_lines = [];   for ( i=0 ; i < output_amino_sequence.length /100 ; i++){    amino_lines.push(output_amino_sequence.substr(i*100,100));   }   // next add the mark-up to the lines   var amino_output_lines = [];   if (Feature_Markups.length == 0){    amino_output_lines = amino_lines; //so no markup needed   }   else{ // so there is markup to be added    var current_feature_element = 0;    var open_close_index = 0;    var open_close_index_bold = 0;    for ( var line = 0; line<amino_lines.length ; line++ ){     amino_output_lines[line] = "" ;     var last_element_pos = 0;     if (open_close_index>0){ // so have open underlines at the end of previous line, so must reopen them      for ( j = 0 ; j < open_close_index ; j++){       amino_output_lines[line]=amino_output_lines[line] + "";      }     }     if (open_close_index_bold>0){ // so have open bolds at the end of previous line, so must reopen them      for ( j = 0 ; j < open_close_index_bold ; j++){       amino_output_lines[line]=amino_output_lines[line] + "";      }     }     while (Feature_Markups_lines[current_feature_element] == line){ //loop over all markups in this line      var curr_element_pos = Feature_Markups[current_feature_element];      var curr_element_pos_inline = curr_element_pos - 100*line - 1;      if ( jQuery.inArray( curr_element_pos , FeatureStarts ) > -1 ){       if (SequenceFeatures[curr_element_pos] == "TG"){ //so scar, so bold        amino_output_lines[line] = amino_output_lines[line] + amino_lines[line].substring(last_element_pos,curr_element_pos_inline) + "<b>";        open_close_index_bold ++;       }       else{ //so underline        amino_output_lines[line] = amino_output_lines[line] + amino_lines[line].substring(last_element_pos,curr_element_pos_inline) + "<u>";        open_close_index ++;       }       last_element_pos = curr_element_pos_inline;       FeatureStarts.shift(); //removes the element which was just marked      }      else if ( jQuery.inArray( curr_element_pos , FeatureEnds ) > -1 ){       if (SequenceFeatures[curr_element_pos-1] == "TG"){ //so scar, so bold        amino_output_lines[line] = amino_output_lines[line] + amino_lines[line].substring(last_element_pos,curr_element_pos_inline+1) + "";        open_close_index_bold = open_close_index_bold - 1;       }       else{ //so underline        amino_output_lines[line] = amino_output_lines[line] + amino_lines[line].substring(last_element_pos,curr_element_pos_inline+1) + "";        open_close_index = open_close_index - 1;       }       last_element_pos = curr_element_pos_inline+1;       FeatureEnds.shift(); //removes the element which was just marked      } current_feature_element++; //update so we get next markup     }     //add the remainder of the line to the output     amino_output_lines[line] = amino_output_lines[line] + amino_lines[line].substr(last_element_pos);     if (open_close_index>0){ //so have open underlines at the end of this line, so must close them for now       for ( j = 0 ; j < open_close_index ; j++){       amino_output_lines[line]=amino_output_lines[line] + "</u>";      }     }     if (open_close_index_bold>0){ //so have open underlines at the end of this line, so must close them for now       for ( j = 0 ; j < open_close_index_bold ; j++){       amino_output_lines[line]=amino_output_lines[line] + "</b>";      }     }    }   }   // create amino_output table with the mark up
+var amino_output = "
+";   amino_output = amino_output + "
+1 ";
+for ( j=1 ; j<amino_lines.length ; j++ ){    amino_output = amino_output + "
+" + (j*100 + 1).toString() + " ";   }
+amino_output = amino_output + "
+";
+for ( j=0 ; j<amino_lines.length-1 ; j++ ){    amino_output = amino_output + amino_output_lines[j] + "
+";   }   amino_output = amino_output + amino_output_lines[amino_lines.length - 1];
+amino_output = amino_output + "
+";
+var atomic_composition_output = "C" + atomic_composition[0] + "H" + atomic_composition[1] + "N" + atomic_composition[2] + "O" + atomic_composition[3] + "";   if (atomic_composition[4] != 0){ //so there is S in the aa, so add it     atomic_composition_output = atomic_composition_output + "S" + atomic_composition[4] + "";   }
+//Interpret the codon_usage   // 0 -> E_coli, 1 -> Yeast, 2 -> Mammalian, 3 -> Subtilis, 4 -> Arabidopsis, 5 -> Physco   //translate numerical CAI values into categories:    1.00-0.80 -> excellent   //               0.79-0.60 -> good   //                0.59-0.40 -> acceptable   //               0.39-0.20 -> bad   //               0.19-0.00 -> very bad   for (i=0;i<6;i++){    if (codon_usage[i] >= 0.80){     codon_usage[i] = "excellent (" + codon_usage[i].toFixed(2) + ")";    }    else if (codon_usage[i] < 0.8 && codon_usage[i] >= 0.6){     codon_usage[i] = "good (" + codon_usage[i].toFixed(2) + ")";    }    else if (codon_usage[i] < 0.6 && codon_usage[i] >= 0.4){     codon_usage[i] = "acceptable (" + codon_usage[i].toFixed(2) + ")";    }    else if (codon_usage[i] < 0.4 && codon_usage[i] >= 0.2){     codon_usage[i] = "bad (" + codon_usage[i].toFixed(2) + ")";    }    else{     codon_usage[i] = "very bad (" + codon_usage[i].toFixed(2) + ")";    }   }
+/*    *  CREATE ALIGNMENTS OUTPUT    */   sent_compute_request = 0; //GLOBAL VARIABLE   AlignmentTable = ""; //GLOBAL VARIABLE   //alingment output   // ali_results; [sp, tr, pdb]; sp,tr,pdb=[identifier,identity out of 100,length of alignment]   //TrEMBL: http://www.uniprot.org/uniprot/A6NI79 (where A6NI79 is the matched_prot_name)   //PDB: http://www.rcsb.org/pdb/explore/explore.do?structureId=1i84 //SwissProt: http://www.uniprot.org/uniprot/A6NI79 (where A6NI79 is the matched_prot_name)   if (ali_results !== "no_data"){    ali_results[0].length;    var ali_providers = ["SwissProt" , "TrEML" , "PDB"];    var ali_addresses = [" http://www.uniprot.org/uniprot/ " , " http://www.uniprot.org/uniprot/ " , " http://www.rcsb.org/pdb/explore/explore.do?structureId= "];
+AlignmentTable = AlignmentTable + "
+";        for ( j=0 ; j<3 ; j++ ){     AlignmentTable = AlignmentTable + "
+" + ali_providers[j] + ":
+";
+if (ali_results[j].length === 0){      AlignmentTable = AlignmentTable + " - ";     }
+for ( i=0 ; i < (ali_results[j].length) ; i++ ){      AlignmentTable = AlignmentTable + "<a href='" + ali_addresses[j].toString() + ali_results[j][i][0].toString() + "'>" + ali_results[j][i][0].toString() + "</a> (" + ali_results[j][i][1] + "% identity on " + ali_results[j][i][2] + " AAs)";      if ( i < (ali_results[j].length - 1) ){       AlignmentTable = AlignmentTable + ", ";      }     }
+AlignmentTable = AlignmentTable + "
+";    }    AlignmentTable = AlignmentTable + "
+";
+}   else{ //no results    if ((total_aminos > 15) && (sent_compute_request == 0)){     sent_compute_request=1;     var compute_url = ' http://rostlab.org/~roos/compute/igem/?seq=' + amino_sequence + '&md5=' + md5sum + '&token=831a563fba956d2ccea4ee6919d72864';     $.ajax(       {        url: compute_url,        type: 'GET',        error: function(){alert('Could not initialize the computations, please try again later!\n\nIf the problem persists, please send us an email and we will look into it.');}       });    }    AlignmentTable = AlignmentTable + "
+   There were no alignments for this protein in the data base. The BLAST search was initialized and should be ready in a few hours.";   }
+/*    *  CREATE PREDICTIONS OUTPUT    */   number_of_plots = Math.ceil(amino_sequence.length/200); //GLOBAL VARIABLE
+dis_datapoints = []; //GLOBAL VARIABLE   trans_datapoints = []; //GLOBAL VARIABLE   acc_buried_datapoints = []; //GLOBAL VARIABLE   acc_exposed_datapoints = []; //GLOBAL VARIABLE sec_strand_datapoints = []; //GLOBAL VARIABLE   sec_helix_datapoints = []; //GLOBAL VARIABLE
+PredictionTable = "
+"; //GLOBAL VARIABLE   if (loc_results === "no_data" && go_results === "no_data" && ali_results === "no_data" && dis_results === "no_data" && trans_results === "no_data" && sec_results === "no_data" ){    //so no prediction results at all    PredictionTable = PredictionTable + "
+   There were no predictions for this protein in the data base. The prediction was initialized and should be ready in a few hours.
+";
+if (total_aminos > 15){     if(sent_compute_request == 0){      sent_compute_request=1;      var compute_url = ' http://rostlab.org/~roos/compute/igem/?seq=' + amino_sequence + '&md5=' + md5sum + '&token=831a563fba956d2ccea4ee6919d72864';      $.ajax(        {         url: compute_url,         type: 'GET',         error: function(){alert('Could not initialize the computations, please try again later!\n\nIf the problem persists, please send us an email and we will look into it.');}        });
+}     alert("There were no predictions for this protein in the data base. The prediction was initialized and should be ready in a few hours.");    }    else{     alert("Your protein is too short, no predictions can be computed");    }   }   else{
+//localization output    // loc_results; [loc in archaea,reliability,loc in bacteria,reliabilty,loc in eukariya,reliability]    if (loc_results !== "no_data"){      PredictionTable = PredictionTable
++ "
+"
++ "Subcellular Localization (reliability in brackets)"
++ "
+"       + "
+"       + "
+"       + "
+Archaea:
+"       + "
+" + loc_results[0] + " (" + loc_results[1] + "%)
+"       + "
+"       + "
+"       + "
+Bacteria:
+"       + "
+" + loc_results[2] + " (" + loc_results[3] + "%)
+"       + "
+"       + "
+"       + "
+Eukarya:
+"       + "
+" + loc_results[4] + " (" + loc_results[5] + "%)
+"       + "
+"      + "
+"      + "";    }    else{ //no results     PredictionTable = PredictionTable       + "
+"
++ "Subcellular Localization (reliability in brackets)"
++ "
+"       + "
+"       + "
+"       + "
+Archaea:
+"       + "
+-
+"       + "
+"       + "
+"       + "
+Bacteria:
+"       + "
+-
+"       + "
+"       + "
+"       + "
+Eukarya:
+"       + "
+-
+"       + "
+"      + "
+"      + "";    }     //gene ontology output    // go_results; [mfo, bpo]; mfo = [GO-number, reliability]    if (go_results !== "no_data"){     var mfo_number = go_results[0].length;     var bpo_number = go_results[1].length;          if(mfo_number == 0){      var mfo_print_out = " - ";
+}     else if(mfo_number == 1){
+var mfo_print_out = "<a href=' http://amigo.geneontology.org/cgi-bin/amigo/term_details?term= " + go_results[0][0][0] + "'>" + go_results[0][0][0] + "</a> (" + (go_results[0][0][1]*100).toFixed(0) + "%)" + "";
+}     else{
+var mfo_print_out = "<a href=' http://amigo.geneontology.org/cgi-bin/amigo/term_details?term= " + go_results[0][0][0] + "'>" + go_results[0][0][0] + "</a> (" + (go_results[0][0][1]*100).toFixed(0) + "%), <a href=' http://amigo.geneontology.org/cgi-bin/amigo/term_details?term= " + go_results[0][1][0] + "'>" + go_results[0][1][0] + "</a> (" + (go_results[0][1][1]*100).toFixed(0) + "%)" + "";
+}
+if(bpo_number == 0){
+var bpo_print_out = " - ";
+}     else if(bpo_number == 1){
+var bpo_print_out = "<a href=' http://amigo.geneontology.org/cgi-bin/amigo/term_details?term= " + go_results[1][0][0] + "'>" + go_results[1][0][0] + "</a> (" + (go_results[1][0][1]*100).toFixed(0) + "%)" + "";
+}     else{
+var bpo_print_out = "<a href=' http://amigo.geneontology.org/cgi-bin/amigo/term_details?term= " + go_results[1][0][0] + "'>" + go_results[1][0][0] + "</a> (" + (go_results[1][0][1]*100).toFixed(0) + "%), <a href=' http://amigo.geneontology.org/cgi-bin/amigo/term_details?term= " + go_results[1][1][0] + "'>" + go_results[1][1][0] + "</a> (" + (go_results[1][1][1]*100).toFixed(0) + "%)" + "";
+}
+PredictionTable = PredictionTable
++ "Gene Ontology (reliability in brackets)
+"      + "
+"      + "
+"       + "
+"       + "
+Molecular Function Ontology:
+"
++ mfo_print_out
++ "
+"       + "
+"       + "
+Biological Process Ontology:
+"
++ bpo_print_out
++ "
+"       + "
+ 
+"      + "
+"      + "
+"      + "";            }    else{ //no results     PredictionTable = PredictionTable      + "Gene Ontology (reliability in brackets)
+"      + "
+"      + "
+"       + "
+"       + "
+Molecular Function Ontology:
+"       + "
+-
+"      + "
+"       + "
+"       + "
+Biological Process Ontology:
+"       + "
+-
+"      + "
+"       + "
+ 
+"      + "
+"      + "
+"      + "</tr>";        }        //disulfidbridge and transmembrane output    // dis_results; [start,end]    // trans_results; [start,end,configuration]    // reliability_of_tm_prediction; // (out of 100)        var dis_list = "";    if (dis_results !== "no_data"){     if (dis_results.length === 0){      dis_list = dis_list + " - ";     }     else{      for ( j=0 ; j<dis_results.length ; j++){       dis_list = dis_list + dis_results[j][0].toString() + " to " + dis_results[j][1].toString();       if ( j < (dis_results.length - 1) ){        dis_list = dis_list + ", ";       }      }     }    }    else{ //no results     if ((total_aminos > 15) && (sent_compute_request == 0)){      sent_compute_request=1;      var compute_url = ' http://rostlab.org/~roos/compute/igem/?seq=' + amino_sequence + '&md5=' + md5sum + '&token=831a563fba956d2ccea4ee6919d72864';      $.ajax(        {         url: compute_url,         type: 'GET',         error: function(){alert('Could not initialize the computations, please try again later!\n\nIf the problem persists, please send us an email and we will look into it.');}        });     }     dis_list = dis_list + " - ";    }     PredictionTable = PredictionTable     + ""     + "Predicted features:"     + "
+"     + "
+Disulfid bridges:
+"     + dis_list + "
+"     + "
+"     + "
+Transmembrane helices";
+if (trans_results !== "no_data"){
+//PredictionTable = PredictionTable + " (reliability: " + ((reliability_of_tm_prediction*100).toFixed(0)).toString() + "%):
+";     PredictionTable = PredictionTable + ":
+";
+if (trans_results.length === 0){      PredictionTable = PredictionTable + " - ";     }     else{      for ( j=0 ; j<trans_results.length ; j++){       if (trans_results[j][2] !== "unknown"){        PredictionTable = PredictionTable + (trans_results[j][0]).toString() + " to " + (trans_results[j][1]).toString() + " going " + (trans_results[j][2]);       }       else{        PredictionTable = PredictionTable + (trans_results[j][0]).toString() + " to " + (trans_results[j][1]).toString();       }
+if ( j < (trans_results.length - 1) ){        PredictionTable = PredictionTable + ", ";       }      }     }    }    else{ //no results     if ((total_aminos > 15) && (sent_compute_request == 0)){      sent_compute_request=1;      var compute_url = ' http://rostlab.org/~roos/compute/igem/?seq=' + amino_sequence + '&md5=' + md5sum + '&token=831a563fba956d2ccea4ee6919d72864';      $.ajax(        {         url: compute_url,         type: 'GET',         error: function(){alert('Could not initialize the computations, please try again later!\n\nIf the problem persists, please send us an email and we will look into it.');}        });     }
+PredictionTable = PredictionTable + ":
+ - ";
+}
+PredictionTable = PredictionTable + "
+";
+//Prepare Predictions for the plot    //SECondary structure and solvent ACCessability results    // sec_results; [sec_output,acc_output]; sec_output = [type,start,end], acc_output = [type,start,end]    if (sec_results !== "no_data"){     var sec_output = sec_results[0];     var acc_output = sec_results[1];
+sec_helix_results = []; //GLOBAL VARIABLE     sec_strand_results = []; //GLOBAL VARIABLE     acc_exposed_results = []; //GLOBAL VARIABLE     acc_buried_results = []; //GLOBAL VARIABLE
+for ( k = 0 ; k < sec_output.length ; k++ ){      if (sec_output[k][0] === "H"){       sec_helix_results.push([sec_output[k][1],sec_output[k][2]]);      }      else if (sec_output[k][0] === "E"){       sec_strand_results.push([sec_output[k][1],sec_output[k][2]]);      }      //otherwise something went wrong, so ignore it     }     for ( k = 0 ; k < acc_output.length ; k++ ){      if (acc_output[k][0] === "e"){       acc_exposed_results.push([acc_output[k][1],acc_output[k][2]]);      }      else if (acc_output[k][0] === "b"){       acc_buried_results.push([acc_output[k][1],acc_output[k][2]]);      }      //otherwise something went wrong, so ignore it     }    }    else{     if ((total_aminos > 15) && (sent_compute_request == 0)){      sent_compute_request=1;      var compute_url = ' http://rostlab.org/~roos/compute/igem/?seq=' + amino_sequence + '&md5=' + md5sum + '&token=831a563fba956d2ccea4ee6919d72864';      $.ajax(        {         url: compute_url,         type: 'GET',         error: function(){alert('Could not initialize the computations, please try again later!\n\nIf the problem persists, please send us an email and we will look into it.');}        });     }     sec_helix_results = "no_data"; //GLOBAL VARIABLE     sec_strand_results = "no_data"; //GLOBAL VARIABLE     acc_exposed_results = "no_data"; //GLOBAL VARIABLE     acc_buried_results = "no_data"; //GLOBAL VARIABLE    }
+//secondary structure helix results    var sec_helix_datapoints_text = "[";    if (sec_helix_results !=="no_data"){     for ( j=0 ; j < sec_helix_results.length ; j++ ){      var start_plot = Math.floor((sec_helix_results[j][0]-1)/200);      var stop_plot = Math.floor((sec_helix_results[j][1]-1)/200);      if (start_plot == stop_plot){       sec_helix_datapoints.push([sec_helix_results[j][0],sec_helix_results[j][1]]);       sec_helix_datapoints_text = sec_helix_datapoints_text + "[" + sec_helix_results[j][0] + "," + sec_helix_results[j][1] + "]";      }      else{       var involved_plots = stop_plot - start_plot;       sec_helix_datapoints.push([sec_helix_results[j][0],(start_plot + 1)*200]); //go to the end of the line       sec_helix_datapoints_text = sec_helix_datapoints_text + "[" + sec_helix_results[j][0] + "," + ((start_plot + 1)*200).toString() + "],";       for ( i=0 ; i < (involved_plots-1) ; i++ ){ // the plots inbetween which are covered from start to end        sec_helix_datapoints.push([(start_plot + i + 1)*200 + 1, (start_plot + i + 2)*200]);        sec_helix_datapoints_text = sec_helix_datapoints_text + "[" + ((start_plot + i + 1)*200 + 1).toString() + "," + ((start_plot + i + 2)*200).toString() + "],";       }       sec_helix_datapoints.push([stop_plot*200 + 1,sec_helix_results[j][1]]); //then from start of next plot to the end of the feature       sec_helix_datapoints_text = sec_helix_datapoints_text + "[" + (stop_plot*200 + 1).toString() + "," + sec_helix_results[j][1] + "]";      }      if ( j < (sec_helix_results.length - 1)){       sec_helix_datapoints_text = sec_helix_datapoints_text + ","; //add a comma after the entry, unless it's the last entry      }     }    }    sec_helix_datapoints_text = sec_helix_datapoints_text + "]";
+//secondary structure beta-strand results    var sec_strand_datapoints_text = "[";    if (sec_strand_results !=="no_data"){     for ( j=0 ; j < sec_strand_results.length ; j++ ){      var start_plot = Math.floor((sec_strand_results[j][0]-1)/200);      var stop_plot = Math.floor((sec_strand_results[j][1]-1)/200); if (start_plot == stop_plot){       sec_strand_datapoints.push([sec_strand_results[j][0],sec_strand_results[j][1]]);       sec_strand_datapoints_text = sec_strand_datapoints_text + "[" + sec_strand_results[j][0] + "," + sec_strand_results[j][1] + "]";      }      else{       var involved_plots = stop_plot - start_plot;       sec_strand_datapoints.push([sec_strand_results[j][0],(start_plot + 1)*200]); //go to the end of the line       sec_strand_datapoints_text = sec_strand_datapoints_text + "[" + sec_strand_results[j][0] + "," + ((start_plot + 1)*200).toString() + "],";       for ( i=0 ; i < (involved_plots-1) ; i++ ){ // the plots inbetween which are covered from start to end        sec_strand_datapoints.push([(start_plot + i + 1)*200 + 1, (start_plot + i + 2)*200]);        sec_strand_datapoints_text = sec_strand_datapoints_text + "[" + ((start_plot + i + 1)*200 + 1).toString() + "," + ((start_plot + i + 2)*200).toString() + "],";       }       sec_strand_datapoints.push([stop_plot*200 + 1,sec_strand_results[j][1]]); //then from start of next plot to the end of the feature       sec_strand_datapoints_text = sec_strand_datapoints_text + "[" + (stop_plot*200 + 1).toString() + "," + sec_strand_results[j][1] + "]";      }      if ( j < (sec_strand_results.length - 1)){       sec_strand_datapoints_text = sec_strand_datapoints_text + ","; //add a comma after the entry, unless it's the last entry      }     }    }    sec_strand_datapoints_text = sec_strand_datapoints_text + "]";
+//exposed residues    var acc_exposed_datapoints_text = "[";    if (acc_exposed_results !=="no_data"){     for ( j=0 ; j < acc_exposed_results.length ; j++ ){      var start_plot = Math.floor((acc_exposed_results[j][0]-1)/200);      var stop_plot = Math.floor((acc_exposed_results[j][1]-1)/200);      if (start_plot == stop_plot){       acc_exposed_datapoints.push([acc_exposed_results[j][0],acc_exposed_results[j][1]]);       acc_exposed_datapoints_text = acc_exposed_datapoints_text + "[" + acc_exposed_results[j][0] + "," + acc_exposed_results[j][1] + "]";      }      else{       var involved_plots = stop_plot - start_plot;       acc_exposed_datapoints.push([acc_exposed_results[j][0],(start_plot + 1)*200]); //go to the end of the line       acc_exposed_datapoints_text = acc_exposed_datapoints_text + "[" + acc_exposed_results[j][0] + "," + ((start_plot + 1)*200).toString() + "],";       for ( i=0 ; i < (involved_plots-1) ; i++ ){ // the plots inbetween which are covered from start to end        acc_exposed_datapoints.push([(start_plot + i + 1)*200 + 1, (start_plot + i + 2)*200]);        acc_exposed_datapoints_text = acc_exposed_datapoints_text + "[" + ((start_plot + i + 1)*200 + 1).toString() + "," + ((start_plot + i + 2)*200).toString() + "],";       }       acc_exposed_datapoints.push([stop_plot*200 + 1,acc_exposed_results[j][1]]); //then from start of next plot to the end of the feature       acc_exposed_datapoints_text = acc_exposed_datapoints_text + "[" + (stop_plot*200 + 1).toString() + "," + acc_exposed_results[j][1] + "]";      }      if ( j < (acc_exposed_results.length - 1)){       acc_exposed_datapoints_text = acc_exposed_datapoints_text + ","; //add a comma after the entry, unless it's the last entry      }     }    }    acc_exposed_datapoints_text = acc_exposed_datapoints_text + "]";
+//buried residues    var acc_buried_datapoints_text = "[";    if (acc_buried_results !=="no_data"){     for ( j=0 ; j < acc_buried_results.length ; j++ ){      var start_plot = Math.floor((acc_buried_results[j][0]-1)/200);      var stop_plot = Math.floor((acc_buried_results[j][1]-1)/200);      if (start_plot == stop_plot){       acc_buried_datapoints.push([acc_buried_results[j][0],acc_buried_results[j][1]]);       acc_buried_datapoints_text = acc_buried_datapoints_text + "[" + acc_buried_results[j][0] + "," + acc_buried_results[j][1] + "]";      }      else{       var involved_plots = stop_plot - start_plot;       acc_buried_datapoints.push([acc_buried_results[j][0],(start_plot + 1)*200]); //go to the end of the line       acc_buried_datapoints_text = acc_buried_datapoints_text + "[" + acc_buried_results[j][0] + "," + ((start_plot + 1)*200).toString() + "],";       for ( i=0 ; i < (involved_plots-1) ; i++ ){ // the plots inbetween which are covered from start to end        acc_buried_datapoints.push([(start_plot + i + 1)*200 + 1, (start_plot + i + 2)*200]);        acc_buried_datapoints_text = acc_buried_datapoints_text + "[" + ((start_plot + i + 1)*200 + 1).toString() + "," + ((start_plot + i + 2)*200).toString() + "],";       }       acc_buried_datapoints.push([stop_plot*200 + 1,acc_buried_results[j][1]]); //then from start of next plot to the end of the feature       acc_buried_datapoints_text = acc_buried_datapoints_text + "[" + (stop_plot*200 + 1).toString() + "," + acc_buried_results[j][1] + "]";      }      if ( j < (acc_buried_results.length - 1)){       acc_buried_datapoints_text = acc_buried_datapoints_text + ","; //add a comma after the entry, unless it's the last entry      }     }    }    acc_buried_datapoints_text = acc_buried_datapoints_text + "]";
+// dis_results; [start,end]    var dis_datapoints_text = "[";    if (dis_results !=="no_data"){     for ( j=0 ; j < dis_results.length ; j++ ){      dis_datapoints.push([dis_results[j][0],dis_results[j][1]]);                  dis_datapoints_text = dis_datapoints_text + "[" + dis_results[j][0] + "," + dis_results[j][1] + "]";       if ( j < (dis_results.length - 1)){       dis_datapoints_text = dis_datapoints_text + ","; //add a comma after the entry, unless it's the last entry      }     }    }    dis_datapoints_text = dis_datapoints_text + "]";
+// trans_results; [start,end,configuration]    var trans_datapoints_text = "[";    if (trans_results !=="no_data"){     for ( j=0 ; j < trans_results.length ; j++ ){      var start_plot = Math.floor((trans_results[j][0]-1)/200);      var stop_plot = Math.floor((trans_results[j][1]-1)/200);      if (start_plot == stop_plot){       trans_datapoints.push([trans_results[j][0],trans_results[j][1],trans_results[j][2]]);       trans_datapoints_text = trans_datapoints_text + "[" + trans_results[j][0] + "," + trans_results[j][1] + ",'" + trans_results[j][2] + "']";      }      else{       var involved_plots = stop_plot - start_plot;       trans_datapoints.push([trans_results[j][0],(start_plot + 1)*200,trans_results[j][2]]); //go to the end of the line       trans_datapoints_text = trans_datapoints_text + "[" + trans_results[j][0] + "," + ((start_plot + 1)*200).toString() + ",'" + trans_results[j][2] + "'],";       for ( i=0 ; i < (involved_plots-1) ; i++ ){ // the plots inbetween which are covered from start to end        trans_datapoints.push([(start_plot + i + 1)*200 + 1, (start_plot + i + 2)*200, trans_results[j][2]]);        trans_datapoints_text = trans_datapoints_text + "[" + ((start_plot + i + 1)*200 + 1).toString() + "," + ((start_plot + i + 2)*200).toString() + ",'" + trans_results[j][2] + "'],";       }       trans_datapoints.push([stop_plot*200 + 1,trans_results[j][1],trans_results[j][2]]); //then from start of next plot to the end of the feature       trans_datapoints_text = trans_datapoints_text + "[" + (stop_plot*200 + 1).toString() + "," + trans_results[j][1] + ",'" + trans_results[j][2] + "']";      }      if ( j < (trans_results.length - 1)){       trans_datapoints_text = trans_datapoints_text + ","; //add a comma after the entry, unless it's the last entry      }     }    }    trans_datapoints_text = trans_datapoints_text + "]";   }   /*    *  END OF PREDICTIONS OUTPUT CREATION    */
+//Create the hydrophobicity & charge plot   if (hydrophobicity_charge_plot == "sequence too short"){ //so no plot possible    HydrophobicityChargePlot = "   The sequence is too short for a plot. It must be at least 5 amino acids long.";    HydrophobicityChargePlotScript = "";   }   else{    hydrophobicity_datapoints = []; //GLOBAL VARIABLE    charge_datapoints = []; //GLOBAL VARIABLE    var hydrophobicity_datapoints_text = "[";    var charge_datapoints_text = "[";
+for ( j = 0 ; j<hydrophobicity_charge_plot[0].length ; j++ ){     hydrophobicity_datapoints.push([2.5+j,hydrophobicity_charge_plot[0][j]]);     charge_datapoints.push([2.5+j,hydrophobicity_charge_plot[1][j]]);     hydrophobicity_datapoints_text = hydrophobicity_datapoints_text + "[" + (2.5+j) + "," + hydrophobicity_charge_plot[0][j].toFixed(2) + "]";     if ( j + 1 == hydrophobicity_charge_plot[0].length){      hydrophobicity_datapoints_text = hydrophobicity_datapoints_text + "]";     }     else{      hydrophobicity_datapoints_text = hydrophobicity_datapoints_text + ",";     }     charge_datapoints_text = charge_datapoints_text + "[" + (2.5+j) + "," + hydrophobicity_charge_plot[1][j].toFixed(2) + "]";     if ( j + 1 == hydrophobicity_charge_plot[0].length){      charge_datapoints_text = charge_datapoints_text + "]";     }     else{      charge_datapoints_text = charge_datapoints_text + ",";     }    }
+flot_plot_options = []; //GLOBAL VARIABLE    flot_plot_options[0] = {      grid: {       //backgroundColor: { colors: [ '#fff', '#eee' ] },       borderWidth: {        top: 0,        right: 0,        bottom: 0,        left: 0       }      },      legend: {show: false},      xaxes: [{       show: true,       min: 0,       max: 200,       ticks: [[0.5, '1'], [24.5, '25'], [49.5, '50'], [74.5, '75'], [99.5, '100'], [124.5, '125'], [149.5, '150'], [174.5, '175'], [199.5, '200']],       tickLength: -5       }],      yaxes: [{       show: true,       ticks: [[0, '0'], [4.5,'hydro-
+phobic  '], [-4.5,'hydro-
+philic  ']],       min: -4.5,       max: +4.5,       font: {           size: 12,           lineHeight: 14,           style: "italic",           weight: "bold",           family: "sans-serif",           variant: "small-caps",           color: 'rgba(100,149,237,1)'       }      },      {       show: true,       ticks: [[0, ], [1,'positive
+ charge'], [-1,'negative
+ charge']], position: 'right',       min: -1,       max: 1,       font: {           size: 12,           lineHeight: 14,           style: "italic",           weight: "bold",           family: "sans-serif",           variant: "small-caps",           color: 'rgba(255,99,71,1)'       }      }]    };
+HydrophobicityChargePlot = " <input type='button' id='hydrophobicity_charge_button' onclick='show_or_hide_plot()' value='Show'>"
++ "
+";
+for ( plot_num = 1 ; plot_num < number_of_plots ; plot_num ++){
+HydrophobicityChargePlot = HydrophobicityChargePlot + "
+";
+flot_plot_options[plot_num] = $.extend(true, {} ,flot_plot_options[0]);     flot_plot_options[plot_num].xaxes = [{      min: plot_num*200,      max: (plot_num + 1)*200,      ticks: [ [plot_num*200 +   0.5, (plot_num*200 +   1).toString()],               [plot_num*200 +  24.5, (plot_num*200 +  25).toString()],               [plot_num*200 +  49.5, (plot_num*200 +  50).toString()],                [plot_num*200 +  74.5, (plot_num*200 +  75).toString()],                [plot_num*200 +  99.5, (plot_num*200 + 100).toString()],                [plot_num*200 + 124.5, (plot_num*200 + 125).toString()],                [plot_num*200 + 149.5, (plot_num*200 + 150).toString()],                [plot_num*200 + 174.5, (plot_num*200 + 175).toString()],                [plot_num*200 + 199.5, (plot_num*200 + 200).toString()] ],      tickLength: -5      }];    }
+HydrophobicityChargePlot = HydrophobicityChargePlot + "
+";
+HydrophobicityChargePlotScript =       ""     + ""     + "<script type='text/javascript' src=' http://code.jquery.com/jquery-1.10.0.min.js' ></script>"     + "<script type='text/javascript' src=' https://2013.igem.org/Team:TU-Munich/Flot.js?action=raw&ctype=text/js' ></script>"     + "<script>"     + "var jqAutoAnnotator = jQuery.noConflict(true);"     + "function show_or_hide_plot_" + creation_time.getTime() + "(){"     + "hydrophobicity_datapoints = " + hydrophobicity_datapoints_text + ";"     + "charge_datapoints = " + charge_datapoints_text + ";"     + "dis_datapoints = " + dis_datapoints_text + ";"     + "trans_datapoints = " + trans_datapoints_text + ";"     + "sec_helix_datapoints = " + sec_helix_datapoints_text + ";"     + "sec_strand_datapoints = " + sec_strand_datapoints_text + ";"     + "acc_exposed_datapoints = " + acc_exposed_datapoints_text + ";"     + "acc_buried_datapoints = " + acc_buried_datapoints_text + ";"     + "flot_plot_options = []; "     + "flot_plot_options[0] = {"     + "grid: {"     + "borderWidth: {"     + "top: 0,"     + "right: 0,"     + "bottom: 0,"     + "left: 0"     + "}"     + "},"     + "legend: {show: false},"     + "xaxes: [{"     + "show: true,"     + "min: 0,"     + "max: 200,"     + "ticks: [[0.5, '1'], [24.5, '25'], [49.5, '50'], [74.5, '75'], [99.5, '100'], [124.5, '125'], [149.5, '150'], [174.5, '175'], [199.5, '200']],"     + "tickLength: -5"     + "}],"     + "yaxes: [{"     + "show: true,"     + "ticks: [[0, '0'], [4.5,'hydro-
+phobic  '], [-4.5,'hydro-
+philic  ']],"     + "min: -4.5,"     + "max: +4.5,"     + "font: {"     + "size: 12,"     + "lineHeight: 14,"     + "style: 'italic',"     + "weight: 'bold',"     + "family: 'sans-serif',"     + "variant: 'small-caps',"     + "color: 'rgba(100,149,237,1)'"     + "}"     + "},"     + "{"     + "show: true,"     + "ticks: [[0, ], [1,'positive
+ charge'], [-1,'negative
+ charge']]," + "position: 'right',"     + "min: -1,"     + "max: 1,"     + "font: {"     + "size: 12,"     + "lineHeight: 14,"     + "style: 'italic',"     + "weight: 'bold',"     + "family: 'sans-serif',"     + "variant: 'small-caps',"     + "color: 'rgba(255,99,71,1)'"     + "}"     + "}]"     + "};"     + "number_of_plots = " + number_of_plots + ";"     + "for ( plot_num = 1 ; plot_num < number_of_plots ; plot_num ++){"     + "flot_plot_options[plot_num] = jqAutoAnnotator.extend(true, {} ,flot_plot_options[0]);"     + "flot_plot_options[plot_num].xaxes = [{"     + "min: plot_num*200,"     + "max: (plot_num + 1)*200,"     + "ticks: [ [plot_num*200 +   0.5, (plot_num*200 +   1).toString()], "     + "[plot_num*200 +  24.5, (plot_num*200 +  25).toString()], "     + "[plot_num*200 +  49.5, (plot_num*200 +  50).toString()], "     + "[plot_num*200 +  74.5, (plot_num*200 +  75).toString()], "     + "[plot_num*200 +  99.5, (plot_num*200 + 100).toString()], "     + "[plot_num*200 + 124.5, (plot_num*200 + 125).toString()], "     + "[plot_num*200 + 149.5, (plot_num*200 + 150).toString()], "     + "[plot_num*200 + 174.5, (plot_num*200 + 175).toString()], "     + "[plot_num*200 + 199.5, (plot_num*200 + 200).toString()] ],"     + "tickLength: -5"     + "}];"     + "};"     + "try {"     + "if( jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_button').val() =='Show' ){"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_container').css('display','block');"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_button').val('Hide');"
++ "var description_html = '
+';"
++ "description_html = description_html + '
+ <input type=\\\'checkbox\\\' id=\\\'hydrophobicity_checkbox\\\' checked=\\\'checked\\\'> Moving average over 5 amino acids for hydrophobicity (<img src=\\\' https://static.igem.org/mediawiki/2013/e/e9/TUM13_hydrophobicity_icon.png\\\' alt=\\\'blue graph\\\' height=\\\'10\\\'></img>)';"     + "description_html = description_html + '
+ <input type=\\\'checkbox\\\' id=\\\'charge_checkbox\\\' checked=\\\'checked\\\'> Moving average over 5 amino acids for charge (<img src=\\\' https://static.igem.org/mediawiki/2013/3/3e/TUM13_charge_icon.png\\\' alt=\\\'red graph\\\' height=\\\'10\\\'></img>)';"     + "description_html = description_html + '
+ <input type=\\\'checkbox\\\' id=\\\'dis_checkbox\\\' checked=\\\'checked\\\'> Predicted disulfid bridges (<img src=\\\' https://static.igem.org/mediawiki/2013/2/28/TUM13_dis_icon.png\\\' alt=\\\'yellow circle\\\' height=\\\'10\\\'></img>) with the number of the bridge in the center';"     + "description_html = description_html + '
+ <input type=\\\'checkbox\\\' id=\\\'trans_checkbox\\\' checked=\\\'checked\\\'> Predicted transmembrane helices (<img src=\\\' https://static.igem.org/mediawiki/2013/7/78/TUM13_trans_icon.png\\\' alt=\\\'turquois bars\\\' height=\\\'10\\\'></img>)';"     + "description_html = description_html + '
+ <input type=\\\'checkbox\\\' id=\\\'sec_checkbox\\\' checked=\\\'checked\\\'> Predicted secondary structure: Helices (<img src=\\\' https://static.igem.org/mediawiki/2013/b/bf/TUM13_helix_icon.png\\\' alt=\\\'violet bars\\\' height=\\\'10\\\'></img>) and beta-strands (<img src=\\\' https://static.igem.org/mediawiki/2013/b/bf/TUM13_strand_icon.png\\\' alt=\\\'yellow bars\\\' height=\\\'10\\\'></img>)';"     + "description_html = description_html + '
+ <input type=\\\'checkbox\\\' id=\\\'acc_checkbox\\\' checked=\\\'checked\\\'> Predicted solvent accessability: Exposed (<img src=\\\' https://static.igem.org/mediawiki/2013/1/16/TUM13_exposed_icon.png\\\' alt=\\\'blue bars\\\' height=\\\'10\\\'></img>) and buried (<img src=\\\' https://static.igem.org/mediawiki/2013/0/0b/TUM13_buried_icon.png\\\' alt=\\\'green bars\\\' height=\\\'10\\\'></img>) residues';"
++ "description_html = description_html + '
+';"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_explanation').html(description_html);"     + "plot_according_to_selectors_" + creation_time.getTime() + "();"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #AutoAnnotator_plot_selectors').find('input').click(plot_according_to_selectors_" + creation_time.getTime() + ");"     + "}"     + "else{"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_container').css('display','none');"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_button').val('Show');"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_explanation').html();" + "}"     + "}"     + "catch(err){"     + "txt='There was an error with the button controlling the visibility of the plot.\\n';"     + "txt=txt+'The originating error is:\\n' + err + '\\n\\n';"     + "alert(txt);"     + "}"     + "};"     + "function plot_according_to_selectors_" + creation_time.getTime() + "(){"     + "try{"     + "var plot_datasets = [[],[]];"     + "if(jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_checkbox').prop('checked') == true){"     + "plot_datasets[0] = { "     + "color: 'rgba(100,149,237,1)',"     + "data: hydrophobicity_datapoints,"     + "label: 'Hydrophobicity',"     + "lines: { show: true, fill: true, fillColor: 'rgba(100,149,237,0.1)' },"     + "yaxis: 1"     + "};"     + "}"     + "if(jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #charge_checkbox').prop('checked') == true){"     + "plot_datasets[1] = {"     + "color: 'rgba(255,99,71,1)',"     + "data: charge_datapoints,"     + "label: 'Charge',"     + "lines: { show: true, fill: true, fillColor: 'rgba(255,99,71,0.1)' },"     + "yaxis: 2"     + "};"     + "}"     + "for (plot_num = 0 ; plot_num < number_of_plots ; plot_num ++){"     + "jqAutoAnnotator.plot('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder'+ plot_num.toString(), plot_datasets, flot_plot_options[plot_num] );"     + "}"     + "var screen_width = jqAutoAnnotator('canvas.flot-base').width(); "     + "var pos_of_first_tick = 46;"     + "var pos_of_last_tick = screen_width - 51;"     + "var tick_diff = (screen_width - 97)/199;"     + "if(jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #dis_checkbox').prop('checked') == true){"     + "for ( j = 0 ; j < dis_datapoints.length ; j++ ){"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((dis_datapoints[j][0] - 1)/200) ).append('
+' + (j+1) + '
+');"     + "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((dis_datapoints[j][1] - 1)/200) ).append('
+' + (j+1) + '
+');"
++ "}"     + "}"     + "if(jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #trans_checkbox').prop('checked') == true){"     + "for ( j = 0 ; j < trans_datapoints.length ; j++ ){"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((trans_datapoints[j][0] - 1)/200) ).append('
+');"
++ "}"     + "}"     + "if(jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #sec_checkbox').prop('checked') == true){"     + "for ( j = 0 ; j < sec_helix_datapoints.length ; j++ ){"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((sec_helix_datapoints[j][0] - 1)/200) ).append('
+');"
++ "}"     + "for ( j = 0 ; j < sec_strand_datapoints.length ; j++ ){"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((sec_strand_datapoints[j][0] - 1)/200) ).append('
+');"
++ "}"     + "}"     + "if(jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #acc_checkbox').prop('checked') == true){"     + "for ( j = 0 ; j < acc_buried_datapoints.length ; j++ ){"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((acc_buried_datapoints[j][0] - 1)/200) ).append('
+');"
++ "}"     + "for ( j = 0 ; j < acc_exposed_datapoints.length ; j++ ){"
++ "jqAutoAnnotator('#AutoAnnotator_container_" + creation_time.getTime() + " #hydrophobicity_charge_placeholder' + Math.floor((acc_exposed_datapoints[j][0] - 1)/200) ).append('
+');"
++ "}"     + "}"     + "}"     + "catch(err){"     + "txt='There was an error while drawing the selected elements for the plot.\\n';"     + "txt=txt+'The originating error is:\\n' + err + '\\n\\n';"     + "throw(txt);"     + "}"     + "}"     + "</script>";
+};
+if (bb_number == ""){    var bb_number_appear = "";   }   else{    var bb_number_appear = bb_number;   }
+// --- Create the output ---    var htmlCode = "";
+// Code to display the table   htmlCode = htmlCode    + ""   + "<style type=\"text/css\">"    + "table#AutoAnnotator {border:1px solid black; width:100%; border-collapse:collapse;} "    +  "th#AutoAnnotatorHeader { border:1px solid black; width:100%; background-color: rgb(221, 221, 221);} " //soll STRONG sein     +  "td.AutoAnnotator1col { width:100%; border:1px solid black; } "    +  "span.AutoAnnotatorSequence { font-family:'Courier New', Arial; } "    + "td.AutoAnnotatorSeqNum { text-align:right; width:2%; } "    + "td.AutoAnnotatorSeqSeq { width:98% } "    + "td.AutoAnnotatorSeqFeat1 { width:3% } "    + "td.AutoAnnotatorSeqFeat2a { width:27% } "    + "td.AutoAnnotatorSeqFeat2b { width:97% } "    + "td.AutoAnnotatorSeqFeat3 { width:70% } "    +  "table.AutoAnnotatorNoBorder { border:0px; width:100%; border-collapse:collapse; } "    +  "table.AutoAnnotatorWithBorder { border:1px solid black; width:100%; border-collapse:collapse; } "    +  "td.AutoAnnotatorOuterAmino { border:0px solid black; width:20% } "    +  "td.AutoAnnotatorInnerAmino { border:1px solid black; width:50% } "    + "td.AutoAnnotatorAminoCountingOuter { border:1px solid black; width:40%;  } "    + "td.AutoAnnotatorBiochemParOuter { border:1px solid black; width:60%; } "    + "td.AutoAnnotatorAminoCountingInner1 { width: 7.5% } "    + "td.AutoAnnotatorAminoCountingInner2 { width:62.5% } "    + "td.AutoAnnotatorAminoCountingInner3 { width:30% } "    + "td.AutoAnnotatorBiochemParInner1 { width: 5% } "    + "td.AutoAnnotatorBiochemParInner2 { width:55% } "    + "td.AutoAnnotatorBiochemParInner3 { width:40% } "    + "td.AutoAnnotatorCodonUsage1 { width: 3% } "    + "td.AutoAnnotatorCodonUsage2 { width:14.2% } "    + "td.AutoAnnotatorCodonUsage3 { width:13.8% } "    + "td.AutoAnnotatorAlignment1 { width: 3% } "    + "td.AutoAnnotatorAlignment2 { width: 10% } "    + "td.AutoAnnotatorAlignment3 { width: 87% } "    + "td.AutoAnnotatorLocalizationOuter {border:1px solid black; width:40%} "    + "td.AutoAnnotatorGOOuter {border:1px solid black; width:60%} "    + "td.AutoAnnotatorLocalization1 { width: 7.5% } "    + "td.AutoAnnotatorLocalization2 { width: 22.5% } "    + "td.AutoAnnotatorLocalization3 { width: 70% } "    + "td.AutoAnnotatorGO1 { width: 5% } "    + "td.AutoAnnotatorGO2 { width: 35% } "    + "td.AutoAnnotatorGO3 { width: 60% } "    + "td.AutoAnnotatorPredFeat1 { width:3% } "    + "td.AutoAnnotatorPredFeat2a { width:27% } "    + "td.AutoAnnotatorPredFeat3 { width:70% } "    + "div.AutoAnnotator_trans { position:absolute; background:rgb(11,140,143); background-color:rgba(11,140,143, 0.8); height:5px; top:100px; } "    + "div.AutoAnnotator_sec_helix { position:absolute; background:rgb(102,0,102); background-color:rgba(102,0,102, 0.8); height:5px; top:110px; } "    + "div.AutoAnnotator_sec_strand { position:absolute; background:rgb(245,170,26); background-color:rgba(245,170,26, 1); height:5px; top:110px; } "    + "div.AutoAnnotator_acc_buried { position:absolute; background:rgb(89,168,15); background-color:rgba(89,168,15, 0.8); height:5px; top:120px; } "    + "div.AutoAnnotator_acc_exposed { position:absolute; background:rgb(0, 0, 255); background-color:rgba(0, 0, 255, 0.8); height:5px; top:120px; } "    + "div.AutoAnnotator_dis { position:absolute; text-align:center; font-family:Arial,Helvetica,sans-serif; background:rgb(255, 200, 0); background-color:rgba(255, 200, 0, 1); height:16px; width:16px; top:80px; border-radius:50%; } "
++ "</style>"
++ "
+"   + "
+"   + "
+"   + "
+Protein data table for BioBrick <a href=\" http://parts.igem.org/wiki/index.php?title=Part:BBa_ " + bb_number_appear + "\">BBa_" + bb_number_appear + "</a> automatically created by the <a href=\" https://2013.igem.org/Team:TU-Munich/Results/AutoAnnotator \">BioBrick-AutoAnnotator</a> version 1.0" + "
+"   + "
+"   + "
+" + "Nucleotide sequence in " + RFC_standard + "
+" + nuc_sequence_to_display_html + "" + "
+" + " ORF from nucleotide position " + (reading_frame_start + 1) + " to " + (reading_frame_end + 1) + " (excluding stop-codon)" + "
+"   + "
+"   + "
+Amino acid sequence: ( RFC 25 scars in shown in bold, other sequence features underlined; both given below)
+" + amino_output + "
+"   + "
+"   + "
+Sequence features: (with their position in the amino acid sequence, see the <a href=\" https://2013.igem.org/Team:TU-Munich/Results/Software/FeatureList \">list of supported features</a>)"
++ SequenceFeatureTable //created above
++ "
+"   + "
+"   + "
+Amino acid composition:"
+//TABLE IN TABLE
++ "
+"    + "
+"    + "
+"     + "
+"     + "
+"     + "
+Ala (A)" + "
+"     + "
+" + amino_content.A + " (" + amino_freq.A.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Arg (R)" + "
+"     + "
+" + amino_content.R + " (" + amino_freq.R.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Asn (N)" + "
+"     + "
+" + amino_content.N + " (" + amino_freq.N.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Asp (D)" + "
+"     + "
+" + amino_content.D + " (" + amino_freq.D.toFixed(1) + "%)" + "
+"     + "
+"     + "
+"    + ""    + ""     + "
+"     + "
+"     + "
+Cys (C)" + "
+"     + "
+" + amino_content.C + " (" + amino_freq.C.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Gln (Q)" + "
+"     + "
+" + amino_content.Q + " (" + amino_freq.Q.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Glu (E)" + "
+"     + "
+" + amino_content.E + " (" + amino_freq.E.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Gly (G)" + "
+"     + "
+" + amino_content.G + " (" + amino_freq.G.toFixed(1) + "%)" + "
+"     + "
+"     + "
+"    + ""    + ""     + "
+"     + "
+"     + "
+His (H)" + "
+"     + "
+" + amino_content.H + " (" + amino_freq.H.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Ile (I)" + "
+"     + "
+" + amino_content.I + " (" + amino_freq.I.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Leu (L)" + "
+"     + "
+" + amino_content.L + " (" + amino_freq.L.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Lys (K)" + "
+"     + "
+" + amino_content.K + " (" + amino_freq.K.toFixed(1) + "%)" + "
+"     + "
+"     + "
+"    + ""    + ""     + "
+"     + "
+"     + "
+Met (M)" + "
+"     + "
+" + amino_content.M + " (" + amino_freq.M.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Phe (F)" + "
+"     + "
+" + amino_content.F + " (" + amino_freq.F.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Pro (P)" + "
+"     + "
+" + amino_content.P + " (" + amino_freq.P.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Ser (S)" + "
+"     + "
+" + amino_content.S + " (" + amino_freq.S.toFixed(1) + "%)" + "
+"     + "
+"     + "
+"    + ""    + ""     + "
+"     + "
+"     + "
+Thr (T)" + "
+"     + "
+" + amino_content.T + " (" + amino_freq.T.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Trp (W)" + "
+"     + "
+" + amino_content.W + " (" + amino_freq.W.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Tyr (Y)" + "
+"     + "
+" + amino_content.Y + " (" + amino_freq.Y.toFixed(1) + "%)" + "
+"     + "
+"     + "
+Val (V)" + "
+"     + "
+" + amino_content.V + " (" + amino_freq.V.toFixed(1) + "%)" + "
+"     + "
+"     + "
+"    + ""   + ""   + ""   +  "" // close the cell of Amino acid composition   + ""   + "" + "Amino acid counting"    + "
+"    + "
+"    + "
+"    + "
+Total number:" + "
+"    + "
+" + total_aminos + "
+"    + "
+"    + "
+"    + "
+Positively charged (Arg+Lys):" + "
+"    + "
+" + (amino_content.R + amino_content.K) + " (" + ((amino_content.R + amino_content.K)*100/total_aminos).toFixed(1) + "%)" + "
+"    + "
+"    + "
+"    + "
+Negatively charged (Asp+Glu):" + "
+"    + "
+" + (amino_content.D + amino_content.E) + " (" + ((amino_content.D + amino_content.E)*100/total_aminos).toFixed(1) + "%)" + "
+"    + "
+"    + "
+"    + "
+Aromatic (Phe+His+Try+Tyr):" + "
+"    + "
+" + (amino_content.F + amino_content.H + amino_content.W + amino_content.Y) + " (" + ((amino_content.F + amino_content.H + amino_content.W + amino_content.Y)*100/total_aminos).toFixed(1) + "%)" + "
+"    + "
+"    + "
+"   + "" //close Amino acid counting cell   + "" + "Biochemical parameters"    + "
+"    + "
+"    + "
+"    + "
+Atomic composition:" + "
+"    + "
+" + atomic_composition_output + "
+"    + "
+"    + "
+"    + "
+Molecular mass [Da]:" + "
+"    + "
+" + molecular_weight.toFixed(1) + "
+"    + "
+"    + "
+"    + "
+Theoretical pI:" + "
+"    + "
+" + pI.toFixed(2) + "
+"    + "
+"    + "
+"    + "
+Extinction coefficient at 280 nm [M-1 cm-1]:" + "
+"    + "
+" + extinction_coeffs[1].toFixed(0) + " / " + extinction_coeffs[0].toFixed(0) + " (all Cys red/ox)" + "
+"    + "
+"    + "
+"   + "" //close Biochemical parameters cell   + ""   + "Plot for hydrophobicity, charge, predicted secondary structure, solvent accessability, transmembrane helices and disulfid bridges"
++ HydrophobicityChargePlot
++ ""   + ""   + "Codon usage"    + "
+"    + "
+"    + "
+"    + "
+Organism:
+"    + "
+E. coli
+"    + "
+B. subtilis
+"    + "
+S. cerevisiae
+"    + "
+A. thaliana
+"    + "
+P. patens
+"    + "
+Mammals
+"    + "
+"    + "
+"    + "
+Codon quality (<a href=\" http://en.wikipedia.org/wiki/Codon_Adaptation_Index \">CAI</a>):
+"    + "
+" + codon_usage[0] + "
+"    + "
+" + codon_usage[3] + "
+"    + "
+" + codon_usage[1] + "
+"    + "
+" + codon_usage[4] + "
+"    + "
+" + codon_usage[5] + "
+"    + "
+" + codon_usage[2] + "
+"    + "
+"    + "
+"   + "" //close Codon usage cell   + ""   + "Alignments (obtained from <a href=' http://predictprotein.org' >PredictProtein.org</a>)"
++ AlignmentTable
++ ""   + ""   + "Predictions (obtained from <a href=' http://predictprotein.org' >PredictProtein.org</a>)"   + ""   + ""    + PredictionTable   + ""   + " The BioBrick-AutoAnnotator was created by <a href=\" https://2013.igem.org/Team:TU-Munich \">TU-Munich 2013</a> iGEM team. For more information please see the <a href=\" https://2013.igem.org/Team:TU-Munich/Results/Software \">documentation</a>.
+If you have any questions, comments or suggestions, please leave us a <a href=\" https://2013.igem.org/Team:TU-Munich/Results/AutoAnnotator \">comment</a>." + ""   + "
+"
++ "
+";
+$("#htmlTable").html(htmlCode);   $("#htmlExplanation").html("The generated table giving various computed parameters: (The wiki-code producing this table is below)");
+show_or_hide_plot(); //draw the plot by default
+var string_to_replace = " <input type='button' id='hydrophobicity_charge_button' onclick='show_or_hide_plot()' value='";   var string_to_insert  = " <input type='button' id='hydrophobicity_charge_button' onclick='show_or_hide_plot_" + creation_time.getTime() + "()' value='";   var copiableHtmlCode = htmlCode.replace(string_to_replace, string_to_insert);
+$("#wikiTable").text("" + copiableHtmlCode + HydrophobicityChargePlotScript + "");   $("#wikiTable").css("display","block");   $("#wikiExplanation").html("Copy the following into the wiki to get the protein-data-table:");
+$("#wikiTable").focus();   $("#wikiTable").select();   $(window).scrollTop($('#htmlExplanation').offset().top);  }  catch(err){   txt="There was an error while compiling the output.\n\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }   alert(txt);   return; //to end execution  }
+};
+function show_or_hide_plot(){  try {   if( $('#hydrophobicity_charge_button').val() =='Show' ){
+$('#hydrophobicity_charge_container').css('display','block');    $('#hydrophobicity_charge_button').val('Hide');
+var description_html = '<div id=\'AutoAnnotator_plot_selectors\; description_html = description_html + '
+ <input type=\'checkbox\' id=\'hydrophobicity_checkbox\' checked=\'checked\'> Moving average over 5 amino acids for hydrophobicity (<img src=\' https://static.igem.org/mediawiki/2013/e/e9/TUM13_hydrophobicity_icon.png\' alt=\'blue graph\' height=\'10\'></img>)';    description_html = description_html + '
+ <input type=\'checkbox\' id=\'charge_checkbox\' checked=\'checked\'> Moving average over 5 amino acids for charge (<img src=\' https://static.igem.org/mediawiki/2013/3/3e/TUM13_charge_icon.png\' alt=\'red graph\' height=\'10\'></img>)';    description_html = description_html + '
+ <input type=\'checkbox\' id=\'dis_checkbox\' checked=\'checked\'> Predicted disulfid bridges (<img src=\' https://static.igem.org/mediawiki/2013/2/28/TUM13_dis_icon.png\' alt=\'yellow circle\' height=\'10\'></img>) with the number of the bridge in the center';    description_html = description_html + '
+ <input type=\'checkbox\' id=\'trans_checkbox\' checked=\'checked\'> Predicted transmembrane helices (<img src=\' https://static.igem.org/mediawiki/2013/7/78/TUM13_trans_icon.png\' alt=\'turquois bars\' height=\'10\'></img>)';    description_html = description_html + '
+ <input type=\'checkbox\' id=\'sec_checkbox\' checked=\'checked\'> Predicted secondary structure: Helices (<img src=\' https://static.igem.org/mediawiki/2013/b/bf/TUM13_helix_icon.png\' alt=\'violet bars\' height=\'10\'></img>) and beta-strands (<img src=\' https://static.igem.org/mediawiki/2013/b/bf/TUM13_strand_icon.png\' alt=\'yellow bars\' height=\'10\'></img>)';    description_html = description_html + '
+ <input type=\'checkbox\' id=\'acc_checkbox\' checked=\'checked\'> Predicted solvent accessability: Exposed (<img src=\' https://static.igem.org/mediawiki/2013/1/16/TUM13_exposed_icon.png\' alt=\'blue bars\' height=\'10\'></img>) and buried (<img src=\' https://static.igem.org/mediawiki/2013/0/0b/TUM13_buried_icon.png\' alt=\'green bars\' height=\'10\'></img>) residues';    description_html = description_html + '
+</div>';    //
+Moving average over 5 amino acids for hydrophobicity (blue) and charge (red)    $('#hydrophobicity_charge_explanation').html(description_html);
+plot_according_to_selectors();
+$('#AutoAnnotator_plot_selectors').find('input').click(plot_according_to_selectors);   }
+else{ //so is on hide    $('#hydrophobicity_charge_container').css('display','none');    $('#hydrophobicity_charge_button').val('Show');    $('#hydrophobicity_charge_explanation').html(); }  }  catch(err){   txt="There was an error with the button controlling the visibility of the plot.\n";   txt=txt+"The originating error is:\n" + err + "\n\n";   alert(txt);  } };
+function plot_according_to_selectors(){  try{   var plot_datasets = [[],[]];   if($('#hydrophobicity_checkbox').prop('checked') == true){    plot_datasets[0] = {       color: 'rgba(100,149,237,1)',      data: hydrophobicity_datapoints,      label: 'Hydrophobicity',      lines: { show: true, fill: true, fillColor: 'rgba(100,149,237,0.1)' },      yaxis: 1    };   }   if($('#charge_checkbox').prop('checked') == true){    plot_datasets[1] = {      color: 'rgba(255,99,71,1)',      data: charge_datapoints,      label: 'Charge',      lines: { show: true, fill: true, fillColor: 'rgba(255,99,71,0.1)' },      yaxis: 2    };   }
+for (plot_num = 0 ; plot_num < number_of_plots ; plot_num ++){    $.plot('#hydrophobicity_charge_placeholder'+ plot_num.toString(), plot_datasets, flot_plot_options[plot_num] );   }
+//set up of general measures for drawing into the plots   var screen_width = $('canvas.flot-base').width();    var pos_of_first_tick = 46;     //tick 1   var pos_of_last_tick = screen_width - 51;  //tick 200   var tick_diff = (screen_width - 97)/199; // distance between two adjacent ticks
+if($('#dis_checkbox').prop('checked') == true){    for ( j = 0 ; j < dis_datapoints.length ; j++ ){
+$('#hydrophobicity_charge_placeholder' + Math.floor((dis_datapoints[j][0] - 1)/200) ).append('
+' + (j+1) + '
+');     $('#hydrophobicity_charge_placeholder' + Math.floor((dis_datapoints[j][1] - 1)/200) ).append('
+' + (j+1) + '
+');
+}   }
+if($('#trans_checkbox').prop('checked') == true){    for ( j = 0 ; j < trans_datapoints.length ; j++ ){
+$('#hydrophobicity_charge_placeholder' + Math.floor((trans_datapoints[j][0] - 1)/200) ).append('
+');
+}   }
+if($('#sec_checkbox').prop('checked') == true){    for ( j = 0 ; j < sec_helix_datapoints.length ; j++ ){
+$('#hydrophobicity_charge_placeholder' + Math.floor((sec_helix_datapoints[j][0] - 1)/200) ).append('
+');
+}    for ( j = 0 ; j < sec_strand_datapoints.length ; j++ ){
+$('#hydrophobicity_charge_placeholder' + Math.floor((sec_strand_datapoints[j][0] - 1)/200) ).append('
+');
+}   }
+if($('#acc_checkbox').prop('checked') == true){    for ( j = 0 ; j < acc_buried_datapoints.length ; j++ ){
+$('#hydrophobicity_charge_placeholder' + Math.floor((acc_buried_datapoints[j][0] - 1)/200) ).append('
+');
+}    for ( j = 0 ; j < acc_exposed_datapoints.length ; j++ ){
+$('#hydrophobicity_charge_placeholder' + Math.floor((acc_exposed_datapoints[j][0] - 1)/200) ).append('
+');
+}   }  }  catch(err){   txt='There was an error while drawing the selected elements for the plot.\n';   txt=txt+'The originating error is:\n' + err + '\n\n';   throw(txt);  } }
+function readout_result_sorter(x,y){ //sorts the elements of the lists for the gene ontology output and the alignment output into the required order  var first_identity = parseInt(x[1]);  var second_identity = parseInt(y[1]);  if ((second_identity - first_identity) > 0){   var res = 1;  }  else if((second_identity - first_identity) < 0){   var res = -1;  }  else{   var res = 0;  }  return res; };
+function find_sequence_features(local_coding_nuc_sequence,local_amino_sequence){ //returns the object Features with EXTERNAL index as property and feature as value  try{   var Features = {};
+//first look for RFC25 scars   for ( i = 0 ; i < local_coding_nuc_sequence.length ; i = i + 3){    var codonpair = local_coding_nuc_sequence.substr(i,6);    if (codonpair == "ACCGGC"){     Features[(i/3) + 1] = "TG";    }   }   //find forbidden restriction sites?
+//var motives_found = amino_sequence.match(search_regexp);
+while ((match = search_regexp.exec(local_amino_sequence)) != null) {    Features[match.index + 1] = match[0]; // match.index gives the location of the first aa in the feature BUT starting from 0    search_regexp.lastIndex = match.index + 1; // to look for overlapping features   }
+return Features;  }  catch(err){   txt = "An error occured while finding sequence features and preparing the output.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function clean_sequence(sequence_to_clean){  try{   var cleanedSequence = sequence_to_clean.replace(/ /g, ""); // remove spaces   var cleanedSequence2= cleanedSequence.toUpperCase(); // convert to upper case   var cleanedSequence3= cleanedSequence2.replace(/\r?\n|\r/g, ""); // remove line breaks   var wrongLetter = cleanedSequence3.search(/[^ATGC]/); // check for wrong nucleotides   if (wrongLetter > -1){    throw "Unknown nucleotide in the entered sequence. Only use A, T, G, C!";   }   return cleanedSequence3;  }  catch(err){   txt = "An error occured while checking and cleaning up the provided sequence.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function count_amino_acids(aa_sequence){  try{   //Counts standard amino acids, returns an array {AminoAcid:Number}   var local_amino_acids_content = {A:0,R:0,N:0,D:0,C:0,Q:0,E:0,G:0,H:0,I:0,L:0,K:0,M:0,F:0,P:0,S:0,T:0,W:0,Y:0,V:0};   var local_amino_acids_freq = {A:0,R:0,N:0,D:0,C:0,Q:0,E:0,G:0,H:0,I:0,L:0,K:0,M:0,F:0,P:0,S:0,T:0,W:0,Y:0,V:0};   for (i=0; i<aa_sequence.length; i++){    local_amino_acids_content[aa_sequence[i]]++;   }   var aa_total=aa_sequence.length;   for (aa in amino_acids){    local_amino_acids_freq[aa] = local_amino_acids_content[aa] * (100 / aa_total);   };   return [local_amino_acids_content,local_amino_acids_freq];  }  catch(err){   txt = "An error occured while counting the amino acids.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function compute_molecular_weight_and_atomic_composition(amino_acids_content){  try{   var molec_weight = water_weight;   var atomic_comp = [0,2,0,1,0]; //a water molecule   for (aa in amino_acids){    molec_weight = molec_weight + amino_acids_content[aa] * amino_weights[aa];    for ( i=0 ; i < 5 ; i++ ){     atomic_comp[i] = atomic_comp[i] + amino_acids_content[aa] * atomic_composition_of_aa[aa][i];    }   }   return [molec_weight,atomic_comp];  }  catch(err){   txt = "An error occured while computing the molecular weight of the protein.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function compute_pI(local_aa_sequence,pI_amino_acids_content){  try{   var nterm = local_aa_sequence[0]; //the first aa   var composition = {Nterm:1,Cterm:1,     K:pI_amino_acids_content.K,     R:pI_amino_acids_content.R,     H:pI_amino_acids_content.H,     D:pI_amino_acids_content.D,      E:pI_amino_acids_content.E,      C:pI_amino_acids_content.C,      Y:pI_amino_acids_content.Y};   var pos_pKs = jQuery.extend(true, {}, positive_pKs); //to clone positive_pKs, otherwise just passes reference   if ( nterm in pKnterminal ){    pos_pKs.Nterm = pKnterminal[nterm];   }
+var pHOld = 0.0; //just to set off the while loop   var pHNew = 7.0;   var step = 3.5;   var charge = charge_at_pH(pHNew,composition,pos_pKs);   while ( Math.abs(pHOld - pHNew) > 0.0001 && Math.abs(charge)!=0 ){    pHOld = pHNew; //store the now old pH    if (charge >0){     pHNew = pHNew + step;    }    else { //so charge < 0     pHNew = pHNew - step;    }    step = step/2;    charge = charge_at_pH(pHNew,composition,pos_pKs);   }   var pH = pHNew;   return pH;  }  catch(err){   txt = "An error occured while computing the theoretical pI.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function charge_at_pH(pH, compo, local_pos_pKs){  try{   var charge = 0;   for (aa in positive_pKs){    charge = charge + compo[aa] * (1/(1+Math.pow(10, pH - local_pos_pKs[aa])));   }   for (aa in negative_pKs){    charge = charge - compo[aa] * (1/(1+Math.pow(10, negative_pKs[aa] - pH)));   }   return charge;  }  catch(err){   txt = "An error occured while computing the charge of the protein at a certain pH.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function compute_extinction_coeff(local_amino_acid_content){  try{   var E_allCystine = local_amino_acid_content.Y * extinction.Y + local_amino_acid_content.W * extinction.W + (local_amino_acid_content.C /2)*extinction.Cystine;   var E_noCystine  = local_amino_acid_content.Y * extinction.Y + local_amino_acid_content.W * extinction.W ;   return [E_allCystine,E_noCystine];  }  catch(err){   txt = "An error occured while computing the extinction coefficient of the protein.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function find_reading_frame(nuc_sequence){  try{   // atg_position is the first nucleotide in the ATG (start codon)   // stop_position is the first nucleotide in the stop codon   var isRFC25 = false;
+// check for RFC 25 var ideal_stop = nuc_sequence.length - 3;   if (nuc_sequence.length%3 == 0 && !((nuc_sequence.substr(ideal_stop,3) in stop_codons) )){    // so length is divisible by 3 and the sequence does not end with a stop codon     var atg_position = nuc_sequence.indexOf("ATG");    if (atg_position == -1){     //so there is no ATG in the string, so must be RFC 25 part              isRFC25 = true; //at least try it    }    else{     // try the RFC 10 configuration with the start found     var stop_position = -1;     for ( i = atg_position + 3 ; i < nuc_sequence.length ; i = i + 3){      var codon = nuc_sequence.substr(i,3);      if ( codon in stop_codons ){       stop_position = i;       break;      }     }
+if (stop_position == -1){      if ((nuc_sequence.length - atg_position)%3 == 0){       //so have RFC 10 with no stop or RFC 25 N-Part       var isNPart=confirm("Is this part an RFC 25 N-Part? Alternatively it is assumed to be an RFC 10 part using the stop in the suffix.\n\nPress 'OK', if it is an RFC 25 N-part.");       if (isNPart === true){        stop_position = nuc_sequence.length + 6;       }       else{        stop_position = nuc_sequence.length + 3;       }      }      else{       isRFC25 = true; //at least try it      }     }
+if( !(isRFC25) ){      // take this start and stop unless RFC 25 is complete, so check this      // try whether RFC 25 spans the whole sequence      rfc25_stop_position = -1;      for ( j = 0 ; j < nuc_sequence.length ; j = j + 3 ){       var codon = nuc_sequence.substr(j,3);       if ( codon in stop_codons ){        rfc25_stop_position = j;        break;       }      }      if (rfc25_stop_position == -1){ //otherwise is not an RFC 25 part, so use the start and stop positions already found       //so it could also be RFC 25 ;       //check reading length of the RFC 10 version, to see whether is obviously makes no sense       if ((stop_position - atg_position) < 0.9*(nuc_sequence.length)){        //so RFC 10 frame is very short, so assume RFC 25 isRFC25 = true;       }       else{ // so both would make sense -> ask the user        isRFC25 = confirm("This part could be an RFC 25 part or an RFC 10 part with ORF from " + (atg_position+1) + " to " + (stop_position) +  ".\n\nIs this part RFC25?\n\nIf yes, press OK, otherwise RFC 10 will be used.");         // is cancel, then nothing is done later, so we carry the start and stop positions found earlier forward       }      }     }    }   }   else{ // so: [sequence is not divisible by 3] or [it is, but ends with a stop]    // so RFC 25 doesn't make sense    var atg_position = nuc_sequence.indexOf("ATG");    if ( atg_position > -1){     var stop_position = -1;     for ( i = atg_position + 3 ; i < nuc_sequence.length ; i = i + 3){      var codon = nuc_sequence.substr(i,3);      if ( codon in stop_codons ){       stop_position = i;       break;      }     }     if (stop_position == -1){      if ((nuc_sequence.length - atg_position)%3 == 0){       var isNPart=confirm("Is this part an RFC 25 N-Part? Alternatively it is assumed to be an RFC 10 part using the stop in the suffix.\n\nPress 'OK', if it is an RFC 25 N-part.");       if (isNPart === true){        stop_position = nuc_sequence.length + 6;       }       else{        stop_position = nuc_sequence.length + 3;       }      }      else {       alert("No stop codon found in frame and can not use stop codon in suffix of RFC 10 or RFC 25 !\nPlease enter the complete coding DNA sequence (with start and stop codon) directly!");       return;      }     }    }    else {     alert("No ATG found and part does not comply with RFC 25 !\nPlease enter the complete coding DNA sequence (with start and stop codon) directly!");     return;    }   }
+if ( isRFC25 ){ //so RFC25, otherwise have determined start and stop position above already    atg_position = -9;    stop_position = nuc_sequence.length + 6;    //check that this makes sense    rfc25_stop_position = -1;    for ( j = 0 ; j < nuc_sequence.length ; j = j + 3 ){     var codon = nuc_sequence.substr(j,3);     if ( codon in stop_codons ){      rfc25_stop_position = j;      break;     }    }    if (!(rfc25_stop_position == -1)){     alert("This part does not contain a sensible open reading frame in RFC 10 or RFC 25 !\nPlease enter the complete coding DNA sequence (with start and stop codon) directly!");     return;    }   }
+var reading_length = stop_position - atg_position + 3;   if ( (reading_length / nuc_sequence.length) < 0.75){    alert("Note: The reading frame found for this part is very short compared to the length of the sequence.\n\nCheck the results carefully!\n\nIf they are wrong, please entere the complete coding DNA sequence (with start and stop codon) directly!");   }
+var reading_frame_start_found = atg_position;   var reading_frame_end_found = stop_position - 1; //the last nucleotide to be translated
+return [reading_frame_start_found,reading_frame_end_found];  }  catch(err){   txt = "An error occured while determining the appropriate open reading frame (ORF) of the provided sequence.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } };
+function translate_to_aa_and_codon_count(nuc_sequence){  try{   var local_amino_sequence = "";   var local_codon_count = {         'TTT': 0, 'TTC': 0, 'TTA': 0, 'TTG': 0, 'TCT': 0,         'TCC': 0, 'TCA': 0, 'TCG': 0, 'TAT': 0, 'TAC': 0,         'TGT': 0, 'TGC': 0, 'TGG': 0, 'CTT': 0, 'CTC': 0,         'CTA': 0, 'CTG': 0, 'CCT': 0, 'CCC': 0, 'CCA': 0,         'CCG': 0, 'CAT': 0, 'CAC': 0, 'CAA': 0, 'CAG': 0,         'CGT': 0, 'CGC': 0, 'CGA': 0, 'CGG': 0, 'ATT': 0,         'ATC': 0, 'ATA': 0, 'ATG': 0, 'ACT': 0, 'ACC': 0,         'ACA': 0, 'ACG': 0, 'AAT': 0, 'AAC': 0, 'AAA': 0,         'AAG': 0, 'AGT': 0, 'AGC': 0, 'AGA': 0, 'AGG': 0,         'GTT': 0, 'GTC': 0, 'GTA': 0, 'GTG': 0, 'GCT': 0,         'GCC': 0, 'GCA': 0, 'GCG': 0, 'GAT': 0, 'GAC': 0,         'GAA': 0, 'GAG': 0, 'GGT': 0, 'GGC': 0, 'GGA': 0,         'GGG': 0,          'TAA': 0,  //STOP CODONS, shouldn't appear and already be removed         'TAG': 0,          'TGA': 0 };   for ( i = 0 ; i < nuc_sequence.length ; i = i + 3){    var codon = nuc_sequence.substr(i,3);    local_codon_count[codon] ++; //count the number of each codon appearing    local_amino_sequence = local_amino_sequence + translation_table[codon];   }   return [local_amino_sequence,local_codon_count];  }  catch(err){   txt = "An error occured while translating the nucleotide sequence into the amino acid sequence.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  }
+};
+function analyze_codons(local_codon_count,local_amino_content){  try{   var total_synon_codons = 0;   var E_coli_prod = 1;   var Yeast_prod = 1;   var Mammalian_prod = 1;   var Arabidopsis_prod = 1;   var Subtilis_prod = 1;   var Physco_prod = 1;
+for (codon in local_codon_count){    if (codon in non_synonymous_codons){ //ignore the non-synonymous codons     continue;    }
+total_synon_codons = total_synon_codons + local_codon_count[codon]; //should give the total number of codons (excluding stop codons)    E_coli_prod      =       E_coli_prod * Math.pow(     E_coli_codon_weights[codon], local_codon_count[codon]);    Yeast_prod       =        Yeast_prod * Math.pow(      Yeast_codon_weights[codon], local_codon_count[codon]);    Mammalian_prod   =    Mammalian_prod * Math.pow(      Mouse_codon_weights[codon], local_codon_count[codon]);    Subtilis_prod    =     Subtilis_prod * Math.pow(   Subtilis_codon_weights[codon], local_codon_count[codon]);    Arabidopsis_prod =  Arabidopsis_prod * Math.pow(Arabidopsis_codon_weights[codon], local_codon_count[codon]);    Physco_prod      =       Physco_prod * Math.pow(     Physco_codon_weights[codon], local_codon_count[codon]);   };
+var E_coli_CAI      = Math.pow(      E_coli_prod, 1/total_synon_codons);   var Yeast_CAI       = Math.pow(       Yeast_prod, 1/total_synon_codons);   var Mammalian_CAI   = Math.pow(   Mammalian_prod, 1/total_synon_codons);   var Subtilis_CAI    = Math.pow(    Subtilis_prod, 1/total_synon_codons);   var Arabidopsis_CAI = Math.pow( Arabidopsis_prod, 1/total_synon_codons);   var Physco_CAI      = Math.pow(      Physco_prod, 1/total_synon_codons);
+var usageOutput = [ E_coli_CAI , Yeast_CAI , Mammalian_CAI , Subtilis_CAI , Arabidopsis_CAI , Physco_CAI];   return usageOutput;  }  catch(err){   txt = "An error occured while analyzing the codon usage of the provided sequence.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  } }
+function compute_hydrophobicity_charge_plot(foobar_amino_sequence){  try{   var window_size = 5; //take average over 5 amino acids   if (window_size < foobar_amino_sequence.length + 1){    var hydrophobicity_charge_output = [[],[]]; //an array of two arrays, first array for hydrophobicity, second for charge    var hydrophobicity_0 = 0;    var charge_0 = 0;    for ( i = 0 ; i < window_size ; i++ ){ //compute the first window     hydrophobicity_0 = hydrophobicity_0 + k_d_hydrophobicity[foobar_amino_sequence[i]]/window_size;     charge_0         = charge_0         +      emboss_charge[foobar_amino_sequence[i]]/window_size;    }    hydrophobicity_charge_output[0][0] = hydrophobicity_0;    hydrophobicity_charge_output[1][0] = charge_0;    for ( window_start = 1 ; window_start < (foobar_amino_sequence.length - window_size + 1) ; window_start ++){     hydrophobicity_charge_output[0][window_start] = hydrophobicity_charge_output[0][window_start - 1] - k_d_hydrophobicity[foobar_amino_sequence[window_start - 1]]/window_size + k_d_hydrophobicity[foobar_amino_sequence[window_start + 4]]/window_size;     hydrophobicity_charge_output[1][window_start] = hydrophobicity_charge_output[1][window_start - 1] -      emboss_charge[foobar_amino_sequence[window_start - 1]]/window_size +      emboss_charge[foobar_amino_sequence[window_start + 4]]/window_size;        }   }   else{ //so sequence is to short for a plot    hydrophobicity_charge_output = "sequence too short";   }   return hydrophobicity_charge_output;  }  catch(err){   txt = "An error occured while computing the hydrophobicity and charge of the subsequences.\n";   if ((err.toString()).substr(0,16) == "An error occured"){    txt = txt + "This error originated at a lower level: \n\n" + err.toString();   }   else{    txt=txt + "The originating error is: \n" + err + "\n\n";   }    throw txt;  }
+}
+Retrieved from " http://2013.igem.org/Team:TU-Munich/AnnotatorCode.js "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

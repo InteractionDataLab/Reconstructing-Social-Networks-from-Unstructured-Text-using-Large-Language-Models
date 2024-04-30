@@ -1,0 +1,310 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_TUDelft_js_plotfit skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:TUDelft/js/plotfit</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>function plot(params) {
+</P><PRE>   $(&quot;main.container&quot;).addClass(&quot;progress&quot;);
+   progress(params, plot);
+</PRE><PRE>   // ################
+   // The rest defines the functions:
+   // ################
+</PRE><PRE>   // Gets data from form and validates.
+   function progress(params, plot) {
+       // Print an error
+</PRE><PRE>       // Empty alert box and results box
+</PRE><PRE>       $('#alert').html(&quot;&quot;);
+       $('#results').html(&quot;&quot;);
+       Message(&quot;Processing...&quot;);
+</PRE><PRE>       // Getting all the data from the form.
+       var data = params.data.value.trim();
+       var thousands_seperator = params.thousands_seperator.value;
+       var thousands_checked = params.thousands_usage.checked;
+       var value_seperator = params.value_seperator.value;
+       var decimal_seperator = params.decimal_seperator.value;
+</PRE><PRE>       if (value_seperator === 't') value_seperator = '\t';
+       Message(&quot;Validating format...&quot;);
+</PRE><PRE>       // validation and manipulation
+       if (thousands_checked) {
+           if (thousands_seperator == value_seperator) {
+               Warning(&quot;Your thousands seperator is the same as the value seperator.&quot;);
+           }
+           if (thousands_seperator == decimal_seperator) {
+               Warning(&quot;Your thousands seperator is the same as the value seperator.&quot;);
+           }
+           data = replaceAll(data, thousands_seperator, <I>);</I>
+       }
+       if (value_seperator == decimal_seperator) {
+           return Error(&quot;Your value seperator is the same as the decimal seperator.&quot;);
+       }
+       // turn value seperator into ',' and decimal seperator into '.', and preventing those to be mixed up.
+       if (data.indexOf('¬') === -1) {
+           dataWithStrange = replaceAll(data, value_seperator, '¬');
+           dataDecimalToPoint = replaceAll(dataWithStrange, decimal_seperator, '.');
+           data = replaceAll(dataDecimalToPoint, '¬', ',');
+       } else {
+           return Error(&quot;¬ cannot be used as delimiter.&quot;);
+       }
+</PRE><PRE>       data = replaceAll(data, &quot;\&quot;&quot;, &quot;&quot;);
+</PRE><PRE>       Message(&quot;Parsing...&quot;);
+       aa = numeric.parseCSV(data);
+</PRE><PRE>       Message(&quot;Validating data...&quot;)
+       aa[0] = aa[0].filter(filterExceptZero);
+       aa[1] = aa[1].filter(filterExceptZero);
+       if (aa.length &gt; 2) {
+           aa = numeric.transpose(aa);
+       }
+</PRE><PRE>       if (aa.length !== 2) {
+           return Error(&quot;Enter data with 2 columns or rows.&quot;);
+       }
+</PRE><PRE>       if (aa[0].length !== aa[1].length) {
+           Warning(&quot;Your two columns or rows are of different length. The longest one is truncated to match the other.&quot;);
+           var min = Math.min(aa[0].length, aa[1].length);
+           if (aa[0].length == min) {
+               aa[1] = aa[1].slice(0, min);
+           } else {
+               aa[0] = aa[0].slice(0, min);
+           }
+       }
+       aa = [aa[0], aa[1]];
+       aa = numeric.transpose(aa);
+       DATA = numeric.transpose(aa);
+</PRE><PRE>       Message(&quot;Plotting...&quot;);
+       plot(aa, fit);
+</PRE><PRE>   }
+</PRE><PRE>   // Plots the data
+   function plot(data, fit) {
+       result(&quot;Your data has size &quot; + data.length + &quot;.&quot;);
+       $.plot($(&quot;#placeholder&quot;), [{
+           color: 'yellow',
+           data: data
+       }]);
+       fit(data, plotfit);
+   }
+</PRE><PRE>   function fit(data, plotfit) {
+       data = numeric.transpose(data);
+       var t = data[0];
+       var N = data[1];
+       var r = find_r(t, N);
+       var objective = makeObjective(logistic, t, N);
+       var possible_K = [0.5, 1, 1.5];
+       var possible_r = [0.9, 1, 1.1];
+       var pos_min = new Array(6);
+       var pos_r = new Array(6);
+       for (var i = 0; i &lt; 3; i++) {
+           pre_K = possible_K[i];
+           for (var k = 0; k &lt; 3; k++) {
+               pre_r = possible_r[k];
+               var initial = [N[0], pre_K * N[N.length - 1], pre_r * r];
+               try {
+                   var minimiser = numeric.uncmin(objective, initial);
+                   pos_min[i+k] = minimiser;
+                   pos_r[i+k] = r_sq(logistic, minimiser.solution, N, t);
+               } catch (err) {
+                   pos_r[i+k] = 0;
+                   Warning(err);
+               }
+           }
+       }
+       console.log(pos_r);
+       var indexOfMaxValue = pos_r.reduce((iMax, x, i, arr) =&gt; x &gt; arr[iMax] ? i : iMax, 0);
+       minimiser = pos_min[indexOfMaxValue];
+       result(&quot;Solution found after &quot; + minimiser.iterations + &quot; iterations.&quot;);
+       let r2 = r_sq(logistic, minimiser.solution, N, t);
+       result(&quot;With an R squared of &quot; + r2 + &quot;.&quot;);
+       result(minimiser.message);
+       draw(minimiser.solution);
+       var t = numeric.linspace(t[0], t[t.length - 1], t.length);
+       var N = vectorize(setParamInFunc(minimiser.solution, logistic), t);
+       //        var N = (func, x) - &gt; {
+       //            var res = Array(x.length);
+       //            for (var i = 0; i &lt; x.length; i++) {
+       //                res[i] = func(x[i]);
+       //            }
+       //            return res;
+       //        }((func, params) - &gt; {
+       //            return (x) - &gt;
+       //                return func(params, x);
+       //        }, t);
+       var datafit = [t, N];
+       datafit = numeric.transpose(datafit);
+       data = numeric.transpose(data);
+       plotfit(datafit, data, callback);
+   }
+   FINDR = find_r;
+   function find_r(t, N) {
+       var K = Math.max(...N);
+       var N_N = vectorize(((N) =&gt; N/K), N);
+       var lijntje = vectorize(((N_N) =&gt;Math.log(N_N/(1-N_N))), N_N);
+       lijntje = removeAfterInfinity(lijntje);
+       t = t.slice(0, lijntje.length);
+       var initial = [0.005, lijntje[0]];
+       var objective = makeObjective(line, t, lijntje);
+       try {
+           var minimiser = numeric.uncmin(objective, initial);
+       } catch (err) {
+           Warning(&quot;cannot find r: &quot; + err);
+           return 2;
+       }
+       return minimiser.solution[0];
+   }
+   function r_sq(f, popt, ydata, xdata) {
+       let residuals = new Array(ydata.length);
+       for(var i = 0; i&lt;ydata.length; i++) {
+           residuals[i] = ydata[i] - f(popt, xdata[i]);
+       }
+       var ss_res = 0;
+       for (var i = 0; i&lt;residuals.length; i++) {
+           ss_res += Math.pow(residuals[i], 2);
+       }
+       let mean = ydata.reduce((a,b)=&gt;a+b, 0) / ydata.length;
+       var ss_tot = 0;
+       for (var i = 0; i&lt;ydata.length; i++) {
+           ss_tot += Math.pow(ydata[i] - mean, 2);
+       }
+       return 1 - (ss_res / ss_tot);
+   }
+   
+   function removeAfterInfinity(arr) {
+       var res = [];
+       for (i=0; i&lt;arr.length; i++) {
+           if (arr[i] !== Infinity) {
+               res.push(arr[i]);
+           } else {
+               return res;
+           }
+       }
+   }
+   
+   // lijntje = line(params, t)
+   function line(params, t) {
+       var a, b;
+       [a, b] = params
+       return a*t + b;
+   }
+</PRE><PRE>   function plotfit(datafit, data, callback) {
+       $.plot($(&quot;#placeholder&quot;), [{
+           label: &quot;fitted data&quot;,
+           data: datafit,
+           color: 'green'
+       }, {
+           label: &quot;input data&quot;,
+           data: data,
+           color: 'yellow'
+       }], {
+           legend: {
+               position: &quot;nw&quot;
+           }
+       });
+       callback();
+   }
+</PRE><PRE>   // Tells user we are done.
+   function callback() {
+       $(&quot;main.container&quot;).removeClass(&quot;progress&quot;);
+   }
+</PRE><PRE>   // ################
+   // The following functions are out of the callback work loop
+   // ################
+</PRE><PRE>   // Decorator for functions to perform vectorized
+   function vectorize(func, x) {
+       var res = new Array(x.length);
+       for (var i = 0; i &lt; x.length; i++) {
+           res[i] = func(x[i]);
+       }
+       return res;
+   }
+</PRE><PRE>   // Decorator for functions to set params fixed
+   function setParamInFunc(params, func) {
+       function resFunc(x) {
+           return func(params, x);
+       }
+       return resFunc;
+   }
+</PRE><PRE>   // Function to fit
+   // N = logistic(params,t);
+   function logistic(params, t) {
+       var N0, K, r, ans;
+       [N0, K, r] = params;
+       var below = (K + N0 * (Math.exp(r * t) - 1));
+       if (below === Infinity) {
+           ans = 0;
+       } else {
+           ans = (K * N0 * Math.exp(r * t)) / (K + N0 * (Math.exp(r * t) - 1));
+       }
+       return ans;
+   }
+</PRE><PRE>   // Least square objective
+   // Build as factory with a decorator
+   function makeObjective(targetFunc, x, y) {
+       function objective(params) {
+           var total = 0.0
+           for (var i = 0; i &lt; y.length; i++) {
+               var result = targetFunc(params, x[i])
+               var delta = result - y[i];
+               total += delta * delta;
+           }
+           return total;
+       }
+       return objective;
+   }
+</PRE><PRE>   function draw(params) {
+       param_names = [&quot;N0&quot;, &quot;K&quot;, &quot;r&quot;];
+       for (var i = 0; i &lt; param_names.length; i++) {
+           result(param_names[i] + &quot; is &quot; + params[i]);
+       }
+       var latex = katex.renderToString(&quot;N(t) = \\frac{K \\cdot N_0 \\cdot e^{rt}}{K + N_0 \\cdot (e^{rt}-1)}&quot;);
+       result(&quot;For the function:&quot;)
+       resultHTML(latex);
+   }
+</PRE><PRE>   function result(e) {
+       $(&quot;#results&quot;).append($(&quot;&lt;p /&gt;&quot;, {
+           class: &quot;result&quot;,
+           text: e
+       }));
+   }
+</PRE><PRE>   function resultHTML(e) {
+       $(&quot;#results&quot;).append($(&quot;&lt;p /&gt;&quot;, {
+           class: &quot;result&quot;,
+           html: e
+       }));
+   }
+</PRE><PRE>   // Print an error (This function is usually returned.)
+   function Error(e) {
+       $(&quot;#alert&quot;).prepend($('&lt;p /&gt;', {
+           class: 'error',
+           text: e
+       }));
+       $(&quot;main.container&quot;).removeClass(&quot;progress&quot;);
+   }
+</PRE><PRE>   // Print a warming
+   function Warning(e) {
+       $(&quot;#alert&quot;).append($('&lt;p /&gt;', {
+           class: 'warning',
+           text: e
+       }));
+   }
+</PRE><PRE>   // Print a message
+   function Message(e) {
+       $(&quot;#alert&quot;).append($('&lt;p /&gt;', {
+           class: 'message',
+           text: e
+       }));
+   }
+   // This functions takes a string and adds \ before any character that needs to be escaped in a regex. 
+   // This is necesarry when putting user input into a regex. 
+   function escapeRegExp(string) {
+       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&amp;'); // $&amp; means the whole matched string
+   }
+   // This functions replaces all matched characters and also does this safe for user input
+   function replaceAll(str, find, replace) {
+       return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+   }
+   // This function returns false when NaN, false, and undefined, but returns true for 0
+   function filterExceptZero(el) {
+       if (el === 0) return true;
+       else return Boolean(el);
+   }
+</PRE><P>}
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

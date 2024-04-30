@@ -1,0 +1,179 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:UESTC-Software/Modeling.html
+From 2014.igem.org
+UESTC-Software
+Models and Algorithms
+1.Overview
+Modeling is a powerful tool in synthetic biology and engineering. In our project, we aim to design a bioinformatics tool “CRISPR-X”, which is a software developed for design of CRISPR sgRNA with minimized off-target effects and high cutting rate.
+The CRISPR-associated (Cas)9 can be programmed with a single guide RNA (sgRNA) to generate site-specific DNA breaks, but there are few known rules governing on-target efficacy of this system[1,2]. Related reports suggest gRNAs are most effective with a GC-content between 40 and 80%. [1] In addition, a guanine at position 20 in the target site, which appears to improve cutting rate. [1] Therefore, we use efficacy score to characterize the activity of the sgRNA.
+For sgRNA sequences can be 17-20 nt in length to achieve similar levels of on-target gene editing，and up to 10,000 fold improvement in target specificity when truncated (17 or 18 base pair) sgRNA is used. [3] We design the length of sgRNA sequences vary from 17nt to 20nt.
+First of all, we find the protospacer-adjacent motif (PAM) based on user-specified gene region. Then, we find sgRNA corresponding to the PAM. Next, we find that whether there is a potential off-target binding site for the sgRNA over the entire gene region, and evaluate the specificity and efficacy of the sgRNA. Finally, we provide a secondary structure and the restriction enzyme cutting sites for the sgRNA.
+2.Parameters
+Parameters
+Description
+Range
+Unit
+Remark
+d0
+Average distance for all the mismatch nucleotides to the PAM of any off-target site
+0-19
+nt
+i
+Continuous variables for the number of mismatch nucleotide
+1-Nmm
+1
+j
+Continuous variables for the total number of off-target sites exclude the perfect-hit off-target sites
+1-(Nfg-Nph)
+1
+M
+Weight matrix
+[0,0,0.014,0,0,0.395,0.317,0,0.389,0.079,0.445,0.508,0.613,0.851,0.732,0.828,0.615,0.804,0.685,0.583]
+Reference: DNA targeting specificity of RNA-guided Cas9 nucleases, Hsu et al, 2013
+n
+Mismatch position
+1-20
+Nfg
+The total number of off-target sites
+≥0
+1
+Nmm
+The number of mismatch nucleotide for the not perfect-hit off-target sites
+1-4
+1
+Nph
+The number of perfect-hit off-target sites
+≥0
+1
+In our scoring algorithm, we allow the maximum value of Nph is 4, when Nph≥4, Sguide=0
+r1
+The proportion of specificity score in the total score
+0-1
+1
+In our scoring algorithm, it’s default value is 0.65
+r2
+The proportion of efficacy score in the total score
+0-1
+1
+In our scoring algorithm, it’s default value is 0.35
+S1
+The score of the first step
+≥0
+1
+S20
+The subtracted score for the 20th nucleotide is not a guanine
+=35
+1
+Seff
+The efficacy score
+0-100
+1
+Represent the level of efficacy for the sgRNA
+Sgc
+The subtracted score for different  GC ratio
+0,35,65
+1
+Sguide
+The total score of the sgRNA
+0-100
+1
+Composed of Seff and Sspe, marking the overall properties(specificity and efficacy) of the sgRNA
+Smm
+The subtracted score of the mismatch nucleotide for the not perfect-hit off-target sites
+≥0
+1
+Sph
+The subtracted score of the perfect-hit off-target sites
+≥0
+1
+Sspe
+The specificity score
+0-100
+1
+Represent the level of specificity for the sgRNA
+3.Scoring algorithm
+Judged conditions:
+①Bad GC ratio (< 40% or > 80%) : Sgc = 65; Not so good GC ratio (40% - 50% or 70% - 80%): Sgc = 35; Good GC ratio (51%-69%): Sgc = 0.[1]
+②The 20th nucleotide is not G: S20 = 35;[1]
+③If the sgRNA designed perfectly hit another sites, the penalty Sph = 25;if perfectly hit more than or equal to 4 loci, the total score Sguide is 0.
+Steps:
+(1) Firstly, find out the number of off – target sequence Nfg, if Nfg = 0, output Sspe= r1*100; Otherwise, detect the third condition. If there is a sgRNA designed perfectly hit another site, regard the number of it as Nph, and then the score of the first step: S1 = Sph * Nph (Nph is 4 or less). When S1 is equal to or less than 75, perform step (2), otherwise the output Sguide = 0;
+If there is no sgRAN designed perfectly hit other sites, the score of the first step S1 = 0. This illustrates that there is no nucleotide which are matched between sgRNA and the place missed. Then perform step(2).
+(2) When performing step (2), remove the Nph which is perfectly hit first. For Nfg-Nph which does not perfectly hit, please combine the weight ratio which obtained in the literature: M=[ 0, 0, 0.014, 0, 0, 0.395, 0.317, 0, 0.389, 0.079, 0.445, 0.508, 0.613, 0.851, 0.732, 0.828, 0.615, 0.804, 0.685, 0.583];[4] Using the formula:
+Assuming that specific score: efficacy score = r1: r2 (the default is r1:r2 = 0.65:0.35), and then use formula specificity scores Sspe =
+(when 100-
+, Sspe=0), efficacy score Seff = r2 * (100 - (Sgc + S20)), the total score:
+;  Finally according to Sguide score, arranging the sgRNA from high to low, outputting sgRNA, total score Sguide, specificity scores Sspe, efficacy score Seff, the chromosome and its site connected to sgRNA, the GC ratio.
+4.Algorithm illustration
+In literature [4], The algorithm used to score single off-targets is:
+This algorithm is adopted by CRISPR-P, the inadequacies of this algorithm are: (a) Despite the presence of off-target sites, but sometimes it's subtracted score will still be 0 (which seems unreasonable under certain circumstances, and it will confuse the scoring of those sgRNA that don’t exist off-target sites). (b) Using W function, which cannot be expressed by elementary functions, it will take some additional time in calculation.
+However, our algorithm can avoid these two shortcomings. Our algorithm is:
+First, we use the summation of exponential replaced W function; Secondly, when there exist off-target sites, our running results will be with the subtracted score, and we use the rounding to further ensure this situation. The following table can show the score contrast.
+Off-target sequence
+Mismatches
+CRISPR-P Score
+OUR Software Score
+GTTTCTCCGTAATCGCGTCA
+4
+0.8
+0.989
+GTTCTTCCACAATTCCGTTA
+4
+0
+0.391
+TTTCTTCCAGAATCGTGACT
+4
+0
+0.426
+GAAAAATTCCTCTTATTTCA
+2
+3.9
+2.177
+GAACAACTCCTCTTATTACA
+2
+2.4
+1.187
+GAAGAACTACGCTTATGACA
+4
+0
+0.402
+Reference:
+[1] Wang, T., Wei, J. J., Sabatini, D. M., & Lander, E. S. (2014). Genetic screens in human cells using the CRISPR-Cas9 system. Science, 343(6166), 80-84.
+[2] Gagnon, J. A., Valen, E., Thyme, S. B., Huang, P., Ahkmetova, L., Pauli, A., ... & Schier, A. F. (2014). Efficient mutagenesis by Cas9 protein-mediated oligonucleotide insertion and large-scale assessment of single-guide RNAs.PloS one, 9(5), e98186.
+[3] Fu, Y., Sander, J. D., Reyon, D., Cascio, V. M., & Joung, J. K. (2014). Improving CRISPR-Cas nuclease specificity using truncated guide RNAs.Nature biotechnology, 32(3), 279-284.
+[4] Hsu, P. D., Scott, D. A., Weinstein, J. A., Ran, F. A., Konermann, S., Agarwala, V., ... & Zhang, F. (2013). DNA targeting specificity of RNA-guided Cas9 nucleases. Nature biotechnology, 31(9), 827-832.
+1.Overview
+2.Parameters
+3.Scoring algorithm
+4.Algorithm illustration
+Overview
+Modeling
+Demo
+Validation
+Download
+Safety
+Journal
+Human Practice
+Requirements
+Medal Fulfillment
+API Documentation
+Testing Documentation
+Installation
+User Guide
+Retrieved from " http://2014.igem.org/Team:UESTC-Software/Modeling.html "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

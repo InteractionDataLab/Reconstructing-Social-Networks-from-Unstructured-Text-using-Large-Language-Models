@@ -1,0 +1,117 @@
+Team:BIOSINT Mexico/Achievements
+WIKI IGEM 2016
+WIKI IGEM 2016
+Project
+Hypotaurine and Taurine
+Background
+Overview
+Assembly
+Devices
+Policy & Practices
+Collaborations
+Spreading iGEM
+Achievements
+Modeling
+Project outlook and Future prospects
+Parts
+Team
+Members
+Sponsors
+Official page
+Notebook
+Lab Record
+Protocols
+Achievements
+Modeling
+We developed a MATLAB simulation in order to model how the system and concentrations would change through time. It takes into account the transcription and translation rates for our two enzymes, and the corresponding reactions that transform cysteine into hypotaurine. This simulation uses the parts and compositors MATLAB framework developed at MIT for the “Principles of Synthetic Biology” edX course.
+The equations used to describe all reactions are based on the law of mass action, using estimated rate constants. The two enzymatic reactions would be better modeled with Michaelis-Menten equations, but we could not find characterization information for our two specific enzymes, and therefore the simpler mass action equation was used with a single rate constant. However, the code includes comments for changing this easily.
+This model can be seen as a template which describes how the system would work in general, and can easily be edited to improve it with Michaelis-Menten kinetics if the enzymes are characterized to get a more accurate representation.
+Below is a plot of how the system would behave with an initial cysteine concentration of 1000 nM. The CDO and CSAD lines overlap, as we assumed they are translated and degraded at the same rate.
+As we can see in the plot, in this simulation the enzyme concentration increases until it stabilizes at 90.9 nM, and there is no change in the cysteine concentration until CDO and CSAD have been produced. After cysteine sulfinic acid starts being produced from cysteine, it immediately reacts with CSAD to form hypotaurine.
+With no initial cysteine:
+In this second plot we can see that if no cysteine is present, then no reactions take place. As soon as cysteine is added, the reactions start immediately as the enzymes were already produced.
+We did not include them in the plots, but the simulation also takes into account the DNA, mRNA, and RNA polymerase concentrations in order to model the transcription and translation of the two enzymes.
+Code:
+%Fetches the framework
+urlwrite('http://web.mit.edu/20.305/www/part_composition_setup.m', ...
+'part_composition_setup.m');
+rehash;
+part_composition_setup('v5');
+%Defines the system
+sys = BioSystem();
+%Concentration units are in nM and time in s
+%Defines Constants
+sys.AddConstant(Const('k_polf', 10));  %Polymerase binding
+sys.AddConstant(Const('k_polr', 1));
+sys.AddConstant(Const('k_trn', 0.1));  %Transcription
+sys.AddConstant(Const('k_tln', 0.1));   %Translation
+sys.AddConstant(Const('k_mdeg', 0.1));  % mRNA degradation & dilution
+sys.AddConstant(Const('k_pdeg', 0.01)); % Protein degradation & dilution
+sys.AddConstant(Const('k_1', 0.0001));     % Enzymatic reactions for hypotaurine
+sys.AddConstant(Const('k_2', 0.0001));
+%sys.AddConstant(Const('km_1', 0));     %Michaelis Menten constants
+%sys.AddConstant(Const('km_2', 0));
+%sys.AddConstant(Const('vmax_1', 0));
+%sys.AddConstant(Const('vmax_2', 0));
+%Defines Compositors
+dcysdt = sys.AddCompositor('CYS', 0);         % Cysteine
+dCDOdt = sys.AddCompositor('CDO', 0);         % Cysteine Dioxigenase
+dCSADdt = sys.AddCompositor('CSAD', 0);       % Cysteine Sulfinate Decarboxylase
+dcsadt = sys.AddCompositor('CSA', 0);         % Cysteine Sulfinic Acid
+dhtdt = sys.AddCompositor('HT', 0);           % Hypotaurine
+dRNAPdt = sys.AddCompositor('RNAP', 1);       % RNA Polymerase
+dDNAdt = sys.AddCompositor('DNA', 1);         % Promoter
+dDNARNAPdt = sys.AddCompositor('DNARNAP', 0); % Promoter/RNApol complex
+dmRNAdt = sys.AddCompositor('MRNA', 0);       % mRNA
+%Defines Parts
+Hypot = Part('Prom -> Proteins -> Hypotaurine', [dDNAdt dRNAPdt dDNARNAPdt dmRNAdt dCDOdt dCSADdt ...
+dcsadt dhtdt dcysdt], ...
+[Rate('-k_polf * DNA * RNAP + k_polr * DNARNAP + k_trn * DNARNAP'), ... % dDNA/dt
+Rate('-k_polf * DNA * RNAP + k_polr * DNARNAP + k_trn * DNARNAP'), ... % dRNAP/dt
+Rate('k_polf * DNA * RNAP - k_polr * DNARNAP - k_trn * MRNA * DNA * RNAP'), ... % dDNARNAP/dt
+Rate('k_trn * DNARNAP - k_mdeg * MRNA'), ... % dmRNA/dt
+Rate('k_tln * MRNA - k_pdeg * CDO'), ... % dCDO/dt
+Rate('k_tln * MRNA - k_pdeg * CSAD'), ... % dCSAD/dt
+Rate('k_1 * CDO * CYS - k_2 * CSA * CSAD'), ... % dcsa/dt
+Rate('k_2 * CSA * CSAD'), ... % dht/dt
+Rate('- k_1 * CDO * CYS')]); %dcys/dt
+%Michaelis-Menten Equations
+%Rate('(vmax_1 * CYS) / (km_1 + CYS) - (vmax_2 * CSA) / (km_2 + CSA)'), ... % dcsa/dt
+%Rate('(vmax_2 * CSA) / (km_2 + CSA)'), ... % dht/dt
+%Rate('-(vmax_1 * CSA) / (km_1 + CSA)')]); % dcys/dt
+sys.AddPart(Hypot);
+%Solves/simulates the system
+[T, Y] = sys.run_pulses([...
+Pulse(0, 'CYS', 1000), ...     % Initial conditions
+%Pulse(200, 'CYS', 1000), ...  % Add more cysteine at time 200
+Pulse(1800, '', 0), ...        % Stop at time 1800
+]);
+%Plot concentrations
+figure();
+plot(T, Y(:, sys.CompositorIndex('CYS')), ...
+T, Y(:, sys.CompositorIndex('CSA')), ...
+T, Y(:, sys.CompositorIndex('HT')), ...
+T, Y(:, sys.CompositorIndex('CDO')), ...
+T, Y(:, sys.CompositorIndex('CSAD')))
+ylim([0 1100]);
+legend('Cysteine', 'Cysteine Sulfinic Acid', 'Hypotaurine', 'CDO', 'CSAD')
+xlabel('Time (s)');
+ylabel('Concentration (nM)');
+Look our funcTional model clicking here: https://static.igem.org/mediawiki/2016/7/72/T--BIOSINT_Mexico--Taurine_Production_Model.m
+Project outlook and Future prospects
+As a parallel project, some of us, who were taking the Project Management class as part of our subjects for this year, worked on a profound research regarding how viable and what would be the requirements to be fulfilled in order to do the following: creating and establishing a pilot plant that is capable of reproducing the lab experiment.
+This project had the specific intention of realize an estimation of the costs that a person will incur if he/she/they were planning to develop the iGEM Biosint_Mexico 2016 project at a semi-industrial scale. It includes the essential elements required to provide an overview of the net flow the company will be exposed to, such as: costs of all types, prices of every material/equipment/space and the initial monetary investment in order to start a company of this kind.
+The costs estimation will include, specifically:
+ - Unitary cost of reagents.
+ - Cost of laboratory equipment and instruments.
+ - Shipping cost for the reagents and materials(if the company settle down in Querétaro México).
+ - Estimated production cost.
+ - Rent of space and installations.
+As part of the objectives the Biosint_Mexico team have, this pilot plant will be a microbiological fermentation unit capable of produce and extract hypotaurine for the enrichment of other food products, energetic beverages and food supplements. This after find out that the molecule in question is highly used in the animals food industry as well as in the beverages ones. Several plants include the hypotaurine and the taurine in their products as part of their regular formulation, but there’s no other way of producing it that isn’t chemical synthesis (highly contaminant). *It is worth mention that the project was approved by the professor of the Project Management class (head of the Industrial Engineering career at the campus) and it was initially intended to use Saccharomyces cerevisiae as operation organism.* *If any doubts comes up regarding the understanding of the following document, please contact any of the team members for clarification*
+Following, you can find the full paperwork with all the specifics of the project and all the hard data (in spanish): Falta
+Galery
+Parts
+iGEM2016 BIOSINT_Mexico
+Bioproduction of  hypotaurine: Metabolic pathway insertion in Escherichia coli
+BIOSINT MEXICO 2016
+Instituto Tecnologico y de Estudios Superiores de Monterrey Campus Queretaro          Epigmenio Gonzales 500, Fracc. San Pablo          Email: biosintqro@gmail.com          Queretaro, QRO

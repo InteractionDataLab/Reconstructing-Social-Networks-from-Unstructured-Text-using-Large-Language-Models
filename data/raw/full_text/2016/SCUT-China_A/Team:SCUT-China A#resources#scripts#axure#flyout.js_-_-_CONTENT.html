@@ -1,0 +1,236 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_axure_flyout_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/axure/flyout.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>// ******* Flyout MANAGER ******** //
+$axure.internal(function($ax) {
+</P><PRE>   var _flyoutManager = $ax.flyoutManager = {};
+</PRE><PRE>   var getFlyoutLabel = function(panelId) {
+       return panelId + '_flyout';
+   };
+</PRE><PRE>   var _unregisterPanel = function(panelId, keepShown) {
+       $ax.geometry.unregister(getFlyoutLabel(panelId));
+       if(panelToSrc[panelId]) {
+           $ax.style.RemoveRolloverOverride(panelToSrc[panelId]);
+           delete panelToSrc[panelId];
+       }
+       if(!keepShown) {
+           $ax.action.addAnimation(panelId, $ax.action.queueTypes.fade, function() {
+               $ax('#' + panelId).hide();
+           });
+       }
+   };
+   _flyoutManager.unregisterPanel = _unregisterPanel;
+</PRE><PRE>   var genPoint = $ax.geometry.genPoint;
+</PRE><PRE>   var _updateFlyout = function(panelId) {
+       var label = getFlyoutLabel(panelId);
+       if(!$ax.geometry.polygonRegistered(label)) return;
+       var info = $ax.geometry.getPolygonInfo(label);
+       var rects = info &amp;&amp; info.rects;
+</PRE><PRE>       var targetWidget = $ax.getWidgetInfo(panelId);
+       rects.target = $ax.geometry.genRect(targetWidget);
+</PRE><PRE>       // Src will stay the same, just updating
+       $ax.flyoutManager.registerFlyout(rects, panelId, panelToSrc[panelId]);
+</PRE><PRE>       if(!$ax.geometry.checkInsideRegion(label)) _unregisterPanel(panelId);
+   };
+   _flyoutManager.updateFlyout = _updateFlyout;
+</PRE><PRE>   var panelToSrc = {};
+   var _registerFlyout = function(rects, panelId, srcId) {
+       var label = _getFlyoutLabel(panelId);
+       var callback = function(info) {
+           // If leaving object or already outside it, then unregister, otherwise just return
+           if(!info.exiting &amp;&amp; !info.outside) return;
+           _unregisterPanel(panelId);
+       };
+       var points = [];
+</PRE><PRE>       var lastSrcId = panelToSrc[panelId];
+       if(lastSrcId != srcId) {
+           if(lastSrcId) $ax.style.RemoveRolloverOverride(lastSrcId);
+           if(srcId) {
+               $ax.style.AddRolloverOverride(srcId);
+               panelToSrc[panelId] = srcId;
+           } else delete panelToSrc[panelId];
+       }
+</PRE><PRE>       // rects should be one or two rectangles
+       if(!rects.src) {
+           var rect = rects.target;
+           points.push(genPoint(rect.Left(), rect.Top()));
+           points.push(genPoint(rect.Right(), rect.Top()));
+           points.push(genPoint(rect.Right(), rect.Bottom()));
+           points.push(genPoint(rect.Left(), rect.Bottom()));
+       } else {
+           var r0 = rects.src;
+           var r1 = rects.target;
+</PRE><PRE>           // Right left of right, left right of left, top below top, bottom above bottom
+           var rlr = r0.Right() &lt;= r1.Right();
+           var lrl = r0.Left() &gt;= r1.Left();
+           var tbt = r0.Top() &gt;= r1.Top();
+           var bab = r0.Bottom() &lt;= r1.Bottom();
+</PRE><PRE>           var info = { rlr: rlr, lrl: lrl, tbt: tbt, bab: bab };
+</PRE><PRE>           if((rlr &amp;&amp; lrl) || (tbt &amp;&amp; bab)) {
+               points = getSmallPolygon(r0, r1, info);
+           } else {
+               points = getLargePolygon(r0, r1, info);
+           }
+       }
+</PRE><PRE>       $ax.geometry.registerPolygon(label, points, callback, { rects: rects });
+   };
+   _flyoutManager.registerFlyout = _registerFlyout;
+</PRE><PRE>   var _getFlyoutLabel = function(panelId) {
+       return panelId + '_flyout';
+   };
+</PRE><PRE>   var _reregisterAllFlyouts = function() {
+       for(var panelId in panelToSrc) _reregisterFlyout(panelId);
+   };
+   _flyoutManager.reregisterAllFlyouts = _reregisterAllFlyouts;
+</PRE><PRE>   var _reregisterFlyout = function(panelId) {
+       var rects = $ax.geometry.getPolygonInfo(getFlyoutLabel(panelId)).rects;
+       _registerFlyout(rects, panelId, panelToSrc[panelId]);
+   };
+</PRE><PRE>   // This is the reduced size polygon connecting r0 to r1 by means of horizontal or vertical lines.
+   var getSmallPolygon = function(r0, r1, info) {
+       var points = [];
+</PRE><PRE>       // NOTE: currently I make the assumption that if horizontal/vertical connecting lines from the src hit the target
+       //        Meaning if horizontal, rlr and lrl are true, and if vertical, tbt and bab are true.
+</PRE><PRE>       var r0Left = r0.Left();
+       var r0Right = r0.Right();
+       var r0Top = r0.Top();
+       var r0Bottom = r0.Bottom();
+       var r1Left = r1.Left();
+       var r1Right = r1.Right();
+       var r1Top = r1.Top();
+       var r1Bottom = r1.Bottom();
+</PRE><PRE>       points.push(genPoint(r1Left, r1Top));
+</PRE><PRE>       if(!info.tbt) {
+           points.push(genPoint(r0Left, r1Top));
+           points.push(genPoint(r0Left, r0Top));
+           points.push(genPoint(r0Right, r0Top));
+           points.push(genPoint(r0Right, r1Top));
+       }
+</PRE><PRE>       points.push(genPoint(r1Right, r1Top));
+</PRE><PRE>       if(!info.rlr) {
+           points.push(genPoint(r1Right, r0Top));
+           points.push(genPoint(r0Right, r0Top));
+           points.push(genPoint(r0Right, r0Bottom));
+           points.push(genPoint(r1Right, r0Bottom));
+       }
+</PRE><PRE>       points.push(genPoint(r1Right, r1Bottom));
+</PRE><PRE>       if(!info.bab) {
+           points.push(genPoint(r0Right, r1Bottom));
+           points.push(genPoint(r0Right, r0Bottom));
+           points.push(genPoint(r0Left, r0Bottom));
+           points.push(genPoint(r0Left, r1Bottom));
+       }
+</PRE><PRE>       points.push(genPoint(r1Left, r1Bottom));
+</PRE><PRE>       if(!info.lrl) {
+           points.push(genPoint(r1Left, r0Bottom));
+           points.push(genPoint(r0Left, r0Bottom));
+           points.push(genPoint(r0Left, r0Top));
+           points.push(genPoint(r1Left, r0Top));
+       }
+</PRE><PRE>       return points;
+   };
+</PRE><PRE>   // This is the original algorithm that connects the most extream corners to make polygon
+   var getLargePolygon = function(r0, r1, info) {
+       var points = [];
+</PRE><PRE>       var r0Left = r0.Left();
+       var r0Right = r0.Right();
+       var r0Top = r0.Top();
+       var r0Bottom = r0.Bottom();
+       var r1Left = r1.Left();
+       var r1Right = r1.Right();
+       var r1Top = r1.Top();
+       var r1Bottom = r1.Bottom();
+</PRE><PRE>       // Top lefts
+       if(info.tbt) {
+           if(!info.lrl) points.push(genPoint(r0Left, r0Top));
+           points.push(genPoint(r1Left, r1Top));
+       } else {
+           if(info.lrl) points.push(genPoint(r1Left, r1Top));
+           points.push(genPoint(r0Left, r0Top));
+       }
+</PRE><PRE>       // Top rights
+       if(info.tbt) {
+           points.push(genPoint(r1Right, r1Top));
+           if(!info.rlr) points.push(genPoint(r0Right, r0Top));
+       } else {
+           points.push(genPoint(r0Right, r0Top));
+           if(info.rlr) points.push(genPoint(r1Right, r1Top));
+       }
+</PRE><PRE>       // Bottom rights
+       if(info.bab) {
+           if(!info.rlr) points.push(genPoint(r0Right, r0Bottom));
+           points.push(genPoint(r1Right, r1Bottom));
+       } else {
+           if(info.rlr) points.push(genPoint(r1Right, r1Bottom));
+           points.push(genPoint(r0Right, r0Bottom));
+       }
+</PRE><PRE>       // Bottom Lefts
+       if(info.bab) {
+           points.push(genPoint(r1Left, r1Bottom));
+           if(!info.lrl) points.push(genPoint(r0Left, r0Bottom));
+       } else {
+           points.push(genPoint(r0Left, r0Bottom));
+           if(info.lrl) points.push(genPoint(r1Left, r1Bottom));
+       }
+       return points;
+   };
+</PRE><P>});
+</P><P>// ******* Placeholder Manager ********* //
+</P><P>$axure.internal(function($ax) {
+</P><PRE>   var _placeholderManager = $ax.placeholderManager = {};
+   var idToPlaceholderInfo = {};
+</PRE><PRE>   var _registerPlaceholder = function(elementId, text, password) {
+       idToPlaceholderInfo[elementId] = { text: text, password: password, active: false };
+   };
+   _placeholderManager.registerPlaceholder = _registerPlaceholder;
+</PRE><PRE>   _placeholderManager.refreshPlaceholder = function (elementId) {
+       var info = idToPlaceholderInfo[elementId];
+       if (!info || !info.active) return;
+       $ax.style.SetWidgetPlaceholder(elementId, true, info.text, info.password);
+   }
+</PRE><PRE>   var _updatePlaceholder = function(elementId, active, clearText) {
+       var inputId = $ax.repeater.applySuffixToElementId(elementId, '_input');
+</PRE><PRE>       var info = idToPlaceholderInfo[elementId];
+       if(!info || info.active == active) return;
+       info.active = active;
+       var value = active ? info.text : clearText ? <I> : $jobj(inputId).val();</I>
+       $ax.style.SetWidgetPlaceholder(elementId, active, value, info.password);
+   };
+   _placeholderManager.updatePlaceholder = _updatePlaceholder;
+</PRE><PRE>   var _isActive = function(elementId) {
+       var info = idToPlaceholderInfo[elementId];
+       return Boolean(info &amp;&amp; info.active);
+   };
+   _placeholderManager.isActive = _isActive;
+</PRE><PRE>   var _selectRange = function(elementId, start, end) {
+       $jobj(elementId).each(function() {
+           if(this.setSelectionRange) {
+               var validTypes = [&quot;text&quot;, &quot;search&quot;, &quot;url&quot;, &quot;tel&quot;, &quot;password&quot;];
+               if(this.tagName.toLowerCase() != &quot;input&quot; || validTypes.indexOf(this.type) &gt; -1) {
+                   this.focus();
+                   this.setSelectionRange(start, end);
+               }
+           } else if(this.createTextRange) {
+               var range = this.createTextRange();
+               range.collapse(true);
+               range.moveEnd('character', end);
+               range.moveStart('character', start);
+               range.select();
+           }
+       });
+   };
+   _placeholderManager.selectRange = _selectRange;
+</PRE><PRE>   var _moveCaret = function(id, index) {
+       var inputIndex = id.indexOf('_input');
+       if(inputIndex == -1) return;
+       var inputId = id.substring(0, inputIndex);
+</PRE><PRE>       if(!_isActive(inputId)) return;
+       _selectRange(id, index, index);
+   };
+   _placeholderManager.moveCaret = _moveCaret;
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

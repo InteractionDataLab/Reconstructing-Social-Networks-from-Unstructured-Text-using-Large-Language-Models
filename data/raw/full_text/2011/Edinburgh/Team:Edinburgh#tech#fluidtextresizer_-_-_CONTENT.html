@@ -1,0 +1,92 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Edinburgh_tech_fluidtextresizer"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Edinburgh/tech/fluidtextresizer">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Edinburgh/tech/fluidtextresizer&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Edinburgh/tech/fluidtextresizer&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Edinburgh/tech/fluidtextresizer&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Edinburgh/tech/fluidtextresizer" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Edinburgh/tech/fluidtextresizer</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2011.igem.org</H3><P>/*Fluid Text Resizer (June 27th, 2010)
+</P><UL><LI> This notice must stay intact for usage 
+</LI><LI> Author: Dynamic Drive at <A href="http://www.dynamicdrive.com/" class="external free" rel="nofollow">http://www.dynamicdrive.com/</A></LI><LI> Visit <A href="http://www.dynamicdrive.com/" class="external free" rel="nofollow">http://www.dynamicdrive.com/</A> for full source code
+</LI><LI>/
+</LI></UL><P>jQuery.noConflict()
+</P><P>function fluidtextresizer(setting){
+	fluidtextresizer.count=(fluidtextresizer.count)? ++fluidtextresizer.count : 1
+	this.cookiename=&quot;fluidtextsizer&quot;+fluidtextresizer.count //name of cookie to use to store persistence for this text resizer instance
+	this.setting=setting
+	this.selectors=[] //array translating setting.targets into array of jquery selectors
+	this.$controls=null
+	this.defaultfontsizes=[]
+	this.curfontlevel=0
+	var thisobj=this
+	jQuery(function($){ //on document.ready
+		var els=setting.targets
+		for (var i=0; i&lt;els.length; i++){
+			if ($(els[i]).length==0){ //if selector doesn't yield any matched elements
+				els.splice(i, 1) //delete it from setting.targets[]
+				i-=1
+				continue
+			}
+			var curfontsize=$(els[i]).css('fontSize')
+			thisobj.defaultfontsizes.push({val:parseFloat(curfontsize), unit:curfontsize.slice(-2)}) //remember default font sizes of target elements
+			thisobj.selectors.push($(els[i])) //cache selector
+		}
+		if (setting.controlsdiv){ //if special container for resize controls defined
+			thisobj.$controls=$('#'+setting.controlsdiv).find('a[href^=#fontsize], a[href=#bigger], a[href=#smaller]')
+			thisobj.$controls.each(function(){
+				var $target=$(this)
+				$target.data('level', $target.attr('href').replace(/(#)|(fontsize)/ig, <I>)) //remove &quot;#&quot; and &quot;fontsize&quot; from href to derive level</I>
+				$target.click(function(){
+				thisobj.setFontLevel($target.data('level'))
+				return false
+				})
+			})
+		}
+		if (setting.persisttype!=&quot;none&quot;){
+			var curfontlevel=fluidtextresizer.routines.getCookie(thisobj.cookiename) || 0 //get persisted font level, or 0 to indicate no change in font size
+			curfontlevel=parseInt(curfontlevel)
+			if (curfontlevel&gt;=-setting.levels &amp;&amp; curfontlevel&lt;=setting.levels){ //if font level within range
+				thisobj.setFontLevel(curfontlevel, true)
+			}
+		}
+	})
+}
+</P><P>fluidtextresizer.prototype={
+</P><P>	setFontLevel:function(level, disableanim){
+		var s=this.setting
+		var $els=this.selectors
+		var level=(level==&quot;bigger&quot;)? this.curfontlevel+1 : (level==&quot;smaller&quot;)? this.curfontlevel-1 : parseInt(level) //calculate new font size level
+		if (s.controlsdiv){ //if special container for resize controls defined
+			this.$controls.filter('.selectedcontrol').removeClass('selectedcontrol').end()  //deselect previously selected control
+				.filter('[href=#fontsize'+level+']').addClass('selectedcontrol') //apply &quot;selectedcontrol&quot; CSS class to corresponding control
+		}
+		if (level&lt;-s.levels || level&gt;s.levels || level==this.curfontlevel) //if target level is out or range (range is int from -s.levels to +s.levels) or is current level already
+			return
+		for (var i=0; i&lt;$els.length; i++){
+			var abslevel=Math.abs(level)
+			var valchange=Math.pow(1.2, abslevel) //calculate fontlevel^1.2
+			//calculate new font size, which is default font size multiply or divided by valchange:
+			var newfontsize=this.defaultfontsizes[i].val * (level&lt;0? 1/valchange : level&gt;0? valchange : 1) + this.defaultfontsizes[i].unit
+			$els[i].animate({fontSize: newfontsize}, disableanim? 0 : this.setting.animate)
+		}
+		if (s.persist==&quot;session&quot;){
+			fluidtextresizer.routines.setCookie(this.cookiename, level)
+		}
+		this.curfontlevel=level
+	}
+</P><P>}
+</P><P>fluidtextresizer.routines={
+	getCookie:function(Name){ 
+		var re=new RegExp(Name+&quot;=[^;]*&quot;, &quot;i&quot;); //construct RE to search for target name/value pair
+		return (document.cookie.match(re))? document.cookie.match(re)[0].split(&quot;=&quot;)[1] : null //return cookie value if found or null
+	},
+</P><P>	setCookie:function(name, value, days){
+		var expirestr=
+		if (typeof days!=&quot;undefined&quot;) //if set persistent cookie
+			expirestr=&quot;; expires=&quot;+expireDate.setDate(new Date().getDate()+days).toGMTString()
+		document.cookie = name+&quot;=&quot;+value+&quot;; path=/&quot;+expirestr
+	}
+}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2011.igem.org/Team:Edinburgh/tech/fluidtextresizer">http://2011.igem.org/Team:Edinburgh/tech/fluidtextresizer</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Edinburgh/tech/fluidtextresizer" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Edinburgh/tech/fluidtextresizer" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Edinburgh/tech/fluidtextresizer&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Edinburgh/tech/fluidtextresizer&amp;oldid=155348" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2011.igem.org:Privacy_policy" title="2011.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2011.igem.org:General_disclaimer" title="2011.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

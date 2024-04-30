@@ -1,0 +1,171 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Evry_arbor_src_tween_tween_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Evry/arbor/src/tween/tween.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Evry/arbor/src/tween/tween.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/tween/tween.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/tween/tween.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Evry/arbor/src/tween/tween.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Evry/arbor/src/tween/tween.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>//
+// tween.js
+//
+// interpolator of .data field members for nodes and edges
+//
+</P><PRE> var Tween = function(){
+   var _tweens = {}
+   var _done = true
+   
+   var that = {
+     init:function(){
+       return that
+     },
+     
+     busy:function(){
+       var busy = false
+       for (var k in _tweens){ busy=true; break}
+       return busy
+     },
+     
+     to:function(node, dur, to){
+       var now = new Date().valueOf()
+       var seenFields = {}
+</PRE><PRE>       var tween = {from:{}, to:{}, colors:{}, node:node, t0:now, t1:now+dur*1000, dur:dur*1000}
+       var easing_fn = &quot;linear&quot;
+       for (var k in to){
+         if (k=='easing'){
+           // need to do better here. case insensitive and default to linear
+           // also be okay with functions getting passed in
+           var ease = to[k].toLowerCase()
+           if (ease in Easing) easing_fn = ease
+           continue
+         }else if (k=='delay'){
+           var delay = (to[k]||0) * 1000
+           tween.t0 += delay
+           tween.t1 += delay
+           continue
+         }
+         
+         if (Colors.validate(to[k])){
+           // it's a hex color string value
+           tween.colors[k] = [Colors.decode(node.data[k]), Colors.decode(to[k]), to[k]]
+           seenFields[k] = true
+         }else{
+           tween.from[k] = (node.data[k]!=undefined) ? node.data[k] : to[k]
+           tween.to[k] = to[k]
+           seenFields[k] = true
+         }
+       }
+       tween.ease = Easing[easing_fn]
+</PRE><PRE>       if (_tweens[node._id]===undefined) _tweens[node._id] = []
+       _tweens[node._id].push(tween)
+       
+       // look through queued prunes for any redundancies
+       if (_tweens.length&gt;1){
+         for (var i=_tweens.length-2; i&gt;=0; i++){
+           var tw = _tweens[i]
+</PRE><PRE>           for (var k in tw.to){
+             if (k in seenFields) delete tw.to[k]
+             else seenFields[k] = true
+           }
+</PRE><PRE>           for (var k in tw.colors){
+             if (k in seenFields) delete tw.colors[k]
+             else seenFields[k] = true
+           }
+</PRE><PRE>           if ($.isEmptyObject(tw.colors) &amp;&amp; $.isEmptyObject(tw.to)){
+             _tweens.splice(i,1)
+           }
+</PRE><PRE>         }
+       }
+       
+       _done = false
+     },
+</PRE><PRE>     interpolate:function(pct, src, dst, ease){
+       ease = (ease||&quot;&quot;).toLowerCase()
+       var easing_fn = Easing.linear
+       if (ease in Easing) easing_fn = Easing[ease]
+</PRE><PRE>       var proportion = easing_fn( pct, 0,1, 1 )
+       if (Colors.validate(src) &amp;&amp; Colors.validate(dst)){
+         return lerpRGB(proportion, src,dst)
+       }else if (!isNaN(src)){
+         return lerpNumber(proportion, src,dst)
+       }else if (typeof src=='string'){
+         return (proportion&lt;.5) ? src : dst
+       }
+       
+     },
+</PRE><PRE>     tick:function(){
+       var empty = true
+       for (var k in _tweens){ empty=false; break}
+       if (empty) return
+       
+       var now = new Date().valueOf()
+       
+       $.each(_tweens, function(id, tweens){
+         var unprunedTweens = false
+         
+         $.each(tweens, function(i, tween){
+           var proportion = tween.ease( (now-tween.t0), 0,1, tween.dur )
+           proportion = Math.min(1.0, proportion)
+           var from = tween.from
+           var to = tween.to
+           var colors = tween.colors
+           var nodeData = tween.node.data
+</PRE><PRE>           var lastTick = (proportion==1.0)
+</PRE><PRE>           for (var k in to){
+             switch (typeof to[k]){
+               case &quot;number&quot;:
+                 nodeData[k] = lerpNumber(proportion, from[k], to[k])
+                 if (k=='alpha') nodeData[k] = Math.max(0,Math.min(1, nodeData[k]))
+                 break
+               case &quot;string&quot;:
+                 if (lastTick){
+                   nodeData[k] = to[k]
+                 }
+                 break
+             }
+           }
+           
+           for (var k in colors){
+             if (lastTick){
+               nodeData[k] = colors[k][2]
+             }else{
+               var rgb = lerpRGB(proportion, colors[k][0], colors[k][1])
+               nodeData[k] = Colors.encode(rgb)
+             }
+           }
+</PRE><PRE>           if (lastTick){
+              tween.completed = true
+              unprunedTweens = true
+           }
+         })
+         
+         if (unprunedTweens){
+           _tweens[id] = $.map(tweens, function(t){ if (!t.completed) return t})
+           if (_tweens[id].length==0) delete _tweens[id]
+         }
+       })
+       
+       _done = $.isEmptyObject(_tweens)
+       return _done
+     }
+   }
+   return that.init()
+ }
+ 
+ var lerpNumber = function(proportion,from,to){
+   return from + proportion*(to-from)
+ }
+ 
+ var lerpRGB = function(proportion,from,to){
+   proportion = Math.max(Math.min(proportion,1),0)
+   var mixture = {}
+   
+   $.each('rgba'.split(&quot;&quot;), function(i, c){
+     mixture[c] = Math.round( from[c] + proportion*(to[c]-from[c]) )
+   })
+   return mixture
+ }
+</PRE><P>  
+// })()
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Evry/arbor/src/tween/tween.js">http://2012.igem.org/Team:Evry/arbor/src/tween/tween.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Evry/arbor/src/tween/tween.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Evry/arbor/src/tween/tween.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Evry/arbor/src/tween/tween.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Evry/arbor/src/tween/tween.js&amp;oldid=124555" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

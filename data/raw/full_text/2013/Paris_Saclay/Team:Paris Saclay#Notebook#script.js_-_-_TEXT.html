@@ -1,0 +1,87 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Paris Saclay/Notebook/script.js
+From 2013.igem.org
+function nb_month() {
+this.index= undefined; this.id= undefined; this.text= undefined; this.days= undefined; this.firstdayofweek= 1; this.nitems= 0;
+}
+function nb_tag() {
+this.id= undefined; this.text= undefined; this.target= undefined;
+}
+function nb_item() {
+this.day= undefined; this.month= undefined; this.image= undefined; this.tags= new Array();
+}
+var nb_months= new Array(); var nb_tags= new Array(); var nb_items= new Array(); //[month][day]
+var nb_months_index= new Array(); var nb_tags_revindex= new Array(); //[tag][month]
+var nb_curmonth= null; var nb_curtag= null;
+function nb_is_posint(str) {
+if(str == ) return false; var parsed= parseInt(str);  if(isNaN(parsed)) return false;  if(!isFinite(parsed)) return false;  if(parsed <= 0) return false;  return true;
+}
+function pb_load_xmldata(nbdiv) {
+//Open XML data file var xmldata= null; try {  var xmlfile= ' https://2013.igem.org/Team:Paris_Saclay/Notebook/liste.xml?action=raw&ctype=text/css&ps_tstamp='+new Date().getTime();  var xhr= new XMLHttpRequest();  xhr.open("GET", xmlfile, false);  xhr.send();  var parser= new DOMParser();  xmldata= parser.parseFromString(xhr.responseText, "application/xml");  if(xmldata.documentElement.nodeName != 'notebook')   throw 'XML parsing error'; } catch(err) {  document.getElementById('notebook_div').innerHTML='Error : ' + err;  return false; }
+var reserr= ;
+//Get months var month_found= false; var tmp_months= xmldata.getElementsByTagName('mois'); for(var i= 0 ; i < tmp_months.length ; ++i) {  var tmpm= tmp_months[i];
+if(!tmpm.hasAttribute('id'))  {   reserr += ("ERREUR : Il manque l'attribut 'id' au " + i+1 + (i==0?'er':'ème') + ' mois défini.') + "\n";   continue;  }
+var tmpid= tmpm.getAttribute('id');  if(tmpid == ) {   reserr += ("ERREUR : l'attribut 'id' du " + i+1 + (i==0?'er':'ème') + ' mois défini est vide.') + "\n";   continue;  }  if(nb_months[tmpid] != undefined)  {   reserr += ("ERREUR : plus d'un mois défini avec l'id '"+tmpid+"'.") + "\n";   continue;  }
+if(!tmpm.hasAttribute('jours'))  {   reserr += ("ERREUR : il manque le nombre de jours du mois avec l'id '"+tmpid+"'.") + "\n";   continue;  }  var tmp_ndays= tmpm.getAttribute('jours');  if(!nb_is_posint(tmp_ndays))  {   reserr += ("ERREUR : le nombre de jours du mois avec l'id "+tmpid+" est invalide ('"+tmp_ndays+"').") + "\n";   continue;  }  tmp_ndays= parseInt(tmp_ndays);
+var tmp_firstdayofweek= 1;  if(tmpm.hasAttribute('premier-jour'))  {   tmp_firstdayofweek= tmpm.getAttribute('premier-jour');   if(!nb_is_posint(tmp_firstdayofweek))   {    reserr += ("ERREUR : le premier jour du mois avec l'id "+tmpid+" est invalide ('"+tmp_firstdayofweek+"').") + "\n";    tmp_firstdayofweek= 1;   }  }
+nb_months[tmpid]= new nb_month();  nb_months[tmpid].id= tmpid;  nb_months[tmpid].days= tmp_ndays;  nb_months[tmpid].text= tmpid;  nb_months[tmpid].firstdayofweek= tmp_firstdayofweek;  if(tmpm.hasAttribute('texte'))   nb_months[tmpid].text= tmpm.getAttribute('texte');
+nb_months[tmpid].index= nb_months_index.length;  nb_months_index.push(nb_months[tmpid]);
+nb_items[tmpid]= new Array();
+month_found= true; }
+if(!month_found) {  alert('ERREUR : aucun mois défini.');  return false; }  //Get tags var tmp_tags= xmldata.getElementsByTagName('declaration_tag'); for(var i= 0 ; i < tmp_tags.length ; ++i) {  var tmpt= tmp_tags[i];
+if(!tmpt.hasAttribute('id'))  {   reserr += ("ERREUR : Il manque l'attribut 'id' au " + i+1 + (i==0?'er':'ème') + ' tag défini.')  + "\n";   continue;  }
+var tmpid= tmpt.getAttribute('id');  if(tmpid == ) {   reserr += ("ERREUR : l'attribut 'id' du " + i+1 + (i==0?'er':'ème') + ' tag défini est vide.') + "\n";   continue;  }  if(nb_tags[tmpid] != undefined)  {   reserr += alert("ERREUR : plus d'un tag défini avec l'id '"+tmpid+"'.") + "\n";   continue;  }
+if(!tmpt.hasAttribute('cible'))  {   reserr += ("ERREUR : il manque la cible du tag avec l'id '"+tmpid+"'.") + "\n";   continue;  }  var tmp_target= tmpt.getAttribute('cible');  if(tmp_target == ) {   reserr += ("ERREUR : la cible du tag avec l'id '"+tmpid+"' est vide.") + "\n";   continue;  }
+nb_tags[tmpid]= new nb_tag();  nb_tags[tmpid].id= tmpid;  nb_tags[tmpid].target= tmp_target;  nb_tags[tmpid].text= tmpid;  if(tmpt.hasAttribute('texte'))   nb_tags[tmpid].text= tmpt.getAttribute('texte');
+nb_tags_revindex[tmpid]= new Array();  for(var mid in nb_months)   nb_tags_revindex[tmpid][nb_months[mid].id]= new Array(); }
+//Get items var tmp_items= xmldata.getElementsByTagName('lien'); for(var i= 0 ; i < tmp_items.length ; ++i) {  var tmpi= tmp_items[i];    if(!tmpi.hasAttribute('mois'))  {   reserr += ('ERREUR : il manque le mois du ' + i+1 + (i==0?'er':'ème') + ' lien défini.') + "\n";   continue;  }  var tmp_month= tmpi.getAttribute('mois');  if(nb_months[tmp_month] == undefined)  {   reserr += ('ERREUR : le mois du ' + i+1 + (i==0?'er':'ème') + " lien défini est non déclaré ('"+tmp_month+"').") + "\n";   continue;  }
+if(!tmpi.hasAttribute('jour'))  {   reserr == ('ERREUR : il manque le jour du ' + i+1 + (i==0?'er':'ème') + ' lien défini.') + "\n";   continue;  }  var tmp_day= tmpi.getAttribute('jour');  if(!nb_is_posint(tmp_day))  {   reserr += ('ERREUR : le numéro de jour du ' + i+1 + (i==0?'er':'ème') + " lien défini est invalide ('"+tmp_day+"').") + "\n";   continue;  }  tmp_day= parseInt(tmp_day);  if(tmp_day > nb_months[tmp_month].days)  {   reserr += ('ERREUR : le numéro de jour du ' + i+1 + (i==0?'er':'ème') + " lien défini ("+tmp_day+") dépasse le nombre de jours du mois '" + tmp_month + "' ("+nb_months[tmp_month].days+").") + "\n";   continue;  }
+if(nb_items[tmp_month][tmp_day] != undefined)  {   reserr += ('ERREUR : le ' + i+1 + (i==0?'er':'ème') + " lien défini tombe le même jour qu'un autre lien (le "+tmp_day+" '" + tmp_month + "').") + "\n";   continue;  }
+nb_months[tmp_month].nitems ++;
+nb_items[tmp_month][tmp_day]= new nb_item();  nb_items[tmp_month][tmp_day].month= tmp_month;  nb_items[tmp_month][tmp_day].day= tmp_day;  if(tmpi.hasAttribute('image'))   nb_items[tmp_month][tmp_day].image= tmpi.getAttribute('image');
+var tmp_tags= tmpi.getElementsByTagName('tag');  for(var j= 0 ; j < tmp_tags.length ; ++j)  {   var tmpt= tmp_tags[j].childNodes[0].nodeValue;   if(nb_tags[tmpt] == undefined)   {    reserr += ('ERREUR : le lien du ' + tmp_day + " '" + tmp_month + "' comporte un tag non déclaré : '" + tmpt + "'.") + "\n";    continue;   }   nb_items[tmp_month][tmp_day].tags[tmpt]= true;   nb_tags_revindex[tmpt][tmp_month].push(nb_items[tmp_month][tmp_day]);  } }
+if(reserr != ) alert(reserr);
+return true;
+}
+function nb_create_interface() {
+var nbdiv= document.getElementById('notebook_div'); nbdiv.innerHTML= ; //months bar var mb= document.createElement('div'); mb.id= 'nb_monthsbar'; for(var mindx in nb_months_index) {  var tmpm= nb_months_index[mindx];
+var mlnk= document.createElement('a');  mlnk.appendChild(document.createTextNode(tmpm.text + ' (' + tmpm.nitems + ')'));  //mlnk.href= '#';  mlnk.setAttribute('data-month', tmpm.id);  mlnk.id= 'nb_month_'+tmpm.id;  mlnk.className= 'nb_month_inact';  mlnk.onclick= function(evt) { nb_display(nb_curtag, evt.target.getAttribute('data-month')); };  mb.insertBefore(mlnk, mb.firstChild); } nbdiv.appendChild(mb);
+//filter box var fb= document.createElement('div'); fb.id= 'nb_filterdiv'; {  var tlnk= document.createElement('a');  tlnk.appendChild(document.createTextNode('No filtering'));  //tlnk.href= '#';  tlnk.id= 'nb_alltags';  tlnk.className= 'nb_tag_act';  tlnk.onclick= function(evt) { nb_display(null, nb_curmonth); };  fb.appendChild(tlnk); } for(var ti in nb_tags) {  var tmpt= nb_tags[ti];  var tlnk= document.createElement('a');  tlnk.appendChild(document.createTextNode(tmpt.text));  //tlnk.href= '#';  tlnk.id= 'nb_tag_'+tmpt.id;  tlnk.className= 'nb_tag_inact';  tlnk.setAttribute('data-tag', tmpt.id);  tlnk.onclick= function(evt) { nb_display(evt.target.getAttribute('data-tag'), nb_curmonth); };  fb.appendChild(tlnk); } nbdiv.appendChild(fb);
+//days box var db= document.createElement('div'); db.id= 'nb_daysdiv'; nbdiv.appendChild(db);  //init : no tag filter, last month nb_display(null, nb_months['aout'].id);
+}
+function nb_display(f_tag, f_month) {
+//check for changes if(f_month == null) return; var month_changed= (f_month != nb_curmonth); var tag_changed= (f_tag != nb_curtag);
+//update dynamically if(month_changed) {  nb_mark_tag(null);  nb_display_newmonth(f_month);  nb_mark_tag(f_tag); } else if(tag_changed)  nb_mark_tag(f_tag);
+}
+function nb_display_newmonth(f_month) {
+if(nb_curmonth != null)  document.getElementById('nb_month_'+nb_curmonth).className= 'nb_month_inact';
+var m= nb_months[f_month];
+var db= document.getElementById('nb_daysdiv'); db.innerHTML= ; var res_html= ; for(var i= 1 ; i < nb_months[f_month].firstdayofweek ; ++i)  res_html += '<a class="nb_ed"></a>'; for(var i= 1 ; i <= m.days ; ++i) {  var tmpi= nb_items[f_month][i];  var url= ' https://2013.igem.org/Team:Paris_Saclay/Notebook/'+nb_months [f_month].text+'/'+i;  if(tmpi != undefined) //day is defined   res_html += '<a id="nb_d'+i+'" href="'+url+'" class="nb_dd"' + (tmpi.image != undefined ? ' style="background-image:url(\' https://static.igem.org/mediawiki/2013/8/82/Ps_notebook_fg.png\' ), url(\+tmpi.image+'\');background-size:100% 100%, 100% 100%;"' : )+'>'+i+'</a>';  else   res_html += '<a id="nb_d'+i+'" href="'+url+'" class="nb_nd">'+i+'</a>'; }  db.innerHTML= res_html;
+nb_curmonth= f_month; document.getElementById('nb_month_'+nb_curmonth).className= 'nb_month_act';
+}
+function nb_mark_tag(f_tag) {
+//reset previous filter if(nb_curtag != null) {  var ds= nb_tags_revindex[nb_curtag][nb_curmonth];  for(var i in ds)  {   var url= ' https://2013.igem.org/Team:Paris_Saclay/Notebook/'+nb_months [nb_curmonth].text+'/'+ds[i].day;   var lnk= document.getElementById('nb_d'+ds[i].day);   lnk.href= url;   lnk.className= 'nb_dd';  }  document.getElementById('nb_tag_'+nb_curtag).className= 'nb_tag_inact';  nb_curtag= null; } else //previous was null  document.getElementById('nb_alltags').className= 'nb_tag_inact';
+//set new filter if(f_tag != null) {  var ds= nb_tags_revindex[f_tag][nb_curmonth];  for(var i in ds)  {   var url= ' https://2013.igem.org/Team:Paris_Saclay/Notebook/'+nb_months [nb_curmonth].text+'/'+ds[i].day+'#'+nb_tags[f_tag].target;   var lnk= document.getElementById('nb_d'+ds[i].day);   lnk.href= url;   lnk.className= 'nb_fd';  } }
+nb_curtag= f_tag; if(nb_curtag != null)  document.getElementById('nb_tag_'+nb_curtag).className= 'nb_tag_act'; else  document.getElementById('nb_alltags').className= 'nb_tag_act';
+}
+function init_notebook() {
+if(!pb_load_xmldata())  return;  nb_create_interface();
+}
+window.addEventListener("load", init_notebook, false);
+Retrieved from " http://2013.igem.org/Team:Paris_Saclay/Notebook/script.js "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

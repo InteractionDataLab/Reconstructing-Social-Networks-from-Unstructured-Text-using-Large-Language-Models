@@ -1,0 +1,80 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:USTC-Software/model
+From 2011.igem.org
+Team:USTC-Software - 2011.igem.org
+USTC-Software
+Home
+Project
+Documents Parser & Models
+Views
+Assembly View
+Behavior View
+Network View
+Technology & Algorithm
+Parameter Analysis
+MoDeL
+Tutorial & Demo
+Notebook
+Team
+Members
+Collaboration
+Attribution & Contributions
+Acknowledgements
+Human Practice
+Safety & Security
+Meetup
+Download
+Contents:
+MoDeL
+Syntax
+Rationale
+Technology
+MoDeL
+The Perl language is a powerful tool for dealing with regular expressions, and it manages to process complex problems in a timely way. For example, for a hash array with a few elements in the buckets almost get the same manipulating time with a big hash with millions of elements. This feature improves the speed of rule based modeling remarkably.
+Dealing with regular expressions is also Perl's cup of tea. So the software can spend more running time saved by perl on providing a better user's interface, making it more convenient for users.
+Our approach first realized by Chen Liao and 2010 iGEMers emphasize on the structure of the species.
+Here is a detailed explanation to the input file of the rule based modeling approach There are four blocks, respectively lists the definition of parameters, the definition of compartments, seed species and events.
+The definition of parameters consists of two items. The left side term is the name of the variable, to the right is the expression of that parameter. Note that variables in that expression must be defined by the user. But it makes no difference whether they are defined before the expression. This is to avoid redundant definition and no definition.
+Syntax
+The compartments definition is in this way:
+[name ][outside][ruletable]{volume}{population}, where terms in the square brackets are mandatory, while terms in the curly braces are optional.
+The default value of the volume is 1. The outside term means the compartment outside the compartment, which is usually the medium that held the compartment like the ecoli.
+Ruletable is used to associate a rule in the data base with the compartment.
+The third block, reads [compartment][name][structure][init_concentration]{const}, structure is the definition of the complex structure, const is optional since it's in the curly brace. If the substance has a const property, then after the substance, write a const. if not, leave it blank.
+The last block is the events definition. The formats are [name][trigger_condition][event_assignments...] The name of the event is usr defined, trigger_condition is a bool expression, all the variables inside this bool expression must have been defined in one of the above three blocks. Event_assignments is a list of assignments, something like assignment1 assignment2 assignment3, with white space separated. There is no constraint on the number of assignments. Each assignment must be the format [variable]=[expression]
+A general rule in the algorithm is that the name of the variable must be started by A-Z –z and other characters can be A-Z-a-z-0-9.
+Rationale
+According to the rule-based languages, such as BNGL[1,2] and Kappa Language[3], molecules are represented with structured objects comprised of agents that can take any number of sites. Bonds could be formed by connecting sites on different agents to group them together and form complex. Typically, sites represent functional physical entities of various kinds of molecules, such as DNA-binding domains and promoter regions. Besides serving as terminal ends of bonds, sites can also take on any number of labels representing its internal states. Labels can be phosphorylation/unphorsphorylation status of proteins and open/close status of a complex of RNA polymerase and a promoter. Biological processes between agents can be easily and conveniently represented by the changes of their sites on the binding status and labels. An example of Lac dimer is given to briefly illustrate the syntax of this representation. Each Lac repressor, LacR, has one dimerization domain dim and can thus be written as LacR(dim). By connecting the two dim domains of two LacRs, the Lac dimer is then represented as LacR(dim!1).LacR(dim!1), where `.' separates different agents and the same number following `!' shared by two dim domains indicates a bond formation between them. The essences of those languages are preserved in MoDeL but with some major changes to make it better suited to describe synthetic biological systems.
+Synthetic biological systems are mostly Genetic Regulatory Networks (GRNs), in which regulations in both transcriptional and translational level are key to control the system to exhibit some complex bahaviors, such as oscillation. DNA sequences composed of basic BioBrick parts (agents) are not consicely represented, resulting in unreadability of the reaction rules containing such DNA sequences. In their representations, each part has both upstream and downstream domain and adjacent parts are connected by forming a bond between the upstream domain of one part and the downstream domain of the other. In addition, all the agents in Kappa Language are allowed to appear in any order so that it may blur the recognition of spatial relationship of agents; it is hard to pick up the agents in a DNA chain with the correct order. For example, a complex of RNA polymerase binding to trp promoter (MIT registry ID K191007) with LOVTAP on p2 can be rewritten as `\textbf{\small{DNA(up!2,bind,type$\sim$K191007p3), LOVTAP(dna!1), DNA(bind!1,type$\sim$K191007p2,down!2), RNAP(dna,rna)}}'. However, most readers, even specialists, have some difficulties to recognize and map it to the molecule it represents in a short time, making the process of model contruction laborious and error-prone.
+Aiming to simplify the representation of DNA and RNA sequences, we use the hyphen character `-' to connect two adjacent BioBricks rather than through bonding between one pair of upstream and downstream sites. This is good for visualization since the structure of molecules pictured in this way can be understood eaisly by readers. As to the syntax of single BioBrick representation, there are some minor differences with Kappa language: (1) the name of each BioBrick should be the same with the identifier of that BioBrick in the MIT registry; (2) the reversed sequence of each DNA BioBrick is assumed when an asterik character `*' appears following its name; But the sites of each BioBrick are defined in the same way as Kappa Language does and those names should be different with each other indicating equivalent sites are not supported. For example, the reverse part of Lac promoter (r0010) can be represented as r0010*(), where sites in the parenthesis are not shown. It is worthy of nothing that the parenthesis cannot be omitted even for BioBricks that do not take any sites. By convention, a DNA sequence written from left to right is assumed to read from 5' end to 3' end.
+As shown in the example of Lac dimer, a molecule may contain several agents as members separated by `.', by which means an agent is the basic unit of its composition. In MoDeL, the basic unit, however, has been expanded horizontally to be a sequence and different sequences, also separated by `.' in the representation, constitute molecules by forming bonds between them. The concept of sequence is not limited to DNA or RNA chains, but can be generalized to proteins and non-BioBricks in which cases each sequence may have only one agent. One example is Isopropyl beta-D-1-thiogalactopyranoside (IPTG). It has a binding domain \textit{laci} for Lac repressor and thus can be represented as i0001(laci), where i0001 is not a valid identifier in MIT registry since IPTG is not a BioBrick part but a conceptual part in our extension, which can be represented using the same syntax of BioBrick definition. In a short summary, sequences are chains composed of one or more parts, which are not limited to BioBrick parts or even not corresponded to any actual entities.
+There is a problem brought by the use of registry identifiers as the name of BioBricks: in principle, protein coding sequences should also have both RNA and protein representations and other type of BioBricks, such as promoters, ribosome binding sites and terminators, should have RNA representations. Each BioBrick, when transcribed or translated possibly, cannot be distinguished from its DNA, RNA and protein representations simply by its name and a qualifier is needed to tag a sequence explicitly to tell whether it is a BioBrick and if it is, which type of representation it belongs to. This can be easily done by adding a type qualifier preceding a colon character `:' to the head of a sequence representation to distinguish the four cases. In the current version of MoDeL, the four permitted types of sequences are DNA(d), RNA(r), Protein(p) and Non-BioBricks(nb), where the character in parenthesis following each type is the type qualifier used to tag sequences. For example, the tet repressor (tetR) can be represented as p:c0040(dna), which is totally different with d:c0040(dna), the protein coding sequence for tetR protein.
+[1] M. L. Blinov, J. R. Faeder, B. Goldstein, and W. S. Hlavacek. Bionetgen: software for rule-based modeling of signal trans- duction based on the interactions of molecular domains. Bioinformatics, 20:3289{3291, 2004.
+[2] J.R.Faeder, M.L.Blinov, and W.S.Hlavacek. Rule-based modeling of biochemical systems with bionetgen. Methods in molecular biology, 500:113{167, 2009.
+[3] T. Thomson. Rule-based modeling of biobrick parts. http://www.rulebase.org , 2009.
+Technology
+Detailed technology used by the re-build version of MoDeL is not available for now. Please refer to our previous year's website here . The basic ideas are the same, but the algorithms are re-designed to run hundreds times faster.
+Home
+Project
+Notebook
+Team
+Human Practice
+Download
+Welcome to    University of Science and Technology of China  !
+Retrieved from " http://2011.igem.org/Team:USTC-Software/model "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

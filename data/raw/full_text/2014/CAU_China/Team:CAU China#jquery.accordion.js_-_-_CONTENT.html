@@ -1,0 +1,290 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_CAU_China_jquery_accordion_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:CAU_China/jquery.accordion.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:CAU_China/jquery.accordion.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:CAU_China/jquery.accordion.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:CAU_China/jquery.accordion.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:CAU_China/jquery.accordion.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:CAU China/jquery.accordion.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/*
+</P><PRE>* jQuery UI Accordion 1.6
+* 
+* Copyright (c) 2007 Jörn Zaefferer
+*
+* <A href="http://docs.jquery.com/UI/Accordion" class="external free" rel="nofollow">http://docs.jquery.com/UI/Accordion</A>
+*
+* Dual licensed under the MIT and GPL licenses:
+*   <A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>
+*   <A href="http://www.gnu.org/licenses/gpl.html" class="external free" rel="nofollow">http://www.gnu.org/licenses/gpl.html</A>
+*
+* Revision: $Id: jquery.accordion.js 4876 2008-03-08 11:49:04Z joern.zaefferer $
+*
+*/
+</PRE><DL><DT>(function($) {
+</DT></DL><P>// If the UI scope is not available, add it
+$.ui = $.ui || {};
+</P><P>$.fn.extend({
+	accordion: function(options, data) {
+		var args = Array.prototype.slice.call(arguments, 1);
+</P><P>		return this.each(function() {
+			if (typeof options == &quot;string&quot;) {
+				var accordion = $.data(this, &quot;ui-accordion&quot;);
+				accordion[options].apply(accordion, args);
+			// INIT with optional options
+			} else if (!$(this).is(&quot;.ui-accordion&quot;))
+				$.data(this, &quot;ui-accordion&quot;, new $.ui.accordion(this, options));
+		});
+	},
+	// deprecated, use accordion(&quot;activate&quot;, index) instead
+	activate: function(index) {
+		return this.accordion(&quot;activate&quot;, index);
+	}
+});
+</P><P>$.ui.accordion = function(container, options) {
+</P><P>	// setup configuration
+	this.options = options = $.extend({}, $.ui.accordion.defaults, options);
+	this.element = container;
+</P><P>	$(container).addClass(&quot;ui-accordion&quot;);
+</P><P>	if ( options.navigation ) {
+		var current = $(container).find(&quot;a&quot;).filter(options.navigationFilter);
+		if ( current.length ) {
+			if ( current.filter(options.header).length ) {
+				options.active = current;
+			} else {
+				options.active = current.parent().parent().prev();
+				current.addClass(&quot;current&quot;);
+			}
+		}
+	}
+</P><P>	// calculate active if not specified, using the first header
+	options.headers = $(container).find(options.header);
+	options.active = findActive(options.headers, options.active);
+</P><P>	if ( options.fillSpace ) {
+		var maxHeight = $(container).parent().height();
+		options.headers.each(function() {
+			maxHeight -= $(this).outerHeight();
+		});
+		var maxPadding = 0;
+		options.headers.next().each(function() {
+			maxPadding = Math.max(maxPadding, $(this).innerHeight() - $(this).height());
+		}).height(maxHeight - maxPadding);
+	} else if ( options.autoheight ) {
+		var maxHeight = 0;
+		options.headers.next().each(function() {
+			maxHeight = Math.max(maxHeight, $(this).outerHeight());
+		}).height(maxHeight);
+	}
+</P><P>	options.headers
+		.not(options.active || &quot;&quot;)
+		.next()
+		.hide();
+	options.active.parent().andSelf().addClass(options.selectedClass);
+</P><P>	if (options.event)
+		$(container).bind((options.event) + &quot;.ui-accordion&quot;, clickHandler);
+};
+</P><P>$.ui.accordion.prototype = {
+	activate: function(index) {
+		// call clickHandler with custom event
+		clickHandler.call(this.element, {
+			target: findActive( this.options.headers, index )[0]
+		});
+	},
+</P><P>	enable: function() {
+		this.options.disabled = false;
+	},
+	disable: function() {
+		this.options.disabled = true;
+	},
+	destroy: function() {
+		this.options.headers.next().css(&quot;display&quot;, &quot;&quot;);
+		if ( this.options.fillSpace || this.options.autoheight ) {
+			this.options.headers.next().css(&quot;height&quot;, &quot;&quot;);
+		}
+		$.removeData(this.element, &quot;ui-accordion&quot;);
+		$(this.element).removeClass(&quot;ui-accordion&quot;).unbind(&quot;.ui-accordion&quot;);
+	}
+}
+</P><P>function scopeCallback(callback, scope) {
+	return function() {
+		return callback.apply(scope, arguments);
+	};
+}
+</P><P>function completed(cancel) {
+	// if removed while animated data can be empty
+	if (!$.data(this, &quot;ui-accordion&quot;))
+		return;
+	var instance = $.data(this, &quot;ui-accordion&quot;);
+	var options = instance.options;
+	options.running = cancel ? 0 : --options.running;
+	if ( options.running )
+		return;
+	if ( options.clearStyle ) {
+		options.toShow.add(options.toHide).css({
+			height: &quot;&quot;,
+			overflow: &quot;&quot;
+		});
+	}
+	$(this).triggerHandler(&quot;change.ui-accordion&quot;, [options.data], options.change);
+}
+</P><P>function toggle(toShow, toHide, data, clickedActive, down) {
+	var options = $.data(this, &quot;ui-accordion&quot;).options;
+	options.toShow = toShow;
+	options.toHide = toHide;
+	options.data = data;
+	var complete = scopeCallback(completed, this);
+</P><P>	// count elements to animate
+	options.running = toHide.size() == 0 ? toShow.size() : toHide.size();
+</P><P>	if ( options.animated ) {
+		if ( !options.alwaysOpen &amp;&amp; clickedActive ) {
+			$.ui.accordion.animations[options.animated]({
+				toShow: jQuery([]),
+				toHide: toHide,
+				complete: complete,
+				down: down,
+				autoheight: options.autoheight
+			});
+		} else {
+			$.ui.accordion.animations[options.animated]({
+				toShow: toShow,
+				toHide: toHide,
+				complete: complete,
+				down: down,
+				autoheight: options.autoheight
+			});
+		}
+	} else {
+		if ( !options.alwaysOpen &amp;&amp;clickedActive ) {
+			toShow.toggle();
+		} else {
+			toHide.hide();
+			toShow.show();
+		}
+		complete(true);
+	}
+}
+</P><P>function clickHandler(event) {
+	var options = $.data(this, &quot;ui-accordion&quot;).options;
+	if (options.disabled)
+		return false;
+</P><P>	// called only when using activate(false) to close all parts programmatically
+	if ( !event.target &amp;&amp; !options.alwaysOpen ) {
+		options.active.parent().andSelf().toggleClass(options.selectedClass);
+		var toHide = options.active.next(),
+			data = {
+				instance: this,
+				options: options,
+				newHeader: jQuery([]),
+				oldHeader: options.active,
+				newContent: jQuery([]),
+				oldContent: toHide
+			},
+			toShow = options.active = $([]);
+		toggle.call(this, toShow, toHide, data );
+		return false;
+	}
+	// get the click target
+	var clicked = $(event.target);
+</P><P>	// due to the event delegation model, we have to check if one
+	// of the parent elements is our actual header, and find that
+	if ( clicked.parents(options.header).length )
+		while ( !clicked.is(options.header) )
+			clicked = clicked.parent();
+</P><P>	var clickedActive = clicked[0] == options.active[0];
+</P><P>	// if animations are still active, or the active header is the target, ignore click
+	if (options.running || (options.alwaysOpen &amp;&amp; clickedActive))
+		return false;
+	if (!clicked.is(options.header))
+		return;
+</P><P>	// switch classes
+	options.active.parent().andSelf().toggleClass(options.selectedClass);
+	if ( !clickedActive ) {
+		clicked.parent().andSelf().addClass(options.selectedClass);
+	}
+</P><P>	// find elements to show and hide
+	var toShow = clicked.next(),
+		toHide = options.active.next(),
+		//data = [clicked, options.active, toShow, toHide],
+		data = {
+			instance: this,
+			options: options,
+			newHeader: clicked,
+			oldHeader: options.active,
+			newContent: toShow,
+			oldContent: toHide
+		},
+		down = options.headers.index( options.active[0] ) &gt; options.headers.index( clicked[0] );
+</P><P>	options.active = clickedActive ? $([]) : clicked;
+	toggle.call(this, toShow, toHide, data, clickedActive, down );
+</P><P>	return false;
+};
+</P><P>function findActive(headers, selector) {
+	return selector != undefined
+		? typeof selector == &quot;number&quot;
+			? headers.filter(&quot;:eq(&quot; + selector + &quot;)&quot;)
+			: headers.not(headers.not(selector))
+		: selector === false
+			? $([])
+			: headers.filter(&quot;:eq(0)&quot;);
+}
+</P><P>$.extend($.ui.accordion, {
+	defaults: {
+		selectedClass: &quot;selected&quot;,
+		alwaysOpen: true,
+		animated: 'slide',
+		event: &quot;click&quot;,
+		header: &quot;a&quot;,
+		autoheight: true,
+		running: 0,
+		navigationFilter: function() {
+			return this.href.toLowerCase() == location.href.toLowerCase();
+		}
+	},
+	animations: {
+		slide: function(options, additions) {
+			options = $.extend({
+				easing: &quot;swing&quot;,
+				duration: 300
+			}, options, additions);
+			if ( !options.toHide.size() ) {
+				options.toShow.animate({height: &quot;show&quot;}, options);
+				return;
+			}
+			var hideHeight = options.toHide.height(),
+				showHeight = options.toShow.height(),
+				difference = showHeight / hideHeight;
+			options.toShow.css({ height: 0, overflow: 'hidden' }).show();
+			options.toHide.filter(&quot;:hidden&quot;).each(options.complete).end().filter(&quot;:visible&quot;).animate({height:&quot;hide&quot;},{
+				step: function(now) {
+					var current = (hideHeight - now) * difference;
+					if ($.browser.msie || $.browser.opera) {
+						current = Math.ceil(current);
+					}
+					options.toShow.height( current );
+				},
+				duration: options.duration,
+				easing: options.easing,
+				complete: function() {
+					if ( !options.autoheight ) {
+						options.toShow.css(&quot;height&quot;, &quot;auto&quot;);
+					}
+					options.complete();
+				}
+			});
+		},
+		bounceslide: function(options) {
+			this.slide(options, {
+				easing: options.down ? &quot;bounceout&quot; : &quot;swing&quot;,
+				duration: options.down ? 1000 : 200
+			});
+		},
+		easeslide: function(options) {
+			this.slide(options, {
+				easing: &quot;easeinout&quot;,
+				duration: 700
+			})
+		}
+	}
+});
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:CAU_China/jquery.accordion.js">http://2014.igem.org/Team:CAU_China/jquery.accordion.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:CAU_China/jquery.accordion.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:CAU_China/jquery.accordion.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:CAU_China/jquery.accordion.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:CAU_China/jquery.accordion.js&amp;oldid=315734" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

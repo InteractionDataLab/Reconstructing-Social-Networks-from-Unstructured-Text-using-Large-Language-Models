@@ -1,0 +1,162 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_BIT-China_js_left_nav skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:BIT-China/js/left nav</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><PRE>   /*
+   * 仿百度百科右侧导航代码 - 页面目录结构导航 v0.01
+   * 只写了两级，无限级别也可以，是逻辑上的级别，html结构全是同一级别
+   * 滑标动画用的css3过渡动画，不支持的浏览器就没动画效果了
+   * 和百度百科比起来还是比较弱，没有实现右边也可以滚动的功能
+   */
+   function DirectoryNav($h,config){
+       this.opts = $.extend(true,{
+           scrollThreshold:0.1,    //滚动检测阀值 0.5在浏览器窗口中间部位
+           scrollSpeed:500,        //滚动到指定位置的动画时间
+           scrollTopBorder:500,    //滚动条距离顶部多少的时候显示导航，如果为0，则一直显示
+           easing: 'swing',        //不解释
+           delayDetection:0,     //延时检测，避免滚动的时候检测过于频繁
+           scrollChange:function(){}
+       },config);
+       this.$win = $(window);
+       this.$h = $h;
+       this.$pageNavList = &quot;&quot;;
+       this.$pageNavListLis =&quot;&quot;;
+       this.$curTag = &quot;&quot;;
+       this.$pageNavListLiH = &quot;&quot;;
+       this.offArr = [];
+       this.curIndex = 0;
+       this.scrollIng = false;
+       this.init();
+   }
+</PRE><PRE>   DirectoryNav.prototype = {
+       init:function(){
+           this.make();
+           this.setArr();
+           this.bindEvent();
+       },
+       make:function(){
+           //生成导航目录结构,这是根据需求自己生成的。如果你直接在页面中输出一个结构那也挺好不用 搞js
+</PRE>
+            $(&quot;#left_nav_tofix&quot;).append('');
+<PRE>           var $hs = this.$h,
+               $directoryNav = $(&quot;#directoryNav&quot;),
+               temp = [],
+               index1 = 0,
+               index2 = 0;
+           $hs.each(function(index){
+               var $this = $(this),
+                   text = $this.text();
+</PRE><PRE>               if($this.hasClass('first_level_nav')){
+                   index1++;//'+index1+'.
+                   if(index1%2==0) index2 = 0;
+</PRE>
+                    temp.push('<LI class="l1">&lt;a class=&quot;l1-text&quot;&gt;'+text+'&lt;/a&gt;</LI>');
+<PRE>               }else{
+                   index2++;
+</PRE>
+                    temp.push('<LI class="l2">'+index1+'.'+index2+' &lt;a class=&quot;l2-text&quot;&gt;'+text+'&lt;/a&gt;</LI>');
+<PRE>               }
+           });
+           $directoryNav.find(&quot;ul&quot;).html(temp.join(&quot;&quot;));
+</PRE><PRE>           //设置变量
+           this.$pageNavList = $directoryNav;
+           this.$pageNavListLis = this.$pageNavList.find(&quot;li&quot;);
+           this.$curTag = this.$pageNavList.find(&quot;.cur-tag&quot;);
+           this.$pageNavListLiH = this.$pageNavListLis.eq(0).height();
+</PRE><PRE>           if(!this.opts.scrollTopBorder){
+               this.$pageNavList.show();
+           }
+       },
+       setArr:function(){
+           var This = this;
+           this.$h.each(function(){
+               var $this = $(this),
+                   offT = Math.round($this.offset().top);
+               This.offArr.push(offT);
+           });
+       },
+       posTag:function(top){
+           this.$curTag.css({top:top+'px'});
+       },
+       ifPos:function(st){
+           var offArr = this.offArr;
+           //console.log(st);
+           var windowHeight = Math.round(
+               this.$win.height() * this.opts.scrollThreshold);
+</PRE><PRE>           for(var i=0;i&lt;offArr.length;i++){
+               if((offArr[i] - windowHeight) &lt; st) {
+                   var $curLi = this.$pageNavListLis.eq(i),
+                       tagTop = $curLi.position().top;
+                   $curLi.addClass(&quot;cur&quot;).siblings(&quot;li&quot;).removeClass(&quot;cur&quot;);
+                   this.curIndex = i;
+                   this.posTag(tagTop+this.$pageNavListLiH*0.5);
+</PRE><P>//                    this.curIndex = this.$pageNavListLis.filter(&quot;.cur&quot;).index();
+</P><PRE>                   this.opts.scrollChange.call(this);
+               }
+           }
+       },
+       bindEvent:function(){
+           var This = this,
+               show = false,
+               timer = 0;
+           this.$win.on(&quot;scroll&quot;,function(){
+               var $this = $(this);
+               clearTimeout(timer);
+               timer = setTimeout(function(){
+                   This.scrollIng = true;
+                   if($this.scrollTop()&gt;This.opts.scrollTopBorder){
+</PRE><P>//                        if(!This.$pageNavListLiH) This.$pageNavListLiH = This.$pageNavListLis.eq(0).height();
+//                        if(!show){
+//                            This.$pageNavList.fadeIn();
+//                            show = true;
+//                        }
+//                        console.log($(this).scrollTop());
+</P><PRE>                       This.ifPos($(this).scrollTop());
+                   }else{
+</PRE><P>//                        if(show){
+//                            This.$pageNavList.fadeOut();
+//                            show = false;
+//                        }
+</P><PRE>                   }
+               },This.opts.delayDetection);
+           });
+</PRE><PRE>           this.$pageNavList.on(&quot;click&quot;,&quot;li&quot;,function(){
+               var $this = $(this),
+                   index = $this.index();
+               This.scrollTo(This.offArr[index]);
+           })
+       },
+       scrollTo: function(offset,callback) {
+           var This = this;
+           $('html,body').animate({
+               scrollTop: offset
+           }, this.opts.scrollSpeed, this.opts.easing, function(){
+               This.scrollIng = false;
+               //修正弹两次回调 蛋疼
+               callback &amp;&amp; this.tagName.toLowerCase()=='body' &amp;&amp; callback();
+           });
+       }
+   };
+</PRE><PRE>   //实例化
+   var directoryNav = new DirectoryNav($(&quot;.first_level_nav,.second_level_nav&quot;),{
+       scrollTopBorder:0   //滚动条距离顶部多少的时候显示导航，如果为0，则一直显示
+   });
+</PRE><PRE>   $(document).ready(function (e) {
+       
+   window.onscroll = function(e){
+</PRE><PRE>       var e =e || window.event;
+       var scrolltop=document.documentElement.scrollTop||document.body.scrollTop;
+</PRE><PRE>       $navbar = $(&quot;nav.navbar&quot;);
+       if(scrolltop &gt; 80){
+           $navbar.css({'position': 'fixed','opacity': 0, 'display': 'none' });
+           $(&quot;#left_nav&quot;).css({'position': 'fixed','left': 0,'top': 0});
+       }else{
+           $navbar.css({'position': 'relative','opacity': 1, 'display': 'block'});
+           $(&quot;#left_nav&quot;).css({'position': 'relative'});
+       }
+</PRE><PRE>   };
+   });
+</PRE></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

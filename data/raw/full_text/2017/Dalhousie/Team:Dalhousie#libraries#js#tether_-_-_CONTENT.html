@@ -1,0 +1,649 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Dalhousie_libraries_js_tether skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Dalhousie/libraries/js/tether</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/* globals TetherBase, performance */
+</P><P>if (typeof TetherBase === 'undefined') {
+</P><PRE> throw new Error('You must include the utils.js file before tether.js');
+</PRE><P>}
+</P><P>const {
+</P><PRE> getScrollParents,
+ getBounds,
+ getOffsetParent,
+ extend,
+ addClass,
+ removeClass,
+ updateClasses,
+ defer,
+ flush,
+ getScrollBarSize,
+ removeUtilElements
+</PRE><P>} = TetherBase.Utils;
+</P><P>function within(a, b, diff=1) {
+</P><PRE> return (a + diff &gt;= b &amp;&amp; b &gt;= a - diff);
+</PRE><P>}
+</P><P>const transformKey = (() =&gt; {
+</P><PRE> if(typeof document === 'undefined') {
+   return <I>;</I>
+ }
+ const el = document.createElement('div');
+</PRE><PRE> const transforms = ['transform', 'WebkitTransform', 'OTransform', 'MozTransform', 'msTransform'];
+ for (let i = 0; i &lt; transforms.length; ++i) {
+   const key = transforms[i];
+   if (el.style[key] !== undefined) {
+     return key;
+   }
+ }
+</PRE><P>})();
+</P><P>const tethers = [];
+</P><P>const position = () =&gt; {
+</P><PRE> tethers.forEach(tether =&gt; {
+   tether.position(false);
+ });
+ flush();
+</PRE><P>};
+</P><P>function now() {
+</P><PRE> if (typeof performance !== 'undefined' &amp;&amp; typeof performance.now !== 'undefined') {
+   return performance.now();
+ }
+ return +new Date;
+</PRE><P>}
+</P><P>(() =&gt; {
+</P><PRE> let lastCall = null;
+ let lastDuration = null;
+ let pendingTimeout = null;
+</PRE><PRE> const tick = () =&gt; {
+   if (typeof lastDuration !== 'undefined' &amp;&amp; lastDuration &gt; 16) {
+     // We voluntarily throttle ourselves if we can't manage 60fps
+     lastDuration = Math.min(lastDuration - 16, 250);
+</PRE><PRE>     // Just in case this is the last event, remember to position just once more
+     pendingTimeout = setTimeout(tick, 250);
+     return;
+   }
+</PRE><PRE>   if (typeof lastCall !== 'undefined' &amp;&amp; (now() - lastCall) &lt; 10) {
+     // Some browsers call events a little too frequently, refuse to run more than is reasonable
+     return;
+   }
+</PRE><PRE>   if (pendingTimeout != null) {
+     clearTimeout(pendingTimeout);
+     pendingTimeout = null;
+   }
+</PRE><PRE>   lastCall = now();
+   position();
+   lastDuration = now() - lastCall;
+ };
+</PRE><PRE> if(typeof window !== 'undefined' &amp;&amp; typeof window.addEventListener !== 'undefined') {
+   ['resize', 'scroll', 'touchmove'].forEach(event =&gt; {
+     window.addEventListener(event, tick);
+   });
+ }
+</PRE><P>})();
+</P><P>const MIRROR_LR = {
+</P><PRE> center: 'center',
+ left: 'right',
+ right: 'left'
+</PRE><P>};
+</P><P>const MIRROR_TB = {
+</P><PRE> middle: 'middle',
+ top: 'bottom',
+ bottom: 'top'
+</PRE><P>};
+</P><P>const OFFSET_MAP = {
+</P><PRE> top: 0,
+ left: 0,
+ middle: '50%',
+ center: '50%',
+ bottom: '100%',
+ right: '100%'
+</PRE><P>};
+</P><P>const autoToFixedAttachment = (attachment, relativeToAttachment) =&gt; {
+</P><PRE> let {left, top} = attachment;
+</PRE><PRE> if (left === 'auto') {
+   left = MIRROR_LR[relativeToAttachment.left];
+ }
+</PRE><PRE> if (top === 'auto') {
+   top = MIRROR_TB[relativeToAttachment.top];
+ }
+</PRE><PRE> return {left, top};
+</PRE><P>};
+</P><P>const attachmentToOffset = (attachment) =&gt; {
+</P><PRE> let left = attachment.left;
+ let top = attachment.top;
+</PRE><PRE> if (typeof OFFSET_MAP[attachment.left] !== 'undefined') {
+   left = OFFSET_MAP[attachment.left];
+ }
+</PRE><PRE> if (typeof OFFSET_MAP[attachment.top] !== 'undefined') {
+   top = OFFSET_MAP[attachment.top];
+ }
+</PRE><PRE> return {left, top};
+</PRE><P>};
+</P><P>function addOffset(...offsets) {
+</P><PRE> const out = {top: 0, left: 0};
+</PRE><PRE> offsets.forEach(({top, left}) =&gt; {
+   if (typeof top === 'string') {
+     top = parseFloat(top, 10);
+   }
+   if (typeof left === 'string') {
+     left = parseFloat(left, 10);
+   }
+</PRE><PRE>   out.top += top;
+   out.left += left;
+ });
+</PRE><PRE> return out;
+</PRE><P>}
+</P><P>function offsetToPx(offset, size) {
+</P><PRE> if (typeof offset.left === 'string' &amp;&amp; offset.left.indexOf('%') !== -1) {
+   offset.left = parseFloat(offset.left, 10) / 100 * size.width;
+ }
+ if (typeof offset.top === 'string' &amp;&amp; offset.top.indexOf('%') !== -1) {
+   offset.top = parseFloat(offset.top, 10) / 100 * size.height;
+ }
+</PRE><PRE> return offset;
+</PRE><P>}
+</P><P>const parseOffset = (value) =&gt; {
+</P><PRE> const [top, left] = value.split(' ');
+ return {top, left};
+</PRE><P>};
+const parseAttachment = parseOffset;
+</P><P>class TetherClass extends Evented {
+</P><PRE> constructor(options) {
+   super();
+   this.position = this.position.bind(this);
+</PRE><PRE>   tethers.push(this);
+</PRE><PRE>   this.history = [];
+</PRE><PRE>   this.setOptions(options, false);
+</PRE><PRE>   TetherBase.modules.forEach(module =&gt; {
+     if (typeof module.initialize !== 'undefined') {
+       module.initialize.call(this);
+     }
+   });
+</PRE><PRE>   this.position();
+ }
+</PRE><PRE> getClass(key=<I>) {</I>
+   const {classes} = this.options;
+   if (typeof classes !== 'undefined' &amp;&amp; classes[key]) {
+     return this.options.classes[key];
+   } else if (this.options.classPrefix) {
+     return `${ this.options.classPrefix }-${ key }`;
+   } else {
+     return key;
+   }
+ }
+</PRE><PRE> setOptions(options, pos=true) {
+   const defaults = {
+     offset: '0 0',
+     targetOffset: '0 0',
+     targetAttachment: 'auto auto',
+     classPrefix: 'tether'
+   };
+</PRE><PRE>   this.options = extend(defaults, options);
+</PRE><PRE>   let {element, target, targetModifier} = this.options;
+   this.element = element;
+   this.target = target;
+   this.targetModifier = targetModifier;
+</PRE><PRE>   if (this.target === 'viewport') {
+     this.target = document.body;
+     this.targetModifier = 'visible';
+   } else if (this.target === 'scroll-handle') {
+     this.target = document.body;
+     this.targetModifier = 'scroll-handle';
+   }
+</PRE><PRE>   ['element', 'target'].forEach(key =&gt; {
+     if (typeof this[key] === 'undefined') {
+       throw new Error('Tether Error: Both element and target must be defined');
+     }
+</PRE><PRE>     if (typeof this[key].jquery !== 'undefined') {
+       this[key] = this[key][0];
+     } else if (typeof this[key] === 'string') {
+       this[key] = document.querySelector(this[key]);
+     }
+   });
+</PRE><PRE>   addClass(this.element, this.getClass('element'));
+   if (!(this.options.addTargetClasses === false)) {
+     addClass(this.target, this.getClass('target'));
+   }
+</PRE><PRE>   if (!this.options.attachment) {
+     throw new Error('Tether Error: You must provide an attachment');
+   }
+</PRE><PRE>   this.targetAttachment = parseAttachment(this.options.targetAttachment);
+   this.attachment = parseAttachment(this.options.attachment);
+   this.offset = parseOffset(this.options.offset);
+   this.targetOffset = parseOffset(this.options.targetOffset);
+</PRE><PRE>   if (typeof this.scrollParents !== 'undefined') {
+     this.disable();
+   }
+</PRE><PRE>   if (this.targetModifier === 'scroll-handle') {
+     this.scrollParents = [this.target];
+   } else {
+     this.scrollParents = getScrollParents(this.target);
+   }
+</PRE><PRE>   if(!(this.options.enabled === false)) {
+     this.enable(pos);
+   }
+ }
+</PRE><PRE> getTargetBounds() {
+   if (typeof this.targetModifier !== 'undefined') {
+     if (this.targetModifier === 'visible') {
+       if (this.target === document.body) {
+         return {top: pageYOffset, left: pageXOffset, height: innerHeight, width: innerWidth};
+       } else {
+         const bounds = getBounds(this.target);
+</PRE><PRE>         const out = {
+           height: bounds.height,
+           width: bounds.width,
+           top: bounds.top,
+           left: bounds.left
+         };
+</PRE><PRE>         out.height = Math.min(out.height, bounds.height - (pageYOffset - bounds.top));
+         out.height = Math.min(out.height, bounds.height - ((bounds.top + bounds.height) - (pageYOffset + innerHeight)));
+         out.height = Math.min(innerHeight, out.height);
+         out.height -= 2;
+</PRE><PRE>         out.width = Math.min(out.width, bounds.width - (pageXOffset - bounds.left));
+         out.width = Math.min(out.width, bounds.width - ((bounds.left + bounds.width) - (pageXOffset + innerWidth)));
+         out.width = Math.min(innerWidth, out.width);
+         out.width -= 2;
+</PRE><PRE>         if (out.top &lt; pageYOffset) {
+           out.top = pageYOffset;
+         }
+         if (out.left &lt; pageXOffset) {
+           out.left = pageXOffset;
+         }
+</PRE><PRE>         return out;
+       }
+     } else if (this.targetModifier === 'scroll-handle') {
+       let bounds;
+       let target = this.target;
+       if (target === document.body) {
+         target = document.documentElement;
+</PRE><PRE>         bounds = {
+           left: pageXOffset,
+           top: pageYOffset,
+           height: innerHeight,
+           width: innerWidth
+         };
+       } else {
+         bounds = getBounds(target);
+       }
+</PRE><PRE>       const style = getComputedStyle(target);
+</PRE><PRE>       const hasBottomScroll = (
+         target.scrollWidth &gt; target.clientWidth ||
+         [style.overflow, style.overflowX].indexOf('scroll') &gt;= 0 ||
+         this.target !== document.body
+       );
+</PRE><PRE>       let scrollBottom = 0;
+       if (hasBottomScroll) {
+         scrollBottom = 15;
+       }
+</PRE><PRE>       const height = bounds.height - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth) - scrollBottom;
+</PRE><PRE>       const out = {
+         width: 15,
+         height: height * 0.975 * (height / target.scrollHeight),
+         left: bounds.left + bounds.width - parseFloat(style.borderLeftWidth) - 15
+       };
+</PRE><PRE>       let fitAdj = 0;
+       if (height &lt; 408 &amp;&amp; this.target === document.body) {
+         fitAdj = -0.00011 * Math.pow(height, 2) - 0.00727 * height + 22.58;
+       }
+</PRE><PRE>       if (this.target !== document.body) {
+         out.height = Math.max(out.height, 24);
+       }
+</PRE><PRE>       const scrollPercentage = this.target.scrollTop / (target.scrollHeight - height);
+       out.top = scrollPercentage * (height - out.height - fitAdj) + bounds.top + parseFloat(style.borderTopWidth);
+</PRE><PRE>       if (this.target === document.body) {
+         out.height = Math.max(out.height, 24);
+       }
+</PRE><PRE>       return out;
+     }
+   } else {
+     return getBounds(this.target);
+   }
+ }
+</PRE><PRE> clearCache() {
+   this._cache = {};
+ }
+</PRE><PRE> cache(k, getter) {
+   // More than one module will often need the same DOM info, so
+   // we keep a cache which is cleared on each position call
+   if (typeof this._cache === 'undefined') {
+     this._cache = {};
+   }
+</PRE><PRE>   if (typeof this._cache[k] === 'undefined') {
+     this._cache[k] = getter.call(this);
+   }
+</PRE><PRE>   return this._cache[k];
+ }
+</PRE><PRE> enable(pos=true) {
+   if (!(this.options.addTargetClasses === false)) {
+     addClass(this.target, this.getClass('enabled'));
+   }
+   addClass(this.element, this.getClass('enabled'));
+   this.enabled = true;
+</PRE><PRE>   this.scrollParents.forEach((parent) =&gt; {
+     if (parent !== this.target.ownerDocument) {
+       parent.addEventListener('scroll', this.position);
+     }
+   })
+</PRE><PRE>   if (pos) {
+     this.position();
+   }
+ }
+</PRE><PRE> disable() {
+   removeClass(this.target, this.getClass('enabled'));
+   removeClass(this.element, this.getClass('enabled'));
+   this.enabled = false;
+</PRE><PRE>   if (typeof this.scrollParents !== 'undefined') {
+     this.scrollParents.forEach((parent) =&gt; {
+       parent.removeEventListener('scroll', this.position);
+     })
+   }
+ }
+</PRE><PRE> destroy() {
+   this.disable();
+</PRE><PRE>   tethers.forEach((tether, i) =&gt; {
+     if (tether === this) {
+       tethers.splice(i, 1);
+     }
+   });
+</PRE><PRE>   // Remove any elements we were using for convenience from the DOM
+   if (tethers.length === 0) {
+     removeUtilElements();
+   }
+ }
+</PRE><PRE> updateAttachClasses(elementAttach, targetAttach) {
+   elementAttach = elementAttach || this.attachment;
+   targetAttach = targetAttach || this.targetAttachment;
+   const sides = ['left', 'top', 'bottom', 'right', 'middle', 'center'];
+</PRE><PRE>   if (typeof this._addAttachClasses !== 'undefined' &amp;&amp; this._addAttachClasses.length) {
+     // updateAttachClasses can be called more than once in a position call, so
+     // we need to clean up after ourselves such that when the last defer gets
+     // ran it doesn't add any extra classes from previous calls.
+     this._addAttachClasses.splice(0, this._addAttachClasses.length);
+   }
+</PRE><PRE>   if (typeof this._addAttachClasses === 'undefined') {
+     this._addAttachClasses = [];
+   }
+   const add = this._addAttachClasses;
+</PRE><PRE>   if (elementAttach.top) {
+     add.push(`${ this.getClass('element-attached') }-${ elementAttach.top }`);
+   }
+   if (elementAttach.left) {
+     add.push(`${ this.getClass('element-attached') }-${ elementAttach.left }`);
+   }
+   if (targetAttach.top) {
+     add.push(`${ this.getClass('target-attached') }-${ targetAttach.top }`);
+   }
+   if (targetAttach.left) {
+     add.push(`${ this.getClass('target-attached') }-${ targetAttach.left }`);
+   }
+</PRE><PRE>   const all = [];
+   sides.forEach(side =&gt; {
+     all.push(`${ this.getClass('element-attached') }-${ side }`);
+     all.push(`${ this.getClass('target-attached') }-${ side }`);
+   });
+</PRE><PRE>   defer(() =&gt; {
+     if (!(typeof this._addAttachClasses !== 'undefined')) {
+       return;
+     }
+</PRE><PRE>     updateClasses(this.element, this._addAttachClasses, all);
+     if (!(this.options.addTargetClasses === false)) {
+       updateClasses(this.target, this._addAttachClasses, all);
+     }
+</PRE><PRE>     delete this._addAttachClasses;
+   });
+ }
+</PRE><PRE> position(flushChanges=true) {
+   // flushChanges commits the changes immediately, leave true unless you are positioning multiple
+   // tethers (in which case call Tether.Utils.flush yourself when you're done)
+</PRE><PRE>   if (!this.enabled) {
+     return;
+   }
+</PRE><PRE>   this.clearCache();
+</PRE><PRE>   // Turn 'auto' attachments into the appropriate corner or edge
+   const targetAttachment = autoToFixedAttachment(this.targetAttachment, this.attachment);
+</PRE><PRE>   this.updateAttachClasses(this.attachment, targetAttachment);
+</PRE><PRE>   const elementPos = this.cache('element-bounds', () =&gt; {
+     return getBounds(this.element);
+   });
+</PRE><PRE>   let {width, height} = elementPos;
+</PRE><PRE>  if (width === 0 &amp;&amp; height === 0 &amp;&amp; typeof this.lastSize !== 'undefined') {
+     // We cache the height and width to make it possible to position elements that are
+     // getting hidden.
+     ({width, height} = this.lastSize);
+   } else {
+     this.lastSize = {width, height};
+   }
+</PRE><PRE>   const targetPos = this.cache('target-bounds', () =&gt; {
+     return this.getTargetBounds();
+   });
+   const targetSize = targetPos;
+</PRE><PRE>   // Get an actual px offset from the attachment
+   let offset = offsetToPx(attachmentToOffset(this.attachment), {width, height});
+   let targetOffset = offsetToPx(attachmentToOffset(targetAttachment), targetSize);
+</PRE><PRE>   const manualOffset = offsetToPx(this.offset, {width, height});
+   const manualTargetOffset = offsetToPx(this.targetOffset, targetSize);
+</PRE><PRE>   // Add the manually provided offset
+   offset = addOffset(offset, manualOffset);
+   targetOffset = addOffset(targetOffset, manualTargetOffset);
+</PRE><PRE>   // It's now our goal to make (element position + offset) == (target position + target offset)
+   let left = targetPos.left + targetOffset.left - offset.left;
+   let top = targetPos.top + targetOffset.top - offset.top;
+</PRE><PRE>   for (let i = 0; i &lt; TetherBase.modules.length; ++i) {
+     const module = TetherBase.modules[i];
+     const ret = module.position.call(this, {
+       left,
+       top,
+       targetAttachment,
+       targetPos,
+       elementPos,
+       offset,
+       targetOffset,
+       manualOffset,
+       manualTargetOffset,
+       scrollbarSize,
+       attachment: this.attachment
+     });
+</PRE><PRE>     if (ret === false) {
+       return false;
+     } else if (typeof ret === 'undefined' || typeof ret !== 'object') {
+       continue;
+     } else {
+       ({top, left} = ret);
+     }
+   }
+</PRE><PRE>   // We describe the position three different ways to give the optimizer
+   // a chance to decide the best possible way to position the element
+   // with the fewest repaints.
+   const next = {
+     // It's position relative to the page (absolute positioning when
+     // the element is a child of the body)
+     page: {
+       top: top,
+       left: left
+     },
+</PRE><PRE>     // It's position relative to the viewport (fixed positioning)
+     viewport: {
+       top: top - pageYOffset,
+       bottom: pageYOffset - top - height + innerHeight,
+       left: left - pageXOffset,
+       right: pageXOffset - left - width + innerWidth
+     }
+   };
+   
+   var doc = this.target.ownerDocument;
+   var win = doc.defaultView;
+</PRE><PRE>   let scrollbarSize;
+   if (doc.body.scrollWidth &gt; win.innerWidth) {
+     scrollbarSize = this.cache('scrollbar-size', getScrollBarSize);
+     next.viewport.bottom -= scrollbarSize.height;
+   }
+</PRE><PRE>   if (doc.body.scrollHeight &gt; win.innerHeight) {
+     scrollbarSize = this.cache('scrollbar-size', getScrollBarSize);
+     next.viewport.right -= scrollbarSize.width;
+   }
+</PRE><PRE>   if ([<I>, 'static'].indexOf(doc.body.style.position) === -1 ||</I>
+       [<I>, 'static'].indexOf(doc.body.parentElement.style.position) === -1) {</I>
+     // Absolute positioning in the body will be relative to the page, not the 'initial containing block'
+     next.page.bottom = doc.body.scrollHeight - top - height;
+     next.page.right = doc.body.scrollWidth - left - width;
+   }
+</PRE><PRE>   if (typeof this.options.optimizations !== 'undefined' &amp;&amp;
+       this.options.optimizations.moveElement !== false &amp;&amp; !(typeof this.targetModifier !== 'undefined')) {
+     const offsetParent = this.cache('target-offsetparent', () =&gt; getOffsetParent(this.target));
+     const offsetPosition = this.cache('target-offsetparent-bounds', () =&gt; getBounds(offsetParent));
+     const offsetParentStyle = getComputedStyle(offsetParent);
+     const offsetParentSize = offsetPosition;
+</PRE><PRE>     const offsetBorder = {};
+     ['Top', 'Left', 'Bottom', 'Right'].forEach(side =&gt; {
+       offsetBorder[side.toLowerCase()] = parseFloat(offsetParentStyle[`border${ side }Width`]);
+     });
+</PRE><PRE>     offsetPosition.right = doc.body.scrollWidth - offsetPosition.left - offsetParentSize.width + offsetBorder.right;
+     offsetPosition.bottom = doc.body.scrollHeight - offsetPosition.top - offsetParentSize.height + offsetBorder.bottom;
+</PRE><PRE>     if (next.page.top &gt;= (offsetPosition.top + offsetBorder.top) &amp;&amp; next.page.bottom &gt;= offsetPosition.bottom) {
+       if (next.page.left &gt;= (offsetPosition.left + offsetBorder.left) &amp;&amp; next.page.right &gt;= offsetPosition.right) {
+         // We're within the visible part of the target's scroll parent
+         const scrollTop = offsetParent.scrollTop;
+         const scrollLeft = offsetParent.scrollLeft;
+</PRE><PRE>         // It's position relative to the target's offset parent (absolute positioning when
+         // the element is moved to be a child of the target's offset parent).
+         next.offset = {
+           top: next.page.top - offsetPosition.top + scrollTop - offsetBorder.top,
+           left: next.page.left - offsetPosition.left + scrollLeft - offsetBorder.left
+         };
+       }
+     }
+   }
+</PRE><PRE>   // We could also travel up the DOM and try each containing context, rather than only
+   // looking at the body, but we're gonna get diminishing returns.
+</PRE><PRE>   this.move(next);
+</PRE><PRE>   this.history.unshift(next);
+</PRE><PRE>   if (this.history.length &gt; 3) {
+     this.history.pop();
+   }
+</PRE><PRE>   if (flushChanges) {
+     flush();
+   }
+</PRE><PRE>   return true;
+ }
+</PRE><PRE> // THE ISSUE
+ move(pos) {
+   if (!(typeof this.element.parentNode !== 'undefined')) {
+     return;
+   }
+</PRE><PRE>   const same = {};
+</PRE><PRE>   for (let type in pos) {
+     same[type] = {};
+</PRE><PRE>     for (let key in pos[type]) {
+       let found = false;
+</PRE><PRE>       for (let i = 0; i &lt; this.history.length; ++i) {
+         const point = this.history[i];
+         if (typeof point[type] !== 'undefined' &amp;&amp; !within(point[type][key], pos[type][key])) {
+           found = true;
+           break;
+         }
+</PRE><PRE>       }
+</PRE><PRE>       if (!found) {
+         same[type][key] = true;
+       }
+     }
+   }
+</PRE><PRE>   let css = {top: <I>, left: </I>, right: <I>, bottom: </I>};
+</PRE><PRE>   const transcribe = (_same, _pos) =&gt; {
+     const hasOptimizations = typeof this.options.optimizations !== 'undefined';
+     const gpu = hasOptimizations ? this.options.optimizations.gpu : null;
+     if (gpu !== false) {
+       let yPos, xPos;
+       if (_same.top) {
+         css.top = 0;
+         yPos = _pos.top;
+       } else {
+         css.bottom = 0;
+         yPos = -_pos.bottom;
+       }
+</PRE><PRE>       if (_same.left) {
+         css.left = 0;
+         xPos = _pos.left;
+       } else {
+         css.right = 0;
+         xPos = -_pos.right;
+       }
+</PRE><PRE>       css[transformKey] = `translateX(${ Math.round(xPos) }px) translateY(${ Math.round(yPos) }px)`;
+</PRE><PRE>       if (transformKey !== 'msTransform') {
+         // The Z transform will keep this in the GPU (faster, and prevents artifacts),
+         // but IE9 doesn't support 3d transforms and will choke.
+         css[transformKey] += &quot; translateZ(0)&quot;;
+       }
+</PRE><PRE>     } else {
+       if (_same.top) {
+         css.top = `${ _pos.top }px`;
+       } else {
+         css.bottom = `${ _pos.bottom }px`;
+       }
+</PRE><PRE>       if (_same.left) {
+         css.left = `${ _pos.left }px`;
+       } else {
+         css.right = `${ _pos.right }px`;
+       }
+     }
+   };
+</PRE><PRE>   let moved = false;
+   if ((same.page.top || same.page.bottom) &amp;&amp; (same.page.left || same.page.right)) {
+     css.position = 'absolute';
+     transcribe(same.page, pos.page);
+</PRE><PRE>   } else if ((same.viewport.top || same.viewport.bottom) &amp;&amp; (same.viewport.left || same.viewport.right)) {
+     css.position = 'fixed';
+     transcribe(same.viewport, pos.viewport);
+</PRE><PRE>   } else if (typeof same.offset !== 'undefined' &amp;&amp; same.offset.top &amp;&amp; same.offset.left) {
+     css.position = 'absolute';
+     const offsetParent = this.cache('target-offsetparent', () =&gt; getOffsetParent(this.target));
+</PRE><PRE>     if (getOffsetParent(this.element) !== offsetParent) {
+       defer(() =&gt; {
+         this.element.parentNode.removeChild(this.element);
+         offsetParent.appendChild(this.element);
+       });
+     }
+</PRE><PRE>     transcribe(same.offset, pos.offset);
+     moved = true;
+</PRE><PRE>   } else {
+     css.position = 'absolute';
+     transcribe({top: true, left: true}, pos.page);
+   }
+</PRE><PRE>   if (!moved) {
+     let offsetParentIsBody = true;
+     let currentNode = this.element.parentNode;
+     while (currentNode &amp;&amp; currentNode.nodeType === 1 &amp;&amp; currentNode.tagName !== 'BODY') {
+       if (getComputedStyle(currentNode).position !== 'static') {
+         offsetParentIsBody = false;
+         break;
+       }
+</PRE><PRE>       currentNode = currentNode.parentNode;
+     }
+</PRE><PRE>     if (!offsetParentIsBody) {
+       this.element.parentNode.removeChild(this.element);
+       this.element.ownerDocument.body.appendChild(this.element);
+     }
+   }
+</PRE><PRE>   // Any css change will trigger a repaint, so let's avoid one if nothing changed
+   const writeCSS = {};
+   let write = false;
+   for (let key in css) {
+     let val = css[key];
+     let elVal = this.element.style[key];
+</PRE><PRE>     if (elVal !== val) {
+       write = true;
+       writeCSS[key] = val;
+     }
+   }
+</PRE><PRE>   if (write) {
+     defer(() =&gt; {
+       extend(this.element.style, writeCSS);
+     });
+   }
+ }
+</PRE><P>}
+</P><P>TetherClass.modules = [];
+</P><P>TetherBase.position = position;
+</P><P>let Tether = extend(TetherClass, TetherBase);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

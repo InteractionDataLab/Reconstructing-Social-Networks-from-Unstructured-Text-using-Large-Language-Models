@@ -1,0 +1,680 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Central_Calgary_js_CanvasRenderer skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Central Calgary/js/CanvasRenderer</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* @author mrdoob / <A rel="nofollow" class="external free" href="http://mrdoob.com/">http://mrdoob.com/</A>
+*/
+</PRE><P>THREE.SpriteCanvasMaterial = function ( parameters ) {
+</P><P>	THREE.Material.call( this );
+</P><P>	this.type = 'SpriteCanvasMaterial';
+</P><P>	this.color = new THREE.Color( 0xffffff );
+	this.program = function ( context, color ) {};
+</P><P>	this.setValues( parameters );
+</P><P>};
+</P><P>THREE.SpriteCanvasMaterial.prototype = Object.create( THREE.Material.prototype );
+THREE.SpriteCanvasMaterial.prototype.constructor = THREE.SpriteCanvasMaterial;
+</P><P>THREE.SpriteCanvasMaterial.prototype.clone = function () {
+</P><P>	var material = new THREE.SpriteCanvasMaterial();
+</P><P>	THREE.Material.prototype.clone.call( this, material );
+</P><P>	material.color.copy( this.color );
+	material.program = this.program;
+</P><P>	return material;
+</P><P>};
+</P><P>//
+</P><P>THREE.CanvasRenderer = function ( parameters ) {
+</P><P>	console.log( 'THREE.CanvasRenderer', THREE.REVISION );
+</P><P>	var smoothstep = THREE.Math.smoothstep;
+</P><P>	parameters = parameters || {};
+</P><P>	var _this = this,
+	_renderData, _elements, _lights,
+	_projector = new THREE.Projector(),
+</P><P>	_canvas = parameters.canvas !== undefined
+			 ? parameters.canvas
+			 : document.createElement( 'canvas' ),
+</P><P>	_canvasWidth = _canvas.width,
+	_canvasHeight = _canvas.height,
+	_canvasWidthHalf = Math.floor( _canvasWidth / 2 ),
+	_canvasHeightHalf = Math.floor( _canvasHeight / 2 ),
+</P><P>	_viewportX = 0,
+	_viewportY = 0,
+	_viewportWidth = _canvasWidth,
+	_viewportHeight = _canvasHeight,
+</P><P>	pixelRatio = 1,
+</P><P>	_context = _canvas.getContext( '2d', {
+		alpha: parameters.alpha === true
+	} ),
+</P><P>	_clearColor = new THREE.Color( 0x000000 ),
+	_clearAlpha = parameters.alpha === true ? 0 : 1,
+</P><P>	_contextGlobalAlpha = 1,
+	_contextGlobalCompositeOperation = 0,
+	_contextStrokeStyle = null,
+	_contextFillStyle = null,
+	_contextLineWidth = null,
+	_contextLineCap = null,
+	_contextLineJoin = null,
+	_contextLineDash = [],
+</P><P>	_camera,
+</P><P>	_v1, _v2, _v3, _v4,
+	_v5 = new THREE.RenderableVertex(),
+	_v6 = new THREE.RenderableVertex(),
+</P><P>	_v1x, _v1y, _v2x, _v2y, _v3x, _v3y,
+	_v4x, _v4y, _v5x, _v5y, _v6x, _v6y,
+</P><P>	_color = new THREE.Color(),
+	_color1 = new THREE.Color(),
+	_color2 = new THREE.Color(),
+	_color3 = new THREE.Color(),
+	_color4 = new THREE.Color(),
+</P><P>	_diffuseColor = new THREE.Color(),
+	_emissiveColor = new THREE.Color(),
+</P><P>	_lightColor = new THREE.Color(),
+</P><P>	_patterns = {},
+</P><P>	_image, _uvs,
+	_uv1x, _uv1y, _uv2x, _uv2y, _uv3x, _uv3y,
+</P><P>	_clipBox = new THREE.Box2(),
+	_clearBox = new THREE.Box2(),
+	_elemBox = new THREE.Box2(),
+</P><P>	_ambientLight = new THREE.Color(),
+	_directionalLights = new THREE.Color(),
+	_pointLights = new THREE.Color(),
+</P><P>	_vector3 = new THREE.Vector3(), // Needed for PointLight
+	_centroid = new THREE.Vector3(),
+	_normal = new THREE.Vector3(),
+	_normalViewMatrix = new THREE.Matrix3();
+</P><P>	// dash+gap fallbacks for Firefox and everything else
+</P><P>	if ( _context.setLineDash === undefined ) {
+</P><P>		_context.setLineDash = function () {}
+</P><P>	}
+</P><P>	this.domElement = _canvas;
+</P><P>	this.autoClear = true;
+	this.sortObjects = true;
+	this.sortElements = true;
+</P><P>	this.info = {
+</P><P>		render: {
+</P><P>			vertices: 0,
+			faces: 0
+</P><P>		}
+</P><P>	}
+</P><P>	// WebGLRenderer compatibility
+</P><P>	this.supportsVertexTextures = function () {};
+	this.setFaceCulling = function () {};
+</P><P>	//
+</P><P>	this.getPixelRatio = function () {
+</P><P>		return pixelRatio;
+</P><P>	};
+</P><P>	this.setPixelRatio = function ( value ) {
+</P><P>		pixelRatio = value;
+</P><P>	};
+</P><P>	this.setSize = function ( width, height, updateStyle ) {
+</P><P>		_canvasWidth = width * pixelRatio;
+		_canvasHeight = height * pixelRatio;
+</P><P>		_canvas.width = _canvasWidth;
+		_canvas.height = _canvasHeight;
+</P><P>		_canvasWidthHalf = Math.floor( _canvasWidth / 2 );
+		_canvasHeightHalf = Math.floor( _canvasHeight / 2 );
+</P><P>		if ( updateStyle !== false ) {
+</P><P>			_canvas.style.width = width + 'px';
+			_canvas.style.height = height + 'px';
+</P><P>		}
+</P><P>		_clipBox.min.set( -_canvasWidthHalf, -_canvasHeightHalf ),
+		_clipBox.max.set(   _canvasWidthHalf,   _canvasHeightHalf );
+</P><P>		_clearBox.min.set( - _canvasWidthHalf, - _canvasHeightHalf );
+		_clearBox.max.set(   _canvasWidthHalf,   _canvasHeightHalf );
+</P><P>		_contextGlobalAlpha = 1;
+		_contextGlobalCompositeOperation = 0;
+		_contextStrokeStyle = null;
+		_contextFillStyle = null;
+		_contextLineWidth = null;
+		_contextLineCap = null;
+		_contextLineJoin = null;
+</P><P>		this.setViewport( 0, 0, width, height );
+</P><P>	};
+</P><P>	this.setViewport = function ( x, y, width, height ) {
+</P><P>		_viewportX = x * pixelRatio;
+		_viewportY = y * pixelRatio;
+</P><P>		_viewportWidth = width * pixelRatio;
+		_viewportHeight = height * pixelRatio;
+</P><P>	};
+</P><P>	this.setScissor = function () {};
+	this.enableScissorTest = function () {};
+</P><P>	this.setClearColor = function ( color, alpha ) {
+</P><P>		_clearColor.set( color );
+		_clearAlpha = alpha !== undefined ? alpha : 1;
+</P><P>		_clearBox.min.set( - _canvasWidthHalf, - _canvasHeightHalf );
+		_clearBox.max.set(   _canvasWidthHalf,   _canvasHeightHalf );
+</P><P>	};
+</P><P>	this.setClearColorHex = function ( hex, alpha ) {
+</P><P>		console.warn( 'THREE.CanvasRenderer: .setClearColorHex() is being removed. Use .setClearColor() instead.' );
+		this.setClearColor( hex, alpha );
+</P><P>	};
+</P><P>	this.getClearColor = function () {
+</P><P>		return _clearColor;
+</P><P>	};
+</P><P>	this.getClearAlpha = function () {
+</P><P>		return _clearAlpha;
+</P><P>	};
+</P><P>	this.getMaxAnisotropy = function () {
+</P><P>		return 0;
+</P><P>	};
+</P><P>	this.clear = function () {
+</P><P>		if ( _clearBox.empty() === false ) {
+</P><P>			_clearBox.intersect( _clipBox );
+			_clearBox.expandByScalar( 2 );
+</P><P>			_clearBox.min.x = _clearBox.min.x + _canvasWidthHalf;
+			_clearBox.min.y =  - _clearBox.min.y + _canvasHeightHalf;		// higher y value !
+			_clearBox.max.x = _clearBox.max.x + _canvasWidthHalf;
+			_clearBox.max.y =  - _clearBox.max.y + _canvasHeightHalf;		// lower y value !
+</P><P>			if ( _clearAlpha &lt; 1 ) {
+</P><P>				_context.clearRect(
+					_clearBox.min.x | 0,
+					_clearBox.max.y | 0,
+					( _clearBox.max.x - _clearBox.min.x ) | 0,
+					( _clearBox.min.y - _clearBox.max.y ) | 0
+				);
+</P><P>			}
+</P><P>			if ( _clearAlpha &gt; 0 ) {
+</P><P>				setBlending( THREE.NormalBlending );
+				setOpacity( 1 );
+</P><P>				setFillStyle( 'rgba(' + Math.floor( _clearColor.r * 255 ) + ',' + Math.floor( _clearColor.g * 255 ) + ',' + Math.floor( _clearColor.b * 255 ) + ',' + _clearAlpha + ')' );
+</P><P>				_context.fillRect(
+					_clearBox.min.x | 0,
+					_clearBox.max.y | 0,
+					( _clearBox.max.x - _clearBox.min.x ) | 0,
+					( _clearBox.min.y - _clearBox.max.y ) | 0
+				);
+</P><P>			}
+</P><P>			_clearBox.makeEmpty();
+</P><P>		}
+</P><P>	};
+</P><P>	// compatibility
+</P><P>	this.clearColor = function () {};
+	this.clearDepth = function () {};
+	this.clearStencil = function () {};
+</P><P>	this.render = function ( scene, camera ) {
+</P><P>		if ( camera instanceof THREE.Camera === false ) {
+</P><P>			console.error( 'THREE.CanvasRenderer.render: camera is not an instance of THREE.Camera.' );
+			return;
+</P><P>		}
+</P><P>		if ( this.autoClear === true ) this.clear();
+</P><P>		_this.info.render.vertices = 0;
+		_this.info.render.faces = 0;
+</P><P>		_context.setTransform( _viewportWidth / _canvasWidth, 0, 0, - _viewportHeight / _canvasHeight, _viewportX, _canvasHeight - _viewportY );
+		_context.translate( _canvasWidthHalf, _canvasHeightHalf );
+</P><P>		_renderData = _projector.projectScene( scene, camera, this.sortObjects, this.sortElements );
+		_elements = _renderData.elements;
+		_lights = _renderData.lights;
+		_camera = camera;
+</P><P>		_normalViewMatrix.getNormalMatrix( camera.matrixWorldInverse );
+</P><P>		/* DEBUG
+		setFillStyle( 'rgba( 0, 255, 255, 0.5 )' );
+		_context.fillRect( _clipBox.min.x, _clipBox.min.y, _clipBox.max.x - _clipBox.min.x, _clipBox.max.y - _clipBox.min.y );
+		*/
+</P><P>		calculateLights();
+</P><P>		for ( var e = 0, el = _elements.length; e &lt; el; e ++ ) {
+</P><P>			var element = _elements[ e ];
+</P><P>			var material = element.material;
+</P><P>			if ( material === undefined || material.opacity === 0 ) continue;
+</P><P>			_elemBox.makeEmpty();
+</P><P>			if ( element instanceof THREE.RenderableSprite ) {
+</P><P>				_v1 = element;
+				_v1.x *= _canvasWidthHalf; _v1.y *= _canvasHeightHalf;
+</P><P>				renderSprite( _v1, element, material );
+</P><P>			} else if ( element instanceof THREE.RenderableLine ) {
+</P><P>				_v1 = element.v1; _v2 = element.v2;
+</P><P>				_v1.positionScreen.x *= _canvasWidthHalf; _v1.positionScreen.y *= _canvasHeightHalf;
+				_v2.positionScreen.x *= _canvasWidthHalf; _v2.positionScreen.y *= _canvasHeightHalf;
+</P><P>				_elemBox.setFromPoints( [
+					_v1.positionScreen,
+					_v2.positionScreen
+				] );
+</P><P>				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
+</P><P>					renderLine( _v1, _v2, element, material );
+</P><P>				}
+</P><P>			} else if ( element instanceof THREE.RenderableFace ) {
+</P><P>				_v1 = element.v1; _v2 = element.v2; _v3 = element.v3;
+</P><P>				if ( _v1.positionScreen.z &lt; - 1 || _v1.positionScreen.z &gt; 1 ) continue;
+				if ( _v2.positionScreen.z &lt; - 1 || _v2.positionScreen.z &gt; 1 ) continue;
+				if ( _v3.positionScreen.z &lt; - 1 || _v3.positionScreen.z &gt; 1 ) continue;
+</P><P>				_v1.positionScreen.x *= _canvasWidthHalf; _v1.positionScreen.y *= _canvasHeightHalf;
+				_v2.positionScreen.x *= _canvasWidthHalf; _v2.positionScreen.y *= _canvasHeightHalf;
+				_v3.positionScreen.x *= _canvasWidthHalf; _v3.positionScreen.y *= _canvasHeightHalf;
+</P><P>				if ( material.overdraw &gt; 0 ) {
+</P><P>					expand( _v1.positionScreen, _v2.positionScreen, material.overdraw );
+					expand( _v2.positionScreen, _v3.positionScreen, material.overdraw );
+					expand( _v3.positionScreen, _v1.positionScreen, material.overdraw );
+</P><P>				}
+</P><P>				_elemBox.setFromPoints( [
+					_v1.positionScreen,
+					_v2.positionScreen,
+					_v3.positionScreen
+				] );
+</P><P>				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
+</P><P>					renderFace3( _v1, _v2, _v3, 0, 1, 2, element, material );
+</P><P>				}
+</P><P>			}
+</P><P>			/* DEBUG
+			setLineWidth( 1 );
+			setStrokeStyle( 'rgba( 0, 255, 0, 0.5 )' );
+			_context.strokeRect( _elemBox.min.x, _elemBox.min.y, _elemBox.max.x - _elemBox.min.x, _elemBox.max.y - _elemBox.min.y );
+			*/
+</P><P>			_clearBox.union( _elemBox );
+</P><P>		}
+</P><P>		/* DEBUG
+		setLineWidth( 1 );
+		setStrokeStyle( 'rgba( 255, 0, 0, 0.5 )' );
+		_context.strokeRect( _clearBox.min.x, _clearBox.min.y, _clearBox.max.x - _clearBox.min.x, _clearBox.max.y - _clearBox.min.y );
+		*/
+</P><P>		_context.setTransform( 1, 0, 0, 1, 0, 0 );
+</P><P>	};
+</P><P>	//
+</P><P>	function calculateLights() {
+</P><P>		_ambientLight.setRGB( 0, 0, 0 );
+		_directionalLights.setRGB( 0, 0, 0 );
+		_pointLights.setRGB( 0, 0, 0 );
+</P><P>		for ( var l = 0, ll = _lights.length; l &lt; ll; l ++ ) {
+</P><P>			var light = _lights[ l ];
+			var lightColor = light.color;
+</P><P>			if ( light instanceof THREE.AmbientLight ) {
+</P><P>				_ambientLight.add( lightColor );
+</P><P>			} else if ( light instanceof THREE.DirectionalLight ) {
+</P><P>				// for sprites
+</P><P>				_directionalLights.add( lightColor );
+</P><P>			} else if ( light instanceof THREE.PointLight ) {
+</P><P>				// for sprites
+</P><P>				_pointLights.add( lightColor );
+</P><P>			}
+</P><P>		}
+</P><P>	}
+</P><P>	function calculateLight( position, normal, color ) {
+</P><P>		for ( var l = 0, ll = _lights.length; l &lt; ll; l ++ ) {
+</P><P>			var light = _lights[ l ];
+</P><P>			_lightColor.copy( light.color );
+</P><P>			if ( light instanceof THREE.DirectionalLight ) {
+</P><P>				var lightPosition = _vector3.setFromMatrixPosition( light.matrixWorld ).normalize();
+</P><P>				var amount = normal.dot( lightPosition );
+</P><P>				if ( amount &lt;= 0 ) continue;
+</P><P>				amount *= light.intensity;
+</P><P>				color.add( _lightColor.multiplyScalar( amount ) );
+</P><P>			} else if ( light instanceof THREE.PointLight ) {
+</P><P>				var lightPosition = _vector3.setFromMatrixPosition( light.matrixWorld );
+</P><P>				var amount = normal.dot( _vector3.subVectors( lightPosition, position ).normalize() );
+</P><P>				if ( amount &lt;= 0 ) continue;
+</P><P>				amount *= light.distance == 0 ? 1 : 1 - Math.min( position.distanceTo( lightPosition ) / light.distance, 1 );
+</P><P>				if ( amount == 0 ) continue;
+</P><P>				amount *= light.intensity;
+</P><P>				color.add( _lightColor.multiplyScalar( amount ) );
+</P><P>			}
+</P><P>		}
+</P><P>	}
+</P><P>	function renderSprite( v1, element, material ) {
+</P><P>		setOpacity( material.opacity );
+		setBlending( material.blending );
+</P><P>		var scaleX = element.scale.x * _canvasWidthHalf;
+		var scaleY = element.scale.y * _canvasHeightHalf;
+</P><P>		var dist = 0.5 * Math.sqrt( scaleX * scaleX + scaleY * scaleY ); // allow for rotated sprite
+		_elemBox.min.set( v1.x - dist, v1.y - dist );
+		_elemBox.max.set( v1.x + dist, v1.y + dist );
+</P><P>		if ( material instanceof THREE.SpriteMaterial ) {
+</P><P>			var texture = material.map;
+</P><P>			if ( texture !== null &amp;&amp; texture.image !== undefined ) {
+</P><P>				if ( texture.hasEventListener( 'update', onTextureUpdate ) === false ) {
+</P><P>					if ( texture.image.width &gt; 0 ) {
+</P><P>						textureToPattern( texture );
+</P><P>					}
+</P><P>					texture.addEventListener( 'update', onTextureUpdate );
+</P><P>				}
+</P><P>				var pattern = _patterns[ texture.id ];
+</P><P>				if ( pattern !== undefined ) {
+</P><P>					setFillStyle( pattern );
+</P><P>				} else {
+</P><P>					setFillStyle( 'rgba( 0, 0, 0, 1 )' );
+</P><P>				}
+</P><P>				//
+</P><P>				var bitmap = texture.image;
+</P><P>				var ox = bitmap.width * texture.offset.x;
+				var oy = bitmap.height * texture.offset.y;
+</P><P>				var sx = bitmap.width * texture.repeat.x;
+				var sy = bitmap.height * texture.repeat.y;
+</P><P>				var cx = scaleX / sx;
+				var cy = scaleY / sy;
+</P><P>				_context.save();
+				_context.translate( v1.x, v1.y );
+				if ( material.rotation !== 0 ) _context.rotate( material.rotation );
+				_context.translate( - scaleX / 2, - scaleY / 2 );
+				_context.scale( cx, cy );
+				_context.translate( - ox, - oy );
+				_context.fillRect( ox, oy, sx, sy );
+				_context.restore();
+</P><P>			} else {
+</P><P>				// no texture
+</P><P>				setFillStyle( material.color.getStyle() );
+</P><P>				_context.save();
+				_context.translate( v1.x, v1.y );
+				if ( material.rotation !== 0 ) _context.rotate( material.rotation );
+				_context.scale( scaleX, - scaleY );
+				_context.fillRect( - 0.5, - 0.5, 1, 1 );
+				_context.restore();
+</P><P>			}
+</P><P>		} else if ( material instanceof THREE.SpriteCanvasMaterial ) {
+</P><P>			setStrokeStyle( material.color.getStyle() );
+			setFillStyle( material.color.getStyle() );
+</P><P>			_context.save();
+			_context.translate( v1.x, v1.y );
+			if ( material.rotation !== 0 ) _context.rotate( material.rotation );
+			_context.scale( scaleX, scaleY );
+</P><P>			material.program( _context );
+</P><P>			_context.restore();
+</P><P>		}
+</P><P>		/* DEBUG
+		setStrokeStyle( 'rgb(255,255,0)' );
+		_context.beginPath();
+		_context.moveTo( v1.x - 10, v1.y );
+		_context.lineTo( v1.x + 10, v1.y );
+		_context.moveTo( v1.x, v1.y - 10 );
+		_context.lineTo( v1.x, v1.y + 10 );
+		_context.stroke();
+		*/
+</P><P>	}
+</P><P>	function renderLine( v1, v2, element, material ) {
+</P><P>		setOpacity( material.opacity );
+		setBlending( material.blending );
+</P><P>		_context.beginPath();
+		_context.moveTo( v1.positionScreen.x, v1.positionScreen.y );
+		_context.lineTo( v2.positionScreen.x, v2.positionScreen.y );
+</P><P>		if ( material instanceof THREE.LineBasicMaterial ) {
+</P><P>			setLineWidth( material.linewidth );
+			setLineCap( material.linecap );
+			setLineJoin( material.linejoin );
+</P><P>			if ( material.vertexColors !== THREE.VertexColors ) {
+</P><P>				setStrokeStyle( material.color.getStyle() );
+</P><P>			} else {
+</P><P>				var colorStyle1 = element.vertexColors[ 0 ].getStyle();
+				var colorStyle2 = element.vertexColors[ 1 ].getStyle();
+</P><P>				if ( colorStyle1 === colorStyle2 ) {
+</P><P>					setStrokeStyle( colorStyle1 );
+</P><P>				} else {
+</P><P>					try {
+</P><P>						var grad = _context.createLinearGradient(
+							v1.positionScreen.x,
+							v1.positionScreen.y,
+							v2.positionScreen.x,
+							v2.positionScreen.y
+						);
+						grad.addColorStop( 0, colorStyle1 );
+						grad.addColorStop( 1, colorStyle2 );
+</P><P>					} catch ( exception ) {
+</P><P>						grad = colorStyle1;
+</P><P>					}
+</P><P>					setStrokeStyle( grad );
+</P><P>				}
+</P><P>			}
+</P><P>			_context.stroke();
+			_elemBox.expandByScalar( material.linewidth * 2 );
+</P><P>		} else if ( material instanceof THREE.LineDashedMaterial ) {
+</P><P>			setLineWidth( material.linewidth );
+			setLineCap( material.linecap );
+			setLineJoin( material.linejoin );
+			setStrokeStyle( material.color.getStyle() );
+			setLineDash( [ material.dashSize, material.gapSize ] );
+</P><P>			_context.stroke();
+</P><P>			_elemBox.expandByScalar( material.linewidth * 2 );
+</P><P>			setLineDash( [] );
+</P><P>		}
+</P><P>	}
+</P><P>	function renderFace3( v1, v2, v3, uv1, uv2, uv3, element, material ) {
+</P><P>		_this.info.render.vertices += 3;
+		_this.info.render.faces ++;
+</P><P>		setOpacity( material.opacity );
+		setBlending( material.blending );
+</P><P>		_v1x = v1.positionScreen.x; _v1y = v1.positionScreen.y;
+		_v2x = v2.positionScreen.x; _v2y = v2.positionScreen.y;
+		_v3x = v3.positionScreen.x; _v3y = v3.positionScreen.y;
+</P><P>		drawTriangle( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y );
+</P><P>		if ( ( material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshPhongMaterial ) &amp;&amp; material.map === null ) {
+</P><P>			_diffuseColor.copy( material.color );
+			_emissiveColor.copy( material.emissive );
+</P><P>			if ( material.vertexColors === THREE.FaceColors ) {
+</P><P>				_diffuseColor.multiply( element.color );
+</P><P>			}
+</P><P>			_color.copy( _ambientLight );
+</P><P>			_centroid.copy( v1.positionWorld ).add( v2.positionWorld ).add( v3.positionWorld ).divideScalar( 3 );
+</P><P>			calculateLight( _centroid, element.normalModel, _color );
+</P><P>			_color.multiply( _diffuseColor ).add( _emissiveColor );
+</P><P>			material.wireframe === true
+				 ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+				 : fillPath( _color );
+</P><P>		} else if ( material instanceof THREE.MeshBasicMaterial ||
+				    material instanceof THREE.MeshLambertMaterial ||
+				    material instanceof THREE.MeshPhongMaterial ) {
+</P><P>			if ( material.map !== null ) {
+</P><P>				var mapping = material.map.mapping;
+</P><P>				if ( mapping === THREE.UVMapping ) {
+</P><P>					_uvs = element.uvs;
+					patternPath( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _uvs[ uv1 ].x, _uvs[ uv1 ].y, _uvs[ uv2 ].x, _uvs[ uv2 ].y, _uvs[ uv3 ].x, _uvs[ uv3 ].y, material.map );
+</P><P>				}
+</P><P>			} else if ( material.envMap !== null ) {
+</P><P>				if ( material.envMap.mapping === THREE.SphericalReflectionMapping ) {
+</P><P>					_normal.copy( element.vertexNormalsModel[ uv1 ] ).applyMatrix3( _normalViewMatrix );
+					_uv1x = 0.5 * _normal.x + 0.5;
+					_uv1y = 0.5 * _normal.y + 0.5;
+</P><P>					_normal.copy( element.vertexNormalsModel[ uv2 ] ).applyMatrix3( _normalViewMatrix );
+					_uv2x = 0.5 * _normal.x + 0.5;
+					_uv2y = 0.5 * _normal.y + 0.5;
+</P><P>					_normal.copy( element.vertexNormalsModel[ uv3 ] ).applyMatrix3( _normalViewMatrix );
+					_uv3x = 0.5 * _normal.x + 0.5;
+					_uv3y = 0.5 * _normal.y + 0.5;
+</P><P>					patternPath( _v1x, _v1y, _v2x, _v2y, _v3x, _v3y, _uv1x, _uv1y, _uv2x, _uv2y, _uv3x, _uv3y, material.envMap );
+</P><P>				}
+</P><P>			} else {
+</P><P>				_color.copy( material.color );
+</P><P>				if ( material.vertexColors === THREE.FaceColors ) {
+</P><P>					_color.multiply( element.color );
+</P><P>				}
+</P><P>				material.wireframe === true
+					 ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+					 : fillPath( _color );
+</P><P>			}
+</P><P>		} else if ( material instanceof THREE.MeshDepthMaterial ) {
+</P><P>			_color.r = _color.g = _color.b = 1 - smoothstep( v1.positionScreen.z * v1.positionScreen.w, _camera.near, _camera.far );
+</P><P>			material.wireframe === true
+					 ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+					 : fillPath( _color );
+</P><P>		} else if ( material instanceof THREE.MeshNormalMaterial ) {
+</P><P>			_normal.copy( element.normalModel ).applyMatrix3( _normalViewMatrix );
+</P><P>			_color.setRGB( _normal.x, _normal.y, _normal.z ).multiplyScalar( 0.5 ).addScalar( 0.5 );
+</P><P>			material.wireframe === true
+				 ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+				 : fillPath( _color );
+</P><P>		} else {
+</P><P>			_color.setRGB( 1, 1, 1 );
+</P><P>			material.wireframe === true
+				 ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
+				 : fillPath( _color );
+</P><P>		}
+</P><P>	}
+</P><P>	//
+</P><P>	function drawTriangle( x0, y0, x1, y1, x2, y2 ) {
+</P><P>		_context.beginPath();
+		_context.moveTo( x0, y0 );
+		_context.lineTo( x1, y1 );
+		_context.lineTo( x2, y2 );
+		_context.closePath();
+</P><P>	}
+</P><P>	function strokePath( color, linewidth, linecap, linejoin ) {
+</P><P>		setLineWidth( linewidth );
+		setLineCap( linecap );
+		setLineJoin( linejoin );
+		setStrokeStyle( color.getStyle() );
+</P><P>		_context.stroke();
+</P><P>		_elemBox.expandByScalar( linewidth * 2 );
+</P><P>	}
+</P><P>	function fillPath( color ) {
+</P><P>		setFillStyle( color.getStyle() );
+		_context.fill();
+</P><P>	}
+</P><P>	function onTextureUpdate ( event ) {
+</P><P>		textureToPattern( event.target );
+</P><P>	}
+</P><P>	function textureToPattern( texture ) {
+</P><P>		if ( texture instanceof THREE.CompressedTexture ) return;
+</P><P>		var repeatX = texture.wrapS === THREE.RepeatWrapping;
+		var repeatY = texture.wrapT === THREE.RepeatWrapping;
+</P><P>		var image = texture.image;
+</P><P>		var canvas = document.createElement( 'canvas' );
+		canvas.width = image.width;
+		canvas.height = image.height;
+</P><P>		var context = canvas.getContext( '2d' );
+		context.setTransform( 1, 0, 0, - 1, 0, image.height );
+		context.drawImage( image, 0, 0 );
+</P><P>		_patterns[ texture.id ] = _context.createPattern(
+			canvas, repeatX === true &amp;&amp; repeatY === true
+				 ? 'repeat'
+				 : repeatX === true &amp;&amp; repeatY === false
+					 ? 'repeat-x'
+					 : repeatX === false &amp;&amp; repeatY === true
+						 ? 'repeat-y'
+						 : 'no-repeat'
+		);
+</P><P>	}
+</P><P>	function patternPath( x0, y0, x1, y1, x2, y2, u0, v0, u1, v1, u2, v2, texture ) {
+</P><P>		if ( texture instanceof THREE.DataTexture ) return;
+</P><P>		if ( texture.hasEventListener( 'update', onTextureUpdate ) === false ) {
+</P><P>			if ( texture.image !== undefined &amp;&amp; texture.image.width &gt; 0 ) {
+</P><P>				textureToPattern( texture );
+</P><P>			}
+</P><P>			texture.addEventListener( 'update', onTextureUpdate );
+</P><P>		}
+</P><P>		var pattern = _patterns[ texture.id ];
+</P><P>		if ( pattern !== undefined ) {
+</P><P>			setFillStyle( pattern );
+</P><P>		} else {
+</P><P>			setFillStyle( 'rgba(0,0,0,1)' );
+			_context.fill();
+</P><P>			return;
+</P><P>		}
+</P><P>		// <A rel="nofollow" class="external free" href="http://extremelysatisfactorytotalitarianism.com/blog/?p=2120">http://extremelysatisfactorytotalitarianism.com/blog/?p=2120</A></P><P>		var a, b, c, d, e, f, det, idet,
+		offsetX = texture.offset.x / texture.repeat.x,
+		offsetY = texture.offset.y / texture.repeat.y,
+		width = texture.image.width * texture.repeat.x,
+		height = texture.image.height * texture.repeat.y;
+</P><P>		u0 = ( u0 + offsetX ) * width;
+		v0 = ( v0 + offsetY ) * height;
+</P><P>		u1 = ( u1 + offsetX ) * width;
+		v1 = ( v1 + offsetY ) * height;
+</P><P>		u2 = ( u2 + offsetX ) * width;
+		v2 = ( v2 + offsetY ) * height;
+</P><P>		x1 -= x0; y1 -= y0;
+		x2 -= x0; y2 -= y0;
+</P><P>		u1 -= u0; v1 -= v0;
+		u2 -= u0; v2 -= v0;
+</P><P>		det = u1 * v2 - u2 * v1;
+</P><P>		if ( det === 0 ) return;
+</P><P>		idet = 1 / det;
+</P><P>		a = ( v2 * x1 - v1 * x2 ) * idet;
+		b = ( v2 * y1 - v1 * y2 ) * idet;
+		c = ( u1 * x2 - u2 * x1 ) * idet;
+		d = ( u1 * y2 - u2 * y1 ) * idet;
+</P><P>		e = x0 - a * u0 - c * v0;
+		f = y0 - b * u0 - d * v0;
+</P><P>		_context.save();
+		_context.transform( a, b, c, d, e, f );
+		_context.fill();
+		_context.restore();
+</P><P>	}
+</P><P>	function clipImage( x0, y0, x1, y1, x2, y2, u0, v0, u1, v1, u2, v2, image ) {
+</P><P>		// <A rel="nofollow" class="external free" href="http://extremelysatisfactorytotalitarianism.com/blog/?p=2120">http://extremelysatisfactorytotalitarianism.com/blog/?p=2120</A></P><P>		var a, b, c, d, e, f, det, idet,
+		width = image.width - 1,
+		height = image.height - 1;
+</P><P>		u0 *= width; v0 *= height;
+		u1 *= width; v1 *= height;
+		u2 *= width; v2 *= height;
+</P><P>		x1 -= x0; y1 -= y0;
+		x2 -= x0; y2 -= y0;
+</P><P>		u1 -= u0; v1 -= v0;
+		u2 -= u0; v2 -= v0;
+</P><P>		det = u1 * v2 - u2 * v1;
+</P><P>		idet = 1 / det;
+</P><P>		a = ( v2 * x1 - v1 * x2 ) * idet;
+		b = ( v2 * y1 - v1 * y2 ) * idet;
+		c = ( u1 * x2 - u2 * x1 ) * idet;
+		d = ( u1 * y2 - u2 * y1 ) * idet;
+</P><P>		e = x0 - a * u0 - c * v0;
+		f = y0 - b * u0 - d * v0;
+</P><P>		_context.save();
+		_context.transform( a, b, c, d, e, f );
+		_context.clip();
+		_context.drawImage( image, 0, 0 );
+		_context.restore();
+</P><P>	}
+</P><P>	// Hide anti-alias gaps
+</P><P>	function expand( v1, v2, pixels ) {
+</P><P>		var x = v2.x - v1.x, y = v2.y - v1.y,
+		det = x * x + y * y, idet;
+</P><P>		if ( det === 0 ) return;
+</P><P>		idet = pixels / Math.sqrt( det );
+</P><P>		x *= idet; y *= idet;
+</P><P>		v2.x += x; v2.y += y;
+		v1.x -= x; v1.y -= y;
+</P><P>	}
+</P><P>	// Context cached methods.
+</P><P>	function setOpacity( value ) {
+</P><P>		if ( _contextGlobalAlpha !== value ) {
+</P><P>			_context.globalAlpha = value;
+			_contextGlobalAlpha = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setBlending( value ) {
+</P><P>		if ( _contextGlobalCompositeOperation !== value ) {
+</P><P>			if ( value === THREE.NormalBlending ) {
+</P><P>				_context.globalCompositeOperation = 'source-over';
+</P><P>			} else if ( value === THREE.AdditiveBlending ) {
+</P><P>				_context.globalCompositeOperation = 'lighter';
+</P><P>			} else if ( value === THREE.SubtractiveBlending ) {
+</P><P>				_context.globalCompositeOperation = 'darker';
+</P><P>			}
+</P><P>			_contextGlobalCompositeOperation = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setLineWidth( value ) {
+</P><P>		if ( _contextLineWidth !== value ) {
+</P><P>			_context.lineWidth = value;
+			_contextLineWidth = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setLineCap( value ) {
+</P><P>		// &quot;butt&quot;, &quot;round&quot;, &quot;square&quot;
+</P><P>		if ( _contextLineCap !== value ) {
+</P><P>			_context.lineCap = value;
+			_contextLineCap = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setLineJoin( value ) {
+</P><P>		// &quot;round&quot;, &quot;bevel&quot;, &quot;miter&quot;
+</P><P>		if ( _contextLineJoin !== value ) {
+</P><P>			_context.lineJoin = value;
+			_contextLineJoin = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setStrokeStyle( value ) {
+</P><P>		if ( _contextStrokeStyle !== value ) {
+</P><P>			_context.strokeStyle = value;
+			_contextStrokeStyle = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setFillStyle( value ) {
+</P><P>		if ( _contextFillStyle !== value ) {
+</P><P>			_context.fillStyle = value;
+			_contextFillStyle = value;
+</P><P>		}
+</P><P>	}
+</P><P>	function setLineDash( value ) {
+</P><P>		if ( _contextLineDash.length !== value.length ) {
+</P><P>			_context.setLineDash( value );
+			_contextLineDash = value;
+</P><P>		}
+</P><P>	}
+</P><P>};
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

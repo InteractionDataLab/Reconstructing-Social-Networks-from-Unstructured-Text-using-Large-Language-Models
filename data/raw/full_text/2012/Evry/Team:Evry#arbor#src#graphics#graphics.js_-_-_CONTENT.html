@@ -1,0 +1,363 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Evry_arbor_src_graphics_graphics_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Evry/arbor/src/graphics/graphics.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Evry/arbor/src/graphics/graphics.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/graphics/graphics.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/graphics/graphics.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Evry/arbor/src/graphics/graphics.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Evry/arbor/src/graphics/graphics.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>//
+//  graphics.js
+//
+//  Created by Christian Swinehart on 2010-12-07.
+//  Copyright (c) 2011 Samizdat Drafting Co. All rights reserved.
+//
+</P><P>var Graphics = function(canvas){
+</P><PRE> var dom = $(canvas)
+ var ctx = $(dom).get(0).getContext('2d')
+</PRE><PRE> var _bounds = null
+</PRE><PRE> var _colorMode = &quot;rgb&quot; // vs hsb
+ var _coordMode = &quot;origin&quot; // vs &quot;center&quot;
+</PRE><PRE> var _drawLibrary = {}
+ var _drawStyle = {background:null, 
+                   fill:null, 
+                   stroke:null,
+                   width:0}
+</PRE><PRE> var _fontLibrary = {}
+ var _fontStyle = {font:&quot;sans-serif&quot;,
+                  size:12, 
+                  align:&quot;left&quot;,
+                  color:Colors.decode(&quot;black&quot;),
+                  alpha:1,
+                  baseline:&quot;ideographic&quot;}
+</PRE><PRE> var _lineBuffer = [] // calls to .lines sit here until flushed by .drawlines
+ 
+ ///MACRO:primitives-start
+ var primitives = Primitives(ctx, _drawStyle, _fontStyle)
+ var _Oval = primitives._Oval
+ var _Rect = primitives._Rect
+ var _Color = primitives._Color
+ var _Path = primitives._Path
+ ///MACRO:primitives-end    
+</PRE><PRE> // drawStyle({background:&quot;color&quot; or {r,g,b,a}, 
+ //            fill:&quot;color&quot; or {r,g,b,a}, 
+ //            stroke:&quot;color&quot; or {r,g,b,a}, 
+ //            alpha:&lt;number&gt;, 
+ //            weight:&lt;number&gt;})
+</PRE><PRE> var that = {
+   init:function(){
+     if (!ctx) return null
+     return that
+   },
+</PRE><PRE>   // canvas-wide settings
+   size:function(width,height){
+     if (!isNaN(width) &amp;&amp; !isNaN(height)){
+       dom.attr({width:width,height:height})
+       
+       // if (_drawStyle.fill!==null) that.fill(_drawStyle.fill)
+       // if (_drawStyle.stroke!==null) that.stroke(_drawStyle.stroke)
+       // that.textStyle(_fontStyle)
+       
+       // trace(_drawStyle,_fontStyle)
+     }
+     return {width:dom.attr('width'), height:dom.attr('height')}
+   },
+</PRE><PRE>   clear:function(x,y,w,h){
+     if (arguments.length&lt;4){
+       x=0; y=0
+       w=dom.attr('width')
+       h=dom.attr('height')
+     }
+     
+     ctx.clearRect(x,y,w,h)
+     if (_drawStyle.background!==null){
+       ctx.save()
+       ctx.fillStyle = Colors.encode(_drawStyle.background)
+       ctx.fillRect(x,y,w,h)
+       ctx.restore()
+     }
+   },
+</PRE><PRE>   background:function(a,b,c,d){
+     if (a==null){
+       _drawStyle.background = null
+       return null
+     }
+     
+     var fillColor = Colors.decode(a,b,c,d)
+     if (fillColor){
+       _drawStyle.background = fillColor
+       that.clear()
+     }
+   },
+</PRE><PRE>   // drawing to screen
+   noFill:function(){
+     _drawStyle.fill = null
+   },
+   fill:function(a,b,c,d){
+     if (arguments.length==0){
+       return _drawStyle.fill
+     }else if (arguments.length&gt;0){
+       var fillColor = Colors.decode(a,b,c,d)
+       _drawStyle.fill = fillColor
+       ctx.fillStyle = Colors.encode(fillColor)
+     }
+   },
+   
+   noStroke:function(){
+     _drawStyle.stroke = null
+     ctx.strokeStyle = null
+   },
+   stroke:function(a,b,c,d){
+     if (arguments.length==0 &amp;&amp; _drawStyle.stroke!==null){
+       return _drawStyle.stroke
+     }else if (arguments.length&gt;0){
+       var strokeColor = Colors.decode(a,b,c,d)
+       _drawStyle.stroke = strokeColor
+       ctx.strokeStyle = Colors.encode(strokeColor)
+     }
+   },
+   strokeWidth:function(ptsize){
+     if (ptsize===undefined) return ctx.lineWidth
+     ctx.lineWidth = _drawStyle.width = ptsize
+   },
+   
+   
+   
+   Color:function(clr){
+     return new _Color(clr)
+   },
+</PRE><PRE>   // Font:function(fontName, pointSize){
+   //   return new _Font(fontName, pointSize)
+   // },
+   // font:function(fontName, pointSize){
+   //   if (fontName!==undefined) _fontStyle.font = fontName
+   //   if (pointSize!==undefined) _fontStyle.size = pointSize
+   //   ctx.font = nano(&quot;{size}px {font}&quot;, _fontStyle)
+   // },
+</PRE><PRE>   drawStyle:function(style){
+     // without arguments, show the current state
+     if (arguments.length==0) return objcopy(_drawStyle)
+     
+     // if this is a (&quot;stylename&quot;, {style}) invocation, don't change the current
+     // state but add it to the library
+     if (arguments.length==2){
+       var styleName = arguments[0]
+       var styleDef = arguments[1]
+       if (typeof styleName=='string' &amp;&amp; typeof styleDef=='object'){
+         var newStyle = {}
+         if (styleDef.color!==undefined){
+           var textColor = Colors.decode(styleDef.color)
+           if (textColor) newStyle.color = textColor
+         }
+         $.each('background fill stroke width'.split(' '), function(i, param){
+           if (styleDef[param]!==undefined) newStyle[param] = styleDef[param]
+         })
+         if (!$.isEmptyObject(newStyle)) _drawLibrary[styleName] = newStyle
+       }
+       return
+     }
+     
+     // if a (&quot;stylename&quot;) invocation, load up the selected style
+     if (arguments.length==1 &amp;&amp; _drawLibrary[arguments[0]]!==undefined){
+       style = _drawLibrary[arguments[0]]
+     }
+           
+     // for each of the properties specified, update the canvas state
+     if (style.width!==undefined) _drawStyle.width = style.width
+     ctx.lineWidth = _drawStyle.width
+     
+     $.each('background fill stroke',function(i, color){
+       if (style[color]!==undefined){
+         if (style[color]===null) _drawStyle[color] = null
+         else{
+           var useColor = Colors.decode(style[color])
+           if (useColor) _drawStyle[color] = useColor
+         }
+       }
+     })
+     ctx.fillStyle = _drawStyle.fill
+     ctx.strokeStyle = _drawStyle.stroke
+   },
+</PRE><PRE>   textStyle:function(style){
+     // without arguments, show the current state
+     if (arguments.length==0) return objcopy(_fontStyle)
+     
+     // if this is a (&quot;name&quot;, {style}) invocation, don't change the current
+     // state but add it to the library
+     if (arguments.length==2){
+       var styleName = arguments[0]
+       var styleDef = arguments[1]
+       if (typeof styleName=='string' &amp;&amp; typeof styleDef=='object'){
+         var newStyle = {}
+         if (styleDef.color!==undefined){
+           var textColor = Colors.decode(styleDef.color)
+           if (textColor) newStyle.color = textColor
+         }
+         $.each('font size align baseline alpha'.split(' '), function(i, param){
+           if (styleDef[param]!==undefined) newStyle[param] = styleDef[param]
+         })
+         if (!$.isEmptyObject(newStyle)) _fontLibrary[styleName] = newStyle
+       }
+       return
+     }
+     
+     if (arguments.length==1 &amp;&amp; _fontLibrary[arguments[0]]!==undefined){
+       style = _fontLibrary[arguments[0]]
+     }
+           
+     if (style.font!==undefined) _fontStyle.font = style.font
+     if (style.size!==undefined) _fontStyle.size = style.size
+     ctx.font = nano(&quot;{size}px {font}&quot;, _fontStyle)
+</PRE><PRE>     if (style.align!==undefined){
+        ctx.textAlign = _fontStyle.align = style.align
+     }
+     if (style.baseline!==undefined){
+        ctx.textBaseline = _fontStyle.baseline = style.baseline
+     }
+</PRE><PRE>     if (style.alpha!==undefined) _fontStyle.alpha = style.alpha
+     if (style.color!==undefined){
+       var textColor = Colors.decode(style.color)
+       if (textColor) _fontStyle.color = textColor
+     }
+     if (_fontStyle.color){
+       var textColor = Colors.blend(_fontStyle.color, _fontStyle.alpha)
+       if (textColor) ctx.fillStyle = textColor
+     }
+     // trace(_fontStyle,opts)
+   },
+</PRE><PRE>   text:function(textStr, x, y, opts){ // opts: x,y, color, font, align, baseline, width
+     if (arguments.length&gt;=3 &amp;&amp; !isNaN(x)){
+       opts = opts || {}
+       opts.x = x
+       opts.y = y
+     }else if (arguments.length==2 &amp;&amp; typeof(x)=='object'){
+       opts = x
+     }else{
+       opts = opts || {}
+     }
+</PRE><PRE>     var style = objmerge(_fontStyle, opts)
+     ctx.save()
+       if (style.align!==undefined) ctx.textAlign = style.align
+       if (style.baseline!==undefined) ctx.textBaseline = style.baseline
+       if (style.font!==undefined &amp;&amp; !isNaN(style.size)){
+         ctx.font = nano(&quot;{size}px {font}&quot;, style)
+       }
+</PRE><PRE>       var alpha = (style.alpha!==undefined) ? style.alpha : _fontStyle.alpha
+       var color = (style.color!==undefined) ? style.color : _fontStyle.color
+       ctx.fillStyle = Colors.blend(color, alpha)
+       
+       // if (alpha&gt;0) ctx.fillText(textStr, style.x, style.y);        
+       if (alpha&gt;0) ctx.fillText(textStr, Math.round(style.x), style.y);        
+     ctx.restore()
+   },
+</PRE><PRE>   textWidth:function(textStr, style){ // style: x,y, color, font, align, baseline, width
+     style = objmerge(_fontStyle, style||{})
+     ctx.save()
+       ctx.font = nano(&quot;{size}px {font}&quot;, style)
+       var width = ctx.measureText(textStr).width			  
+     ctx.restore()
+     return width
+   },
+   
+   // hasFont:function(fontName){
+   //   var testTxt = 'H h H a H m H b H u H r H g H e H r H f H o H n H s H t H i H v H'
+   //   ctx.save()
+   //   ctx.font = '10px sans-serif'
+   //   var defaultWidth = ctx.measureText(testTxt).width
+   // 
+   //   ctx.font = '10px &quot;'+fontName+'&quot;'
+   //   var putativeWidth = ctx.measureText(testTxt).width
+   //   ctx.restore()
+   //   
+   //   // var defaultWidth = that.textWidth(testTxt, {font:&quot;Times New Roman&quot;, size:120})
+   //   // var putativeWidth = that.textWidth(testTxt, {font:fontName, size:120})
+   //   trace(defaultWidth,putativeWidth,ctx.font)
+   //   // return (putativeWidth!=defaultWidth || fontName==&quot;Times New Roman&quot;)
+   //   return putativeWidth!=defaultWidth
+   // },
+   
+   
+   // shape primitives.
+   // classes will return an {x,y,w,h, fill(), stroke()} object without drawing
+   // functions will draw the shape based on current stroke/fill state
+   Rect:function(x,y,w,h,r,style){
+     return new _Rect(x,y,w,h,r,style)
+   },
+   rect:function(x, y, w, h, r, style){
+     _Rect.prototype._draw(x,y,w,h,r,style)
+   },
+   
+   Oval:function(x, y, w, h, style) {
+     return new _Oval(x,y,w,h, style)
+   },
+   oval:function(x, y, w, h, style) {
+     style = style || {}
+     _Oval.prototype._draw(x,y,w,h, style)
+   },
+   
+   // draw a line immediately
+   line:function(x1, y1, x2, y2, style){
+     var p = new _Path(x1,y1,x2,y2)
+     p.draw(style)
+   },
+   
+   // queue up a line segment to be drawn in a batch by .drawLines
+   lines:function(x1, y1, x2, y2){
+     if (typeof y2=='number'){
+       // Æ’( x1, y1, x2, y2)
+       _lineBuffer.push( [ {x:x1,y:y1}, {x:x2,y:y2} ] )
+     }else{
+       // Æ’( {x:1, y:1}, {x:2, y:2} )
+       _lineBuffer.push( [ x1,y1 ] )
+     }
+   },
+   
+   // flush the buffered .lines to screen
+   drawLines:function(style){
+     var p = new _Path(_lineBuffer)
+     p.draw(style)
+     _lineBuffer = []
+   }
+   
+</PRE><PRE> }
+ 
+ return that.init()    
+</PRE><P>}
+</P><P>
+// // helpers for figuring out where to draw arrows
+// var intersect_line_line = function(p1, p2, p3, p4)
+// {
+//  var denom = ((p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y));
+// 
+//  // lines are parallel
+//  if (denom === 0) {
+//    return false;
+//  }
+// 
+//  var ua = ((p4.x - p3.x)*(p1.y - p3.y) - (p4.y - p3.y)*(p1.x - p3.x)) / denom;
+//  var ub = ((p2.x - p1.x)*(p1.y - p3.y) - (p2.y - p1.y)*(p1.x - p3.x)) / denom;
+// 
+//  if (ua &lt; 0 || ua &gt; 1 || ub &lt; 0 || ub &gt; 1) {
+//    return false;
+//  }
+// 
+//  return arbor.Point(p1.x + ua * (p2.x - p1.x), p1.y + ua * (p2.y - p1.y));
+// }
+// 
+// var intersect_line_box = function(p1, p2, p3, w, h)
+// {
+//  var tl = {x: p3.x, y: p3.y};
+//  var tr = {x: p3.x + w, y: p3.y};
+//  var bl = {x: p3.x, y: p3.y + h};
+//  var br = {x: p3.x + w, y: p3.y + h};
+// 
+//  var result;
+//  if (result = intersect_line_line(p1, p2, tl, tr)) { return result; } // top
+//  if (result = intersect_line_line(p1, p2, tr, br)) { return result; } // right
+//  if (result = intersect_line_line(p1, p2, br, bl)) { return result; } // bottom
+//  if (result = intersect_line_line(p1, p2, bl, tl)) { return result; } // left
+// 
+//  return false;
+// }
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Evry/arbor/src/graphics/graphics.js">http://2012.igem.org/Team:Evry/arbor/src/graphics/graphics.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Evry/arbor/src/graphics/graphics.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Evry/arbor/src/graphics/graphics.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Evry/arbor/src/graphics/graphics.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Evry/arbor/src/graphics/graphics.js&amp;oldid=124551" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

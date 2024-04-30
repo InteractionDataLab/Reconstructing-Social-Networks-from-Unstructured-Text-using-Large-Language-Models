@@ -1,0 +1,130 @@
+---
+title: "Processing of Intra-team extraction"
+output: html_notebook
+---
+
+  
+1. Load the necessary datafiles (and libraries)
+
+```{r, message=FALSE, warning=FALSE}
+
+library(igraph)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(wesanderson)
+library(harrypotter)
+
+version = "specific"
+model = "gpt-4-0125-preview"
+temperature_curation = "0-3"
+temperature_matching = "0-3"
+
+meta = read.csv("../data/raw/team_meta.csv", stringsAsFactors = FALSE)
+roster = read.csv("../data/raw/teams_info_members_db.tsv", sep = "\t", stringsAsFactors = FALSE)
+roster$edited_name = trimws((iconv(roster$UserName,from="UTF-8",to="ASCII//TRANSLIT")))
+
+interactions = read.csv(paste("../data/processed/gpt_curated/intra-team/processed_", version, "_", model, "_", temperature_curation, ".csv", sep = ""), stringsAsFactors = FALSE)
+
+interactions$member = trimws((iconv(interactions$member,from="UTF-8",to="ASCII//TRANSLIT")))
+interactions$activity = tolower(interactions$activity)
+
+#interactions = interactions[grepl("Attr", interactions$page),]
+
+name_matching = read.csv(paste("../data/processed/gpt_curated/intra-team/processed_member_matching_", version, "_", model, "_", temperature_matching, "_", temperature_curation, ".csv", sep = ""), stringsAsFactors = FALSE)
+
+names = roster[,c("edited_name", "edited_name", "Year", "Team")]
+colnames(names) = colnames(name_matching)
+ 
+name_matching = rbind(name_matching, names)
+name_matching = name_matching[!duplicated(name_matching),]
+
+relationship_matching = read.csv(paste("../data/processed/gpt_curated/intra-team/processed_relationship_matching_", version, "_", model, "_", temperature_matching, "_", temperature_curation, ".csv", sep = ""), stringsAsFactors = FALSE)
+
+relationship_matching = relationship_matching[!duplicated(relationship_matching),]
+
+```
+
+
+```{r}
+
+process_matching = function(t1, t2)
+{
+  if (is.na(t1) & !is.na(t2))
+    return(t2)
+  else if (is.na(t2) & !is.na(t1))
+    return(t1)
+  else if (is.na(t2) & is.na(t1))
+    return(NA)
+  else if (t1 == t2)
+    return(t1)
+  else
+    return(t2)
+}
+
+interactions$member = gsub(",", " ", interactions$member)
+interactions$member = gsub("/", " ", interactions$member)
+interactions$squished_member = stringr::str_squish(interactions$member)
+
+interactions_matched = merge(interactions, name_matching, by.x = c("member", "team", "year"), by.y = c("member", "team", "year"), all.x = TRUE)
+
+interactions_matched = merge(interactions_matched, name_matching, by.x = c("squished_member", "team", "year"), by.y = c("member", "team", "year"), all.x = TRUE)
+
+interactions_matched = interactions_matched %>% rowwise() %>% mutate(matching = process_matching(matching.x, matching.y))
+
+interactions_matched = interactions_matched %>% select(-c("matching.x", "matching.y"))
+#stats_other = interactions_matched %>% group_by(team, year) %>% summarise(prop_other = sum(matching == "other")/n())
+
+interactions_matched = interactions_matched[!interactions_matched$matching == "other",]
+
+interactions_matched = na.omit(interactions_matched)
+
+interactions_matched = merge(interactions_matched, relationship_matching, by.x = c("activity", "year"), by.y = c("Activity", "year"), all.x = TRUE)
+
+interactions_matched = interactions_matched[, c("team", "year", "matching", "activity", "Matching")]
+colnames(interactions_matched) = c("team", "year", "member", "activity", "category")
+
+int_matched = interactions_matched
+
+```
+
+
+Load Manual Curation
+
+```{r}
+
+manual = read.csv("../data/processed/manually_curated/random_per_year_intra_team/intra-team_manual_annotated_new.csv", stringsAsFactors = FALSE)[,c("Year", "Team", "UserName", "MemberType", "activities", "category")]
+
+manual$category = lapply(manual$category, FUN = function(x) trimws(strsplit(x, ",")[[1]])) 
+manual$UserName = trimws((iconv(manual$UserName,from="UTF-8",to="ASCII//TRANSLIT")))
+
+manual = tidyr::unnest(manual, cols = "category")
+manual$activities = tolower(manual$activities)
+
+```
+
+
+Merge Manual and GPT Curated
+
+```{r}
+
+interactions_matched = interactions_matched %>% group_by(team, year, member, category) %>% summarise(count_gpt = n())
+interactions_matched$in_gpt = TRUE
+interactions_matched = interactions_matched[!interactions_matched$category == "N/A",]
+
+manual_to_match = manual[,c(c("Team", "Year", "UserName", "category", "MemberType"))]
+colnames(manual_to_match) = c("team", "year", "member", "category", "role")
+
+manual_to_match = manual_to_match %>% group_by(team, year, member, category, role) %>% summarise(count_manual = n())
+manual_to_match$in_manual = TRUE
+
+df_merged = merge(manual_to_match[,c("team", "year", "member", "category", "in_manual")], interactions_matched[, c("team", "year", "member", "category", "in_gpt")], by.x = c("team", "year", "member", "category"), by.y = c("team", "year", "member", "category"), all.x = TRUE, all.y = TRUE)
+
+df_merged = df_merged[df_merged$team %in% df_merged$team[df_merged$in_manual == TRUE],]
+df_merged = df_merged[!is.na(df_merged$team),]
+df_merged[is.na(df_merged)] = FALSE
+
+write.csv(df_merged, paste("../data/processed/gpt_curated/intra-team/intra-team_merged_", version, "_", model, "_", temperature_matching, "_", temperature_curation, ".csv", sep = ""), row.names = FALSE)
+
+```
+

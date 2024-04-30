@@ -1,0 +1,537 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Central_Calgary_js_Projector skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Central Calgary/js/Projector</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* @author mrdoob / <A rel="nofollow" class="external free" href="http://mrdoob.com/">http://mrdoob.com/</A>
+* @author supereggbert / <A rel="nofollow" class="external free" href="http://www.paulbrunt.co.uk/">http://www.paulbrunt.co.uk/</A>
+* @author julianwa / <A rel="nofollow" class="external free" href="https://github.com/julianwa">https://github.com/julianwa</A>
+*/
+</PRE><P>THREE.RenderableObject = function () {
+</P><P>	this.id = 0;
+</P><P>	this.object = null;
+	this.z = 0;
+</P><P>};
+</P><P>//
+</P><P>THREE.RenderableFace = function () {
+</P><P>	this.id = 0;
+</P><P>	this.v1 = new THREE.RenderableVertex();
+	this.v2 = new THREE.RenderableVertex();
+	this.v3 = new THREE.RenderableVertex();
+</P><P>	this.normalModel = new THREE.Vector3();
+</P><P>	this.vertexNormalsModel = [ new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3() ];
+	this.vertexNormalsLength = 0;
+</P><P>	this.color = new THREE.Color();
+	this.material = null;
+	this.uvs = [ new THREE.Vector2(), new THREE.Vector2(), new THREE.Vector2() ];
+</P><P>	this.z = 0;
+</P><P>};
+</P><P>//
+</P><P>THREE.RenderableVertex = function () {
+</P><P>	this.position = new THREE.Vector3();
+	this.positionWorld = new THREE.Vector3();
+	this.positionScreen = new THREE.Vector4();
+</P><P>	this.visible = true;
+</P><P>};
+</P><P>THREE.RenderableVertex.prototype.copy = function ( vertex ) {
+</P><P>	this.positionWorld.copy( vertex.positionWorld );
+	this.positionScreen.copy( vertex.positionScreen );
+</P><P>};
+</P><P>//
+</P><P>THREE.RenderableLine = function () {
+</P><P>	this.id = 0;
+</P><P>	this.v1 = new THREE.RenderableVertex();
+	this.v2 = new THREE.RenderableVertex();
+</P><P>	this.vertexColors = [ new THREE.Color(), new THREE.Color() ];
+	this.material = null;
+</P><P>	this.z = 0;
+</P><P>};
+</P><P>//
+</P><P>THREE.RenderableSprite = function () {
+</P><P>	this.id = 0;
+</P><P>	this.object = null;
+</P><P>	this.x = 0;
+	this.y = 0;
+	this.z = 0;
+</P><P>	this.rotation = 0;
+	this.scale = new THREE.Vector2();
+</P><P>	this.material = null;
+</P><P>};
+</P><P>//
+</P><P>THREE.Projector = function () {
+</P><P>	var _object, _objectCount, _objectPool = [], _objectPoolLength = 0,
+	_vertex, _vertexCount, _vertexPool = [], _vertexPoolLength = 0,
+	_face, _faceCount, _facePool = [], _facePoolLength = 0,
+	_line, _lineCount, _linePool = [], _linePoolLength = 0,
+	_sprite, _spriteCount, _spritePool = [], _spritePoolLength = 0,
+</P><P>	_renderData = { objects: [], lights: [], elements: [] },
+</P><P>	_vector3 = new THREE.Vector3(),
+	_vector4 = new THREE.Vector4(),
+</P><P>	_clipBox = new THREE.Box3( new THREE.Vector3( - 1, - 1, - 1 ), new THREE.Vector3( 1, 1, 1 ) ),
+	_boundingBox = new THREE.Box3(),
+	_points3 = new Array( 3 ),
+	_points4 = new Array( 4 ),
+</P><P>	_viewMatrix = new THREE.Matrix4(),
+	_viewProjectionMatrix = new THREE.Matrix4(),
+</P><P>	_modelMatrix,
+	_modelViewProjectionMatrix = new THREE.Matrix4(),
+</P><P>	_normalMatrix = new THREE.Matrix3(),
+</P><P>	_frustum = new THREE.Frustum(),
+</P><P>	_clippedVertex1PositionScreen = new THREE.Vector4(),
+	_clippedVertex2PositionScreen = new THREE.Vector4();
+</P><P>	//
+</P><P>	this.projectVector = function ( vector, camera ) {
+</P><P>		console.warn( 'THREE.Projector: .projectVector() is now vector.project().' );
+		vector.project( camera );
+</P><P>	};
+</P><P>	this.unprojectVector = function ( vector, camera ) {
+</P><P>		console.warn( 'THREE.Projector: .unprojectVector() is now vector.unproject().' );
+		vector.unproject( camera );
+</P><P>	};
+</P><P>	this.pickingRay = function ( vector, camera ) {
+</P><P>		console.error( 'THREE.Projector: .pickingRay() is now raycaster.setFromCamera().' );
+</P><P>	};
+</P><P>	//
+</P><P>	var RenderList = function () {
+</P><P>		var normals = [];
+		var uvs = [];
+</P><P>		var object = null;
+		var material = null;
+</P><P>		var normalMatrix = new THREE.Matrix3();
+</P><P>		var setObject = function ( value ) {
+</P><P>			object = value;
+			material = object.material;
+</P><P>			normalMatrix.getNormalMatrix( object.matrixWorld );
+</P><P>			normals.length = 0;
+			uvs.length = 0;
+</P><P>		};
+</P><P>		var projectVertex = function ( vertex ) {
+</P><P>			var position = vertex.position;
+			var positionWorld = vertex.positionWorld;
+			var positionScreen = vertex.positionScreen;
+</P><P>			positionWorld.copy( position ).applyMatrix4( _modelMatrix );
+			positionScreen.copy( positionWorld ).applyMatrix4( _viewProjectionMatrix );
+</P><P>			var invW = 1 / positionScreen.w;
+</P><P>			positionScreen.x *= invW;
+			positionScreen.y *= invW;
+			positionScreen.z *= invW;
+</P><P>			vertex.visible = positionScreen.x &gt;= - 1 &amp;&amp; positionScreen.x &lt;= 1 &amp;&amp;
+					 positionScreen.y &gt;= - 1 &amp;&amp; positionScreen.y &lt;= 1 &amp;&amp;
+					 positionScreen.z &gt;= - 1 &amp;&amp; positionScreen.z &lt;= 1;
+</P><P>		};
+</P><P>		var pushVertex = function ( x, y, z ) {
+</P><P>			_vertex = getNextVertexInPool();
+			_vertex.position.set( x, y, z );
+</P><P>			projectVertex( _vertex );
+</P><P>		};
+</P><P>		var pushNormal = function ( x, y, z ) {
+</P><P>			normals.push( x, y, z );
+</P><P>		};
+</P><P>		var pushUv = function ( x, y ) {
+</P><P>			uvs.push( x, y );
+</P><P>		};
+</P><P>		var checkTriangleVisibility = function ( v1, v2, v3 ) {
+</P><P>			if ( v1.visible === true || v2.visible === true || v3.visible === true ) return true;
+</P><P>			_points3[ 0 ] = v1.positionScreen;
+			_points3[ 1 ] = v2.positionScreen;
+			_points3[ 2 ] = v3.positionScreen;
+</P><P>			return _clipBox.isIntersectionBox( _boundingBox.setFromPoints( _points3 ) );
+</P><P>		};
+</P><P>		var checkBackfaceCulling = function ( v1, v2, v3 ) {
+</P><P>			return ( ( v3.positionScreen.x - v1.positionScreen.x ) *
+				    ( v2.positionScreen.y - v1.positionScreen.y ) -
+				    ( v3.positionScreen.y - v1.positionScreen.y ) *
+				    ( v2.positionScreen.x - v1.positionScreen.x ) ) &lt; 0;
+</P><P>		};
+</P><P>		var pushLine = function ( a, b ) {
+</P><P>			var v1 = _vertexPool[ a ];
+			var v2 = _vertexPool[ b ];
+</P><P>			_line = getNextLineInPool();
+</P><P>			_line.id = object.id;
+			_line.v1.copy( v1 );
+			_line.v2.copy( v2 );
+			_line.z = ( v1.positionScreen.z + v2.positionScreen.z ) / 2;
+</P><P>			_line.material = object.material;
+</P><P>			_renderData.elements.push( _line );
+</P><P>		};
+</P><P>		var pushTriangle = function ( a, b, c ) {
+</P><P>			var v1 = _vertexPool[ a ];
+			var v2 = _vertexPool[ b ];
+			var v3 = _vertexPool[ c ];
+</P><P>			if ( checkTriangleVisibility( v1, v2, v3 ) === false ) return;
+</P><P>			if ( material.side === THREE.DoubleSide || checkBackfaceCulling( v1, v2, v3 ) === true ) {
+</P><P>				_face = getNextFaceInPool();
+</P><P>				_face.id = object.id;
+				_face.v1.copy( v1 );
+				_face.v2.copy( v2 );
+				_face.v3.copy( v3 );
+				_face.z = ( v1.positionScreen.z + v2.positionScreen.z + v3.positionScreen.z ) / 3;
+</P><P>				for ( var i = 0; i &lt; 3; i ++ ) {
+</P><P>					var offset = arguments[ i ] * 3;
+					var normal = _face.vertexNormalsModel[ i ];
+</P><P>					normal.set( normals[ offset ], normals[ offset + 1 ], normals[ offset + 2 ] );
+					normal.applyMatrix3( normalMatrix ).normalize();
+</P><P>					var offset2 = arguments[ i ] * 2;
+</P><P>					var uv = _face.uvs[ i ];
+					uv.set( uvs[ offset2 ], uvs[ offset2 + 1 ] );
+</P><P>				}
+</P><P>				_face.vertexNormalsLength = 3;
+</P><P>				_face.material = object.material;
+</P><P>				_renderData.elements.push( _face );
+</P><P>			}
+</P><P>		};
+</P><P>		return {
+			setObject: setObject,
+			projectVertex: projectVertex,
+			checkTriangleVisibility: checkTriangleVisibility,
+			checkBackfaceCulling: checkBackfaceCulling,
+			pushVertex: pushVertex,
+			pushNormal: pushNormal,
+			pushUv: pushUv,
+			pushLine: pushLine,
+			pushTriangle: pushTriangle
+		}
+</P><P>	};
+</P><P>	var renderList = new RenderList();
+</P><P>	this.projectScene = function ( scene, camera, sortObjects, sortElements ) {
+</P><P>		_faceCount = 0;
+		_lineCount = 0;
+		_spriteCount = 0;
+</P><P>		_renderData.elements.length = 0;
+</P><P>		if ( scene.autoUpdate === true ) scene.updateMatrixWorld();
+		if ( camera.parent === undefined ) camera.updateMatrixWorld();
+</P><P>		_viewMatrix.copy( camera.matrixWorldInverse.getInverse( camera.matrixWorld ) );
+		_viewProjectionMatrix.multiplyMatrices( camera.projectionMatrix, _viewMatrix );
+</P><P>		_frustum.setFromMatrix( _viewProjectionMatrix );
+</P><P>		//
+</P><P>		_objectCount = 0;
+</P><P>		_renderData.objects.length = 0;
+		_renderData.lights.length = 0;
+</P><P>		scene.traverseVisible( function ( object ) {
+</P><P>			if ( object instanceof THREE.Light ) {
+</P><P>				_renderData.lights.push( object );
+</P><P>			} else if ( object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Sprite ) {
+</P><P>				if ( object.material.visible === false ) return;
+</P><P>				if ( object.frustumCulled === false || _frustum.intersectsObject( object ) === true ) {
+</P><P>					_object = getNextObjectInPool();
+					_object.id = object.id;
+					_object.object = object;
+</P><P>					_vector3.setFromMatrixPosition( object.matrixWorld );
+					_vector3.applyProjection( _viewProjectionMatrix );
+					_object.z = _vector3.z;
+</P><P>					_renderData.objects.push( _object );
+</P><P>				}
+</P><P>			}
+</P><P>		} );
+</P><P>		if ( sortObjects === true ) {
+</P><P>			_renderData.objects.sort( painterSort );
+</P><P>		}
+</P><P>		//
+</P><P>		for ( var o = 0, ol = _renderData.objects.length; o &lt; ol; o ++ ) {
+</P><P>			var object = _renderData.objects[ o ].object;
+			var geometry = object.geometry;
+</P><P>			renderList.setObject( object );
+</P><P>			_modelMatrix = object.matrixWorld;
+</P><P>			_vertexCount = 0;
+</P><P>			if ( object instanceof THREE.Mesh ) {
+</P><P>				if ( geometry instanceof THREE.BufferGeometry ) {
+</P><P>					var attributes = geometry.attributes;
+					var offsets = geometry.offsets;
+</P><P>					if ( attributes.position === undefined ) continue;
+</P><P>					var positions = attributes.position.array;
+</P><P>					for ( var i = 0, l = positions.length; i &lt; l; i += 3 ) {
+</P><P>						renderList.pushVertex( positions[ i ], positions[ i + 1 ], positions[ i + 2 ] );
+</P><P>					}
+</P><P>					if ( attributes.normal !== undefined ) {
+</P><P>						var normals = attributes.normal.array;
+</P><P>						for ( var i = 0, l = normals.length; i &lt; l; i += 3 ) {
+</P><P>							renderList.pushNormal( normals[ i ], normals[ i + 1 ], normals[ i + 2 ] );
+</P><P>						}
+</P><P>					}
+</P><P>					if ( attributes.uv !== undefined ) {
+</P><P>						var uvs = attributes.uv.array;
+</P><P>						for ( var i = 0, l = uvs.length; i &lt; l; i += 2 ) {
+</P><P>							renderList.pushUv( uvs[ i ], uvs[ i + 1 ] );
+</P><P>						}
+</P><P>					}
+</P><P>					if ( attributes.index !== undefined ) {
+</P><P>						var indices = attributes.index.array;
+</P><P>						if ( offsets.length &gt; 0 ) {
+</P><P>							for ( var o = 0; o &lt; offsets.length; o ++ ) {
+</P><P>								var offset = offsets[ o ];
+								var index = offset.index;
+</P><P>								for ( var i = offset.start, l = offset.start + offset.count; i &lt; l; i += 3 ) {
+</P><P>									renderList.pushTriangle( indices[ i ] + index, indices[ i + 1 ] + index, indices[ i + 2 ] + index );
+</P><P>								}
+</P><P>							}
+</P><P>						} else {
+</P><P>							for ( var i = 0, l = indices.length; i &lt; l; i += 3 ) {
+</P><P>								renderList.pushTriangle( indices[ i ], indices[ i + 1 ], indices[ i + 2 ] );
+</P><P>							}
+</P><P>						}
+</P><P>					} else {
+</P><P>						for ( var i = 0, l = positions.length / 3; i &lt; l; i += 3 ) {
+</P><P>							renderList.pushTriangle( i, i + 1, i + 2 );
+</P><P>						}
+</P><P>					}
+</P><P>				} else if ( geometry instanceof THREE.Geometry ) {
+</P><P>					var vertices = geometry.vertices;
+					var faces = geometry.faces;
+					var faceVertexUvs = geometry.faceVertexUvs[ 0 ];
+</P><P>					_normalMatrix.getNormalMatrix( _modelMatrix );
+</P><P>					var material = object.material;
+</P><P>					var isFaceMaterial = material instanceof THREE.MeshFaceMaterial;
+					var objectMaterials = isFaceMaterial === true ? object.material : null;
+</P><P>					for ( var v = 0, vl = vertices.length; v &lt; vl; v ++ ) {
+</P><P>						var vertex = vertices[ v ];
+</P><P>						_vector3.copy( vertex );
+</P><P>						if ( material.morphTargets === true ) {
+</P><P>							var morphTargets = geometry.morphTargets;
+							var morphInfluences = object.morphTargetInfluences;
+</P><P>							for ( var t = 0, tl = morphTargets.length; t &lt; tl; t ++ ) {
+</P><P>								var influence = morphInfluences[ t ];
+</P><P>								if ( influence === 0 ) continue;
+</P><P>								var target = morphTargets[ t ];
+								var targetVertex = target.vertices[ v ];
+</P><P>								_vector3.x += ( targetVertex.x - vertex.x ) * influence;
+								_vector3.y += ( targetVertex.y - vertex.y ) * influence;
+								_vector3.z += ( targetVertex.z - vertex.z ) * influence;
+</P><P>							}
+</P><P>						}
+</P><P>						renderList.pushVertex( _vector3.x, _vector3.y, _vector3.z );
+</P><P>					}
+</P><P>					for ( var f = 0, fl = faces.length; f &lt; fl; f ++ ) {
+</P><P>						var face = faces[ f ];
+</P><P>						var material = isFaceMaterial === true
+							 ? objectMaterials.materials[ face.materialIndex ]
+							 : object.material;
+</P><P>						if ( material === undefined ) continue;
+</P><P>						var side = material.side;
+</P><P>						var v1 = _vertexPool[ face.a ];
+						var v2 = _vertexPool[ face.b ];
+						var v3 = _vertexPool[ face.c ];
+</P><P>						if ( renderList.checkTriangleVisibility( v1, v2, v3 ) === false ) continue;
+</P><P>						var visible = renderList.checkBackfaceCulling( v1, v2, v3 );
+</P><P>						if ( side !== THREE.DoubleSide ) {
+							if ( side === THREE.FrontSide &amp;&amp; visible === false ) continue;
+							if ( side === THREE.BackSide &amp;&amp; visible === true ) continue;
+						}
+</P><P>						_face = getNextFaceInPool();
+</P><P>						_face.id = object.id;
+						_face.v1.copy( v1 );
+						_face.v2.copy( v2 );
+						_face.v3.copy( v3 );
+</P><P>						_face.normalModel.copy( face.normal );
+</P><P>						if ( visible === false &amp;&amp; ( side === THREE.BackSide || side === THREE.DoubleSide ) ) {
+</P><P>							_face.normalModel.negate();
+</P><P>						}
+</P><P>						_face.normalModel.applyMatrix3( _normalMatrix ).normalize();
+</P><P>						var faceVertexNormals = face.vertexNormals;
+</P><P>						for ( var n = 0, nl = Math.min( faceVertexNormals.length, 3 ); n &lt; nl; n ++ ) {
+</P><P>							var normalModel = _face.vertexNormalsModel[ n ];
+							normalModel.copy( faceVertexNormals[ n ] );
+</P><P>							if ( visible === false &amp;&amp; ( side === THREE.BackSide || side === THREE.DoubleSide ) ) {
+</P><P>								normalModel.negate();
+</P><P>							}
+</P><P>							normalModel.applyMatrix3( _normalMatrix ).normalize();
+</P><P>						}
+</P><P>						_face.vertexNormalsLength = faceVertexNormals.length;
+</P><P>						var vertexUvs = faceVertexUvs[ f ];
+</P><P>						if ( vertexUvs !== undefined ) {
+</P><P>							for ( var u = 0; u &lt; 3; u ++ ) {
+</P><P>								_face.uvs[ u ].copy( vertexUvs[ u ] );
+</P><P>							}
+</P><P>						}
+</P><P>						_face.color = face.color;
+						_face.material = material;
+</P><P>						_face.z = ( v1.positionScreen.z + v2.positionScreen.z + v3.positionScreen.z ) / 3;
+</P><P>						_renderData.elements.push( _face );
+</P><P>					}
+</P><P>				}
+</P><P>			} else if ( object instanceof THREE.Line ) {
+</P><P>				if ( geometry instanceof THREE.BufferGeometry ) {
+</P><P>					var attributes = geometry.attributes;
+</P><P>					if ( attributes.position !== undefined ) {
+</P><P>						var positions = attributes.position.array;
+</P><P>						for ( var i = 0, l = positions.length; i &lt; l; i += 3 ) {
+</P><P>							renderList.pushVertex( positions[ i ], positions[ i + 1 ], positions[ i + 2 ] );
+</P><P>						}
+</P><P>						if ( attributes.index !== undefined ) {
+</P><P>							var indices = attributes.index.array;
+</P><P>							for ( var i = 0, l = indices.length; i &lt; l; i += 2 ) {
+</P><P>								renderList.pushLine( indices[ i ], indices[ i + 1 ] );
+</P><P>							}
+</P><P>						} else {
+</P><P>							var step = object.mode === THREE.LinePieces ? 2 : 1;
+</P><P>							for ( var i = 0, l = ( positions.length / 3 ) - 1; i &lt; l; i += step ) {
+</P><P>								renderList.pushLine( i, i + 1 );
+</P><P>							}
+</P><P>						}
+</P><P>					}
+</P><P>				} else if ( geometry instanceof THREE.Geometry ) {
+</P><P>					_modelViewProjectionMatrix.multiplyMatrices( _viewProjectionMatrix, _modelMatrix );
+</P><P>					var vertices = object.geometry.vertices;
+</P><P>					if ( vertices.length === 0 ) continue;
+</P><P>					v1 = getNextVertexInPool();
+					v1.positionScreen.copy( vertices[ 0 ] ).applyMatrix4( _modelViewProjectionMatrix );
+</P><P>					// Handle LineStrip and LinePieces
+					var step = object.mode === THREE.LinePieces ? 2 : 1;
+</P><P>					for ( var v = 1, vl = vertices.length; v &lt; vl; v ++ ) {
+</P><P>						v1 = getNextVertexInPool();
+						v1.positionScreen.copy( vertices[ v ] ).applyMatrix4( _modelViewProjectionMatrix );</P><P>						if ( ( v + 1 ) % step &gt; 0 ) continue;
+</P><P>						v2 = _vertexPool[ _vertexCount - 2 ];
+</P><P>						_clippedVertex1PositionScreen.copy( v1.positionScreen );
+						_clippedVertex2PositionScreen.copy( v2.positionScreen );
+</P><P>						if ( clipLine( _clippedVertex1PositionScreen, _clippedVertex2PositionScreen ) === true ) {
+</P><P>							// Perform the perspective divide
+							_clippedVertex1PositionScreen.multiplyScalar( 1 / _clippedVertex1PositionScreen.w );
+							_clippedVertex2PositionScreen.multiplyScalar( 1 / _clippedVertex2PositionScreen.w );
+</P><P>							_line = getNextLineInPool();
+</P><P>							_line.id = object.id;
+							_line.v1.positionScreen.copy( _clippedVertex1PositionScreen );
+							_line.v2.positionScreen.copy( _clippedVertex2PositionScreen );
+</P><P>							_line.z = Math.max( _clippedVertex1PositionScreen.z, _clippedVertex2PositionScreen.z );
+</P><P>							_line.material = object.material;
+</P><P>							if ( object.material.vertexColors === THREE.VertexColors ) {
+</P><P>								_line.vertexColors[ 0 ].copy( object.geometry.colors[ v ] );
+								_line.vertexColors[ 1 ].copy( object.geometry.colors[ v - 1 ] );
+</P><P>							}
+</P><P>							_renderData.elements.push( _line );
+</P><P>						}
+</P><P>					}
+</P><P>				}
+</P><P>			} else if ( object instanceof THREE.Sprite ) {
+</P><P>				_vector4.set( _modelMatrix.elements[ 12 ], _modelMatrix.elements[ 13 ], _modelMatrix.elements[ 14 ], 1 );
+				_vector4.applyMatrix4( _viewProjectionMatrix );
+</P><P>				var invW = 1 / _vector4.w;
+</P><P>				_vector4.z *= invW;
+</P><P>				if ( _vector4.z &gt;= - 1 &amp;&amp; _vector4.z &lt;= 1 ) {
+</P><P>					_sprite = getNextSpriteInPool();
+					_sprite.id = object.id;
+					_sprite.x = _vector4.x * invW;
+					_sprite.y = _vector4.y * invW;
+					_sprite.z = _vector4.z;
+					_sprite.object = object;
+</P><P>					_sprite.rotation = object.rotation;
+</P><P>					_sprite.scale.x = object.scale.x * Math.abs( _sprite.x - ( _vector4.x + camera.projectionMatrix.elements[ 0 ] ) / ( _vector4.w + camera.projectionMatrix.elements[ 12 ] ) );
+					_sprite.scale.y = object.scale.y * Math.abs( _sprite.y - ( _vector4.y + camera.projectionMatrix.elements[ 5 ] ) / ( _vector4.w + camera.projectionMatrix.elements[ 13 ] ) );
+</P><P>					_sprite.material = object.material;
+</P><P>					_renderData.elements.push( _sprite );
+</P><P>				}
+</P><P>			}
+</P><P>		}
+</P><P>		if ( sortElements === true ) {
+</P><P>			_renderData.elements.sort( painterSort );
+</P><P>		}
+</P><P>		return _renderData;
+</P><P>	};
+</P><P>	// Pools
+</P><P>	function getNextObjectInPool() {
+</P><P>		if ( _objectCount === _objectPoolLength ) {
+</P><P>			var object = new THREE.RenderableObject();
+			_objectPool.push( object );
+			_objectPoolLength ++;
+			_objectCount ++;
+			return object;
+</P><P>		}
+</P><P>		return _objectPool[ _objectCount ++ ];
+</P><P>	}
+</P><P>	function getNextVertexInPool() {
+</P><P>		if ( _vertexCount === _vertexPoolLength ) {
+</P><P>			var vertex = new THREE.RenderableVertex();
+			_vertexPool.push( vertex );
+			_vertexPoolLength ++;
+			_vertexCount ++;
+			return vertex;
+</P><P>		}
+</P><P>		return _vertexPool[ _vertexCount ++ ];
+</P><P>	}
+</P><P>	function getNextFaceInPool() {
+</P><P>		if ( _faceCount === _facePoolLength ) {
+</P><P>			var face = new THREE.RenderableFace();
+			_facePool.push( face );
+			_facePoolLength ++;
+			_faceCount ++;
+			return face;
+</P><P>		}
+</P><P>		return _facePool[ _faceCount ++ ];
+</P><P>
+	}
+</P><P>	function getNextLineInPool() {
+</P><P>		if ( _lineCount === _linePoolLength ) {
+</P><P>			var line = new THREE.RenderableLine();
+			_linePool.push( line );
+			_linePoolLength ++;
+			_lineCount ++
+			return line;
+</P><P>		}
+</P><P>		return _linePool[ _lineCount ++ ];
+</P><P>	}
+</P><P>	function getNextSpriteInPool() {
+</P><P>		if ( _spriteCount === _spritePoolLength ) {
+</P><P>			var sprite = new THREE.RenderableSprite();
+			_spritePool.push( sprite );
+			_spritePoolLength ++;
+			_spriteCount ++
+			return sprite;
+</P><P>		}
+</P><P>		return _spritePool[ _spriteCount ++ ];
+</P><P>	}
+</P><P>	//
+</P><P>	function painterSort( a, b ) {
+</P><P>		if ( a.z !== b.z ) {
+</P><P>			return b.z - a.z;
+</P><P>		} else if ( a.id !== b.id ) {
+</P><P>			return a.id - b.id;
+</P><P>		} else {
+</P><P>			return 0;
+</P><P>		}
+</P><P>	}
+</P><P>	function clipLine( s1, s2 ) {
+</P><P>		var alpha1 = 0, alpha2 = 1,
+</P><P>		// Calculate the boundary coordinate of each vertex for the near and far clip planes,
+		// Z = -1 and Z = +1, respectively.
+		bc1near =  s1.z + s1.w,
+		bc2near =  s2.z + s2.w,
+		bc1far =  - s1.z + s1.w,
+		bc2far =  - s2.z + s2.w;
+</P><P>		if ( bc1near &gt;= 0 &amp;&amp; bc2near &gt;= 0 &amp;&amp; bc1far &gt;= 0 &amp;&amp; bc2far &gt;= 0 ) {
+</P><P>			// Both vertices lie entirely within all clip planes.
+			return true;
+</P><P>		} else if ( ( bc1near &lt; 0 &amp;&amp; bc2near &lt; 0 ) || ( bc1far &lt; 0 &amp;&amp; bc2far &lt; 0 ) ) {
+</P><P>			// Both vertices lie entirely outside one of the clip planes.
+			return false;
+</P><P>		} else {
+</P><P>			// The line segment spans at least one clip plane.
+</P><P>			if ( bc1near &lt; 0 ) {
+</P><P>				// v1 lies outside the near plane, v2 inside
+				alpha1 = Math.max( alpha1, bc1near / ( bc1near - bc2near ) );
+</P><P>			} else if ( bc2near &lt; 0 ) {
+</P><P>				// v2 lies outside the near plane, v1 inside
+				alpha2 = Math.min( alpha2, bc1near / ( bc1near - bc2near ) );
+</P><P>			}
+</P><P>			if ( bc1far &lt; 0 ) {
+</P><P>				// v1 lies outside the far plane, v2 inside
+				alpha1 = Math.max( alpha1, bc1far / ( bc1far - bc2far ) );
+</P><P>			} else if ( bc2far &lt; 0 ) {
+</P><P>				// v2 lies outside the far plane, v2 inside
+				alpha2 = Math.min( alpha2, bc1far / ( bc1far - bc2far ) );
+</P><P>			}
+</P><P>			if ( alpha2 &lt; alpha1 ) {
+</P><P>				// The line segment spans two boundaries, but is outside both of them.
+				// (This can't happen when we're only clipping against just near/far but good
+				//  to leave the check here for future usage if other clip planes are added.)
+				return false;
+</P><P>			} else {
+</P><P>				// Update the s1 and s2 vertices to match the clipped line segment.
+				s1.lerp( s2, alpha1 );
+				s2.lerp( s1, 1 - alpha2 );
+</P><P>				return true;
+</P><P>			}
+</P><P>		}
+</P><P>	}
+</P><P>};
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

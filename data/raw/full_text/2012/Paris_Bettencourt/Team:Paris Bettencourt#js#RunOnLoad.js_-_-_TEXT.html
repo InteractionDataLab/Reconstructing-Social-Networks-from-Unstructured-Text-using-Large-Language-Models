@@ -1,0 +1,164 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Paris Bettencourt/js/RunOnLoad.js
+From 2012.igem.org
+/*
+javascript.js
+JavaScript for http://code.stephenmorley.org/
+Created by Stephen Morley - http://stephenmorley.org/ - and released under the terms of the CC0 1.0 Universal legal code:
+http://creativecommons.org/publicdomain/zero/1.0/legalcode
+/
+// create the runOnLoad function var runOnLoad = (function(){
+// set that the tasks have not yet run  var tasksRun = false;
+// initialise the task list  var tasks = [];
+/* Adds a task. The parameter is:   *   * task - the task   */  function add(task){
+// check whether tasks have been run    if (tasksRun){
+// run the task immediately      task();
+}else{
+// add the task to the list      tasks.push(task);
+}
+}
+// Runs the tasks.  function runTasks(){
+// set that the tasks have run    tasksRun = true;
+// loop over the tasks, running them    while (tasks.length) tasks.shift()();
+}
+// check which method of adding event listeners is supported  if (document.addEventListener){
+// listen for the DOMContentLoaded event    document.addEventListener('DOMContentLoaded', runTasks, false);
+// listen for the load event    window.addEventListener('load', runTasks, false);
+}else{
+// listen for the readystatechange event    document.attachEvent(        'onreadystatechange',        function(){          if (document.readyState == 'complete') runTasks();        });
+// listen for the load event    window.attachEvent('onload', runTasks);
+}
+// return the public API  return add;
+})();
+/* Creates a SmoothMovement. A SmoothMovement produces integer position values
+* representing movement towards a target position, with a maximum acceleration * or deceleration of one distance unit per time unit squared. The parameters * are: * * position - the initial position * target   - the target position */
+function SmoothMovement(position, target){
+// initialise the position, target, velocity, and animation interval  this.position          = position;  this.target            = target;  this.velocity          = 0;  this.animationInterval = null;
+}
+/* Updates the position an velocity for this SmoothMovement, and returns the
+* new position. */
+SmoothMovement.prototype.update = function(){
+// check whether the velocity is negative  if (this.velocity < 0){
+// check whether we must decelerate or can accelerate    if (this.target > this.position - this.velocity * (this.velocity - 1) / 2){
+// we must decelerate to avoid overshooting, so decrease the speed      this.velocity ++;
+}else if (this.target <=        this.position - (this.velocity - 1) * (this.velocity - 2) / 2){
+// we can accelerate without overshooting, so increase the speed      this.velocity --;
+}
+}else{
+// check whether we must decelerate or can accelerate    if (this.target < this.position + this.velocity * (this.velocity + 1) / 2){
+// we must decelerate to avoid overshooting, so decrease the speed      this.velocity--;
+}else if (this.target >=        this.position + (this.velocity + 1) * (this.velocity + 2) / 2){
+// we can accelerate without overshooting, so increase the speed      this.velocity++;
+}
+}
+// update the position  this.position += this.velocity;
+// return the new position  return this.position;
+}
+/* Returns true if this SmoothMovement has stopped, and false otherwise. Note
+* that this means that both the velocity and acceleration are zero (or * equivalently, that the velocity is zero and the position is at the target). */
+SmoothMovement.prototype.hasStopped = function(){
+// return whether we have stopped  return (this.position == this.target && this.velocity == 0);
+}
+/* Animates this SmoothMovement bycalling the update function repeatedly until
+* the SmoothMovement has stopped. The parameters are: * * interval       - the interval between updates, in milliseconds * updateListener - a function to call after each update. This function is *                  passed the new position and the SmoothMovement as its *                  first and second parameters. * stopListener   - a function to call when the SmoothMovement has stopped. This *                  function is passed the SmoothMovement as its parameter. This *                  parameter is optional. */
+SmoothMovement.prototype.animate = function(
+interval, updateListener, stopListener){
+// clear any current animation interval  if (this.animationInterval) window.clearInterval(this.animationInterval);
+// create the new animation interval  this.animationInterval = window.setInterval(      this.createAnimationClosure(updateListener, stopListener), interval);
+}
+/* Creates a closure for use in the animate function. This function is not
+* intended to be used elsewhere. The parameters are: * * updateListener - a function to call after each update. * stopListener   - a function to call when the SmoothMovement has stopped */
+SmoothMovement.prototype.createAnimationClosure = function(
+updateListener, stopListener){
+// store a reference to the 'this' object  var thisObject = this;
+// return the animation closure  return function(){
+// update the SmoothMovement    thisObject.update();
+// call the update listener    updateListener(thisObject.position, thisObject);
+// check whether the SmoothMovement has stopped    if (thisObject.hasStopped()){
+// clear the animation interval      window.clearInterval(thisObject.animationInterval);      thisObject.animationInterval = null;
+// call the stop listener if one was supplied      if (stopListener) stopListener(thisObject);
+}
+}
+}
+// create the Website object var Website =
+{
+// define the list of share buttons      SHARE_BUTTONS : [        [          'email',          ' mailto:?body= <url>&subject=<title>',          0, 0        ],        [          'twitter',          ' https://twitter.com/intent/tweet?url= <url>&text=<title>',          550, 420 // specified by Twitter        ],        [          'facebook',          ' https://www.facebook.com/sharer.php?u= <url>',          600, 400        ],        [          'google-plus',          ' https://plus.google.com/share?url= <url>',          600, 600 // specified by Google        ],        [          'linkedin',          ' http://www.linkedin.com/shareArticle?mini=true&url= <url>',          600, 400        ]      ],
+/* Creates the header of random bits and creates an interval to flip bits       * four times a second.       */      createHeader : function(){
+// store a reference to the header node        Website.header = document.getElementById('header');
+// loop over the rows and columns        for (var row = 0; row < 5; row ++){          for (var column = 0; column < 80; column ++){
+// create the DOM node for the bit            var div = document.createElement('div');            div.style.left = (column * 12) + 'px';            div.style.top  = (row * 16) + 'px';            div.style.opacity = 1;
+// randomly assign the bit a 0 or 1 value            div.appendChild(                document.createTextNode(Math.floor(2 * Math.random())));
+// add the bit to the header            Website.header.appendChild(div);
+}        }
+// store the list of bits in the header        Website.headerBits = Website.header.getElementsByTagName('div');
+// create the bit animation interval        Website.bitAnimationInterval =            window.setInterval(Website.flipRandomBit, 500);
+},
+/* Selects a random bit from the header and animates it flipping. The       * selected bit is ignored if it is already in the process of flipping.       */      flipRandomBit : function(){
+// select a random bit        var bit =            Website.headerBits[                Math.floor(Website.headerBits.length * Math.random())];
+// check that the bit is not in the process of being flipped        if (bit.className == ){
+// mark the bit as being in the process of being flipped          bit.className = 'flipping';
+// flip the bit after one second          window.setTimeout(              function(){                bit.className            = ; bit.firstChild.nodeValue = 1 - bit.firstChild.nodeValue;              },              1000);
+}
+},
+/* Handles the page being scrolled by ensuring the navigation is always in       * view.       */      handleScroll : function(){
+// check that this is a relatively modern browser        if (window.XMLHttpRequest){
+// determine the distance scrolled down the page          var offset = window.pageYOffset  ? window.pageYOffset  : document.documentElement.scrollTop;
+// check whether the header has moved into or out of view          if (offset <= 104 && !Website.bitAnimationInterval){
+// start the header animation            Website.bitAnimationInterval =                window.setInterval(Website.flipRandomBit, 250);
+// clear the class on the navigation            document.getElementById('navigation').className = ;
+}else if (offset > 104 && Website.bitAnimationInterval){
+// stop the header animation            window.clearInterval(Website.bitAnimationInterval);            Website.bitAnimationInterval = null;
+// set the class on the navigation            document.getElementById('navigation').className = 'fixed';
+}
+}
+},
+// define a SmoothMovement instance for use with the navigation animation      navigationAnimation : new SmoothMovement(878, 62),
+// expands or collapses the navigation      animateNavigation : function(){
+// store references to the DOM nodes of the toolbar components        Website.navigationBar = document.getElementById('navigationBar');        Website.twitterButton = document.getElementById('twitterButton');        Website.collapseArrow = document.getElementById('collapseArrow');
+// animate the navigation        Website.navigationAnimation.animate(            20,            function(width){
+// set the navigation width              Website.navigationBar.style.width = width + 'px';
+// move the twitter button              Website.twitterButton.style.left = (width - 430) + 'px';
+// scale the arrow              Website.collapseArrow.setAttribute(                  'src',                  '/images/collapse-arrow-'                      + (width > 470 ? 'left' : 'right')                      + '/');              Website.collapseArrow.setAttribute(                  'width',                  Math.max(1, Math.round(Math.abs((width - 470) / 408 * 20))));
+},            function(animation){
+// update the animation target and animation button title text              animation.target = (animation.target == 62 ? 878 : 62);              document.getElementById('collapseButton').setAttribute( 'title',                  (animation.target == 62  ? 'Collapse navigation'  : 'Expand navigation'));
+});
+},
+// Toggles the display of the share buttons.      toggleShareButtons : function(){
+// find the footer and share button nodes        var footer = document.getElementById('footer');        var shareButtons = document.getElementById('shareButtons');
+// toggle the display of the share buttons        if (shareButtons){          footer.removeChild(shareButtons);        }else{          footer.appendChild(Website.createShareButtons());        }
+},
+// Creates and returns a DOM node for the share buttons.      createShareButtons : function(){
+// create the container        var container = document.createElement('div');        container.id = 'shareButtons';
+// loop over the buttons, adding them to the container        for (var index = 0; index < Website.SHARE_BUTTONS.length; index ++){          var button = document.createElement('img');          button.src =              '/images/share-icons/'              + Website.SHARE_BUTTONS[index][0]              + '/';          button.onclick =              Website.createShareButtonClickHandler(                  Website.SHARE_BUTTONS[index][1],                  Website.SHARE_BUTTONS[index][2],                  Website.SHARE_BUTTONS[index][3]);          container.appendChild(button);        }
+// return the share buttons node        return container;
+},
+/* Returns a click handler for a share button. The parameter is:       *       * url    - the URL for sharing; the string <url> will be replaced with       *          the URL of the current page and <title> will be replaced with       *          the title of the current page       * width  - the width of the pop-up window       * height - the height of the pop-up window       *       * If width and height are 0 the link will open in the current window.       */      createShareButtonClickHandler : function(url, width, height){
+// return the click handler        return function(){
+// hide the share buttons          Website.toggleShareButtons();
+// determine the URL          var finalUrl =              url.replace('<url>', encodeURIComponent(location.href));          finalUrl =              finalUrl.replace('<title>', encodeURIComponent(document.title));
+// open the URL          if (width == 0 || height == 0){            location.href = finalUrl;          }else{            window.open(                finalUrl,                '_blank',                'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,width='                    + width                    + ',height='                    + height);          }
+}
+}
+};
+// add the event listeners if (window.addEventListener){
+window.addEventListener('load',   Website.createHeader, false);  window.addEventListener('scroll', Website.handleScroll, false);
+}else{
+window.attachEvent('onload',   Website.createHeader);  window.attachEvent('onscroll', Website.handleScroll);
+}
+Retrieved from " http://2012.igem.org/Team:Paris_Bettencourt/js/RunOnLoad.js "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

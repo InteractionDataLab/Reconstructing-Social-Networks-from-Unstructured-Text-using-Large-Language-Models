@@ -1,0 +1,103 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:BCCS-Bristol/BSim/Tutorials
+From 2009.igem.org
+Home
+VESECURE
+Wet lab
+BioBricks
+Notebook
+Lab photos
+Safety
+Modelling
+BSim
+Features
+Tutorials
+Download
+Case studies
+VESECURE
+Magnetotaxis
+Repressilators
+Bioscaffold
+Fusion Problem
+BCCS Bioscaffold
+Team
+Calendar
+Brainstorm
+Preliminary meetings
+BCCS-Bristol
+iGEM 2009
+In this section we discuss the new structure of BSim simulations and the improvements made in how they are specified. The examples presented in this section are available from our Google code subversion repository , from where it is also possibly to checkout a copy of the BSim source code. BSim is available as a standalone pre-compiled library which can be compiled against like any other Java library, or as archived source code (for more details please see here ). A brief tutorial for one method of obtaining BSim using SVN is also provided here .
+We present two walkthroughs for creating basic simulations in BSim:
+The first tutorial describes the basics of a BSim simulation file, and the steps required to create a single bacterium.
+The second tutorial provides a detailed overview of the core features of a BSim simulation file. In the simulation, we create 100 bacteria exhibiting classic run and tumble behaviour and detect collisions between the bacteria by changing their colour from green to red (any such activity can also be easily logged and imported into a numerical analysis package e.g. MATLAB or Excel). The following video shows the simulation running over a 100x100x100 micron volume for 30 seconds.
+New Simulation Structure
+When we set out to restructure BSim it was decided that it should be made much more versatile and adaptable, and that as much as possible of the physics and coding should effectively be behind the scenes. This would allow stronger focus on the biological aspects of the simulation. To this end BSim has now been rebuilt as an environment where the user takes various functionalities already in place and uses them to create a simulation tailored to their specific requirements.
+The creation of a BSim simulation requires a basic working knowledge of the Java programming language. However as stated above, in designing the new structure of the BSim environment we have endeavoured to provide a toolkit that would also be useful to people without a programming background. The BSim distribution will include complete documentation for all available functions, and numerous example simulations showcasing the available features.
+Comprehensive and complete Java documentation can be found on the Sun Website , including a number of tutorial trails . However for help on a specific function it is often easier to perform an internet search for "Java" followed by the name of the function.
+Example 1: The simplest simulation!
+Arguably the simplest simulation would be a single bacterium floating around in a viscous medium. In this example we define an example file in which we create a new simulation, add a single bacterium with classic run-tumble motion, and define parameters for drawing the bacterium.
+Step 1: Create the simulation file. Create a new java file called "BSimSimplestExample.java". Now we define the class that will contain the simulation and the "main" method which is called when running the simulation.
+public class BSimSimplestExample {   public static void main(String[] args) {   } }
+Step 2: Define a new BSim simulation. We must now write the code to define the simulation inside our "main" method. Here we define a new instance of the BSim simulation environment as follows:
+BSim sim = new BSim();
+Step 3: Create a bacterium. This is a single line in which we define one bacterium instance. When creating the bacteriun we need to specify that the bacterium is attached to our simulation "sim" variable, and specify the starting position of the bacterium using the "Vector3d" constructor which specifies an "X, Y, Z" position in the 3D environment.
+final BSimBacterium bacterium = new BSimBacterium(sim, new Vector3d(50,50,50));
+Step 4: Create a "BSimTicker". A BSimTicker object will iterate at every time-step of the simulation, so we must specify here what we want to occur as the simulation runs. First we assign the ticker to our simulation object, then define what we want to occur at each time-step using the "tick()" method.  In this case all we want the bacterium to do is perform run-tumble motion through our environment, which is its default "action()" method. We then need to update the position of the bacterium for that time-step.
+sim.setTicker(new BSimTicker() {    @Override    public void tick() {     bacterium.action();       bacterium.updatePosition();    }   });
+Step 5: Create a "drawer" object to display the simulation. The "drawer" defines what should be drawn (to screen or to a file) at each time step. Here we simply specify the size of our display area as 800 by 600 pixels when we create a new BSimP3DDrawer object, and then specify that we want our bacterium "bacterium" drawn as a green coloured sphere.
+sim.setDrawer(new BSimP3DDrawer(sim, 800,600) {    @Override    public void scene(PGraphics3D p3d) {            draw(bacterium,Color.GREEN);    }   });
+Step 6: Draw the simulation to screen. The final step of a simulation definition is to specify what we want to do with the generated data. In this case we just want to show the motion of the bacterium on the screen, so we add the following line at the end of our "main" method:
+sim.preview();
+This tells BSim to create a new window when the simulation is run and draw the bacterium's behaviour to the screen.
+The result? Congratulations, you have created your first running, tumbling bacterium!
+Example 2: BSimTutorialExample; A detailed outline of a complete simulation specification
+The tutorial example was designed to show the user how to implement many of the features one by one in a clear modular fashion, and with an explanation of the options available for each of the features. In this example we again define a new example file, in which we create a new simulation, add 100 bacteria in the same way as we added one bacterium in the last example and register the number of collisions between the bacteria in an exporter file and also by changing the colour of the bacteria when they collide.
+Step 1: Create the simulation file and define a new simulation. Create a new java file called "BSimTutorialExample.java". Now we define the class that will contain the simulation and the "main" method which is called when running the simulation followed by defining a new instance of the BSim simulation environment.
+public class BSimTutorialExample {   public static void main(String[] args) {   BSim sim = new BSim();   } }
+Step 2: Set environmental properties. There are many available environmental settings, all with defaults, as defined below:
+BSim#setDt() Overall simulation time step: default for the time step is 0.01 seconds
+BSim#setSimulatonTime() The length of the simulation: length of simulation in seconds
+BSim#setTimeFormat() Display format of the elapsed simulation time: defaults to "0.00"
+BSim#setBound() Simulation boundary dimensions: The default is (100,100,100), specified in microns
+BSim#setSolid() Simulation boundary conditions: Sets whether the boundaries are solid or wrapping (periodic boundary conditions). Defaults to {false, false, false} i.e. fully wrapping boundaries
+BSim#setVisc() Fluid environment viscosity: default is 2.7e-3 Pa s
+BSim#setTemperature() Environment temperature: defaults to 305 K
+sim.setDt(0.01);   sim.setSimulationTime(10);   sim.setTimeFormat("0.00");   sim.setBound(100,100,100);
+Step 3: Create the bacteria. Extend BSimParticle as required and create vectors marked final. In this example the bacteria will turns red when they collide. Firstly the collision is set as the default, false. Then the size and position of the bacteria in the simulation are defined and the interaction method is defined. Finally, the bacteria are created inside the boundary, defined previously, and added to the vector.
+class BSimTutorialBacterium extends BSimBacterium {                 private boolean collision = false;                  public BSimTutorialBacterium(BSim sim, Vector3d position) {                         super(sim, position); // default radius is 1 micron                    }                  public void interaction(BSimTutorialBacterium p) {                         if(outerDistance(p) < 0) {                                 collision = true;                                 p.collision = true;                         }                 }         }            final Vector<BSimTutorialBacterium> bacteria = new Vector<BSimTutorialBacterium>();            while(bacteria.size() < 100) {                   BSimTutorialBacterium b = new BSimTutorialBacterium(sim, new Vector3d(                                                         Math.random()*sim.getBound().x,                                                         Math.random()*sim.getBound().y,                                                         Math.random()*sim.getBound().z));                 if(!b.intersection(bacteria)) bacteria.add(b);           }
+Step 4: Create a "BSimTicker". Implementation of tick() on a BSimTicker and add the ticker to the simulation. This has to be implemented such that for each bacterium from the vector, the position and action of the bacterium will be updated at every timestep.
+sim.setTicker(new BSimTicker() {                         @Override                         public void tick() {                                 for(int i = 1; i < bacteria.size(); i++)                                         for(int j = i+1; j < bacteria.size(); j++)                                                 bacteria.get(i).interaction(bacteria.get(j));                                  for(BSimTutorialBacterium b : bacteria) {                                         b.action();                                           b.updatePosition();                                 }                          }                   });
+Step 5: Create a "drawer" object to display the simulation. Here we use the BSimP3DDrawer which has already implemented draw(Graphics) to draw boundaries and the simulation time, but still requires the implementation of scene(PGraphics3D) to draw particles. You can use the draw(BSimParticle, Color) method to draw particles. In this case, the bacteria will be green unless they have experienced a collision, in which case they will be coloured red.
+BSimP3DDrawer drawer = new BSimP3DDrawer(sim, 800,600) {                         @Override                         public void scene(PGraphics3D p3d) {                                       for(BSimTutorialBacterium b : bacteria) {                                         draw(b, b.collision ? Color.RED : Color.GREEN);                                 }                            }                 };                 sim.setDrawer(drawer);
+Step 6: Create the "exporter" object. Implement before(), during() and after() methods on BSimExporters and add them to the simulation.
+BSimMovExporter is a concrete BSimExporter for creating Quicktime movies, with settings defined below:
+BSimMovExporter#setSpeed() The relative speed that the movie file plays at.
+BSimMovExporter movExporter = new BSimMovExporter(sim, drawer, "results/BSim.mov");                 movExporter.setSpeed(2);                 sim.addExporter(movExporter);
+BSimPngExporter is another concrete BSimExporter for creating png images.
+BSimPngExporter pngExporter = new BSimPngExporter(sim, drawer, "results");                 pngExporter.setDt(0.5);                 sim.addExporter(pngExporter);
+BSimLogger is an abstract BSimExporter that requires an implementation of at least the during() method. It provides the method write() which will write the specified data to the log file and then start a new line.
+BSimLogger logger = new BSimLogger(sim, "results/tutorialExample.csv") {                         @Override                         public void before() {                                 super.before();                                 write("time,collisions");                          }                          @Override                         public void during() {                                 int collisions = 0;                                 for (BSimTutorialBacterium p : bacteria)                                         if(p.collision) collisions++;                                 write(sim.getFormattedTime()+","+collisions);                         }                 };                 sim.addExporter(logger);
+Add your own exporters by extending BSimExporter with:
+BSimExporter e = new BSimExporter(){};
+Step 7: Draw the simulation to screen or output results. This step will create the desired output from the simulation:
+sim.preview();
+This tells BSim to create a new window when the simulation is run and draw the bacterium's behaviour to the screen in a preview. This function is useful to check that the simulation has been set up correctly and that all elements are interacting as desired.
+sim.export();
+This will run all of the "exporter" objects with no output to screen, and save files storing the results from the simulation.
+Retrieved from " http://2009.igem.org/Team:BCCS-Bristol/BSim/Tutorials "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

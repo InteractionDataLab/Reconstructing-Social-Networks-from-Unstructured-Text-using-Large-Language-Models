@@ -1,0 +1,476 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tianjin_js_material_mediaplayer skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tianjin/js/material/mediaplayer</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* jQuery Media Plugin for converting elements into rich media content.
+*
+* Examples and documentation at: <A rel="nofollow" class="external free" href="http://malsup.com/jquery/media/">http://malsup.com/jquery/media/</A>
+* Copyright (c) 2007-2010 M. Alsup
+* Dual licensed under the MIT and GPL licenses:
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>
+* <A rel="nofollow" class="external free" href="http://www.gnu.org/licenses/gpl.html">http://www.gnu.org/licenses/gpl.html</A>
+*
+* @author: M. Alsup
+* @version: 0.99 (05-JUN-2013)
+* @requires jQuery v1.1.2 or later
+* $Id: jquery.media.js 2460 2007-07-23 02:53:15Z malsup $
+*
+* Supported Media Players:
+*	- Flash
+*	- Quicktime
+*	- Real Player
+*	- Silverlight
+*	- Windows Media Player
+*	- iframe
+*
+* Supported Media Formats:
+*	 Any types supported by the above players, such as:
+*	 Video: asf, avi, flv, mov, mpg, mpeg, mp4, qt, smil, swf, wmv, 3g2, 3gp
+*	 Audio: aif, aac, au, gsm, mid, midi, mov, mp3, m4a, snd, rm, wav, wma
+*	 Other: bmp, html, pdf, psd, qif, qtif, qti, tif, tiff, xaml
+*
+* Thanks to Mark Hicken and Brent Pedersen for helping me debug this on the Mac!
+* Thanks to Dan Rossi for numerous bug reports and code bits!
+* Thanks to Skye Giordano for several great suggestions!
+* Thanks to Richard Connamacher for excellent improvements to the non-IE behavior!
+*/
+</PRE><P>/*global SWFObject alert Sys */
+/*jshint forin:false */
+</P><DL><DT>(function($) {</DT></DL><P>&quot;use strict&quot;;	
+</P><P>var mode = document.documentMode || 0;
+var msie = /MSIE/.test(navigator.userAgent);
+var lameIE = msie &amp;&amp; (/MSIE (6|7|8)\.0/.test(navigator.userAgent) || mode &lt; 9);
+</P><P>/**
+</P><PRE>* Chainable method for converting elements into rich media.
+*
+* @param options
+* @param callback fn invoked for each matched element before conversion
+* @param callback fn invoked for each matched element after conversion
+*/
+</PRE><P>$.fn.media = function(options, f1, f2) {
+	if (options == 'undo') {
+		return this.each(function() {
+			var $this = $(this);
+			var html = $this.data('media.origHTML');
+			if (html)
+				$this.replaceWith(html);
+		});
+	}
+</P><P>	return this.each(function() {
+		if (typeof options == 'function') {
+			f2 = f1;
+			f1 = options;
+			options = {};
+		}
+		var o = getSettings(this, options);
+		// pre-conversion callback, passes original element and fully populated options
+		if (typeof f1 == 'function') f1(this, o);
+</P><P>		var r = getTypesRegExp();
+		var m = r.exec(o.src.toLowerCase()) || [<I>];</I>
+		var fn;
+</P><P>		if (o.type)
+			m[0] = o.type;
+		else
+			m.shift();
+</P><P>		for (var i=0; i &lt; m.length; i++) {
+			fn = m[i].toLowerCase();
+			if (isDigit(fn[0])) fn = 'fn' + fn; // fns can't begin with numbers
+			if (!$.fn.media[fn])
+				continue;  // unrecognized media type
+			// normalize autoplay settings
+			var player = $.fn.media[fn+'_player'];
+			if (!o.params) o.params = {};
+			if (player) {
+				var num = player.autoplayAttr == 'autostart';
+				o.params[player.autoplayAttr || 'autoplay'] = num ? (o.autoplay ? 1 : 0) : o.autoplay ? true : false;
+			}
+			var $div = $.fn.media[fn](this, o);
+</P><P>			$div.css('backgroundColor', o.bgColor).width(o.width);
+</P><P>			if (o.canUndo) {
+</P>
+				var $temp = $('').append(this);
+<P>				$div.data('media.origHTML', $temp.html()); // store original markup
+			}
+</P><P>			// post-conversion callback, passes original element, new div element and fully populated options
+			if (typeof f2 == 'function') f2(this, $div[0], o, player.name);
+			break;
+		}
+	});
+};
+</P><P>/**
+</P><PRE>* Non-chainable method for adding or changing file format / player mapping
+* @name mapFormat
+* @param String format File format extension (ie: mov, wav, mp3)
+* @param String player Player name to use for the format (one of: flash, quicktime, realplayer, winmedia, silverlight or iframe
+*/
+</PRE><P>$.fn.media.mapFormat = function(format, player) {
+	if (!format || !player || !$.fn.media.defaults.players[player]) return; // invalid
+	format = format.toLowerCase();
+	if (isDigit(format[0])) format = 'fn' + format;
+	$.fn.media[format] = $.fn.media[player];
+	$.fn.media[format+'_player'] = $.fn.media.defaults.players[player];
+};
+</P><P>// global defautls; override as needed
+$.fn.media.defaults = {
+	standards:  true,       // use object tags only (no embeds for non-IE browsers)
+	canUndo:    true,       // tells plugin to store the original markup so it can be reverted via: $(sel).mediaUndo()
+	width:		400,
+	height:		400,
+	autoplay:	0,			// normalized cross-player setting
+	bgColor:	'#ffffff',	// background color
+	params:		{ wmode: 'transparent'},	// added to object element as param elements; added to embed element as attrs
+	attrs:		{},			// added to object and embed elements as attrs
+	flvKeyName: 'file',		// key used for object src param (thanks to Andrea Ercolino)
+	flashvars:	{},			// added to flash content as flashvars param/attr
+	flashVersion:	'7',	// required flash version
+	expressInstaller: null,	// src for express installer
+</P><P>	// default flash video and mp3 player (@see: <A rel="nofollow" class="external free" href="http://jeroenwijering.com/?item=Flash_Media_Player">http://jeroenwijering.com/?item=Flash_Media_Player</A>)
+	flvPlayer:	 'mediaplayer.swf',
+	mp3Player:	 'mediaplayer.swf',
+</P><P>	// @see <A rel="nofollow" class="external free" href="http://msdn2.microsoft.com/en-us/library/bb412401.aspx">http://msdn2.microsoft.com/en-us/library/bb412401.aspx</A>
+	silverlight: {
+		inplaceInstallPrompt: 'true', // display in-place install prompt?
+		isWindowless:		  'true', // windowless mode (false for wrapping markup)
+		framerate:			  '24',	  // maximum framerate
+		version:			  '0.9',  // Silverlight version
+		onError:			  null,	  // onError callback
+		onLoad:			      null,   // onLoad callback
+		initParams:			  null,	  // object init params
+		userContext:		  null	  // callback arg passed to the load callback
+	}
+};
+</P><P>// Media Players; think twice before overriding
+$.fn.media.defaults.players = {
+	flash: {
+		name:		 'flash',
+		title:		 'Flash',
+		types:		 'flv,mp3,swf',
+		mimetype:	 'application/x-shockwave-flash',
+		pluginspage: '<A rel="nofollow" class="external free" href="http://www.adobe.com/go/getflashplayer'">http://www.adobe.com/go/getflashplayer'</A>,
+		ieAttrs: {
+			classid:  'clsid:d27cdb6e-ae6d-11cf-96b8-444553540000',
+			type:	  'application/x-oleobject',
+			codebase: '<A rel="nofollow" class="external free" href="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version='">http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version='</A> + $.fn.media.defaults.flashVersion
+		}
+	},
+	quicktime: {
+		name:		 'quicktime',
+		title:		 'QuickTime',
+		mimetype:	 'video/quicktime',
+		pluginspage: '<A rel="nofollow" class="external free" href="http://www.apple.com/quicktime/download/'">http://www.apple.com/quicktime/download/'</A>,
+		types:		 'aif,aiff,aac,au,bmp,gsm,mov,mid,midi,mpg,mpeg,mp4,m4a,psd,qt,qtif,qif,qti,snd,tif,tiff,wav,3g2,3gp',
+		ieAttrs: {
+			classid:  'clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B',
+			codebase: '<A rel="nofollow" class="external free" href="http://www.apple.com/qtactivex/qtplugin.cab'">http://www.apple.com/qtactivex/qtplugin.cab'</A>
+		}
+	},
+	realplayer: {
+		name:		  'real',
+		title:		  'RealPlayer',
+		types:		  'ra,ram,rm,rpm,rv,smi,smil',
+		mimetype:	  'audio/x-pn-realaudio-plugin',
+		pluginspage:  '<A rel="nofollow" class="external free" href="http://www.real.com/player/'">http://www.real.com/player/'</A>,
+		autoplayAttr: 'autostart',
+		ieAttrs: {
+			classid: 'clsid:CFCDAA03-8BE4-11cf-B84B-0020AFBBCCFA'
+		}
+	},
+	winmedia: {
+		name:		  'winmedia',
+		title:		  'Windows Media',
+		types:		  'asx,asf,avi,wma,wmv',
+		mimetype:	  isFirefoxWMPPluginInstalled() ? 'application/x-ms-wmp' : 'application/x-mplayer2',
+		pluginspage:  '<A rel="nofollow" class="external free" href="http://www.microsoft.com/Windows/MediaPlayer/'">http://www.microsoft.com/Windows/MediaPlayer/'</A>,
+		autoplayAttr: 'autostart',
+		oUrl:		  'url',
+		ieAttrs: {
+			classid:  'clsid:6BF52A52-394A-11d3-B153-00C04F79FAA6',
+			type:	  'application/x-oleobject'
+		}
+	},
+	// special cases
+	img: {
+		name:  'img',
+		title: 'Image',
+		types: 'gif,png,jpg'
+	},
+	iframe: {
+		name:  'iframe',
+		types: 'html,pdf'
+	},
+	silverlight: {
+		name:  'silverlight',
+		types: 'xaml'
+	}
+};
+</P><P>//
+//	everything below here is private
+//
+</P><P>
+// detection script for FF WMP plugin (<A rel="nofollow" class="external free" href="http://www.therossman.org/experiments/wmp_play.html">http://www.therossman.org/experiments/wmp_play.html</A>)
+// (hat tip to Mark Ross for this script)
+function isFirefoxWMPPluginInstalled() {
+	var plugs = navigator.plugins || [];
+	for (var i = 0; i &lt; plugs.length; i++) {
+		var plugin = plugs[i];
+		if (plugin['filename'] == 'np-mswmp.dll')
+			return true;
+	}
+	return false;
+}
+</P><P>var counter = 1;
+</P><P>for (var player in $.fn.media.defaults.players) {
+	var types = $.fn.media.defaults.players[player].types;
+	$.each(types.split(','), function(i,o) {
+		if (isDigit(o[0])) o = 'fn' + o;
+		$.fn.media[o] = $.fn.media[player] = getGenerator(player);
+		$.fn.media[o+'_player'] = $.fn.media.defaults.players[player];
+	});
+}
+</P><P>function getTypesRegExp() {
+	var types = <I>;</I>
+	for (var player in $.fn.media.defaults.players) {
+		if (types.length) types += ',';
+		types += $.fn.media.defaults.players[player].types;
+	}
+	return new RegExp('\\.(' + types.replace(/,/ig,'|') + ')\\b');
+}
+</P><P>function getGenerator(player) {
+	return function(el, options) {
+		return generate(el, options, player);
+	};
+}
+</P><P>function isDigit(c) {
+	return '0123456789'.indexOf(c) &gt; -1;
+}
+</P><P>// flatten all possible options: global defaults, meta, option obj
+function getSettings(el, options) {
+	options = options || {};
+	var a, n;
+	var $el = $(el);
+	var cls = el.className || <I>;</I>
+	// support metadata plugin (v1.0 and v2.0)
+	var meta = $.metadata ? $el.metadata() : $.meta ? $el.data() : {};
+	meta = meta || {};
+	var w = meta.width  || parseInt(((cls.match(/\bw:(\d+)/)||[])[1]||0),10) || parseInt(((cls.match(/\bwidth:(\d+)/)||[])[1]||0),10);
+	var h = meta.height || parseInt(((cls.match(/\bh:(\d+)/)||[])[1]||0),10) || parseInt(((cls.match(/\bheight:(\d+)/)||[])[1]||0),10);
+</P><P>	if (w) meta.width = w;
+	if (h) meta.height = h;
+	if (cls) meta.cls = cls;
+</P><P>	// crank html5 style data attributes
+	var dataName = 'data-';
+</P><PRE>   for (var i=0; i &lt; el.attributes.length; i++) {
+       a = el.attributes[i], n = $.trim(a.name);
+       var index = n.indexOf(dataName);
+       if (index === 0) {
+</PRE><P>			n = n.substring(dataName.length);
+			meta[n] = a.value;
+</P><PRE>       }
+   }
+</PRE><P>	a = $.fn.media.defaults;
+	var b = options;
+	var c = meta;
+</P><P>	var p = { params: { bgColor: options.bgColor || $.fn.media.defaults.bgColor } };
+	var opts = $.extend({}, a, b, c);
+	$.each(['attrs','params','flashvars','silverlight'], function(i,o) {
+		opts[o] = $.extend({}, p[o] || {}, a[o] || {}, b[o] || {}, c[o] || {});
+	});
+</P><P>	if (typeof opts.caption == 'undefined') opts.caption = $el.text();
+</P><P>	// make sure we have a source!
+	opts.src = opts.src || $el.attr('href') || $el.attr('src') || 'unknown';
+	return opts;
+}
+</P><P>//
+//	Flash Player
+//
+</P><P>// generate flash using SWFObject library if possible
+$.fn.media.swf = function(el, opts) {
+	var f, p;
+	if (!window.SWFObject &amp;&amp; !window.swfobject) {
+		// roll our own
+		if (opts.flashvars) {
+			var a = [];
+			for (f in opts.flashvars)
+				a.push(f + '=' + opts.flashvars[f]);
+			if (!opts.params) opts.params = {};
+			opts.params.flashvars = a.join('&amp;');
+		}
+		return generate(el, opts, 'flash');
+	}
+</P><P>	var id = el.id ? (' id=&quot;'+el.id+'&quot;') : <I>;</I>
+	var cls = opts.cls ? (' class=&quot;' + opts.cls + '&quot;') : <I>;</I>
+	var $div = $('&lt;div' + id + cls + '&gt;');
+</P><P>	// swfobject v2+
+	if (window.swfobject) {
+		$(el).after($div).appendTo($div);
+		if (!el.id) el.id = 'movie_player_' + counter++;
+</P><P>		// replace el with swfobject content
+		window.swfobject.embedSWF(opts.src, el.id, opts.width, opts.height, opts.flashVersion,
+			opts.expressInstaller, opts.flashvars, opts.params, opts.attrs);
+	}
+	// swfobject &lt; v2
+	else {
+		$(el).after($div).remove();
+		var so = new SWFObject(opts.src, 'movie_player_' + counter++, opts.width, opts.height, opts.flashVersion, opts.bgColor);
+		if (opts.expressInstaller) so.useExpressInstall(opts.expressInstaller);
+</P><P>		for (p in opts.params)
+			if (p != 'bgColor') so.addParam(p, opts.params[p]);
+		for (f in opts.flashvars)
+			so.addVariable(f, opts.flashvars[f]);
+		so.write($div[0]);
+	}
+</P>
+	if (opts.caption) $('<DIV>').appendTo($div).html(opts.caption);
+<P>	return $div;
+};
+</P><P>// map flv and mp3 files to the swf player by default
+$.fn.media.flv = $.fn.media.mp3 = function(el, opts) {
+	var src = opts.src;
+	var player = /\.mp3\b/i.test(src) ? opts.mp3Player : opts.flvPlayer;
+	var key = opts.flvKeyName;
+	src = encodeURIComponent(src);
+	opts.src = player;
+	opts.src = opts.src + '?'+key+'=' + (src);
+	var srcObj = {};
+	srcObj[key] = src;
+	opts.flashvars = $.extend({}, srcObj, opts.flashvars );
+	return $.fn.media.swf(el, opts);
+};
+</P><P>//
+//	Silverlight
+//
+$.fn.media.xaml = function(el, opts) {
+	if (!window.Sys || !window.Sys.Silverlight) {
+		if ($.fn.media.xaml.warning) return;
+		$.fn.media.xaml.warning = 1;
+		alert('You must include the Silverlight.js script.');
+		return;
+	}
+</P><P>	var props = {
+		width: opts.width,
+		height: opts.height,
+		background: opts.bgColor,
+		inplaceInstallPrompt: opts.silverlight.inplaceInstallPrompt,
+		isWindowless: opts.silverlight.isWindowless,
+		framerate: opts.silverlight.framerate,
+		version: opts.silverlight.version
+	};
+	var events = {
+		onError: opts.silverlight.onError,
+		onLoad: opts.silverlight.onLoad
+	};
+</P><P>	var id1 = el.id ? (' id=&quot;'+el.id+'&quot;') : <I>;</I>
+	var id2 = opts.id || 'AG' + counter++;
+	// convert element to div
+	var cls = opts.cls ? (' class=&quot;' + opts.cls + '&quot;') : <I>;</I>
+	var $div = $('&lt;div' + id1 + cls + '&gt;');
+	$(el).after($div).remove();
+</P><P>	Sys.Silverlight.createObjectEx({
+		source: opts.src,
+		initParams: opts.silverlight.initParams,
+		userContext: opts.silverlight.userContext,
+		id: id2,
+		parentElement: $div[0],
+		properties: props,
+		events: events
+	});
+</P>
+	if (opts.caption) $('<DIV>').appendTo($div).html(opts.caption);
+<P>	return $div;
+};
+</P><P>//
+// generate object/embed markup
+//
+function generate(el, opts, player) {
+	var $el = $(el);
+	var o = $.fn.media.defaults.players[player];
+	var a, key, v;
+</P><P>	if (player == 'iframe') {
+		o = $('&lt;iframe' + ' width=&quot;' + opts.width + '&quot; height=&quot;' + opts.height + '&quot; &gt;');
+		o.attr('src', opts.src);
+		o.css('backgroundColor', o.bgColor);
+	}
+	else if (player == 'img') {
+		o = $('&lt;img&gt;');
+		o.attr('src', opts.src);
+		if (opts.width)
+			o.attr('width', opts.width);
+		if (opts.height)
+			o.attr('height', opts.height);
+		o.css('backgroundColor', o.bgColor);
+	}
+	else if (lameIE) {
+		a = ['&lt;object width=&quot;' + opts.width + '&quot; height=&quot;' + opts.height + '&quot; '];
+		for (key in opts.attrs)
+			a.push(key + '=&quot;'+opts.attrs[key]+'&quot; ');
+		for (key in o.ieAttrs || {}) {
+			v = o.ieAttrs[key];
+			if (key == 'codebase' &amp;&amp; window.location.protocol == 'https:')
+				v = v.replace('http','https');
+			a.push(key + '=&quot;'+v+'&quot; ');
+		}
+		a.push('&gt;&lt;/ob'+'ject'+'&gt;');
+		var p = ['&lt;param name=&quot;' + (o.oUrl || 'src') +'&quot; value=&quot;' + opts.src + '&quot;&gt;'];
+		for (key in opts.params)
+			p.push('&lt;param name=&quot;'+ key +'&quot; value=&quot;' + opts.params[key] + '&quot;&gt;');
+		o = document.createElement(a.join(<I>));</I>
+		for (var i=0; i &lt; p.length; i++)
+			o.appendChild(document.createElement(p[i]));
+	}
+	else if (opts.standards) {
+		// Rewritten to be standards compliant by Richard Connamacher
+		a = ['&lt;object type=&quot;' + o.mimetype +'&quot; width=&quot;' + opts.width + '&quot; height=&quot;' + opts.height +'&quot;'];
+		if (opts.src) a.push(' data=&quot;' + opts.src + '&quot; ');
+		if (msie) {
+			for (key in o.ieAttrs || {}) {
+				v = o.ieAttrs[key];
+				if (key == 'codebase' &amp;&amp; window.location.protocol == 'https:')
+					v = v.replace('http','https');
+				a.push(key + '=&quot;'+v+'&quot; ');
+			}
+		}
+		a.push('&gt;');
+		a.push('&lt;param name=&quot;' + (o.oUrl || 'src') +'&quot; value=&quot;' + opts.src + '&quot;&gt;');
+		for (key in opts.params) {
+			if (key == 'wmode' &amp;&amp; player != 'flash') // FF3/Quicktime borks on wmode
+				continue;
+			a.push('&lt;param name=&quot;'+ key +'&quot; value=&quot;' + opts.params[key] + '&quot;&gt;');
+		}
+		// Alternate HTML
+</P>
+		a.push('<DIV><P><STRONG>'+o.title+' Required</STRONG></P><P>'+o.title+' is required to view this media. &lt;a href=&quot;'+o.pluginspage+'&quot;&gt;Download Here&lt;/a&gt;.</P></DIV>');
+<P>		a.push('&lt;/ob'+'ject'+'&gt;');
+	}
+	 else {
+	        a = ['&lt;embed width=&quot;' + opts.width + '&quot; height=&quot;' + opts.height + '&quot; style=&quot;display:block&quot;'];
+	        if (opts.src) a.push(' src=&quot;' + opts.src + '&quot; ');
+	        for (key in opts.attrs)
+	            a.push(key + '=&quot;'+opts.attrs[key]+'&quot; ');
+	        for (key in o.eAttrs || {})
+	            a.push(key + '=&quot;'+o.eAttrs[key]+'&quot; ');
+	        for (key in opts.params) {
+	            if (key == 'wmode' &amp;&amp; player != 'flash') // FF3/Quicktime borks on wmode
+					continue;
+	            a.push(key + '=&quot;'+opts.params[key]+'&quot; ');
+	        }
+	        a.push('&gt;&lt;/em'+'bed'+'&gt;');
+	    }	
+	// convert element to div
+	var id = el.id ? (' id=&quot;'+el.id+'&quot;') : <I>;</I>
+	var cls = opts.cls ? (' class=&quot;' + opts.cls + '&quot;') : <I>;</I>
+	var $div = $('&lt;div' + id + cls + '&gt;');
+	$el.after($div).remove();
+	if (lameIE || player == 'iframe' || player == 'img')
+		$div.append(o);
+	else
+		$div.html(a.join(<I>));</I></P><P>	if (opts.caption) 
+</P>
+		$('<DIV>').appendTo($div).html(opts.caption);
+<P>	return $div;
+}
+</P>
+})(jQuery);</DIV></DIV></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

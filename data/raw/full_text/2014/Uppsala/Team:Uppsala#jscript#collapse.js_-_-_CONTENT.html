@@ -1,0 +1,178 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Uppsala_jscript_collapse_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Uppsala/jscript/collapse.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Uppsala/jscript/collapse.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Uppsala/jscript/collapse.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Uppsala/jscript/collapse.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Uppsala/jscript/collapse.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Uppsala/jscript/collapse.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>var PANEL_NORMAL_CLASS    = &quot;panel&quot;;
+var PANEL_COLLAPSED_CLASS = &quot;panelcollapsed&quot;;
+var PANEL_HEADING_TAG     = &quot;h2&quot;;
+var PANEL_CONTENT_CLASS   = &quot;panelcontent&quot;;
+var PANEL_COOKIE_NAME     = &quot;panels&quot;;
+var PANEL_ANIMATION_DELAY = 20; /*ms*/
+var PANEL_ANIMATION_STEPS = 10;
+var selectionCount = jQuery(&quot;li&quot;, &quot;.left-menu&quot;).length;
+$( &quot;#menubar li:nth-child(&quot; + selectionCount + &quot;)&quot; ).remove();
+</P><P>function setUpPanels()
+{
+	loadSettings();
+</P><P>	// get all headings
+	var headingTags = document.getElementsByTagName(PANEL_HEADING_TAG);
+</P><P>	// go through all tags
+	for (var i=0; i&lt;headingTags.length; i++)
+	{
+		var el = headingTags[i];
+</P><P>		// make sure it's the heading inside a panel
+		if (el.parentNode.className != PANEL_NORMAL_CLASS &amp;&amp; el.parentNode.className != PANEL_COLLAPSED_CLASS)
+			continue;
+</P><P>		// get the text value of the tag
+		var name = el.firstChild.nodeValue;
+</P><P>		// look for the name in loaded settings, apply the normal/collapsed class
+		if (panelsStatus[name] == &quot;false&quot;)
+			el.parentNode.className = PANEL_COLLAPSED_CLASS;
+		else
+		if (panelsStatus[name] == &quot;true&quot;)
+			el.parentNode.className = PANEL_NORMAL_CLASS;
+		else
+		{
+			// if no saved setting, see the initial setting
+			panelsStatus[name] = (el.parentNode.className == PANEL_NORMAL_CLASS) ? &quot;true&quot; : &quot;false&quot;;
+		}
+</P><P>		// add the click behavor to headings
+		el.onclick = function() 
+		{
+			var target    = this.parentNode;
+			var name      = this.firstChild.nodeValue;
+			var collapsed = (target.className == PANEL_COLLAPSED_CLASS);
+			saveSettings(name, collapsed?&quot;true&quot;:&quot;false&quot;);
+			animateTogglePanel(target, collapsed);
+		};
+	}
+}
+</P><P>/**
+</P><PRE>* Start the expand/collapse animation of the panel
+* @param panel reference to the panel div
+*/
+</PRE><P>function animateTogglePanel(panel, expanding)
+{
+	// find the .panelcontent div
+	var elements = panel.getElementsByTagName(&quot;div&quot;);
+	var panelContent = null;
+	for (var i=0; i&lt;elements.length; i++)
+	{
+		if (elements[i].className == PANEL_CONTENT_CLASS)
+		{
+			panelContent = elements[i];
+			break;
+		}
+	}
+</P><P>	// make sure the content is visible before getting its height
+	panelContent.style.display = &quot;block&quot;;
+</P><P>	// get the height of the content
+	var contentHeight = panelContent.offsetHeight;
+</P><P>	// if panel is collapsed and expanding, we must start with 0 height
+	if (expanding)
+		panelContent.style.height = &quot;0px&quot;;
+</P><P>	var stepHeight = contentHeight / PANEL_ANIMATION_STEPS;
+	var direction = (!expanding ? -1 : 1);
+</P><P>	setTimeout(function(){animateStep(panelContent,1,stepHeight,direction)}, PANEL_ANIMATION_DELAY);
+}
+</P><P>/**
+</P><PRE>* Change the height of the target
+* @param panelContent	reference to the panel content to change height
+* @param iteration		current iteration; animation will be stopped when iteration reaches PANEL_ANIMATION_STEPS
+* @param stepHeight	height increment to be added/substracted in one step
+* @param direction		1 for expanding, -1 for collapsing
+*/
+</PRE><P>function animateStep(panelContent, iteration, stepHeight, direction)
+{
+	if (iteration&lt;PANEL_ANIMATION_STEPS)
+	{
+		panelContent.style.height = Math.round(((direction&gt;0) ? iteration : 10 - iteration) * stepHeight) +&quot;px&quot;;
+		iteration++;
+		setTimeout(function(){animateStep(panelContent,iteration,stepHeight,direction)}, PANEL_ANIMATION_DELAY);
+	}
+	else
+	{
+		// set class for the panel
+		panelContent.parentNode.className = (direction&lt;0) ? PANEL_COLLAPSED_CLASS : PANEL_NORMAL_CLASS;
+		// clear inline styles
+		panelContent.style.display = panelContent.style.height = &quot;&quot;;
+	}
+}
+</P><P>// -----------------------------------------------------------------------------------------------
+// Load-Save
+// -----------------------------------------------------------------------------------------------
+/**
+</P><PRE>* Reads the &quot;panels&quot; cookie if exists, expects data formatted as key:value|key:value... puts in panelsStatus object
+*/
+</PRE><P>function loadSettings()
+{
+	// prepare the object that will keep the panel statuses
+	panelsStatus = {};
+</P><P>	// find the cookie name
+	var start = document.cookie.indexOf(PANEL_COOKIE_NAME + &quot;=&quot;);
+	if (start == -1) return;
+</P><P>	// starting point of the value
+	start += PANEL_COOKIE_NAME.length+1;
+</P><P>	// find end point of the value
+	var end = document.cookie.indexOf(&quot;;&quot;, start);
+	if (end == -1) end = document.cookie.length;
+</P><P>	// get the value, split into key:value pairs
+	var cookieValue = unescape(document.cookie.substring(start, end));
+	var panelsData = cookieValue.split(&quot;|&quot;);
+</P><P>	// split each key:value pair and put in object
+	for (var i=0; i&lt; panelsData.length; i++)
+	{
+		var pair = panelsData[i].split(&quot;:&quot;);
+		panelsStatus[pair[0]] = pair[1];
+	}
+}
+</P><P>function expandAll()
+{
+	for (var key in panelsStatus)
+		saveSettings(key, &quot;true&quot;);
+</P><P>	setUpPanels();
+}
+</P><P>function collapseAll()
+{
+	for (var key in panelsStatus)
+		saveSettings(key, &quot;false&quot;);
+</P><P>	setUpPanels();
+}
+</P><P>/**
+</P><PRE>* Takes data from the panelsStatus object, formats as key:value|key:value... and puts in cookie valid for 365 days
+* @param key	key name to save
+* @paeam value	key value
+*/
+</PRE><P>function saveSettings(key, value)
+{
+	// put the new value in the object
+	panelsStatus[key] = value;
+</P><P>	// create an array that will keep the key:value pairs
+	var panelsData = [];
+	for (var key in panelsStatus)
+		panelsData.push(key+&quot;:&quot;+panelsStatus[key]);
+</P><P>	// set the cookie expiration date 1 year from now
+	var today = new Date();
+	var expirationDate = new Date(today.getTime() + 365 * 1000 * 60 * 60 * 24);
+	// write the cookie
+	document.cookie = PANEL_COOKIE_NAME + &quot;=&quot; + escape(panelsData.join(&quot;|&quot;)) + &quot;;expires=&quot; + expirationDate.toGMTString();
+}
+</P><P>// -----------------------------------------------------------------------------------------------
+// Register setUpPanels to be executed on load
+if (window.addEventListener)
+{
+	// the &quot;proper&quot; way
+	window.addEventListener(&quot;load&quot;, setUpPanels, false);
+}
+else 
+if (window.attachEvent)
+{
+	// the IE way
+	window.attachEvent(&quot;onload&quot;, setUpPanels);
+}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:Uppsala/jscript/collapse.js">http://2014.igem.org/Team:Uppsala/jscript/collapse.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Uppsala/jscript/collapse.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Uppsala/jscript/collapse.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Uppsala/jscript/collapse.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Uppsala/jscript/collapse.js&amp;oldid=84156" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,482 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Valencia_UPV_Templates_smoothScroll skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Valencia UPV/Templates:smoothScroll</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/** SMOOTHSCROLL V1.2.1
+	Licensed under the terms of the MIT license.
+</P><PRE>**************************************************************** **/
+</PRE><P>(function($) {
+	$.extend({
+</P><P>		smoothScroll: function() {
+</P><P>			// Scroll Variables (tweakable)
+			var defaultOptions = {
+</P><P>				// Scrolling Core
+				frameRate        : 60, // [Hz]
+				animationTime    : 700, // [px]
+				stepSize         : 120, // [px]
+</P><P>				// Pulse (less tweakable)
+				// ratio of &quot;tail&quot; to &quot;acceleration&quot;
+				pulseAlgorithm   : true,
+				pulseScale       : 10,
+				pulseNormalize   : 1,
+</P><P>				// Acceleration
+				accelerationDelta : 20,  // 20
+				accelerationMax   : 1,   // 1
+</P><P>				// Keyboard Settings
+				keyboardSupport   : true,  // option
+				arrowScroll       : 50,     // [px]
+</P><P>				// Other
+				touchpadSupport   : true,
+				fixedBackground   : true,
+				excluded          : &quot;&quot;
+			};
+</P><P>			var options = defaultOptions;
+</P><P>			// Other Variables
+			var isExcluded = false;
+			var isFrame = false;
+			var direction = { x: 0, y: 0 };
+			var initDone  = false;
+			var root = document.documentElement;
+			var activeElement;
+			var observer;
+			var deltaBuffer = [ 120, 120, 120 ];
+</P><P>			var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
+						pageup: 33, pagedown: 34, end: 35, home: 36 };
+</P><P>
+			/***********************************************
+			 * INITIALIZE
+			 ***********************************************/
+</P><P>			/**
+			 * Tests if smooth scrolling is allowed. Shuts down everything if not.
+			 */
+			function initTest() {
+</P><P>				var disableKeyboard = false;
+</P><P>				// disable keys for google reader (spacebar conflict)
+				if (document.URL.indexOf(&quot;google.com/reader/view&quot;) &gt; -1) {
+					disableKeyboard = true;
+				}
+</P><P>				// disable everything if the page is blacklisted
+				if (options.excluded) {
+					var domains = options.excluded.split(/[,\n] ?/);
+					domains.push(&quot;mail.google.com&quot;); // exclude Gmail for now
+					for (var i = domains.length; i--;) {
+						if (document.URL.indexOf(domains[i]) &gt; -1) {
+							observer &amp;&amp; observer.disconnect();
+							removeEvent(&quot;mousewheel&quot;, wheel);
+							disableKeyboard = true;
+							isExcluded = true;
+							break;
+						}
+					}
+				}
+</P><P>				// disable keyboard support if anything above requested it
+				if (disableKeyboard) {
+					removeEvent(&quot;keydown&quot;, keydown);
+				}
+</P><P>				if (options.keyboardSupport &amp;&amp; !disableKeyboard) {
+					addEvent(&quot;keydown&quot;, keydown);
+				}
+			}
+</P><P>			/**
+			 * Sets up scrolls array, determines if frames are involved.
+			 */
+			function init() {
+</P><P>				if (!document.body) return;
+</P><P>				var body = document.body;
+				var html = document.documentElement;
+				var windowHeight = window.innerHeight;
+				var scrollHeight = body.scrollHeight;
+</P><P>				// check compat mode for root element
+				root = (document.compatMode.indexOf('CSS') &gt;= 0) ? html : body;
+				activeElement = body;
+</P><P>				initTest();
+				initDone = true;
+</P><P>				// Checks if this script is running in a frame
+				if (top != self) {
+					isFrame = true;
+				}
+</P><P>				/**
+				 * This fixes a bug where the areas left and right to
+				 * the content does not trigger the onmousewheel event
+				 * on some pages. e.g.: html, body { height: 100% }
+				 */
+				else if (scrollHeight &gt; windowHeight &amp;&amp;
+						(body.offsetHeight &lt;= windowHeight ||
+						 html.offsetHeight &lt;= windowHeight)) {
+</P><P>					// DOMChange (throttle): fix height
+					var pending = false;
+					var refresh = function () {
+						if (!pending &amp;&amp; html.scrollHeight != document.height) {
+							pending = true; // add a new pending action
+							setTimeout(function () {
+								html.style.height = document.height + 'px';
+								pending = false;
+							}, 500); // act rarely to stay fast
+						}
+					};
+					html.style.height = 'auto';
+					setTimeout(refresh, 10);
+</P><P>					var config = {
+						attributes: true,
+						childList: true,
+						characterData: false
+					};
+</P><P>					observer = new MutationObserver(refresh);
+					observer.observe(body, config);
+</P><P>					// clearfix
+					if (root.offsetHeight &lt;= windowHeight) {
+						var underlay = document.createElement(&quot;div&quot;);
+						underlay.style.clear = &quot;both&quot;;
+						body.appendChild(underlay);
+					}
+				}
+</P><P>				// gmail performance fix
+				if (document.URL.indexOf(&quot;mail.google.com&quot;) &gt; -1) {
+					var s = document.createElement(&quot;style&quot;);
+					s.innerHTML = &quot;.iu { visibility: hidden }&quot;;
+					(document.getElementsByTagName(&quot;head&quot;)[0] || html).appendChild(s);
+				}
+				// facebook better home timeline performance
+				// all the HTML resized images make rendering CPU intensive
+				else if (document.URL.indexOf(&quot;www.facebook.com&quot;) &gt; -1) {
+					var home_stream = document.getElementById(&quot;home_stream&quot;);
+					home_stream &amp;&amp; (home_stream.style.webkitTransform = &quot;translateZ(0)&quot;);
+				}
+				// disable fixed background
+				if (!options.fixedBackground &amp;&amp; !isExcluded) {
+					body.style.backgroundAttachment = &quot;scroll&quot;;
+					html.style.backgroundAttachment = &quot;scroll&quot;;
+				}
+			}
+</P><P>
+			/************************************************
+			 * SCROLLING
+			 ************************************************/
+</P><P>			var que = [];
+			var pending = false;
+			var lastScroll = +new Date;
+</P><P>			/**
+			 * Pushes scroll actions to the scrolling queue.
+			 */
+			function scrollArray(elem, left, top, delay) {
+</P><P>				delay || (delay = 1000);
+				directionCheck(left, top);
+</P><P>				if (options.accelerationMax != 1) {
+					var now = +new Date;
+					var elapsed = now - lastScroll;
+					if (elapsed &lt; options.accelerationDelta) {
+						var factor = (1 + (30 / elapsed)) / 2;
+						if (factor &gt; 1) {
+							factor = Math.min(factor, options.accelerationMax);
+							left *= factor;
+							top  *= factor;
+						}
+					}
+					lastScroll = +new Date;
+				}
+</P><P>				// push a scroll command
+				que.push({
+					x: left,
+					y: top,
+					lastX: (left &lt; 0) ? 0.99 : -0.99,
+					lastY: (top  &lt; 0) ? 0.99 : -0.99,
+					start: +new Date
+				});
+</P><P>				// don't act if there's a pending queue
+				if (pending) {
+					return;
+				}
+</P><P>				var scrollWindow = (elem === document.body);
+</P><P>				var step = function (time) {
+</P><P>					var now = +new Date;
+					var scrollX = 0;
+					var scrollY = 0;
+</P><P>					for (var i = 0; i &lt; que.length; i++) {
+</P><P>						var item = que[i];
+						var elapsed  = now - item.start;
+						var finished = (elapsed &gt;= options.animationTime);
+</P><P>						// scroll position: [0, 1]
+						var position = (finished) ? 1 : elapsed / options.animationTime;
+</P><P>						// easing [optional]
+						if (options.pulseAlgorithm) {
+							position = pulse(position);
+						}
+</P><P>						// only need the difference
+						var x = (item.x * position - item.lastX) &gt;&gt; 0;
+						var y = (item.y * position - item.lastY) &gt;&gt; 0;
+</P><P>						// add this to the total scrolling
+						scrollX += x;
+						scrollY += y;
+</P><P>						// update last values
+						item.lastX += x;
+						item.lastY += y;
+</P><P>						// delete and step back if it's over
+						if (finished) {
+							que.splice(i, 1); i--;
+						}
+					}
+</P><P>					// scroll left and top
+					if (scrollWindow) {
+						window.scrollBy(scrollX, scrollY);
+					}
+					else {
+						if (scrollX) elem.scrollLeft += scrollX;
+						if (scrollY) elem.scrollTop  += scrollY;
+					}
+</P><P>					// clean up if there's nothing left to do
+					if (!left &amp;&amp; !top) {
+						que = [];
+					}
+</P><P>					if (que.length) {
+						requestFrame(step, elem, (delay / options.frameRate + 1));
+					} else {
+						pending = false;
+					}
+				};
+</P><P>				// start a new queue of actions
+				requestFrame(step, elem, 0);
+				pending = true;
+			}
+</P><P>
+			/***********************************************
+			 * EVENTS
+			 ***********************************************/
+</P><P>			/**
+			 * Mouse wheel handler.
+			 * @param {Object} event
+			 */
+			function wheel(event) {
+</P><P>				if (!initDone) {
+					init();
+				}
+</P><P>				var target = event.target;
+				var overflowing = overflowingAncestor(target);
+</P><P>				// use default if there's no overflowing
+				// element or default action is prevented
+				if (!overflowing || event.defaultPrevented ||
+					isNodeName(activeElement, &quot;embed&quot;) ||
+				   (isNodeName(target, &quot;embed&quot;) &amp;&amp; /\.pdf/i.test(target.src))) {
+					return true;
+				}
+</P><P>				var deltaX = event.wheelDeltaX || 0;
+				var deltaY = event.wheelDeltaY || 0;
+</P><P>				// use wheelDelta if deltaX/Y is not available
+				if (!deltaX &amp;&amp; !deltaY) {
+					deltaY = event.wheelDelta || 0;
+				}
+</P><P>				// check if it's a touchpad scroll that should be ignored
+				if (!options.touchpadSupport &amp;&amp; isTouchpad(deltaY)) {
+					return true;
+				}
+</P><P>				// scale by step size
+				// delta is 120 most of the time
+				// synaptics seems to send 1 sometimes
+				if (Math.abs(deltaX) &gt; 1.2) {
+					deltaX *= options.stepSize / 120;
+				}
+				if (Math.abs(deltaY) &gt; 1.2) {
+					deltaY *= options.stepSize / 120;
+				}
+</P><P>				scrollArray(overflowing, -deltaX, -deltaY);
+				event.preventDefault();
+			}
+</P><P>			/**
+			 * Keydown event handler.
+			 * @param {Object} event
+			 */
+			function keydown(event) {
+</P><P>				var target   = event.target;
+				var modifier = event.ctrlKey || event.altKey || event.metaKey ||
+							  (event.shiftKey &amp;&amp; event.keyCode !== key.spacebar);
+</P><P>				// do nothing if user is editing text
+				// or using a modifier key (except shift)
+				// or in a dropdown
+				if ( /input|textarea|select|embed/i.test(target.nodeName) ||
+					 target.isContentEditable ||
+					 event.defaultPrevented   ||
+					 modifier ) {
+				  return true;
+				}
+				// spacebar should trigger button press
+				if (isNodeName(target, &quot;button&quot;) &amp;&amp;
+					event.keyCode === key.spacebar) {
+				  return true;
+				}
+</P><P>				var shift, x = 0, y = 0;
+				var elem = overflowingAncestor(activeElement);
+				var clientHeight = elem.clientHeight;
+</P><P>				if (elem == document.body) {
+					clientHeight = window.innerHeight;
+				}
+</P><P>				switch (event.keyCode) {
+					case key.up:
+						y = -options.arrowScroll;
+						break;
+					case key.down:
+						y = options.arrowScroll;
+						break;
+					case key.spacebar: // (+ shift)
+						shift = event.shiftKey ? 1 : -1;
+						y = -shift * clientHeight * 0.9;
+						break;
+					case key.pageup:
+						y = -clientHeight * 0.9;
+						break;
+					case key.pagedown:
+						y = clientHeight * 0.9;
+						break;
+					case key.home:
+						y = -elem.scrollTop;
+						break;
+					case key.end:
+						var damt = elem.scrollHeight - elem.scrollTop - clientHeight;
+						y = (damt &gt; 0) ? damt+10 : 0;
+						break;
+					case key.left:
+						x = -options.arrowScroll;
+						break;
+					case key.right:
+						x = options.arrowScroll;
+						break;
+					default:
+						return true; // a key we don't care about
+				}
+</P><P>				scrollArray(elem, x, y);
+				event.preventDefault();
+			}
+</P><P>			/**
+			 * Mousedown event only for updating activeElement
+			 */
+			function mousedown(event) {
+				activeElement = event.target;
+			}
+</P><P>
+			/***********************************************
+			 * OVERFLOW
+			 ***********************************************/
+</P><P>			var cache = {}; // cleared out every once in while
+			setInterval(function () { cache = {}; }, 10 * 1000);
+</P><P>			var uniqueID = (function () {
+				var i = 0;
+				return function (el) {
+					return el.uniqueID || (el.uniqueID = i++);
+				};
+			})();
+</P><P>			function setCache(elems, overflowing) {
+				for (var i = elems.length; i--;)
+					cache[uniqueID(elems[i])] = overflowing;
+				return overflowing;
+			}
+</P><P>			function overflowingAncestor(el) {
+				var elems = [];
+				var rootScrollHeight = root.scrollHeight;
+				do {
+					var cached = cache[uniqueID(el)];
+					if (cached) {
+						return setCache(elems, cached);
+					}
+					elems.push(el);
+					if (rootScrollHeight === el.scrollHeight) {
+						if (!isFrame || root.clientHeight + 10 &lt; rootScrollHeight) {
+							return setCache(elems, document.body); // scrolling root in WebKit
+						}
+					} else if (el.clientHeight + 10 &lt; el.scrollHeight) {
+						overflow = getComputedStyle(el, &quot;&quot;).getPropertyValue(&quot;overflow-y&quot;);
+						if (overflow === &quot;scroll&quot; || overflow === &quot;auto&quot;) {
+							return setCache(elems, el);
+						}
+					}
+				} while (el = el.parentNode);
+			}
+</P><P>
+			/***********************************************
+			 * HELPERS
+			 ***********************************************/
+</P><P>			function addEvent(type, fn, bubble) {
+				window.addEventListener(type, fn, (bubble||false));
+			}
+</P><P>			function removeEvent(type, fn, bubble) {
+				window.removeEventListener(type, fn, (bubble||false));
+			}
+</P><P>			function isNodeName(el, tag) {
+				return (el.nodeName||&quot;&quot;).toLowerCase() === tag.toLowerCase();
+			}
+</P><P>			function directionCheck(x, y) {
+				x = (x &gt; 0) ? 1 : -1;
+				y = (y &gt; 0) ? 1 : -1;
+				if (direction.x !== x || direction.y !== y) {
+					direction.x = x;
+					direction.y = y;
+					que = [];
+					lastScroll = 0;
+				}
+			}
+</P><P>			var deltaBufferTimer;
+</P><P>			function isTouchpad(deltaY) {
+				if (!deltaY) return;
+				deltaY = Math.abs(deltaY)
+				deltaBuffer.push(deltaY);
+				deltaBuffer.shift();
+				clearTimeout(deltaBufferTimer);
+				var allEquals    = (deltaBuffer[0] == deltaBuffer[1] &amp;&amp;
+									deltaBuffer[1] == deltaBuffer[2]);
+				var allDivisable = (isDivisible(deltaBuffer[0], 120) &amp;&amp;
+									isDivisible(deltaBuffer[1], 120) &amp;&amp;
+									isDivisible(deltaBuffer[2], 120));
+				return !(allEquals || allDivisable);
+			}
+</P><P>			function isDivisible(n, divisor) {
+				return (Math.floor(n / divisor) == n / divisor);
+			}
+</P><P>			var requestFrame = (function () {
+				  return  window.requestAnimationFrame       ||
+						  window.webkitRequestAnimationFrame ||
+						  function (callback, element, delay) {
+							  window.setTimeout(callback, delay || (1000/60));
+						  };
+			})();
+</P><P>			var MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
+</P><P>
+			/***********************************************
+			 * PULSE
+			 ***********************************************/
+</P><P>			/**
+			 * Viscous fluid with a pulse for part and decay for the rest.
+			 * - Applies a fixed force over an interval (a damped acceleration), and
+			 * - Lets the exponential bleed away the velocity over a longer interval
+			 * - Michael Herf, <A rel="nofollow" class="external free" href="http://stereopsis.com/stopping/">http://stereopsis.com/stopping/</A>
+			 */
+			function pulse_(x) {
+				var val, start, expx;
+				// test
+				x = x * options.pulseScale;
+				if (x &lt; 1) { // acceleartion
+					val = x - (1 - Math.exp(-x));
+				} else {     // tail
+					// the previous animation ended here:
+					start = Math.exp(-1);
+					// simple viscous drag
+					x -= 1;
+					expx = 1 - Math.exp(-x);
+					val = start + (expx * (1 - start));
+				}
+				return val * options.pulseNormalize;
+			}
+</P><P>			function pulse(x) {
+				if (x &gt;= 1) return 1;
+				if (x &lt;= 0) return 0;
+</P><P>				if (options.pulseNormalize == 1) {
+					options.pulseNormalize /= pulse_(1);
+				}
+				return pulse_(x);
+			}
+</P><P>			addEvent(&quot;mousedown&quot;, mousedown);
+			addEvent(&quot;mousewheel&quot;, wheel);
+			addEvent(&quot;load&quot;, init);
+</P><P>		}
+</P><P>	});
+})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

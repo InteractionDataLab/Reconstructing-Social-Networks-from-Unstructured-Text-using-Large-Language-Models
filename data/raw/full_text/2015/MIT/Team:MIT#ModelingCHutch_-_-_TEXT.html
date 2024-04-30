@@ -1,0 +1,45 @@
+Team:MIT/ModelingCHutch
+Home
+Project
+The Co-Culture
+C. Hutchinsonii
+Biodiesel Production
+Parts
+Circuit
+Modeling
+Promoter Characterization
+Human Practices
+Consolidated Bioprocessing
+Economics
+Experts
+Notebooks
+Wetlab/Drylab
+Measurement
+Protocols
+About Us
+Team Bios
+Acknowledgements
+Attributions
+Medals
+Externals
+Collaborations
+Interlab Study
+@MIT_iGEM
+Dynamic Flux Balance Analysis
+C. Hutchinsonii Model Development
+E. Coli Model Development
+Coculture Simulations and Conclusions
+C. hutchinsonii Model Development
+In order to implement a dFBA model for C. hutchinsonii, we obtained a valid whole-genome scale model with its central metabolism, inserted reactions for cellulose degradation into it, fitted parameters for cellulose degradation and nutrient uptake to get more realistic behavior, and ran pure culture simulations.
+"
+Obtaining a whole-genome scale metabolic model for C. hutchinsonii
+We investigated three different whole-genome scale models for C. hutchinsonii from three different online databases:
+BioModels Database
+FAME - the Flux analysis and Modeling Environment
+The Model SEED
+These models were in SBML (Systems Biology Markup Language) format, which is a standardized XML format for representing models. The SBML models were converted into MATLAB files using the COBRA function readCbModel.m (see MATLAB script ModelImport.m in DFBALab). We found that the BioModels many contained gaps, repeated metabolites, or inaccurate exchange reaction bounds. We decided to use The Model SEED whole-genome scale model (Henry et al 2010) because, although it is less detailed, it contains no repeated metabolites. We had to modify some default exchange reaction bounds and insert reactions for cellulose degradation, as described below.
+Modeling Cellulose Degradation
+C. hutchinsonii degrades filter paper into both monomers and polymers of pentoses and hexoses. It efficiently uptakes some of these saccharides, and releases others into solution (see C. hutchinsonii page for more information). To model this, we approximate the substrate (filter paper) as only being composed of polymers of glucose (a hexose) and xylose (a pentose). Based on enzymatic data for the cellulosome complex, Salimi et al (2010) have assumed that the stoichiometry of the cellulose degradation reaction via the cellulosome is:  $${cellulose + 0.65H_2O -> 0.35cellobiose + 0.3glucose}$$  Since C. hutchinsonii uses an unknown, poorly characterized mechanism different from both the cellulosome complex and the free cellulase system (Wilson 2009; McBride 2014; Zhu et al. 2015), we approximate the stoichiometry by considering the cellulosome reaction and the composition of the substrate (filter paper). We keep the 1 to 0.65 ratio of substrate to water on the left-hand-side, and the 0.35:0.3 ratio of polymer to monomer. According to Liu (2012), around 16 percent filter paper is pentoses; we assume that the rest are hexoses. Thus for every mole of the substrate (filter paper fibers), around (1 - 0.16)*0.3 = 0.252 are glucose, (1 - 0.16)*0.35 = 0.056 are cellodextrins, 0.16*0.3 = 0.048 are xylose, and 0.16*0.35 = 0.056 are xylooligocasschrides. Therefore, the model C. hutchinsonii filter paper degradation reaction is:   $${Filter paper_{e} + 0.65H_2O -> 0.252glucose_{e} + 0.294cellodextrin_{e} + 0.056xylose_{e} + 0.048 xylooligosaccharide_{e}} $$  where the subscripts e indicate that these metabolites are located in the extracellular solution. This is also an approximation, since this reaction probably occurs in many stages in both the extracellular solution and the periplasmic space by a combination of membrane-associated cellulases.   C. hutchinsonii also efficiently uptakes cellodextrins and subsequently degrades them into glucose that it can metabolize. Assuming that the cellodextrins have an average degree of polymerization of 4 and C. hutchinsonii uses active transport to uptake cellodextrins, the reactions for this are: $${H_2O + ATP + cellodextrin_{e} -> H^+ + phosphate + ADP + cellodextrin_{c}}$$  $${cellodextrin_{c} + 3H_2O -> 4glucose_{c}}$$  where the subscripts c indicate that these metabolites are located in the cytosol of C. hutchinsonii.  It is thought that C. hutchinsonii cannot metabolise xylose (Xie et al. 2007), so we do not include reactions for xylooligosacchride uptake and degradation. C. hutchinsonii also consumes glucose, but we did not have to add a reaction for this since the C. hutchinsonii model already included an exchange reaction for uptake of glucose.   We incorporated the above equations into the whole-genome scale SEED model of C. hutchinsonii using the functions in the COBRA toolbox. The model can be downloaded at: https://www.dropbox.com/s/9dw2un0cwylpwut/chutchSEEDfilterpaper.mat?dl=0
+Obtaining Parameters for Substrate Uptake and Cellulose Degradation
+Since there are no reported kinetic parameters for C. hutchinsonii, we fitted parameters to match existing data and known behavior. C. hutchinsonii preferentially consumes cellulose over glucose (after it has been inoculated on cellulose), so the rate for glucose uptake is inhibited by the presence of cellulose. Thus, the expression for glucose uptake is:  \begin{equation} \nu_{g,hutch} = \dfrac{\nu_{g,hutch,max}S_g}{K_{g,hutch}+S_g} \dfrac{1}{1+S_g/K_{i,fp,hutch}} \end{equation}  Because C. hutchinsonii is poorly characterized, we assume that $\nu_{g,hutch,max}$ = 0.21 mmol/gDCW/h and $K_{g,hutch}$ = 0.0027 g/L, the same as the corresponding constants for E. coli glucose uptake. The inhibition term due to filter paper was approximated to be $K_{i,fp,hutch}$ = 0.0000002 g/L to match known behavior.  The rate at which C. hutcinsonii degrades cellulose and how this is inhibited is not well known. Because  reactions are generally inhibited by their products, and are more likely to occur if there are more reactants around, we hypothesized that the rate equation would take the form:   \begin{equation} \nu_{g,hutch} = \dfrac{\nu_{fp,hutch,max}S_{fp}}{K_{fp,hutch}+S_{fp}} \dfrac{1}{1+K_{i,g,hutch}S_g} \dfrac{1}{1+K_{i,cn,hutch}S_{cn}} \dfrac{1}{1+K_{i,x,hutch}S_{x}}\dfrac{1}{1+K_{i,xo,hutch}S_{xo}} \end{equation}  where $\nu_{g,hutch}$ is the rate of filter paper degradation, $\nu_{fp,hutch,max}$ is the maximum degradation rate achieved by the system at maximum (saturating) filter paper concentrations, $K_{fp,hutch}$ is the cellulose concentration at which the rate is $\dfrac{\nu_{fp,hutch,max}}{2}$, $S_{fp}$ is the current filter paper concentration, $K_{i,g,hutch}$, $S_g$,$K_{i,cn,hutch}$, $S_{cn}$, $K_{i,x,hutch}$, $S_x$, $K_{i,xo,hutch}$, and $S_{xo}$ are the inhibition constants and concentrations of glucose, cellodextrins, xylose and xylooligosaccharides, respectively.  To determine the parameters, we obtained C. hutchinsonii growth data from Zhu, Zhou, and Chen 2010 and Ji et al. 2013 . We then used the MATLAB function lsqnonlin to calculate the parameters that would make our simulations best match the data. The values of these parameters are given in the table on the Co-Culture Simulations & Conclusions page.
+dFBA Simulation of a Pure Culture of C. hutchinsonii

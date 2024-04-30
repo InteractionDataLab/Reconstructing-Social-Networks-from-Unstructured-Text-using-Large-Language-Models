@@ -1,0 +1,295 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Freiburg_software_Code_AbstractSbwServlet_java"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu"><UL><LI class="selected"><A href="/Team:Freiburg_software/Code/AbstractSbwServlet.java">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Freiburg_software/Code/AbstractSbwServlet.java&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSbwServlet.java&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSbwServlet.java&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Freiburg_software/Code/AbstractSbwServlet.java" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Freiburg software/Code/AbstractSbwServlet.java</H1><DIV id="bodyContent"><H3 id="siteSub">From 2009.igem.org</H3><DIV id="custom-header"><DIV id="tabs"><UL><LI><A class="home_active" href="https://2009.igem.org/Team:Freiburg_software"><SPAN>Home</SPAN></A></LI><LI><A class="team_active" href="https://2009.igem.org/Team:Freiburg_software/Team"><SPAN>The Team</SPAN></A></LI><LI><A class="project_active" href="https://2009.igem.org/Team:Freiburg_software/Project"><SPAN>The Project</SPAN></A></LI><LI><A class="code_active" href="https://2009.igem.org/Team:Freiburg_software/Code"><SPAN>The Code</SPAN></A></LI><LI><A class="guide_active" href="https://2009.igem.org/Team:Freiburg_software/UserGuide"><SPAN>User Guide</SPAN></A></LI><LI><A class="notebook_active" href="https://2009.igem.org/Team:Freiburg_software/Notebook"><SPAN>Notebook</SPAN></A></LI><LI><A class="miscellaneous_active" href="https://2009.igem.org/Team:Freiburg_software/Miscellaneous"><SPAN>Miscellaneous</SPAN></A></LI></UL></DIV></DIV><H2><SPAN class="mw-headline" id="org.synbiowave.servlet.AbstractSbwServlet">org.synbiowave.servlet.AbstractSbwServlet</SPAN></H2><PRE>
+/*
+    Copyright: synbiowave
+     
+    License: GPL
+     
+    Authors: Jörg Wassolesk &amp; Paul Staab
+     
+    Version: 0.1 
+    
+    DESCRIPTION:
+    	Make the main Servlet of your Robot extend this class instead of AbstractRobotServelt
+ 		to turn him into a SynBioWave Robot!
+*/
+
+
+package org.synbiowave.robot;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.synbiowave.database.DatastoreManager;
+import org.synbiowave.database.Sequence;
+import org.synbiowave.sequence.SequenceView;
+import org.synbiowave.servlet.AbstractSynBioWaveServlet;
+
+import com.google.wave.api.Annotation;
+import com.google.wave.api.Blip;
+import com.google.wave.api.Element;
+import com.google.wave.api.ElementType;
+import com.google.wave.api.Event;
+import com.google.wave.api.EventType;
+import com.google.wave.api.Gadget;
+import com.google.wave.api.GadgetView;
+import com.google.wave.api.Range;
+import com.google.wave.api.RobotMessageBundle;
+import com.google.wave.api.TextView;
+import com.google.wave.api.Wavelet;
+
+/*
+ * Make the main Servlet of your Robot extend this class instead of AbstractRobotServelt
+ * to turn him into a SynBioWave Robot!
+ */
+public abstract class AbstractSbwRobotServlet extends AbstractSynBioWaveServlet  
+{
+	private static final long serialVersionUID = -6809702107249455183L;
+	private final String gadgetURL = &quot;http://synbiowave.svn.sourceforge.net/viewvc/synbiowave/trunk/menuGadget/menuGadget.xml&quot;;
+	
+	/**
+	 * Override this function to return the robots URL used for identification
+	 */
+	public abstract String myName();
+	
+	/**
+	 * Override this to generate the menu this robot offers
+	 * @param menu 
+	 */
+	public abstract void createMenu(MenuItem menu);
+	
+	/**
+	 * Use this instead of Google's &quot;processEvents&quot;-function
+	 * @param bundle The original MessageBundle triggered by some events
+	 */
+	public abstract void processSbwEvents(RobotMessageBundle bundle);
+	
+	/**
+	 * i don't want to add own events to the google-api in pre-beta-state of wave,
+	 * so please use this function to react on menu events.
+	 * @param buttonLabel
+	 * @param event
+	 */
+	public abstract void processSbwMenuEvents(String buttonLabel, LinkedHashMap&lt;String, String&gt; formValues , Event event);
+	
+	/**
+	 * generates a key used for identifying menu-events
+	 */
+	protected String generateKey()
+	{	
+		return &quot;ui_&quot; + this.myName().replaceAll(&quot;@&quot;, &quot;_&quot;).replaceAll(&quot;\\.&quot;, &quot;_&quot;) + &quot;_&quot;;
+	}
+	
+	private void addMenuRobot(Wavelet wavelet)
+	{
+		if ( ! wavelet.getParticipants().contains(&quot;robotremake@appspot.com&quot;) )
+		{
+			wavelet.addParticipant(&quot;robotremake@appspot.com&quot;);
+		}
+	}
+	
+	private void removeMenu(Wavelet wavelet)
+	{
+		wavelet.setDataDocument(&quot;ui.menu.&quot; + myName(), &quot;{ }&quot;);
+		wavelet.setDataDocument(&quot;menu.update&quot;, &quot;1&quot;);
+	}
+	
+	private void generateMenu(Wavelet wavelet)
+	{
+		MenuItem ui = new MenuItem(&quot;ui&quot;,&quot;ui&quot;, generateKey());
+		MenuItem menu = ui.createSubItem(&quot;toolbar&quot;, &quot;toolbar&quot;,generateKey());
+		
+		createMenu(menu);
+		wavelet.setDataDocument(&quot;ui.menu.&quot; + myName(), ui.writeJson() );
+		wavelet.setDataDocument(&quot;menu.update&quot;, &quot;1&quot;);
+		wavelet.appendBlip().getDocument().append(&quot;Hallo!&quot;);
+	}
+	
+	private void listenForMenuEvents(Event event) throws Exception
+	{
+		for ( Element gadget : event.getBlip().getDocument().getElements(ElementType.GADGET) )
+		{
+			for ( Entry&lt;String, String&gt; entry : gadget.getProperties().entrySet() )
+			{
+				if ( entry.getKey().contains(this.generateKey()) )
+				{	
+					if ( this.getEventTypeFromMenuAnswer((String)entry.getValue()).contentEquals(&quot;changeValue&quot;) )
+					{
+						this.reloadMenu(event.getBlip());
+						this.processSbwMenuEvents(entry.getKey(), this.getValuesFromMenuAnswer((String)entry.getValue()) , event);
+					}
+					
+					if ( this.getEventTypeFromMenuAnswer((String)entry.getValue()).contentEquals(&quot;completed&quot;) )
+					{
+						this.reloadMenu(event.getBlip());
+						this.processSbwMenuEvents(entry.getKey(), null , event);
+					}
+					
+					if ( this.getEventTypeFromMenuAnswer((String)entry.getValue()).contentEquals(&quot;execute&quot;) )
+					{
+						this.reloadMenu(event.getBlip());
+						this.processSbwMenuEvents(entry.getKey(), null , event);
+					}
+				}
+				
+				if ( entry.getKey().contains(&quot;ui.removerobot.&quot; + this.myName()))
+				{
+					event.getWavelet().setDataDocument(&quot;menu.update&quot;, &quot;1&quot;);
+					event.getWavelet().removeParticipant(this.myName());
+					event.getBlip().getDocument().append(this.myName() + &quot; removed \n &quot;);
+				}
+			}
+		}
+	}
+	
+	private String getEventTypeFromMenuAnswer(String answer) throws Exception
+	{
+		answer = answer.replaceAll(&quot;'&quot;, &quot;\&quot;&quot;);
+		JSONObject obj = (JSONObject)JSONValue.parse(answer);
+		return (String)obj.get(&quot;event&quot;);
+	}
+	
+	@SuppressWarnings(&quot;unchecked&quot;)
+	private LinkedHashMap&lt;String, String&gt; getValuesFromMenuAnswer(String answer) throws Exception
+	{ 
+		LinkedHashMap&lt;String, String&gt; ret = new LinkedHashMap&lt;String, String&gt;();
+		answer = answer.replaceAll(&quot;'&quot;, &quot;\&quot;&quot;);
+		JSONObject obj = (JSONObject)JSONValue.parse(answer);
+		if ( obj.containsKey(&quot;value&quot;) )
+		{
+			ret.putAll( (Map&lt;String, String&gt;)obj.get(&quot;value&quot;) );
+		}
+		return ret;
+	}
+	
+	private void reloadMenu(Blip blip) throws Exception
+	{			
+		GadgetView gv = blip.getDocument().getGadgetView();
+		for ( Gadget gadget : gv.getGadgets() )
+		{
+			if ( gadget.getField(&quot;url&quot;).contentEquals(this.gadgetURL) )
+			{
+				Gadget menuGadget = new Gadget(this.gadgetURL);
+				menuGadget.setField(&quot;ui.structure&quot;, blip.getWavelet().getDataDocument(&quot;ui.completemenu&quot;) );
+				gv.replace(gadget, menuGadget);
+			}
+		}	
+	}
+	
+	public void processEvents(RobotMessageBundle bundle) 
+	{        
+		for (Event event : bundle.getEvents()) 
+		{ 
+			try
+			{ 	
+				if (event.getType() == EventType.WAVELET_SELF_ADDED) 
+				{
+					this.generateMenu(event.getWavelet());
+				}
+			
+				if (event.getType() == EventType.WAVELET_SELF_REMOVED) 
+				{
+					this.removeMenu(event.getWavelet());
+				}
+				
+				if (event.getType() == EventType.DOCUMENT_CHANGED &amp;&amp;
+					event.getWavelet().getDataDocument(&quot;menu.update&quot;).contains(&quot;0&quot;) )
+				{
+					this.listenForMenuEvents(event);
+				}
+				
+			}
+			catch (Exception error)
+			{
+				event.getWavelet().setDataDocument(&quot;menu.update&quot;, &quot;0&quot;);
+				event.getBlip().getDocument().append(&quot; \n ERROR:&quot; + error.getMessage() + &quot; \n &quot;);
+			}
+			finally 
+			{
+				processSbwEvents(bundle);
+			}
+		}
+	 }
+	
+	protected void appendSimpleView(Event event,String sequence){
+		ArrayList&lt;String&gt; sequences=new ArrayList&lt;String&gt;();
+		sequences.add(sequence);
+		appendSimpleView(event,sequences);}
+	
+	protected void appendSimpleView(Event event,ArrayList&lt;String&gt; sequences){
+		insertSimpleView(event,event.getBlip().getDocument().getText().length(),sequences);}
+	
+	protected void insertSimpleView(Event event,int start,String sequence){
+		ArrayList&lt;String&gt; sequences=new ArrayList&lt;String&gt;();
+		sequences.add(sequence);
+		insertSimpleView(event,start,sequences);}
+	
+	protected void insertSimpleView(Event event,int start,ArrayList&lt;String&gt; sequences){
+		int maxLength=0;
+		for(String sequence:sequences){if(sequence.length()&gt;maxLength){maxLength=sequence.length();}}
+		for(int i=0;i&lt;sequences.size();i++){
+			String sequence=sequences.get(i);
+			while(sequence.length()&lt;maxLength){sequence+=&quot;&quot;;}
+			sequences.set(i,sequence);}
+		TextView tv=event.getBlip().getDocument();
+		int index=start;
+		tv.insert(index,&quot;\n\n&quot;);
+		index+=2;
+		List&lt;Annotation&gt; cAnnotations=new ArrayList&lt;Annotation&gt;();
+		ArrayList&lt;String&gt; scales=SequenceView.getScale(maxLength);
+		for(String scale:scales){
+			cAnnotations.add(new Annotation(&quot;Scale&quot;,&quot;scale&quot;,new Range(index,index+scale.length())));
+			tv.insert(index,scale);
+			index+=scale.length();
+			if(maxLength&gt;50){
+				for(int i=0;i&lt;sequences.size();i++){
+					String sequence=sequences.get(i);
+					cAnnotations.addAll(SequenceView.getColor(sequence.substring(0,50),SequenceView.isSequence(sequence),index));
+					cAnnotations.add(new Annotation(&quot;Sequence&quot;,Integer.toString(i),new Range(index,index+52)));
+					tv.insert(index,sequence.substring(0,50)+&quot;\n&quot;);
+					index+=51;
+					sequence=sequence.substring(50);
+					sequences.set(i,sequence);}
+				tv.insert(index,&quot;\n&quot;);
+				index++;
+				maxLength-=50;}
+			else{
+				for(int i=0;i&lt;sequences.size();i++){
+					String sequence=sequences.get(i);
+					cAnnotations.addAll(SequenceView.getColor(sequence,SequenceView.isSequence(sequence),index));
+					cAnnotations.add(new Annotation(&quot;Sequence&quot;,Integer.toString(i),new Range(index,index+sequence.length()+2)));
+					tv.insert(index,sequence+&quot;\n&quot;);
+					index+=sequence.length()+1;}
+				tv.insert(index,&quot;\n&quot;);
+				index++;}}
+		cAnnotations.add(new Annotation(&quot;style/fontFamily&quot;,&quot;monospace&quot;,new Range(start,index)));
+		cAnnotations.add(new Annotation(&quot;style/fontSize&quot;,&quot;9pt&quot;,new Range(start,index)));
+		cAnnotations.add(new Annotation(&quot;SimpleView&quot;,&quot;sv&quot;,new Range(start,index)));
+		for(Annotation a:cAnnotations){tv.setAnnotation(a.getRange(),a.getName(),a.getValue());}}
+	
+	protected void replaceWithSimpleView(Event event,Range range,String sequence){
+		ArrayList&lt;String&gt; sequences=new ArrayList&lt;String&gt;();
+		sequences.add(sequence);
+		replaceWithSimpleView(event,range, sequences);}
+	
+	protected void replaceWithSimpleView(Event event,Range range,ArrayList&lt;String&gt; sequences){
+		TextView tv=event.getBlip().getDocument();
+		if(range.getEnd()==tv.getText().length()){tv.append(&quot;&quot;);}
+		tv.delete(range);
+		insertSimpleView(event,range.getStart(),sequences);}
+
+}
+ 
+</PRE><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2009.igem.org/Team:Freiburg_software/Code/AbstractSbwServlet.java">http://2009.igem.org/Team:Freiburg_software/Code/AbstractSbwServlet.java</A>&quot;</DIV></DIV></DIV><DIV id="footer-box"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Freiburg_software/Code/AbstractSbwServlet.java" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Freiburg_software/Code/AbstractSbwServlet.java" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSbwServlet.java&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSbwServlet.java&amp;oldid=134473" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2009.igem.org:Privacy_policy" title="2009.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2009.igem.org:General_disclaimer" title="2009.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

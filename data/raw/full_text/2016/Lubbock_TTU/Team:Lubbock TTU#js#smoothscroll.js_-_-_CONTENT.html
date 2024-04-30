@@ -1,0 +1,141 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Lubbock_TTU_js_smoothscroll_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Lubbock TTU/js/smoothscroll.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/* Smooth scrolling
+</P><PRE>  Changes links that link to other parts of this page to scroll
+  smoothly to those links rather than jump to them directly, which
+  can be a little disorienting.
+  
+  sil, <A rel="nofollow" class="external free" href="http://www.kryogenix.org/">http://www.kryogenix.org/</A>
+  
+  v1.0 2003-11-11
+  v1.1 2005-06-16 wrap it up in an object
+</PRE><UL><LI>/</LI></UL><P>var ss = {
+</P><PRE> fixAllLinks: function() {
+   // Get a list of all links in the page
+   var allLinks = document.getElementsByTagName('a');
+   // Walk through the list
+   for (var i=0;i&lt;allLinks.length;i++) {
+     var lnk = allLinks[i];
+     if ((lnk.href &amp;&amp; lnk.href.indexOf('#') != -1) &amp;&amp; 
+         ( (lnk.pathname == location.pathname) ||
+</PRE><P>	    ('/'+lnk.pathname == location.pathname) ) &amp;&amp;</P><PRE>         (lnk.search == location.search)) {
+       // If the link is internal to the page (begins in #)
+       // then attach the smoothScroll function as an onclick
+       // event handler
+       ss.addEvent(lnk,'click',ss.smoothScroll);
+     }
+   }
+ },
+</PRE><PRE> smoothScroll: function(e) {
+   // This is an event handler; get the clicked on element,
+   // in a cross-browser fashion
+   if (window.event) {
+     target = window.event.srcElement;
+   } else if (e) {
+     target = e.target;
+   } else return;
+</PRE><PRE>   // Make sure that the target is an element, not a text node
+   // within an element
+   if (target.nodeName.toLowerCase() != 'a') {
+     target = target.parentNode;
+   }
+ 
+   // Paranoia; check this is an A tag
+   if (target.nodeName.toLowerCase() != 'a') return;
+ 
+   // Find the &lt;a name&gt; tag corresponding to this href
+   // First strip off the hash (first character)
+   anchor = target.hash.substr(1);
+   // Now loop all A tags until we find one with that name
+   var allLinks = document.getElementsByTagName('a');
+   var destinationLink = null;
+   for (var i=0;i&lt;allLinks.length;i++) {
+     var lnk = allLinks[i];
+     if (lnk.name &amp;&amp; (lnk.name == anchor)) {
+       destinationLink = lnk;
+       break;
+     }
+   }
+   if (!destinationLink) destinationLink = document.getElementById(anchor);
+</PRE><PRE>   // If we didn't find a destination, give up and let the browser do
+   // its thing
+   if (!destinationLink) return true;
+ 
+   // Find the destination's position
+   var destx = destinationLink.offsetLeft; 
+   var desty = destinationLink.offsetTop;
+   var thisNode = destinationLink;
+   while (thisNode.offsetParent &amp;&amp; 
+         (thisNode.offsetParent != document.body)) {
+     thisNode = thisNode.offsetParent;
+     destx += thisNode.offsetLeft;
+     desty += thisNode.offsetTop;
+   }
+ 
+   // Stop any current scrolling
+   clearInterval(ss.INTERVAL);
+ 
+   cypos = ss.getCurrentYPos();
+ 
+   ss_stepsize = parseInt((desty-cypos)/ss.STEPS);
+   ss.INTERVAL =
+</PRE><P>setInterval('ss.scrollWindow('+ss_stepsize+','+desty+',&quot;'+anchor+'&quot;)',10);
+</P><PRE>   // And stop the actual click happening
+   if (window.event) {
+     window.event.cancelBubble = true;
+     window.event.returnValue = false;
+   }
+   if (e &amp;&amp; e.preventDefault &amp;&amp; e.stopPropagation) {
+     e.preventDefault();
+     e.stopPropagation();
+   }
+ },
+</PRE><PRE> scrollWindow: function(scramount,dest,anchor) {
+   wascypos = ss.getCurrentYPos();
+   isAbove = (wascypos &lt; dest);
+   window.scrollTo(0,wascypos + scramount);
+   iscypos = ss.getCurrentYPos();
+   isAboveNow = (iscypos &lt; dest);
+   if ((isAbove != isAboveNow) || (wascypos == iscypos)) {
+     // if we've just scrolled past the destination, or
+     // we haven't moved from the last scroll (i.e., we're at the
+     // bottom of the page) then scroll exactly to the link
+     window.scrollTo(0,dest);
+     // cancel the repeating timer
+     clearInterval(ss.INTERVAL);
+     // and jump to the link directly so the URL's right
+     location.hash = anchor;
+   }
+ },
+</PRE><PRE> getCurrentYPos: function() {
+   if (document.body &amp;&amp; document.body.scrollTop)
+     return document.body.scrollTop;
+   if (document.documentElement &amp;&amp; document.documentElement.scrollTop)
+     return document.documentElement.scrollTop;
+   if (window.pageYOffset)
+     return window.pageYOffset;
+   return 0;
+ },
+</PRE><PRE> addEvent: function(elm, evType, fn, useCapture) {
+   // addEvent and removeEvent
+   // cross-browser event handling for IE5+,  NS6 and Mozilla
+   // By Scott Andrew
+   if (elm.addEventListener){
+     elm.addEventListener(evType, fn, useCapture);
+     return true;
+   } else if (elm.attachEvent){
+     var r = elm.attachEvent(&quot;on&quot;+evType, fn);
+     return r;
+   } else {
+     alert(&quot;Handler could not be removed&quot;);
+   }
+ } 
+</PRE><P>}
+</P><P>ss.STEPS = 25;
+</P><P>ss.addEvent(window,&quot;load&quot;,ss.fixAllLinks);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,92 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:UT-Tokyo-Software/Project/BioBrickSearch
+From 2012.igem.org
+Home
+Team
+Member
+Attributions
+Collaboration
+Project
+Introduction
+BioBrick Puzzle
+Gene Network Game
+Past Project Search
+BioBrick Search
+Download
+Update
+Notebook
+Safety
+Medal Fulfillment
+UT-Tokyo-Software
+BioBrick Search
+>> Jump to search page
+Overview
+BioBrick Search is a novel BioBrick search tool with the aim of providing more efficiency and reliability in searching existing BioBrick parts.
+This tool provides a search result page with detailed information and ordering based on popularity and reliability, a much-needed feature that the current search implementation at partsregistry.org and other conventional BioBrick search have not offered. The tool also features a sophisticated web-based interface that everyone can intuitively use on their browsers without installation.
+We have already made this software available to the public in August 2012 and received several positive responses from users. You can try it out at our website!
+Background
+In deciding and carrying out iGEM projects, you are frequently faced with the task of searching BioBrick parts. Currently, partsregistry.org is the official and most comprehensive BioBrick database and most of iGEM participants use partsregistry.org to search for BioBrick parts.
+Even though searching for BioBricks is such an essential process in iGEM, it has been quite a time-consuming and irritating process to some iGEM participants, partly because the search software is not very user-friendly.
+Problems with the current partsregistry.org BioBrick search we identified include:
+Search results are not ordered by reliability or relevance to the search query but by ID (e.g. BBa_K123456), which is not likely to help users find the BioBrick they need.
+Information given for each BioBrick in the search result page is insufficient for users to judge whether the BioBrick suits their needs and thus users need to take the additional step of jumping to the wiki page for the specific BioBrick to find more detailed information.
+We thought these problems severely compromise the usability of the partsregistry.org BioBrick search and so created a new search software, "BioBrick Search" that resolves these issues. In order to achieve an efficient and reliable search experience, our tool has the following features.
+Easy-to-view, informative result list
+Search result sorted by combination of 3 factors (reliability, relevance to your query and popularity)
+Filters the user can set by various conditions (e.g. year submitted, team name, category)
+Can be accessed from anywhere, anytime from a web browser without installation
+Methods
+What we have done in the process of developing "BioBrick Search" can be roughly subdivided into 3 parts:
+Retrieving data
+Establishing a searching and sorting method
+Designing a user-friendly UI
+1. Data Retrieval
+In order to achieve practical search latency, we need to retrieve and store data in our own server that performs the search. The source of data we utilized in "BioBrick Search" includes the basic information of each part obtained from the partsregistry.org API (http://) and the contents of wiki pages for each BioBrick on partsregistry.org (using MediaWiki API).
+We combined the data from these two sources and converted them to JSON format to use for the search.
+Partsregistry.org Database API
+We utilized the partsregistry.org official API to obtain basic information such as a part's name, ID, description, nucleotide sequence, inclusion relationships between parts, availability, and so on.
+This API allows us to obtain basic information of specified parts in xml format. We acquired a list of all part names at DAS Parts Server entry point ( http://partsregistry.org/das/parts/entry_points ) and, by querying for each BioBrick on the list, gained information on BioBricks. By this methodology, we successfully obtained information on 14,831 BioBricks.
+Partsregistry.org Wiki Pages
+As the data contained in the partsregistry.org database has little information as to what the BioBrick does and how to use it, we thought it would be quite useful if the data on partsregistry.org wiki pages could be used, in addition to the basic data in the database, as cues for searching BioBricks. Luckily for us, MediaWiki, a software that partsregistry.org Wiki Pages are built upon, provides API ( http://partsregistry.org/wiki/api.php )that allows us to retrieve all the pages for each BioBrick.
+2. Searching and Sorting Method
+Search engine
+As writing a search engine from scratch is quite time-consuming, we adopted the open source software called "elasticsearch" ( elasticsearch.org ) as a backend search engine.
+elasticsearch can handle complex queries on structured data quickly and this characteristic of elasticsearch allowed us to build a sophisticated and responsive search tool.
+Sorting Criteria
+Sorting criteria for BioBrick search results are the most important part of this tool as it has great impact on the usability of the software. In designing sorting criteria for BioBrick Search, we decided that the features of a part that users most frequently consider in determining which BioBrick parts to use are:
+Reliability of the part (Will this BioBrick work?)
+Relevance (How relevant is this BioBrick to your query?)
+Popularity of the part (How many teams have used this BioBrick?)
+Reliability is computed from 3 entries (part_results (whether the BioBrick works or not), part_status (whether the BioBrick is available or not), best_quality (whether the nucleotide sequence of BioBrick is confirmed or not)) on the data obtained from partsregistry.org API.
+We quantified the reliability of each parts in 5 grades, from 1 to 5 (higher is better). The code (in Python) used to score the parts is shown below.
+pos = neg = 0 if part['part_results'] == 'Fails': neg += 2 elif part['part_results'] == 'Issues': neg += 1 elif part['part_results'] == 'Works': pos += 1 if part['part_status'] == 'Available': pos += 1 if part['best_quality'] == 'Confirmed': pos += 1 elif part['best_quality'] == 'Questionable': neg += 1 elif part['best_quality'] == 'Bad Sequencing': neg += 2  if pos >= 3 and neg == 0: return 5 elif pos >= 2 and neg == 0: return 4 elif pos - neg > 0: return 3 elif pos - neg == 0: return 2 elif pos < neg: return 1
+Relevance is a measure of how relevant  a BioBrick is to your query. This score is automatically computed by elasticsearch.
+Popularity is a measure of how many teams have used the BioBrick. We counted the number of teams that submitted a part that (directly or indirectly) contains the specific BioBrick and used the logarithm of this number as the "popularity" score.
+The search results are ordered according to the product of these 3 scores.
+3. User-Experience
+In designing the BioBrick Search software, we saw to it that users can intuitively and comfortably use this tool. We took advantage of the latest technologies of dynamic web applications and realized a smooth workflow without page transitions.
+Results
+We submitted a community post regarding this tool in the iGEM 2012 community page ( https://2012.igem.org/Community ) in August, after we finished developing this tool. After we made this tool publicly available, we got 357 accesses from 16 different countries and users, who in general gave us favorable responses. One of the feedbacks we received said they took into account the "reliability" score to determine which BioBrick part to use.
+Future Works
+iOS / Android support
+Due to the incompatibility with a library we utilized, BioBrick Search cannot currently be used on iOS / Android devices. As the library's source code is published, it might be possible to work around this issue by modifying the code.
+Synchronization of data with partsregistry.org
+To achieve a realistic response time, BioBrick Search uses off-line data downloaded from the partsregistry.org at a specific time. On partsregistry.org, new parts are added and the existing data is updated every year. The current approach requires us to re-obtain the updated parts in order to keep up with the latest partsregistry.org database. Direct access to the partsregistry.org database or a new API that enables users to retrieve information added since the last download is desired.
+Demo
+Retrieved from " http://2012.igem.org/Team:UT-Tokyo-Software/Project/BioBrickSearch "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

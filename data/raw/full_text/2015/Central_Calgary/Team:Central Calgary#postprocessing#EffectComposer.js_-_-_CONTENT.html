@@ -1,0 +1,85 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Central_Calgary_postprocessing_EffectComposer_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Central Calgary/postprocessing/EffectComposer.js</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* @author alteredq / <A rel="nofollow" class="external free" href="http://alteredqualia.com/">http://alteredqualia.com/</A>
+*/
+</PRE><P>THREE.EffectComposer = function ( renderer, renderTarget ) {
+</P><P>	this.renderer = renderer;
+</P><P>	if ( renderTarget === undefined ) {
+</P><P>		var pixelRatio = renderer.getPixelRatio();
+</P><P>		var width  = Math.floor( renderer.context.canvas.width  / pixelRatio ) || 1;
+		var height = Math.floor( renderer.context.canvas.height / pixelRatio ) || 1;
+		var parameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBuffer: false };
+</P><P>		renderTarget = new THREE.WebGLRenderTarget( width, height, parameters );
+</P><P>	}
+</P><P>	this.renderTarget1 = renderTarget;
+	this.renderTarget2 = renderTarget.clone();
+</P><P>	this.writeBuffer = this.renderTarget1;
+	this.readBuffer = this.renderTarget2;
+</P><P>	this.passes = [];
+</P><P>	if ( THREE.CopyShader === undefined )
+		console.error( &quot;THREE.EffectComposer relies on THREE.CopyShader&quot; );
+</P><P>	this.copyPass = new THREE.ShaderPass( THREE.CopyShader );
+</P><P>};
+</P><P>THREE.EffectComposer.prototype = {
+</P><P>	swapBuffers: function() {
+</P><P>		var tmp = this.readBuffer;
+		this.readBuffer = this.writeBuffer;
+		this.writeBuffer = tmp;
+</P><P>	},
+</P><P>	addPass: function ( pass ) {
+</P><P>		this.passes.push( pass );
+</P><P>	},
+</P><P>	insertPass: function ( pass, index ) {
+</P><P>		this.passes.splice( index, 0, pass );
+</P><P>	},
+</P><P>	render: function ( delta ) {
+</P><P>		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+</P><P>		var maskActive = false;
+</P><P>		var pass, i, il = this.passes.length;
+</P><P>		for ( i = 0; i &lt; il; i ++ ) {
+</P><P>			pass = this.passes[ i ];
+</P><P>			if ( !pass.enabled ) continue;
+</P><P>			pass.render( this.renderer, this.writeBuffer, this.readBuffer, delta, maskActive );
+</P><P>			if ( pass.needsSwap ) {
+</P><P>				if ( maskActive ) {
+</P><P>					var context = this.renderer.context;
+</P><P>					context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+</P><P>					this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, delta );
+</P><P>					context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+</P><P>				}
+</P><P>				this.swapBuffers();
+</P><P>			}
+</P><P>			if ( pass instanceof THREE.MaskPass ) {
+</P><P>				maskActive = true;
+</P><P>			} else if ( pass instanceof THREE.ClearMaskPass ) {
+</P><P>				maskActive = false;
+</P><P>			}
+</P><P>		}
+</P><P>	},
+</P><P>	reset: function ( renderTarget ) {
+</P><P>		if ( renderTarget === undefined ) {
+</P><P>			renderTarget = this.renderTarget1.clone();
+</P><P>			var pixelRatio = this.renderer.getPixelRatio();
+</P><P>			renderTarget.width  = Math.floor( this.renderer.context.canvas.width  / pixelRatio );
+			renderTarget.height = Math.floor( this.renderer.context.canvas.height / pixelRatio );
+</P><P>		}
+</P><P>		this.renderTarget1 = renderTarget;
+		this.renderTarget2 = renderTarget.clone();
+</P><P>		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+</P><P>	},
+</P><P>	setSize: function ( width, height ) {
+</P><P>		var renderTarget = this.renderTarget1.clone();
+</P><P>		renderTarget.width = width;
+		renderTarget.height = height;
+</P><P>		this.reset( renderTarget );
+</P><P>	}
+</P><P>};
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

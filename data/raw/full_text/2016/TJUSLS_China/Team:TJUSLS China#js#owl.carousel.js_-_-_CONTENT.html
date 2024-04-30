@@ -1,0 +1,1275 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_TJUSLS_China_js_owl_carousel_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:TJUSLS China/js/owl.carousel.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>*	jQuery OwlCarousel v1.31
+*
+*	Copyright (c) 2013 Bartosz Wojciechowski
+*	<A rel="nofollow" class="external free" href="http://www.owlgraphic.com/owlcarousel/">http://www.owlgraphic.com/owlcarousel/</A>
+*
+*	Licensed under MIT
+*
+*/
+</PRE><P>if ( typeof Object.create !== &quot;function&quot; ) {
+	Object.create = function( obj ) {
+		function F() {};
+		F.prototype = obj;
+		return new F();
+	};
+}
+(function( $, window, document, undefined ) {
+</P><P>	var Carousel = {
+		init :function(options, el){
+			var base = this;
+</P><P>			base.$elem = $(el);
+</P><P>			// options passed via js override options passed via data attributes
+			base.options = $.extend({}, $.fn.owlCarousel.options, base.$elem.data(), options);
+</P><P>			base.userOptions = options;
+			base.loadContent();
+		},
+</P><P>		loadContent : function(){
+			var base = this;
+</P><P>			if (typeof base.options.beforeInit === &quot;function&quot;) {
+				base.options.beforeInit.apply(this,[base.$elem]);
+			}
+</P><P>			if (typeof base.options.jsonPath === &quot;string&quot;) {
+				var url = base.options.jsonPath;
+</P><P>				function getData(data) {
+					if (typeof base.options.jsonSuccess === &quot;function&quot;) {
+						base.options.jsonSuccess.apply(this,[data]);
+					} else {
+						var content = &quot;&quot;;
+						for(var i in data[&quot;owl&quot;]){
+							content += data[&quot;owl&quot;][i][&quot;item&quot;];
+						}
+						base.$elem.html(content);
+					}
+					base.logIn();
+				}
+				$.getJSON(url,getData);
+			} else {
+				base.logIn();
+			}
+		},
+</P><P>		logIn : function(action){
+			var base = this;
+</P><P>			base.$elem.data(&quot;owl-originalStyles&quot;, base.$elem.attr(&quot;style&quot;))
+					  .data(&quot;owl-originalClasses&quot;, base.$elem.attr(&quot;class&quot;));
+</P><P>			base.$elem.css({opacity: 0});
+			base.orignalItems = base.options.items;
+			base.checkBrowser();
+			base.wrapperWidth = 0;
+			base.checkVisible;
+			base.setVars();
+		},
+</P><P>		setVars : function(){
+			var base = this;
+			if(base.$elem.children().length === 0){return false}
+			base.baseClass();
+			base.eventTypes();
+			base.$userItems = base.$elem.children();
+			base.itemsAmount = base.$userItems.length;
+			base.wrapItems();
+			base.$owlItems = base.$elem.find(&quot;.owl-item&quot;);
+			base.$owlWrapper = base.$elem.find(&quot;.owl-wrapper&quot;);
+			base.playDirection = &quot;next&quot;;
+			base.prevItem = 0;
+			base.prevArr = [0];
+			base.currentItem = 0;
+			base.customEvents();
+			base.onStartup();
+		},
+</P><P>		onStartup : function(){
+			var base = this;
+			base.updateItems();
+			base.calculateAll();
+			base.buildControls();
+			base.updateControls();
+			base.response();
+			base.moveEvents();
+			base.stopOnHover();
+			base.owlStatus();
+</P><P>			if(base.options.transitionStyle !== false){
+				base.transitionTypes(base.options.transitionStyle);
+			}
+			if(base.options.autoPlay === true){
+				base.options.autoPlay = 5000;
+			}
+			base.play();
+</P><P>			base.$elem.find(&quot;.owl-wrapper&quot;).css(&quot;display&quot;,&quot;block&quot;)
+</P><P>			if(!base.$elem.is(&quot;:visible&quot;)){
+				base.watchVisibility();
+			} else {
+				base.$elem.css(&quot;opacity&quot;,1);
+			}
+			base.onstartup = false;
+			base.eachMoveUpdate();
+			if (typeof base.options.afterInit === &quot;function&quot;) {
+				base.options.afterInit.apply(this,[base.$elem]);
+			}
+		},
+</P><P>		eachMoveUpdate : function(){
+			var base = this;
+</P><P>			if(base.options.lazyLoad === true){
+				base.lazyLoad();
+			}
+			if(base.options.autoHeight === true){
+				base.autoHeight();
+			}
+			base.onVisibleItems();
+</P><P>			if (typeof base.options.afterAction === &quot;function&quot;) {
+				base.options.afterAction.apply(this,[base.$elem]);
+			}
+		},
+</P><P>		updateVars : function(){
+			var base = this;
+			if(typeof base.options.beforeUpdate === &quot;function&quot;) {
+				base.options.beforeUpdate.apply(this,[base.$elem]);
+			}
+			base.watchVisibility();
+			base.updateItems();
+			base.calculateAll();
+			base.updatePosition();
+			base.updateControls();
+			base.eachMoveUpdate();
+			if(typeof base.options.afterUpdate === &quot;function&quot;) {
+				base.options.afterUpdate.apply(this,[base.$elem]);
+			}
+		},
+</P><P>		reload : function(elements){
+			var base = this;
+			setTimeout(function(){
+				base.updateVars();
+			},0)
+		},
+</P><P>		watchVisibility : function(){
+			var base = this;
+</P><P>			if(base.$elem.is(&quot;:visible&quot;) === false){
+				base.$elem.css({opacity: 0});
+				clearInterval(base.autoPlayInterval);
+				clearInterval(base.checkVisible);
+			} else {
+				return false;
+			}
+			base.checkVisible = setInterval(function(){
+				if (base.$elem.is(&quot;:visible&quot;)) {
+					base.reload();
+					base.$elem.animate({opacity: 1},200);
+					clearInterval(base.checkVisible);
+				}
+			}, 500);
+		},
+</P><P>		wrapItems : function(){
+			var base = this;
+</P>
+			base.$userItems.wrapAll(&quot;<DIV>&quot;).wrap(&quot;&quot;);
+			base.$elem.find(&quot;.owl-wrapper&quot;).wrap(&quot;<DIV>&quot;);
+<P>			base.wrapperOuter = base.$elem.find(&quot;.owl-wrapper-outer&quot;);
+			base.$elem.css(&quot;display&quot;,&quot;block&quot;);
+		},
+</P><P>		baseClass : function(){
+			var base = this;
+			var hasBaseClass = base.$elem.hasClass(base.options.baseClass);
+			var hasThemeClass = base.$elem.hasClass(base.options.theme);
+</P><P>			if(!hasBaseClass){
+				base.$elem.addClass(base.options.baseClass);
+			}
+</P><P>			if(!hasThemeClass){
+				base.$elem.addClass(base.options.theme);
+			}
+		},
+</P><P>		updateItems : function(){
+			var base = this;
+</P><P>			if(base.options.responsive === false){
+				return false;
+			}
+			if(base.options.singleItem === true){
+				base.options.items = base.orignalItems = 1;
+				base.options.itemsCustom = false;
+				base.options.itemsDesktop = false;
+				base.options.itemsDesktopSmall = false;
+				base.options.itemsTablet = false;
+				base.options.itemsTabletSmall = false;
+				base.options.itemsMobile = false;
+				return false;
+			}
+</P><P>			var width = $(base.options.responsiveBaseWidth).width();
+</P><P>			if(width &gt; (base.options.itemsDesktop[0] || base.orignalItems) ){
+				base.options.items = base.orignalItems;
+			}
+</P><P>			if(typeof(base.options.itemsCustom) !== 'undefined' &amp;&amp; base.options.itemsCustom !== false){
+				//Reorder array by screen size
+				base.options.itemsCustom.sort(function(a,b){return a[0]-b[0];});
+				for(var i in base.options.itemsCustom){
+					if(typeof(base.options.itemsCustom[i]) !== 'undefined' &amp;&amp; base.options.itemsCustom[i][0] &lt;= width){
+						base.options.items = base.options.itemsCustom[i][1];
+					}
+				}
+			} else {
+</P><P>				if(width &lt;= base.options.itemsDesktop[0] &amp;&amp; base.options.itemsDesktop !== false){
+					base.options.items = base.options.itemsDesktop[1];
+				}
+</P><P>				if(width &lt;= base.options.itemsDesktopSmall[0] &amp;&amp; base.options.itemsDesktopSmall !== false){
+					base.options.items = base.options.itemsDesktopSmall[1];
+				}
+</P><P>				if(width &lt;= base.options.itemsTablet[0]  &amp;&amp; base.options.itemsTablet !== false){
+					base.options.items = base.options.itemsTablet[1];
+				}
+</P><P>				if(width &lt;= base.options.itemsTabletSmall[0]  &amp;&amp; base.options.itemsTabletSmall !== false){
+					base.options.items = base.options.itemsTabletSmall[1];
+				}
+</P><P>				if(width &lt;= base.options.itemsMobile[0] &amp;&amp; base.options.itemsMobile !== false){
+					base.options.items = base.options.itemsMobile[1];
+				}
+			}
+</P><P>			//if number of items is less than declared
+			if(base.options.items &gt; base.itemsAmount &amp;&amp; base.options.itemsScaleUp === true){
+				base.options.items = base.itemsAmount;
+			}
+		},
+</P><P>		response : function(){
+			var base = this,
+				smallDelay;
+			if(base.options.responsive !== true){
+				return false
+			}
+			var lastWindowWidth = $(window).width();
+</P><P>			base.resizer = function(){
+				if($(window).width() !== lastWindowWidth){
+					if(base.options.autoPlay !== false){
+						clearInterval(base.autoPlayInterval);
+					}
+					clearTimeout(smallDelay);
+					smallDelay = setTimeout(function(){
+						lastWindowWidth = $(window).width();
+						base.updateVars();
+					},base.options.responsiveRefreshRate);
+				}
+			}
+			$(window).resize(base.resizer)
+		},
+</P><P>		updatePosition : function(){
+			var base = this;
+			base.jumpTo(base.currentItem);
+			if(base.options.autoPlay !== false){
+				base.checkAp();
+			}
+		},
+</P><P>		appendItemsSizes : function(){
+			var base = this;
+</P><P>			var roundPages = 0;
+			var lastItem = base.itemsAmount - base.options.items;
+</P><P>			base.$owlItems.each(function(index){
+				var $this = $(this);
+				$this
+					.css({&quot;width&quot;: base.itemWidth})
+					.data(&quot;owl-item&quot;,Number(index));
+</P><P>				if(index % base.options.items === 0 || index === lastItem){
+					if(!(index &gt; lastItem)){
+						roundPages +=1;
+					}
+				}
+				$this.data(&quot;owl-roundPages&quot;,roundPages)
+			});
+		},
+</P><P>		appendWrapperSizes : function(){
+			var base = this;
+			var width = 0;
+</P><P>			var width = base.$owlItems.length * base.itemWidth;
+</P><P>			base.$owlWrapper.css({
+				&quot;width&quot;: width*2,
+				&quot;left&quot;: 0
+			});
+			base.appendItemsSizes();
+		},
+</P><P>		calculateAll : function(){
+			var base = this;
+			base.calculateWidth();
+			base.appendWrapperSizes();
+			base.loops();
+			base.max();
+		},
+</P><P>		calculateWidth : function(){
+			var base = this;
+			base.itemWidth = Math.round(base.$elem.width()/base.options.items)
+		},
+</P><P>		max : function(){
+			var base = this;
+			var maximum = ((base.itemsAmount * base.itemWidth) - base.options.items * base.itemWidth) * -1;
+			if(base.options.items &gt; base.itemsAmount){
+				base.maximumItem = 0;
+				maximum = 0
+				base.maximumPixels = 0;
+			} else {
+				base.maximumItem = base.itemsAmount - base.options.items;
+				base.maximumPixels = maximum;
+			}
+			return maximum;
+		},
+</P><P>		min : function(){
+			return 0;
+		},
+</P><P>		loops : function(){
+			var base = this;
+</P><P>			base.positionsInArray = [0];
+			base.pagesInArray = [];
+			var prev = 0;
+			var elWidth = 0;
+</P><P>			for(var i = 0; i&lt;base.itemsAmount; i++){
+				elWidth += base.itemWidth;
+				base.positionsInArray.push(-elWidth);
+</P><P>				if(base.options.scrollPerPage === true){
+					var item = $(base.$owlItems[i]);
+					var roundPageNum = item.data(&quot;owl-roundPages&quot;);
+					if(roundPageNum !== prev){
+						base.pagesInArray[prev] = base.positionsInArray[i];
+						prev = roundPageNum;
+					}
+				}
+			}
+		},
+</P><P>		buildControls : function(){
+			var base = this;
+			if(base.options.navigation === true || base.options.pagination === true){
+				base.owlControls = $(&quot;&lt;div class=\&quot;owl-controls\&quot;/&gt;&quot;).toggleClass(&quot;clickable&quot;, !base.browser.isTouch).appendTo(base.$elem);
+			}
+			if(base.options.pagination === true){
+				base.buildPagination();
+			}
+			if(base.options.navigation === true){
+				base.buildButtons();
+			}
+		},
+</P><P>		buildButtons : function(){
+			var base = this;
+			var buttonsWrapper = $(&quot;&lt;div class=\&quot;owl-buttons\&quot;/&gt;&quot;)
+			base.owlControls.append(buttonsWrapper);
+</P><P>			base.buttonPrev = $(&quot;&lt;div/&gt;&quot;,{
+				&quot;class&quot; : &quot;owl-prev&quot;,
+				&quot;html&quot; : base.options.navigationText[0] || &quot;&quot;
+				});
+</P><P>			base.buttonNext = $(&quot;&lt;div/&gt;&quot;,{
+				&quot;class&quot; : &quot;owl-next&quot;,
+				&quot;html&quot; : base.options.navigationText[1] || &quot;&quot;
+				});
+</P><P>			buttonsWrapper
+			.append(base.buttonPrev)
+			.append(base.buttonNext);
+</P><P>			buttonsWrapper.on(&quot;touchstart.owlControls mousedown.owlControls&quot;, &quot;div[class^=\&quot;owl\&quot;]&quot;, function(event){
+				event.preventDefault();
+			})
+</P><P>			buttonsWrapper.on(&quot;touchend.owlControls mouseup.owlControls&quot;, &quot;div[class^=\&quot;owl\&quot;]&quot;, function(event){
+				event.preventDefault();
+				if($(this).hasClass(&quot;owl-next&quot;)){
+					base.next();
+				} else{
+					base.prev();
+				}
+			})
+		},
+</P><P>		buildPagination : function(){
+			var base = this;
+</P><P>			base.paginationWrapper = $(&quot;&lt;div class=\&quot;owl-pagination\&quot;/&gt;&quot;);
+			base.owlControls.append(base.paginationWrapper);
+</P><P>			base.paginationWrapper.on(&quot;touchend.owlControls mouseup.owlControls&quot;, &quot;.owl-page&quot;, function(event){
+				event.preventDefault();
+				if(Number($(this).data(&quot;owl-page&quot;)) !== base.currentItem){
+					base.goTo( Number($(this).data(&quot;owl-page&quot;)), true);
+				}
+			});
+		},
+</P><P>		updatePagination : function(){
+			var base = this;
+			if(base.options.pagination === false){
+				return false;
+			}
+</P><P>			base.paginationWrapper.html(&quot;&quot;);
+</P><P>			var counter = 0;
+			var lastPage = base.itemsAmount - base.itemsAmount % base.options.items;
+</P><P>			for(var i = 0; i&lt;base.itemsAmount; i++){
+				if(i % base.options.items === 0){
+					counter +=1;
+					if(lastPage === i){
+						var lastItem = base.itemsAmount - base.options.items;
+					}
+					var paginationButton = $(&quot;&lt;div/&gt;&quot;,{
+						&quot;class&quot; : &quot;owl-page&quot;
+						});
+					var paginationButtonInner = $(&quot;&quot;,{
+						&quot;text&quot;: base.options.paginationNumbers === true ? counter : &quot;&quot;,
+						&quot;class&quot;: base.options.paginationNumbers === true ? &quot;owl-numbers&quot; : &quot;&quot;
+					});
+					paginationButton.append(paginationButtonInner);
+</P><P>					paginationButton.data(&quot;owl-page&quot;,lastPage === i ? lastItem : i);
+					paginationButton.data(&quot;owl-roundPages&quot;,counter);
+</P><P>					base.paginationWrapper.append(paginationButton);
+				}
+			}
+			base.checkPagination();
+		},
+		checkPagination : function(){
+			var base = this;
+			if(base.options.pagination === false){
+				return false;
+			}
+			base.paginationWrapper.find(&quot;.owl-page&quot;).each(function(i,v){
+				if($(this).data(&quot;owl-roundPages&quot;) === $(base.$owlItems[base.currentItem]).data(&quot;owl-roundPages&quot;) ){
+					base.paginationWrapper
+						.find(&quot;.owl-page&quot;)
+						.removeClass(&quot;active&quot;);
+					$(this).addClass(&quot;active&quot;);
+				}
+			});
+		},
+</P><P>		checkNavigation : function(){
+			var base = this;
+</P><P>			if(base.options.navigation === false){
+				return false;
+			}
+			if(base.options.rewindNav === false){
+				if(base.currentItem === 0 &amp;&amp; base.maximumItem === 0){
+					base.buttonPrev.addClass(&quot;disabled&quot;);
+					base.buttonNext.addClass(&quot;disabled&quot;);
+				} else if(base.currentItem === 0 &amp;&amp; base.maximumItem !== 0){
+					base.buttonPrev.addClass(&quot;disabled&quot;);
+					base.buttonNext.removeClass(&quot;disabled&quot;);
+				} else if (base.currentItem === base.maximumItem){
+					base.buttonPrev.removeClass(&quot;disabled&quot;);
+					base.buttonNext.addClass(&quot;disabled&quot;);
+				} else if(base.currentItem !== 0 &amp;&amp; base.currentItem !== base.maximumItem){
+					base.buttonPrev.removeClass(&quot;disabled&quot;);
+					base.buttonNext.removeClass(&quot;disabled&quot;);
+				}
+			}
+		},
+</P><P>		updateControls : function(){
+			var base = this;
+			base.updatePagination();
+			base.checkNavigation();
+			if(base.owlControls){
+				if(base.options.items &gt;= base.itemsAmount){
+					base.owlControls.hide();
+				} else {
+					base.owlControls.show();
+				}
+			}
+		},
+</P><P>		destroyControls : function(){
+			var base = this;
+			if(base.owlControls){
+				base.owlControls.remove();
+			}
+		},
+</P><P>		next : function(speed){
+			var base = this;
+</P><P>			if(base.isTransition){
+				return false;
+			}
+</P><P>			base.currentItem += base.options.scrollPerPage === true ? base.options.items : 1;
+			if(base.currentItem &gt; base.maximumItem + (base.options.scrollPerPage == true ? (base.options.items - 1) : 0)){
+				if(base.options.rewindNav === true){
+					base.currentItem = 0;
+					speed = &quot;rewind&quot;;
+				} else {
+					base.currentItem = base.maximumItem;
+					return false;
+				}
+			}
+			base.goTo(base.currentItem,speed);
+		},
+</P><P>		prev : function(speed){
+			var base = this;
+</P><P>			if(base.isTransition){
+				return false;
+			}
+</P><P>			if(base.options.scrollPerPage === true &amp;&amp; base.currentItem &gt; 0 &amp;&amp; base.currentItem &lt; base.options.items){
+				base.currentItem = 0
+			} else {
+				base.currentItem -= base.options.scrollPerPage === true ? base.options.items : 1;
+			}
+			if(base.currentItem &lt; 0){
+				if(base.options.rewindNav === true){
+					base.currentItem = base.maximumItem;
+					speed = &quot;rewind&quot;
+				} else {
+					base.currentItem =0;
+					return false;
+				}
+			}
+			base.goTo(base.currentItem,speed);
+		},
+</P><P>		goTo : function(position,speed,drag){
+			var base = this;
+</P><P>			if(base.isTransition){
+				return false;
+			}
+			if(typeof base.options.beforeMove === &quot;function&quot;) {
+				base.options.beforeMove.apply(this,[base.$elem]);
+			}
+			if(position &gt;= base.maximumItem){
+				position = base.maximumItem;
+			}
+			else if( position &lt;= 0 ){
+				position = 0;
+			}
+</P><P>		base.currentItem = base.owl.currentItem = position;
+			if( base.options.transitionStyle !== false &amp;&amp; drag !== &quot;drag&quot; &amp;&amp; base.options.items === 1 &amp;&amp; base.browser.support3d === true){
+				base.swapSpeed(0)
+				if(base.browser.support3d === true){
+					base.transition3d(base.positionsInArray[position]);
+				} else {
+					base.css2slide(base.positionsInArray[position],1);
+				}
+				base.afterGo();
+				base.singleItemTransition();
+</P><P>				return false;
+			}
+			var goToPixel = base.positionsInArray[position];
+</P><P>			if(base.browser.support3d === true){
+				base.isCss3Finish = false;
+</P><P>				if(speed === true){
+					base.swapSpeed(&quot;paginationSpeed&quot;);
+					setTimeout(function() {
+						base.isCss3Finish = true;
+					}, base.options.paginationSpeed);
+</P><P>				} else if(speed === &quot;rewind&quot; ){
+					base.swapSpeed(base.options.rewindSpeed);
+					setTimeout(function() {
+						base.isCss3Finish = true;
+					}, base.options.rewindSpeed);
+</P><P>				} else {
+					base.swapSpeed(&quot;slideSpeed&quot;);
+					setTimeout(function() {
+						base.isCss3Finish = true;
+					}, base.options.slideSpeed);
+				}
+				base.transition3d(goToPixel);
+			} else {
+				if(speed === true){
+					base.css2slide(goToPixel, base.options.paginationSpeed);
+				} else if(speed === &quot;rewind&quot; ){
+					base.css2slide(goToPixel, base.options.rewindSpeed);
+				} else {
+					base.css2slide(goToPixel, base.options.slideSpeed);
+				}
+			}
+			base.afterGo();
+		},
+</P><P>		jumpTo : function(position){
+			var base = this;
+			if(typeof base.options.beforeMove === &quot;function&quot;) {
+				base.options.beforeMove.apply(this,[base.$elem]);
+			}
+			if(position &gt;= base.maximumItem || position === -1){
+				position = base.maximumItem;
+			}
+			else if( position &lt;= 0 ){
+				position = 0;
+			}
+			base.swapSpeed(0)
+			if(base.browser.support3d === true){
+				base.transition3d(base.positionsInArray[position]);
+			} else {
+				base.css2slide(base.positionsInArray[position],1);
+			}
+			base.currentItem = base.owl.currentItem = position;
+			base.afterGo();
+		},
+</P><P>		afterGo : function(){
+			var base = this;
+</P><P>			base.prevArr.push(base.currentItem);
+			base.prevItem = base.owl.prevItem = base.prevArr[base.prevArr.length -2];
+			base.prevArr.shift(0)
+</P><P>			if(base.prevItem !== base.currentItem){
+				base.checkPagination();
+				base.checkNavigation();
+				base.eachMoveUpdate();
+</P><P>				if(base.options.autoPlay !== false){
+					base.checkAp();
+				}
+			}
+			if(typeof base.options.afterMove === &quot;function&quot; &amp;&amp; base.prevItem !== base.currentItem) {
+				base.options.afterMove.apply(this,[base.$elem]);
+			}
+		},
+</P><P>		stop : function(){
+			var base = this;
+			base.apStatus = &quot;stop&quot;;
+			clearInterval(base.autoPlayInterval);
+		},
+</P><P>		checkAp : function(){
+			var base = this;
+			if(base.apStatus !== &quot;stop&quot;){
+				base.play();
+			}
+		},
+</P><P>		play : function(){
+			var base = this;
+			base.apStatus = &quot;play&quot;;
+			if(base.options.autoPlay === false){
+				return false;
+			}
+			clearInterval(base.autoPlayInterval);
+			base.autoPlayInterval = setInterval(function(){
+				base.next(true);
+			},base.options.autoPlay);
+		},
+</P><P>		swapSpeed : function(action){
+			var base = this;
+			if(action === &quot;slideSpeed&quot;){
+				base.$owlWrapper.css(base.addCssSpeed(base.options.slideSpeed));
+			} else if(action === &quot;paginationSpeed&quot; ){
+				base.$owlWrapper.css(base.addCssSpeed(base.options.paginationSpeed));
+			} else if(typeof action !== &quot;string&quot;){
+				base.$owlWrapper.css(base.addCssSpeed(action));
+			}
+		},
+</P><P>		addCssSpeed : function(speed){
+			var base = this;
+			return {
+				&quot;-webkit-transition&quot;: &quot;all &quot;+ speed +&quot;ms ease&quot;,
+				&quot;-moz-transition&quot;: &quot;all &quot;+ speed +&quot;ms ease&quot;,
+				&quot;-o-transition&quot;: &quot;all &quot;+ speed +&quot;ms ease&quot;,
+				&quot;transition&quot;: &quot;all &quot;+ speed +&quot;ms ease&quot;
+			};
+		},
+</P><P>		removeTransition : function(){
+			return {
+				&quot;-webkit-transition&quot;: &quot;&quot;,
+				&quot;-moz-transition&quot;: &quot;&quot;,
+				&quot;-o-transition&quot;: &quot;&quot;,
+				&quot;transition&quot;: &quot;&quot;
+			};
+		},
+</P><P>		doTranslate : function(pixels){
+			return {
+				&quot;-webkit-transform&quot;: &quot;translate3d(&quot;+pixels+&quot;px, 0px, 0px)&quot;,
+				&quot;-moz-transform&quot;: &quot;translate3d(&quot;+pixels+&quot;px, 0px, 0px)&quot;,
+				&quot;-o-transform&quot;: &quot;translate3d(&quot;+pixels+&quot;px, 0px, 0px)&quot;,
+				&quot;-ms-transform&quot;: &quot;translate3d(&quot;+pixels+&quot;px, 0px, 0px)&quot;,
+				&quot;transform&quot;: &quot;translate3d(&quot;+pixels+&quot;px, 0px,0px)&quot;
+			};
+		},
+</P><P>		transition3d : function(value){
+			var base = this;
+			base.$owlWrapper.css(base.doTranslate(value));
+		},
+</P><P>		css2move : function(value){
+			var base = this;
+			base.$owlWrapper.css({&quot;left&quot; : value})
+		},
+</P><P>		css2slide : function(value,speed){
+			var base = this;
+</P><P>			base.isCssFinish = false;
+			base.$owlWrapper.stop(true,true).animate({
+				&quot;left&quot; : value
+			}, {
+				duration : speed || base.options.slideSpeed ,
+				complete : function(){
+					base.isCssFinish = true;
+				}
+			});
+		},
+</P><P>		checkBrowser : function(){
+			var base = this;
+</P><P>			//Check 3d support
+			var	translate3D = &quot;translate3d(0px, 0px, 0px)&quot;,
+				tempElem = document.createElement(&quot;div&quot;);
+</P><P>			tempElem.style.cssText= &quot;  -moz-transform:&quot;    + translate3D +
+								  &quot;; -ms-transform:&quot;     + translate3D +
+								  &quot;; -o-transform:&quot;      + translate3D +
+								  &quot;; -webkit-transform:&quot; + translate3D +
+								  &quot;; transform:&quot;         + translate3D;
+			var	regex = /translate3d\(0px, 0px, 0px\)/g,
+				asSupport = tempElem.style.cssText.match(regex),
+				support3d = (asSupport !== null &amp;&amp; asSupport.length === 1);
+</P><P>			var isTouch = &quot;ontouchstart&quot; in window || navigator.msMaxTouchPoints;
+</P><P>			base.browser = {
+				&quot;support3d&quot; : support3d,
+				&quot;isTouch&quot; : isTouch
+			}
+		},
+</P><P>		moveEvents : function(){
+			var base = this;
+			if(base.options.mouseDrag !== false || base.options.touchDrag !== false){
+				base.gestures();
+				base.disabledEvents();
+			}
+		},
+</P><P>		eventTypes : function(){
+			var base = this;
+			var types = [&quot;s&quot;,&quot;e&quot;,&quot;x&quot;];
+</P><P>			base.ev_types = {};
+</P><P>			if(base.options.mouseDrag === true &amp;&amp; base.options.touchDrag === true){
+				types = [
+					&quot;touchstart.owl mousedown.owl&quot;,
+					&quot;touchmove.owl mousemove.owl&quot;,
+					&quot;touchend.owl touchcancel.owl mouseup.owl&quot;
+				];
+			} else if(base.options.mouseDrag === false &amp;&amp; base.options.touchDrag === true){
+				types = [
+					&quot;touchstart.owl&quot;,
+					&quot;touchmove.owl&quot;,
+					&quot;touchend.owl touchcancel.owl&quot;
+				];
+			} else if(base.options.mouseDrag === true &amp;&amp; base.options.touchDrag === false){
+				types = [
+					&quot;mousedown.owl&quot;,
+					&quot;mousemove.owl&quot;,
+					&quot;mouseup.owl&quot;
+				];
+			}
+</P><P>			base.ev_types[&quot;start&quot;] = types[0];
+			base.ev_types[&quot;move&quot;] = types[1];
+			base.ev_types[&quot;end&quot;] = types[2];
+		},
+</P><P>		disabledEvents :  function(){
+			var base = this;
+			base.$elem.on(&quot;dragstart.owl&quot;, function(event) { event.preventDefault();});
+			base.$elem.on(&quot;mousedown.disableTextSelect&quot;, function(e) {
+				return $(e.target).is('input, textarea, select, option');
+			});
+		},
+</P><P>		gestures : function(){
+			var base = this;
+</P><P>			var locals = {
+				offsetX : 0,
+				offsetY : 0,
+				baseElWidth : 0,
+				relativePos : 0,
+				position: null,
+				minSwipe : null,
+				maxSwipe: null,
+				sliding : null,
+				dargging: null,
+				targetElement : null
+			}
+</P><P>			base.isCssFinish = true;
+</P><P>			function getTouches(event){
+				if(event.touches){
+					return {
+						x : event.touches[0].pageX,
+						y : event.touches[0].pageY
+					}
+				} else {
+					if(event.pageX !== undefined){
+						return {
+							x : event.pageX,
+							y : event.pageY
+						}
+					} else {
+						return {
+							x : event.clientX,
+							y : event.clientY
+						}
+					}
+				}
+			}
+</P><P>			function swapEvents(type){
+				if(type === &quot;on&quot;){
+					$(document).on(base.ev_types[&quot;move&quot;], dragMove);
+					$(document).on(base.ev_types[&quot;end&quot;], dragEnd);
+				} else if(type === &quot;off&quot;){
+					$(document).off(base.ev_types[&quot;move&quot;]);
+					$(document).off(base.ev_types[&quot;end&quot;]);
+				}
+			}
+</P><P>			function dragStart(event) {
+				var event = event.originalEvent || event || window.event;
+</P><P>				if (event.which === 3) {
+					return false;
+				}
+				if(base.itemsAmount &lt;= base.options.items){
+					return;
+				}
+				if(base.isCssFinish === false &amp;&amp; !base.options.dragBeforeAnimFinish ){
+					return false;
+				}
+				if(base.isCss3Finish === false &amp;&amp; !base.options.dragBeforeAnimFinish ){
+					return false;
+				}
+</P><P>				if(base.options.autoPlay !== false){
+					clearInterval(base.autoPlayInterval);
+				}
+</P><P>				if(base.browser.isTouch !== true &amp;&amp; !base.$owlWrapper.hasClass(&quot;grabbing&quot;)){
+					base.$owlWrapper.addClass(&quot;grabbing&quot;)
+				}
+</P><P>				base.newPosX = 0;
+				base.newRelativeX = 0;
+</P><P>				$(this).css(base.removeTransition());
+</P><P>				var position = $(this).position();
+				locals.relativePos = position.left;
+</P><P>				locals.offsetX = getTouches(event).x - position.left;
+				locals.offsetY = getTouches(event).y - position.top;
+</P><P>				swapEvents(&quot;on&quot;);
+</P><P>				locals.sliding = false;
+				locals.targetElement = event.target || event.srcElement;
+			}
+</P><P>			function dragMove(event){
+				var event = event.originalEvent || event || window.event;
+</P><P>				base.newPosX = getTouches(event).x- locals.offsetX;
+				base.newPosY = getTouches(event).y - locals.offsetY;
+				base.newRelativeX = base.newPosX - locals.relativePos;	
+</P><P>				if (typeof base.options.startDragging === &quot;function&quot; &amp;&amp; locals.dragging !== true &amp;&amp; base.newRelativeX !== 0) {
+					locals.dragging = true;
+					base.options.startDragging.apply(base,[base.$elem]);
+				}
+</P><P>				if(base.newRelativeX &gt; 8 || base.newRelativeX &lt; -8 &amp;&amp; base.browser.isTouch === true){
+					event.preventDefault ? event.preventDefault() : event.returnValue = false;
+					locals.sliding = true;
+				}
+</P><P>				if((base.newPosY &gt; 10 || base.newPosY &lt; -10) &amp;&amp; locals.sliding === false){
+					$(document).off(&quot;touchmove.owl&quot;);
+				}
+</P><P>				var minSwipe = function(){
+					return  base.newRelativeX / 5;
+				}
+				var maxSwipe = function(){
+					return  base.maximumPixels + base.newRelativeX / 5;
+				}
+</P><P>				base.newPosX = Math.max(Math.min( base.newPosX, minSwipe() ), maxSwipe() );
+				if(base.browser.support3d === true){
+					base.transition3d(base.newPosX);
+				} else {
+					base.css2move(base.newPosX);
+				}
+			}
+</P><P>			function dragEnd(event){
+				var event = event.originalEvent || event || window.event;
+				event.target = event.target || event.srcElement;
+</P><P>				locals.dragging = false;
+</P><P>				if(base.browser.isTouch !== true){
+					base.$owlWrapper.removeClass(&quot;grabbing&quot;);
+				}
+</P><P>				if(base.newRelativeX&lt;0){
+					base.dragDirection = base.owl.dragDirection = &quot;left&quot;
+				} else {
+					base.dragDirection = base.owl.dragDirection = &quot;right&quot;
+				}
+</P><P>				if(base.newRelativeX !== 0){
+					var newPosition = base.getNewPosition();
+					base.goTo(newPosition,false,&quot;drag&quot;);
+					if(locals.targetElement === event.target &amp;&amp; base.browser.isTouch !== true){
+						$(event.target).on(&quot;click.disable&quot;, function(ev){
+							ev.stopImmediatePropagation();
+							ev.stopPropagation();
+							ev.preventDefault();
+							$(event.target).off(&quot;click.disable&quot;);
+						});
+						var handlers = $._data(event.target, &quot;events&quot;)[&quot;click&quot;];
+						var owlStopEvent = handlers.pop();
+						handlers.splice(0, 0, owlStopEvent);
+					}
+				}
+				swapEvents(&quot;off&quot;);
+			}
+			base.$elem.on(base.ev_types[&quot;start&quot;], &quot;.owl-wrapper&quot;, dragStart); 
+		},
+</P><P>		getNewPosition : function(){
+			var base = this,
+				newPosition;
+</P><P>			newPosition = base.closestItem();
+</P><P>			if(newPosition&gt;base.maximumItem){
+				base.currentItem = base.maximumItem;
+				newPosition  = base.maximumItem;
+			} else if( base.newPosX &gt;=0 ){
+				newPosition = 0;
+				base.currentItem = 0;
+			}
+			return newPosition;
+		},
+		closestItem : function(){
+			var base = this,
+				array = base.options.scrollPerPage === true ? base.pagesInArray : base.positionsInArray,
+				goal = base.newPosX,
+				closest = null;
+</P><P>			$.each(array, function(i,v){
+				if( goal - (base.itemWidth/20) &gt; array[i+1] &amp;&amp; goal - (base.itemWidth/20)&lt; v &amp;&amp; base.moveDirection() === &quot;left&quot;) {
+					closest = v;
+					if(base.options.scrollPerPage === true){
+						base.currentItem = $.inArray(closest, base.positionsInArray);
+					} else {
+						base.currentItem = i;
+					}
+				} 
+				else if (goal + (base.itemWidth/20) &lt; v &amp;&amp; goal + (base.itemWidth/20) &gt; (array[i+1] || array[i]-base.itemWidth) &amp;&amp; base.moveDirection() === &quot;right&quot;){
+					if(base.options.scrollPerPage === true){
+						closest = array[i+1] || array[array.length-1];
+						base.currentItem = $.inArray(closest, base.positionsInArray);
+					} else {
+						closest = array[i+1];
+						base.currentItem = i+1;
+					}
+				}
+			});
+			return base.currentItem;
+		},
+</P><P>		moveDirection : function(){
+			var base = this,
+				direction;
+			if(base.newRelativeX &lt; 0 ){
+				direction = &quot;right&quot;
+				base.playDirection = &quot;next&quot;
+			} else {
+				direction = &quot;left&quot;
+				base.playDirection = &quot;prev&quot;
+			}
+			return direction
+		},
+</P><P>		customEvents : function(){
+			var base = this;
+			base.$elem.on(&quot;owl.next&quot;,function(){
+				base.next();
+			});
+			base.$elem.on(&quot;owl.prev&quot;,function(){
+				base.prev();
+			});
+			base.$elem.on(&quot;owl.play&quot;,function(event,speed){
+				base.options.autoPlay = speed;
+				base.play();
+				base.hoverStatus = &quot;play&quot;;
+			});
+			base.$elem.on(&quot;owl.stop&quot;,function(){
+				base.stop();
+				base.hoverStatus = &quot;stop&quot;;
+			});
+			base.$elem.on(&quot;owl.goTo&quot;,function(event,item){
+				base.goTo(item)
+			});
+			base.$elem.on(&quot;owl.jumpTo&quot;,function(event,item){
+				base.jumpTo(item)
+			});
+		},
+</P><P>		stopOnHover : function(){
+			var base = this;
+			if(base.options.stopOnHover === true &amp;&amp; base.browser.isTouch !== true &amp;&amp; base.options.autoPlay !== false){
+				base.$elem.on(&quot;mouseover&quot;, function(){
+					base.stop();
+				});
+				base.$elem.on(&quot;mouseout&quot;, function(){
+					if(base.hoverStatus !== &quot;stop&quot;){
+						base.play();
+					}
+				});
+			}
+		},
+</P><P>		lazyLoad : function(){
+			var base = this;
+</P><P>			if(base.options.lazyLoad === false){
+				return false;
+			}
+			for(var i=0; i&lt;base.itemsAmount; i++){
+				var $item = $(base.$owlItems[i]);
+</P><P>				if($item.data(&quot;owl-loaded&quot;) === &quot;loaded&quot;){
+					continue;
+				}
+</P><P>				var	itemNumber = $item.data(&quot;owl-item&quot;),
+					$lazyImg = $item.find(&quot;.lazyOwl&quot;),
+					follow;
+</P><P>				if( typeof $lazyImg.data(&quot;src&quot;) !== &quot;string&quot;){
+					$item.data(&quot;owl-loaded&quot;,&quot;loaded&quot;);
+					continue;
+				}				
+				if($item.data(&quot;owl-loaded&quot;) === undefined){
+					$lazyImg.hide();
+					$item.addClass(&quot;loading&quot;).data(&quot;owl-loaded&quot;,&quot;checked&quot;);
+				}
+				if(base.options.lazyFollow === true){
+					follow = itemNumber &gt;= base.currentItem;
+				} else {
+					follow = true;
+				}
+				if(follow &amp;&amp; itemNumber &lt; base.currentItem + base.options.items &amp;&amp; $lazyImg.length){
+					base.lazyPreload($item,$lazyImg);
+				}
+			}
+		},
+</P><P>		lazyPreload : function($item,$lazyImg){
+			var base = this,
+				iterations = 0;
+				if ($lazyImg.prop(&quot;tagName&quot;) === &quot;DIV&quot;) {
+					$lazyImg.css(&quot;background-image&quot;, &quot;url(&quot; + $lazyImg.data(&quot;src&quot;)+ &quot;)&quot; );
+					var isBackgroundImg=true;
+				} else {
+					$lazyImg[0].src = $lazyImg.data(&quot;src&quot;);
+				}
+				checkLazyImage();
+</P><P>			function checkLazyImage(){
+				iterations += 1;
+				if (base.completeImg($lazyImg.get(0)) || isBackgroundImg === true) {
+					showImage();
+				} else if(iterations &lt;= 100){//if image loads in less than 10 seconds 
+					setTimeout(checkLazyImage,100);
+				} else {
+					showImage();
+				}
+			}
+			function showImage(){
+				$item.data(&quot;owl-loaded&quot;, &quot;loaded&quot;).removeClass(&quot;loading&quot;);
+				$lazyImg.removeAttr(&quot;data-src&quot;);
+				base.options.lazyEffect === &quot;fade&quot; ? $lazyImg.fadeIn(400) : $lazyImg.show();
+				if(typeof base.options.afterLazyLoad === &quot;function&quot;) {
+					base.options.afterLazyLoad.apply(this,[base.$elem]);
+				}
+			}
+		},
+</P><P>		autoHeight : function(){
+			var base = this;
+			var $currentimg = $(base.$owlItems[base.currentItem]).find(&quot;img&quot;);
+</P><P>			if($currentimg.get(0) !== undefined ){
+				var iterations = 0;
+				checkImage();
+			} else {
+				addHeight();
+			}
+			function checkImage(){
+				iterations += 1;
+				if ( base.completeImg($currentimg.get(0)) ) {
+					addHeight();
+				} else if(iterations &lt;= 100){ //if image loads in less than 10 seconds 
+					setTimeout(checkImage,100);
+				} else {
+					base.wrapperOuter.css(&quot;height&quot;, &quot;&quot;); //Else remove height attribute
+				}
+			}
+</P><P>			function addHeight(){
+				var $currentItem = $(base.$owlItems[base.currentItem]).height();
+				base.wrapperOuter.css(&quot;height&quot;,$currentItem+&quot;px&quot;);
+				if(!base.wrapperOuter.hasClass(&quot;autoHeight&quot;)){
+					setTimeout(function(){
+						base.wrapperOuter.addClass(&quot;autoHeight&quot;);
+					},0);
+				}
+			}
+		},
+</P><P>		completeImg : function(img) {
+		    if (!img.complete) {
+		        return false;
+		    }
+		    if (typeof img.naturalWidth !== &quot;undefined&quot; &amp;&amp; img.naturalWidth == 0) {
+		        return false;
+		    }
+		    return true;
+		},
+</P><P>		onVisibleItems : function(){
+			var base = this;
+</P><P>			if(base.options.addClassActive === true){
+				base.$owlItems.removeClass(&quot;active&quot;);
+			}
+			base.visibleItems = [];
+			for(var i=base.currentItem; i&lt;base.currentItem + base.options.items; i++){
+				base.visibleItems.push(i);
+</P><P>				if(base.options.addClassActive === true){
+					$(base.$owlItems[i]).addClass(&quot;active&quot;);
+				}
+			}
+			base.owl.visibleItems = base.visibleItems;
+		},
+</P><P>		transitionTypes : function(className){
+			var base = this;
+			//Currently available: &quot;fade&quot;,&quot;backSlide&quot;,&quot;goDown&quot;,&quot;fadeUp&quot;
+			base.outClass = &quot;owl-&quot;+className+&quot;-out&quot;;
+			base.inClass = &quot;owl-&quot;+className+&quot;-in&quot;;
+		},
+</P><P>		singleItemTransition : function(){
+			var base = this;
+			base.isTransition = true;
+</P><P>			var outClass = base.outClass,
+				inClass = base.inClass,
+				$currentItem = base.$owlItems.eq(base.currentItem),
+				$prevItem = base.$owlItems.eq(base.prevItem),
+				prevPos = Math.abs(base.positionsInArray[base.currentItem]) + base.positionsInArray[base.prevItem],
+				origin = Math.abs(base.positionsInArray[base.currentItem])+base.itemWidth/2;
+</P><PRE>           base.$owlWrapper
+</PRE><P>	            .addClass('owl-origin')
+	            .css({
+	            	&quot;-webkit-transform-origin&quot; : origin+&quot;px&quot;,
+	            	&quot;-moz-perspective-origin&quot; : origin+&quot;px&quot;,
+	            	&quot;perspective-origin&quot; : origin+&quot;px&quot;
+	            });
+	        function transStyles(prevPos,zindex){
+				return {
+					&quot;position&quot; : &quot;relative&quot;,
+					&quot;left&quot; : prevPos+&quot;px&quot;
+				};
+			}
+</P><P>	        var animEnd = 'webkitAnimationEnd oAnimationEnd MSAnimationEnd animationend';
+</P><P>			$prevItem
+			.css(transStyles(prevPos,10))
+			.addClass(outClass)
+			.on(animEnd, function() {
+				base.endPrev = true;
+				$prevItem.off(animEnd);
+		    	base.clearTransStyle($prevItem,outClass);
+			});
+</P><P>			$currentItem
+			.addClass(inClass)
+			.on(animEnd, function() {
+				base.endCurrent = true;
+				$currentItem.off(animEnd);
+		    	base.clearTransStyle($currentItem,inClass);
+		    });
+		},
+</P><P>		clearTransStyle : function(item,classToRemove){
+			var base = this;
+			item.css({
+					&quot;position&quot; : &quot;&quot;,
+					&quot;left&quot; : &quot;&quot;
+				})
+				.removeClass(classToRemove);
+			if(base.endPrev &amp;&amp; base.endCurrent){
+				base.$owlWrapper.removeClass('owl-origin');
+				base.endPrev = false;
+				base.endCurrent = false;
+				base.isTransition = false;
+			}
+		},
+</P><P>		owlStatus : function(){
+			var base = this;
+			base.owl = {
+				&quot;userOptions&quot;	: base.userOptions,
+				&quot;baseElement&quot; 	: base.$elem,
+				&quot;userItems&quot;		: base.$userItems,
+				&quot;owlItems&quot;		: base.$owlItems,
+				&quot;currentItem&quot;	: base.currentItem,
+				&quot;prevItem&quot;		: base.prevItem,
+				&quot;visibleItems&quot;	: base.visibleItems,
+				&quot;isTouch&quot; 		: base.browser.isTouch,
+				&quot;browser&quot;		: base.browser,
+				&quot;dragDirection&quot; : base.dragDirection
+			}
+		},
+</P><P>		clearEvents : function(){
+			var base = this;
+			base.$elem.off(&quot;.owl owl mousedown.disableTextSelect&quot;);
+			$(document).off(&quot;.owl owl&quot;);
+			$(window).off(&quot;resize&quot;, base.resizer);
+		},
+</P><P>		unWrap : function(){
+			var base = this;
+			if(base.$elem.children().length !== 0){
+				base.$owlWrapper.unwrap();
+				base.$userItems.unwrap().unwrap();
+				if(base.owlControls){
+					base.owlControls.remove();
+				}
+			}
+			base.clearEvents();
+			base.$elem
+				.attr(&quot;style&quot;, base.$elem.data(&quot;owl-originalStyles&quot;) || &quot;&quot;)
+				.attr(&quot;class&quot;, base.$elem.data(&quot;owl-originalClasses&quot;));
+		},
+</P><P>		destroy : function(){
+			var base = this;
+			base.stop();
+			clearInterval(base.checkVisible);
+			base.unWrap();
+			base.$elem.removeData();
+		},
+</P><P>		reinit : function(newOptions){
+			var base = this;
+			var options = $.extend({}, base.userOptions, newOptions);
+		 	base.unWrap();
+		 	base.init(options,base.$elem);
+		},
+</P><P>		addItem : function(htmlString,targetPosition){
+			var base = this,
+				position;
+</P><P>			if(!htmlString){return false}
+</P><P>			if(base.$elem.children().length === 0){
+				base.$elem.append(htmlString);
+				base.setVars();
+				return false;
+			}
+			base.unWrap();
+			if(targetPosition === undefined || targetPosition === -1){
+				position = -1;
+			} else {
+				position = targetPosition;
+			}
+			if(position &gt;= base.$userItems.length || position === -1){
+				base.$userItems.eq(-1).after(htmlString)
+			} else {
+				base.$userItems.eq(position).before(htmlString)
+			}
+</P><P>			base.setVars();
+		},
+</P><P>		removeItem : function(targetPosition){
+			var base = this,
+				position;
+</P><P>			if(base.$elem.children().length === 0){return false}
+</P><P>			if(targetPosition === undefined || targetPosition === -1){
+				position = -1;
+			} else {
+				position = targetPosition;
+			}
+</P><P>			base.unWrap();
+			base.$userItems.eq(position).remove();
+			base.setVars();
+		}
+</P><P>	};
+</P><P>	$.fn.owlCarousel = function( options ){
+		return this.each(function() {
+			if($(this).data(&quot;owl-init&quot;) === true){
+				return false;
+			}
+			$(this).data(&quot;owl-init&quot;, true);
+			var carousel = Object.create( Carousel );
+			carousel.init( options, this );
+			$.data( this, &quot;owlCarousel&quot;, carousel );
+		});
+	};
+</P><P>	$.fn.owlCarousel.options = {
+</P><P>		items : 1,
+		itemsCustom : false,
+		itemsDesktop : [1199,1],
+		itemsDesktopSmall : [979,1],
+		itemsTablet : [768,1],
+		itemsTabletSmall : false,
+		itemsMobile : [479,1],
+		singleItem : false,
+		itemsScaleUp : false,
+</P><P>		slideSpeed : 200,
+		paginationSpeed : 800,
+		rewindSpeed : 1000,
+</P><P>		autoPlay : false,
+		stopOnHover : false,
+</P><P>		navigation : false,
+		navigationText : [&quot;prev&quot;,&quot;next&quot;],
+		rewindNav : true,
+		scrollPerPage : false,
+</P><P>		pagination : true,
+		paginationNumbers : false,
+</P><P>		responsive : true,
+		responsiveRefreshRate : 200,
+		responsiveBaseWidth	: window,
+</P><P>
+		baseClass : &quot;owl-carousel&quot;,
+		theme : &quot;owl-theme&quot;,
+</P><P>		lazyLoad : false,
+		lazyFollow : true,
+		lazyEffect : &quot;fade&quot;,
+</P><P>		autoHeight : false,
+</P><P>		jsonPath : false,
+		jsonSuccess : false,
+</P><P>		dragBeforeAnimFinish : true,
+		mouseDrag : true,
+		touchDrag : true,
+</P><P>		addClassActive : false,
+		transitionStyle : false,
+</P><P>		beforeUpdate : false,
+		afterUpdate : false,
+		beforeInit : false,
+		afterInit : false,
+		beforeMove : false,
+		afterMove : false,
+		afterAction : false,
+		startDragging : false,
+		afterLazyLoad: false
+</P><P>	};
+</P>
+})( jQuery, window, document );</DIV></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

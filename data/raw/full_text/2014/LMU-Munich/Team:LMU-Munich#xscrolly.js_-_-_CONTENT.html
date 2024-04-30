@@ -1,0 +1,254 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_LMU-Munich_xscrolly_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:LMU-Munich/xscrolly.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:LMU-Munich/xscrolly.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:LMU-Munich/xscrolly.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:LMU-Munich/xscrolly.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:LMU-Munich/xscrolly.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:LMU-Munich/xscrolly.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/*jshint expr:true*/
+</P><P>// define(['jquery', 'underscore'], function($, _) {
+window.XScrollY = (function($, _) {
+</P><PRE> 'use strict';
+</PRE><PRE> var defaultOptions = {
+   // setup options: these can only be set once
+   container: window,     // selector for scroll container, should also be an offset parent
+   targets: 'section',    // selector for the targets
+</PRE><PRE>   // configuration options
+   updateOffsets: 3,      // force script to re-calculate offsets:
+                          //   0 (default)   calculate only the first time
+                          //   1             re-calculate after `unveil`
+                          //   2             re-calculate after `change`
+                          //   3             re-calculate every scroll
+   offset: 200,             // pixels from the top of the page to set the origin
+   throttle: 200          // milliseconds to de-bounce the scroll event
+ };
+</PRE><PRE> function XScrollY(options) {
+   var self = this;
+   this._seen = [];
+   this.options = $.extend({}, defaultOptions, options || {});
+   this.$scrollElement = $(this.options.container);
+   this.$active = $();
+   this.updateTargets();
+   this.updateOffsets();
+   this.$scrollElement.on('scroll.xscrolly',
+     _.throttle(function() { self.process.call(self); }, this.options.throttle));
+   this.process();
+   // TODO move this around? If it's inside `process` we have to branch inside
+   // an event handler, which is almost as bad as a branch inside a loop. If
+   // it's above `process` then we don't know what's active.
+   this.options.start &amp;&amp; this.options.start.call(this, this.$active);
+ }
+</PRE><PRE> // get targets and offsets
+ XScrollY.prototype.updateTargets = function() {
+   this.$targets = $(this.options.targets);
+ };
+</PRE><PRE> // update the offsets cache and offset-to-target map, passed in by reference.
+ XScrollY.prototype._updateOffsets = function($target, _offsets, _map) {
+   $target.each(function(idx, target) {
+     var offset = $(target).position().top;
+     if (!_map[offset]) {
+       _map[offset] = [];
+     }
+     _offsets.push(offset);
+     _map[offset].push(target);
+   });
+   _offsets = _offsets.sort(function(a, b) { return a - b; });
+ };
+</PRE><PRE> // update target offset lookup
+ XScrollY.prototype.updateOffsets = function() {
+   this.offsets = [];
+   this.offsetMap = {};
+   this._updateOffsets(this.$targets, this.offsets, this.offsetMap);
+ };
+</PRE><PRE> // convenience method to update targets and offsets
+ XScrollY.prototype.update = function() {
+   this.updateTargets();
+   this.updateOffsets();
+ };
+</PRE><PRE> // get the active offset for the current scroll depth
+ XScrollY.prototype.getActiveOffset = function() {
+   var scrollTop = this.$scrollElement.scrollTop() + this.options.offset,
+       i = 0, n = this.offsets.length;
+   for (; i &lt; n; ++i) {
+     if (scrollTop &lt; this.offsets[i]) {
+       return this.offsets[Math.max(0, i - 1)];
+     }
+   }
+   return this.offsets[n - 1];
+ };
+</PRE><PRE> // Find target(s) directly above the origin. If there are multiple targets at
+ // the same vertical position, return all of them.
+ XScrollY.prototype.getActive = function() {
+   var offset = this.getActiveOffset();
+   this.activeOffset = offset;
+   return $(this.offsetMap[offset]);
+ };
+</PRE><PRE> // EVENTS
+</PRE><PRE> // Callback for the scroll event
+ XScrollY.prototype.process = function() {
+   if (this.options.updateOffsets === 3) {
+     this.updateOffsets();
+   }
+   var oldActiveOffset = this.activeOffset,
+       $active = this.getActive();  // this.activeOffset gets set in here :(
+   if (this.activeOffset != oldActiveOffset) {
+     this.change($active);
+   }
+   this.options.scroll &amp;&amp; this.options.scroll.call(this, $active);
+   this.$active = $active;
+ };
+</PRE><PRE> // when target scope changes
+ XScrollY.prototype.change = function($active) {
+   if (this.options.updateOffsets === 2) {
+     this.updateOffsets();
+   }
+   if (_.indexOf(this._seen, $active[0]) == -1) {
+     this._seen.push($active[0]);
+     this.unveil($active);
+   }
+   this.options.change &amp;&amp; this.options.change.call(this, $active);
+ };
+</PRE><PRE> // when target scope changes for the first time
+ XScrollY.prototype.unveil = function($active) {
+   if (this.options.updateOffsets === 1) {
+     this.updateOffsets();
+   }
+   this.options.unveil &amp;&amp; this.options.unveil.call(this, $active);
+ };
+</PRE><PRE> // METHODS
+</PRE><PRE> XScrollY.prototype.disable = function() {
+   // TODO
+   this.$scrollElement.off('.xscrolly');
+ };
+ XScrollY.prototype.enable = function() {
+   // TODO
+ };
+</PRE><PRE> // HELPER METHODS
+ //
+ // to get elements based purely on internally stored offsets
+</PRE><PRE> // get elements between `top` and `bottom` scroll depth.
+ XScrollY.prototype.slice = function(top, bottom, $target) {
+   var offsets = this.offsets,
+       offsetMap = this.offsetMap;
+   if ($target) {
+     offsets = [];
+     offsetMap = {};
+     this._updateOffsets($target, offsets, offsetMap);
+   }
+   var i = 0, n = offsets.length,
+       $ret = $(),
+       off;
+   for (; i &lt; n; ++i) {
+     off = offsets[i];
+     if (top &lt;= off &amp;&amp; off &lt; bottom) {
+       $ret = $ret.add(offsetMap[off]);
+     }
+   }
+   return $ret;
+ };
+</PRE><PRE> // get all targets visible on screen
+ //
+ // arguments:
+ //
+ //   localOffset    (default: 0) shift the viewport down this many pixels.
+ //                  Useful if you need to counter a global offset.
+ //   bleed          (default: 0) Extend the viewport this many pixels. Just
+ //                  like how bleed works in print.
+ //   $targets       (default: undefined) Use a custom set of targets.
+ //
+ XScrollY.prototype.visible = function(localOffset, bleed, $targets) {
+   // re-interpret the arguments
+   if (typeof localOffset === 'object' &amp;&amp; localOffset.jquery) {
+     $targets = localOffset;
+     localOffset = 0;
+     bleed = 0;
+   } else {
+     localOffset = localOffset || 0;
+     bleed = bleed || 0;
+   }
+</PRE><PRE>   var scrollTop = this.$scrollElement.scrollTop(),
+       scrollBottom = scrollTop + this.$scrollElement.height();
+   return this.slice(scrollTop + this.options.offset + localOffset - bleed,
+       scrollBottom + this.options.offset + localOffset + bleed,
+       $targets);
+ };
+</PRE><PRE> // get all targets above
+ XScrollY.prototype.above = function(localOffset, bleed, $targets) {
+   // re-interpret the arguments
+   if (typeof localOffset === 'object' &amp;&amp; localOffset.jquery) {
+     $targets = localOffset;
+     localOffset = 0;
+     bleed = 0;
+   } else {
+     localOffset = localOffset || 0;
+     bleed = bleed || 0;
+   }
+   var origin = this.$scrollElement.scrollTop();
+   return this.slice(0,
+       origin + this.options.offset + localOffset + bleed,
+       $targets);
+ };
+</PRE><PRE> // get all targets above origin + screen
+ XScrollY.prototype.aboves = function(localOffset, bleed, $targets) {
+   // re-interpret the arguments
+   if (typeof localOffset === 'object' &amp;&amp; localOffset.jquery) {
+     $targets = localOffset;
+     localOffset = 0;
+     bleed = 0;
+   } else {
+     localOffset = localOffset || 0;
+     bleed = bleed || 0;
+   }
+</PRE><PRE>   var origin = this.$scrollElement.scrollTop(),
+       origins = origin + this.$scrollElement.height();
+   return this.slice(0,
+       origins + this.options.offset + localOffset + bleed,
+       $targets);
+ };
+</PRE><PRE> // get all targets below
+ XScrollY.prototype.below = function(localOffset, bleed, $targets) {
+   // re-interpret the arguments
+   if (typeof localOffset === 'object' &amp;&amp; localOffset.jquery) {
+     $targets = localOffset;
+     localOffset = 0;
+     bleed = 0;
+   } else {
+     localOffset = localOffset || 0;
+     bleed = bleed || 0;
+   }
+</PRE><PRE>   var origin = this.$scrollElement.scrollTop();
+   return this.slice(origin + this.options.offset + localOffset - bleed,
+     Infinity,
+     $targets);
+ };
+</PRE><PRE> // get all targets below screen
+ XScrollY.prototype.belows = function(localOffset, bleed, $targets) {
+   // re-interpret the arguments
+   if (typeof localOffset === 'object' &amp;&amp; localOffset.jquery) {
+     $targets = localOffset;
+     localOffset = 0;
+     bleed = 0;
+   } else {
+     localOffset = localOffset || 0;
+     bleed = bleed || 0;
+   }
+</PRE><PRE>   var origin = this.$scrollElement.scrollTop(),
+       origins = origin + this.$scrollElement.height();
+   return this.slice(origins + this.options.offset + localOffset - bleed,
+     Infinity,
+     $targets);
+ };
+</PRE><PRE> // set an option: `option('offset', 100)`
+ // set several options: `option({offset: 100, throttle: 1000})`
+ XScrollY.prototype.option = function(key, value) {
+   if (typeof key === 'object' &amp;&amp; typeof value === 'undefined') {
+     $.extend(this.options, key);
+   } else {
+     this.options[key] = value;
+   }
+ };
+</PRE><PRE> return XScrollY;
+</PRE><P>})(window.jQuery, window._);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:LMU-Munich/xscrolly.js">http://2014.igem.org/Team:LMU-Munich/xscrolly.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:LMU-Munich/xscrolly.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:LMU-Munich/xscrolly.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:LMU-Munich/xscrolly.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:LMU-Munich/xscrolly.js&amp;oldid=406732" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

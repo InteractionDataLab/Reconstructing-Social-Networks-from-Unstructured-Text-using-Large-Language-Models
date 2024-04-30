@@ -1,0 +1,57 @@
+Team:BostonU HW/TERRA Software
+Argon Design System - Free Design System for Bootstrap 4
+PROJECT
+Project Description Modeling Demonstrate Collaborations
+DESIGN
+Project Components TERRA Adapter Hardware Software Product Design
+NOTEBOOK
+Timeline Improve Medal Criteria
+HUMAN PRACTICES
+TEAM
+Team Members Attributions Contribution
+Argon Design System - Free Design System for Bootstrap 4
+Software
+User Interface
+The UI is an intuitive web application that enables the user to interact with TERRA. The interface is designed so that it takes the necessary experiment information from the user and sends it to the device. The user will enter how many outputs their microfluidic chip has, the flow rate on the microfluidic chip, and properties about the fluid itself (density, continuous vs droplet, etc.). Given this information we are able to use our TERRA droplet predictive model to calculate a dispense time. The user can then select which wells each output should be dispensed into. This information is sent to the Arduino and enters the back-end software components. The video below demonstrates how an experimenter would use the UI.
+The UI is able to facilitate communication between the user and TERRA through the use of Peripheral Manager, a daemon that runs on the workstation and facilitates communication between cloud-based applications and hardware connected to the workstation. This communication link uses WebSockets, a communication protocol that enables two way communication between the browser and server. Peripheral Manager takes advantage of this protocol for serial communication with the Arduino.
+Designing the User Interface
+When initially designing TERRA our team knew that we needed some sort of platform for the user to interact with our system. During the designing and testing phases of the individual hardware components, a simple Serial Monitor was enough to communicate data via a microcontroller. However, a Serial Monitor is not an ideal platform for users to interact with devices, so we decided to create a user-friendly web application to use as the user interface for TERRA. In addition to the UI, the website also contains full assembly instructions, component descriptions, and other any other relevant documentation for the user to access. The goal was to create a one-stop website for users to help streamline their experience.
+The first step during the UI design process was to plan how it would look and create the static page via HTML/CSS/Bootstrap. The initial design, pictured below, was the first iteration of the UI. On the left side the user would enter information about their experiment, such as the number of outputs and the vessel they plan to use. They would then configure each output by inputting which control syringes from the control syringe pumps actuate it. Lastly, the user selects the wells for dispensing on the table under Output Destination.
+The feedback we received from the Harvard iGEM team and scientists in the lab, however, highlighted that it was difficult to use. The requested information was unclear and the format of the UI was confusing. In addition, initial users felt that the UI needed a slight “face lift” in terms of aesthetics. During the design process for the next iteration we decided to improve the UI by reducing the amount of information the user enters, adding a UI tutorial video, and additional focus on the UI’s aesthetics.
+To do this, we first had to break down exactly what information the UI needed to gather from the user to run TERRA. This was important because it gave us an idea of how to restructure the UI and make it more efficient. We broke down the necessary input information based on key sub-functions TERRA executes to transfer the outputs of the user’s microfluidic chip into the desired locations on their vessel.
+Sub-Functions
+Dispense Time
+Output Selection
+Dispense Location
+User Input
+Fluid Density
+Control Syringe Pump Pairs per Output
+Vessel in Use (24, 96, 384 well plate)
+Flow Rate
+# of Output
+Well Locations per Output
+Microfluidic System (Continuous Flow vs Droplet)
+Sample Volume
+# of Outputs
+Nozzle Tube Length
+Vessel Dimensions
+Nozzle Tube Outer Diameter
+Nozzle Tube Surface Tension
+Sample Volume
+After aggregating the following information we identified user data that can be standardized to offload it from the user. The first and easiest fix was to have TERRA use tubing of known length, material, and outer diameter. In addition, the TERRA Adapter was standardized by characterizing each output in advance. By knowing the total number of outputs for the experiment, TERRA automatically configures the outputs with their respective control syringes. The user simply needs to ensure that the TERRA Adapter is connected properly to their microfluidic chip. Once inputs were offloaded, error-check functionality was incorporated to alert the user if inputted data is unfeasible or incorrect format. With error-check, the input fields are either highlighted red to prompt the user to change their input or to green to confirm that the entered data is in the proper format.
+Following the form information, the output destination section was improved. The UI dynamically creates a tab for each output, enabling the user to easily switch between outputs on the UI when selecting wells and make edits accordingly. In addition, selected wells change color and can be de-selected before submission. After improving the well selection table, the aesthetics of the UI were redone to make the design sleek and easy to read.
+This final version of the UI was received well by users. Given more time, a LiveView feature would’ve been implemented to give users real-time information about TERRA’s status, such as current well and remaining time, during the dispensing process.
+Back-end Code
+The back-end software runs both the XY Plane and Control Syringes. The approach in designing the back-end was to treat information in the context of a series of different outputs coming off of the microfluidic chip. By creating an “Output” class, we created different methods that were responsible for assigning each output a set of dispensing coordinates and pair of corresponding control syringes that open and close the output. We are then able to access each output to get the necessary information to control the hardware. The control syringe and xy-plane software are detailed further below.
+Controlling the Syringe Pumps
+The Control Syringe Pump software is responsible for moving the servo motors in order to actuate valves on the TERRA Adapter to select for certain outputs to dispense. In addition, the Control Syringe Pump software resets the syringes before the start of any experiment. It does this by moving syringes to three known states:
+Origin
+Close
+Open
+The origin state resets the syringe to reference point, the open state opens a valve by via negative pressure by pulling the syringe, and the close state closes a valve by releasing the syringe back to origin and applying slight positive pressure by pushing the syringe. Below is a diagram showing the various states:
+As mentioned earlier, the Control Syringe Pump software works with the TERRA Adapter to dispense outputs into the targeted vessel. Each output has a pair of control syringes assigned to it, called A and B, in order to toggle between selection and waste; selection occurs when the control syringe A is open and control syringe B is closed while direction to waste occurs when control syringe A is closed and control syringe B is open. When dispensing into a well, the output specified by the user is selected and all other outputs are directed to waste. Once the dispensing is completed all outputs are directed to waste while the XY Plane moves to the next well; this process is repeated until all wells specified by the user have been hit.
+Controlling the XY-Plane
+The XY Plane software is responsible for taking the well coordinates given by the user and moving the the plate to each coordinate during dispensing. The software snake loops through all the wells, going through row by row, on the vessel and compares each to the coordinate array given by the user. If there is a match between the a well on the vessel and a well in the coordinate array, XY Plane moves to that well to dispense. This process continues until the software has hit all the wells in the coordinate array.
+To accomplish we needed to calculate the number of steps between wells to program the stepper motors. Given either a 24, 96, or 384 well plate, we calculated the steps between wells for each plate by using the distance between wells and the circumference of the pulleys.
+In addition to moving the well plate for dispensing, the XY Plane software is also responsible for homing TERRA. Before a run on TERRA, the system needs to be homed in order to start from a known location. The system is homed by moving the well plate so that left-most corner is under the nozzle. Because the well plate can be in any location on the XY Plane, contact switches are used on both the X and Y paths send a signal to to halt the stepper motors once they’ve reached either end.
+This flow chart describes the flow of information in order to integrate our hardware and software components.

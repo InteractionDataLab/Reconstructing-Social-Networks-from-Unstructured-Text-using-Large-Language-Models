@@ -1,0 +1,140 @@
+Team:Evry/Software/Pipeline
+Toggle navigation
+Project
+Overview
+Chassis choice
+Environment modulation
+Hypoxia Bio-sensor
+Proof of concept
+Antigen prediction
+oOverview
+Pipeline
+Prediction
+Practices
+Introduction
+Funding state of art
+Innovative funding
+Society perception
+Conclusion
+Achievements
+Medal fulfillment
+Collaborations
+Parts
+Notebook
+Day notes
+Protocols
+Team
+Members
+Attributions
+Acknowledgements
+Pipeline
+All the information presented on this page (quality-control, differential expression analysis, data visualisation, variant discovery) is also available as a PDF file .
+Jump to:
+Data processing & quality control
+Differential expression analysis
+Variant discovery
+Data processing and quality control
+What we produced: FASTQ files (if starting with a different file format), FASTQC reports, BAM and SAM files.
+Figure 1: schematic overview of the pipeline for RNA-seq data analysis.
+Differential expression analysis
+What we produced: script for differential expression analysis, table with read counts (tab separated format, 7 columns, ENSG ids).
+RNA-seq  data  can  be  difficult  to  interpret  (especially  in  terms  of  differential  expression quantitation). Thus, we decided to adopt a simple method for the analysis, based on counting, for  each  gene  and  for  each sample,  the  number  of  available  reads  and  then  testing  for  significant  differences between two experimental conditions or groups.
+We  wrote  an  R  script  that  automatically  creates  a  PDF  file  (in  the  current  directory)  with  all  the  figures  necessary  for  visual  inspection  and  result  interpretation. The  input  is  a  tab  separated  file  with reads counts.
+ensembl_id melanocyte_1 melanocyte_2 melanoma_1 melanoma_2 ENSG00000000003 1964 2409 2328 2451 ENSG00000000005 0 2 10 12 ENSG00000000419 15122 19592 38225 36654 ENSG00000000457 12129 14893 7483 7812 ENSG00000000460 21930 25575 13123 13840 ENSG00000000938 48 58 26 42 ENSG00000000971 125 229 124 236 ENSG00000001036 11611 14125 14067 13518 ENSG00000001084 11429 13795 3549 3279
+Figure 2: Example input format for DE analysis.
+We tested two designs, as illustrated in the tables below: normal cells vs cancerous cells (4 samples), cancerous cells vs cancerous drug treated (4 samples).
+Sample name
+Condition
+melanocyte_1
+M
+melanocyte_2
+M
+melanoma_1
+C
+melanoma_2
+C
+Sample name
+Condition
+melanoma_1
+C
+melanoma_2
+C
+melanoma_drug_1
+D
+melanoma_drug_2
+D
+Table 1 and 2: tested designs.
+Visual exploration of the samples
+Prior  to  checking  distances  between  our  samples,  we  applied  a  regularized-logarithm transformation (rlog) to stabilise the variance across the mean. The effects of the transformation are shown in the figure below.
+Figure 3: Effect of the regularized-logarithm transformation on 'melanocyte_1' and 'melanocyte_2' samples.
+We noticed that this step was particularly important for genes with low read counts.
+We  then  checked  the  distances  between  our  samples  by  performing  Principal  Components Analysis of the count data.
+Figure 4: Principal Components Analysis (PCA) plot, normal vs cancerous cells.
+We observed that differences between groups (normal vs cancerous cells represented in the PCA plot  above)  were  greater  than  intra-groups  differences,  which  is  expected  in  this  kind  of  design.  However,  as  the  inter-group  differences  were  so  pronounced,  we  figured  that  a  great  amount  of genes  would  appear  as  differentially  expressed. This  is  why  we  decided  to  apply  really  stringent  thresholds for the detection:
+- log2  fold  change  (logFC) > 5  for  upregulated  genes  or  log2  fold  change  (logFC) < -5  for  downregulated  genes.
+- AND adjusted-p-value < 0.01
+Differential expression analysis
+Firstly,  we  took  a  look  at  the  raw  data  (prior  to  any  kind  of  normalization).  We  calculated  mean counts for each gene and by condition and then the log2 fold change.
+Prior  to  normalization,  we  filtered  the  data  set  to  remove  rows  with  very  little  or  no  information (remove  genes  with  no  counts  or  with  just  a  single  count).  This  allows  to  eliminate  17,386 transcripts already.
+Using  the  DESeq  R  package  (from Bioconductor ), we were able to perform normalization of our data after calculation of size factors and we then were able to calculate mean counts for each gene and by condition and finally the logFC.
+Figure 5: Distribution of logFC(cancerous/normal) values - raw data.
+Figure 6: Distribution of logFC(cancerous/normal) values - normalized data.
+Finally, we applied the nbinomWaldTest() function from the DESeq package to test for significance of coefficients in a negative binomial GLM, the model we used to assess differences in expression. As  previously  stated,  selection  of  significantly  up-  or  downregulated  genes  was  based  on  the  establishment of two selection thresholds: logFC and adjusted p-value (Wald test M vs C).
+Figure 7: Differential expression as a function of mean expression. Left panel: threshold set at logFC > 2 or < -2. Right panel: threshold set at logFC > 5 or < -5. The red dots indicate genes for which the logFC was significantly higher than 5 or lower than -5. The circled point indicates the gene with the lowest adj-p-value.
+We  obtained  a  list  of  1,649  differentially  expressed  genes:  931  upregulated  genes  and  718 downregulated genes.
+Enrichment analysis
+We retrieved the list of the 931 unregulated genes and the list of the 718 downregulated genes and looked for significantly enriched GO (Gene Ontology) terms in these lists (independently).
+Figure 8: Enrichment in GO terms, downregulated genes.
+Figure 9: Enrichment in GO terms, upregulated genes.
+Variant discovery
+What we produced:
+- Bash scripts for variant calling, quality control (filtering steps), and variant association analysis
+- VCF files (before and after QC)
+- Table: identified variants (exonic, non-synonymous)
+Figure 10: schematic overview of the pipeline for variant discovery and evaluation.
+Variant calling
+Genetic variants were called with samtools and bcftools, using sorted .bam files as input. This simple variant calling is followed by a stringent filtering step.
+Quality control (filtering steps)
+As recommended in the GATK Best Practices Guideline for variant discovery using RNA-Seq data, we applied hard filters to the raw variants obtained after variant calling, in an attempt to optimise both high sensitivity and specificity.
+Furthermore,  as  we  only  have  4  samples,  we  decided  to  use  quite  stringent  parameters  / thresholds to filter the data, hoping to retain “true” and of as high a quality as possible variants. Filtering was performed using scripts from GATK and VCFtools.
+Filters:
+(1) Diallelic variants only.
+(2) Hardy-Weinberg equilibrium (HWE) deviation test. It is a common practice to remove sites that deviate from HWE because the deviation can be caused by genotyping errors. Normally, for case-control data, only controls should be tested for deviation from HWE (because for cases, sites associated with disease status can deviate from HWE). In our case, as all tests were performed in a bidirectional manner, deviation from HWE was tested in all the samples and we excluded sites with a HWE p-value < 1.10-7.
+(3) Call  rate  (percentage  of  samples  with  a  non-missing  genotype,  CR).  The  proportion  of missing genotypes is an useful indicator of poor genotype quality. We decided to keep variants with a  CR  >  98%,  which allows  to  keep  good  quality  variants  only. As  mean  CR  in  raw  data  was  of about 64%, we discarded over 60% of variants using this filter.
+(4) Filtering based on Fisher Strand values (FS > 30.0) and Quality by Depth (QD < 2.0), as well as filtering out clusters of at least 3 SNPs in a window of 35 bases between them.
+In order to assess the quality gain at each QC step, we estimated the ratio of transitions (Ti, purine to  purine  or  pyrimidine  to  pyrimidine  mutation)  to  transversions  (Tv,  purine  to  pyrimidine  or  vice  versa) in the identified single nucleotide variants (SNVs). Particularly in coding regions, a higher number of transitions is expected, as transversions are more likely to change the underlying amino acid and lead to a deleterious mutation. Ti/Tv ratios are an approximate measure of quality: higher Ti/Tv ratios are associated with lower false positives.
+Figure 11: Number of variants retained and Ti/Tv ratio for every QC step.
+QC_stage
+NVAR
+Call rate
+Ti/Tv
+meanQUAL
+Raw_data
+868330
+0.68
+2280
+98
+Diallelic_only
+868037
+0.69
+2280
+98
+HWE_pvalue
+868037
+0.69
+2280
+98
+CR_98
+294034
+1
+2423
+223
+Table 3: Number of variants retained and Ti/Tv ratio for every QC step.
+Annotation
+Annotation  attributes  such  as  genomic  region,  gene  name,  variant  type  and  consequence  are attached to the variants list according to the reference hg19 using ANNOVAR (AnnotateVariation perl script). The primary genomic effects that are annotated include splice sites, nonsense, nonsynonymous and synonymous variants.
+Association testing between individual variants and phenotypic traits
+Here, common variants were defined as being those that are present in more than one sample. Of the 294 034 variants retained after quality control, 233 294 were identified as common. We identified 24 347 exonic variants only, over 19 000 of these were common. Thus, we decided to work only on common variants.
+We performed standard single variant test to assess association: logistic regression and fisher’s exact test.
+We found 531 exonic non-synonymous variants having a Fisher’s p-value < 0.05 (p = 0.02, being the lowest value we could get with 4 samples). 315 of these variants were only present in the melanoma cell lines (all were homozygous variants).
+After idenfication of genes that are both overexpressed and mutated in tumor samples, we want to know if good candidate antigens can be predicted. Read more about the prediction step .
+To top

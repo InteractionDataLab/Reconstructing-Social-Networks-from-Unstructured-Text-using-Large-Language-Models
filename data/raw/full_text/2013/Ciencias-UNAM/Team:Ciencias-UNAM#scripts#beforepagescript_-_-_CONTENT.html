@@ -1,0 +1,1568 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Ciencias-UNAM_scripts_beforepagescript"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Ciencias-UNAM/scripts/beforepagescript">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Ciencias-UNAM/scripts/beforepagescript&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/beforepagescript&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/beforepagescript&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Ciencias-UNAM/scripts/beforepagescript" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Ciencias-UNAM/scripts/beforepagescript</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>//Check if IE
+var bIE = false;
+if ((index = navigator.userAgent.indexOf(&quot;MSIE&quot;)) &gt;= 0) {
+</P><PRE>   bIE = true;
+</PRE><P>}
+</P><P>$axure = function (query) {
+</P><PRE>   return $axure.query(query);
+</PRE><P>};
+</P><P>// ******* AxQuery and Page metadata ******** //
+(function () {
+</P><PRE>   var _pageData;
+   var _pageNameToFileName = {};
+</PRE><PRE>   var _fn = {};
+   $axure.fn = _fn;
+   $axure.fn.jQuery = function() {
+       var scriptIds = this.getIds();
+       var idSelectors = jQuery.map(scriptIds, function(id) { return '#' + id; });
+       var jQuerySelectorText = (scriptIds.length &gt; 0) ? idSelectors.join(', ') : <I>;</I>
+       return $(jQuerySelectorText);
+   };
+   $axure.fn.$ = $axure.fn.jQuery;
+</PRE><PRE>   var _initializePageFragment = function(pageFragment) {
+       var _idToObject = { };
+       pageFragment.idToObject = _idToObject;
+</PRE><PRE>       var objectArrayHelper = function(objects, parent) {
+           for (var i = 0; i &lt; objects.length; i++) {
+               diagramObjectHelper(objects[i], parent);
+           }
+       };
+</PRE><PRE>       var diagramObjectHelper = function(diagramObject, parent) {
+           $axure.initializeObject('diagramObject', diagramObject);
+           _idToObject[diagramObject.id] = diagramObject;
+           diagramObject.parent = parent;
+           diagramObject.owner = pageFragment;
+           diagramObject.scriptIds = [];
+           
+           if (diagramObject.diagrams) { // dynamic panel
+               for (var i = 0; i &lt; diagramObject.diagrams.length; i++) {
+                   var diagram = diagramObject.diagrams[i];
+                   objectArrayHelper(diagram.objects, diagram);
+               }
+           }
+           if (diagramObject.objects) objectArrayHelper(diagramObject.objects, diagramObject);
+       };
+</PRE><PRE>       objectArrayHelper(pageFragment.diagram.objects, pageFragment.diagram);
+   };
+</PRE><PRE>   var _initalizeStylesheet = function(stylesheet) {
+       var stylesById = { };
+       stylesheet.stylesById = stylesById;
+       var customStyles = stylesheet.customStyles;
+       for(var key in customStyles) {
+           var style = customStyles[key];
+           stylesById[style.id] = style;
+       }
+   };
+   
+   var _initializePageData = function () {
+       if (!_pageData || !_pageData.page || !_pageData.page.diagram) return;
+</PRE><PRE>       _initializePageFragment(_pageData.page);
+       for(var masterId in _pageData.masters) {
+           var master = _pageData.masters[masterId];
+           _initializePageFragment(master);
+       }
+</PRE><PRE>       _initalizeStylesheet(_pageData.stylesheet);
+</PRE><PRE>       var _scriptIdToObject = { };
+       _pageData.scriptIdToObject = _scriptIdToObject;
+       
+       for (var i = 0; i &lt; _pageData.objectPathToScriptId.length; i++) {
+           var path = _pageData.objectPathToScriptId[i].idPath;
+           var scriptId = _pageData.objectPathToScriptId[i].scriptId;
+           
+           var currentPageFragment = _pageData.page;
+           for (var j = 0; j &lt; path.length - 1; j++) {
+               var id = path[j];
+               var object = currentPageFragment.idToObject[id];
+               currentPageFragment = _pageData.masters[object.masterId];
+           }
+           var diagramObject = currentPageFragment.idToObject[path[path.length - 1]];
+           diagramObject.scriptIds[diagramObject.scriptIds.length] = scriptId;
+           _scriptIdToObject[scriptId] = diagramObject;
+       }
+   };
+</PRE><PRE>   var _loadCurrentPage = function (pageData) {
+       $axure.pageData = _pageData = pageData;
+       _initializePageData();
+   };
+   $axure.loadCurrentPage = _loadCurrentPage;
+</PRE><PRE>   var _query = function(queryText) {
+       var returnVal = {};
+       returnVal.query = queryText;
+</PRE><PRE>       var axureFn = $axure.fn;
+       for (var key in axureFn) {
+           returnVal[key] = axureFn[key];
+       }
+       return returnVal;
+   };
+   $axure.query = _query;
+</PRE><PRE>   $axure.fn.each = function(fn) {
+       // TODO: label queries
+       var filterAndApply = function(pageFragment, filter) {
+           for (var id in pageFragment.idToObject) {
+               var diagramObject = pageFragment.idToObject[id];
+               if (filter(diagramObject)) fn.apply(diagramObject, [diagramObject]);
+           }
+       };
+</PRE><PRE>       var filter = this.query;
+       filterAndApply($axure.pageData.page, filter);
+       jQuery.each($axure.pageData.masters, function(index, value) {
+           filterAndApply(value, filter);
+       });
+   };
+   
+   $axure.fn.getIds = function() {
+       var scriptIds = [];
+</PRE><PRE>       var filter;
+</PRE><PRE>       if (typeof(this.query) === 'function') {
+           filter = this.query;
+       } else {
+           // this is a text query
+           var searchStringMatch = /(label|type)=([^;]*)/ .exec(this.query);
+           if (!searchStringMatch) return $();
+           var searchType = searchStringMatch[1];
+           var searchTerm = searchStringMatch[2];
+</PRE><PRE>           filter = function(diagramObject) {
+               if(searchType == 'label') {
+                   if(typeof diagramObject.label != 'undefined' &amp;&amp; diagramObject.label == searchTerm) {
+                       return true;
+                   }
+               } else if(searchType == 'type') {
+                   if(typeof diagramObject.type != 'undefined' &amp;&amp; diagramObject.type == searchTerm) {
+                       return true;
+                   }
+               }
+</PRE><PRE>               return false;
+           };
+       }
+</PRE><PRE>       var filterObjects = function(pageFragment, returnVal) {
+           for (var id in pageFragment.idToObject) {
+               var diagramObject = pageFragment.idToObject[id];
+               if (filter(diagramObject)) {
+                   jQuery.merge(returnVal, diagramObject.scriptIds);
+               }
+           }
+       };
+       filterObjects($axure.pageData.page, scriptIds);
+       jQuery.each($axure.pageData.masters, function(index, value) {
+           filterObjects(value, scriptIds);
+       });
+</PRE><PRE>       return scriptIds;
+   };
+</PRE><PRE>   $axure.getPageUrl = function(pageName, matchNumber) {
+       //Note: Match number is 1 based....Undefined returns first filename
+       //Out of bounds match number returns undefined.
+       
+       var pageFileNameArray = _pageNameToFileName[pageName];
+</PRE><PRE>       if(pageFileNameArray){
+           if(matchNumber === undefined){
+               return pageFileNameArray[0];
+           } else if(matchNumber &gt; 0 &amp;&amp; matchNumber &lt;= pageFileNameArray.length) {
+               return pageFileNameArray[matchNumber - 1];
+           }
+       }
+</PRE><PRE>       return undefined;
+   };
+</PRE><PRE>   $axure.navigate = function(url, includeVariables) {
+       var targetUrl = (includeVariables === false) ? url : $axure.globalVariableProvider.getLinkUrl(url);
+</PRE><PRE>       window.location.href = targetUrl;
+   };
+</PRE><PRE>   $axure.back = function() {
+       history.go(-1);
+   };
+</PRE><PRE>   $axure.reload = function(includeVariables) {
+       var targetUrl = (includeVariables === false) 
+           ? window.location.href 
+           : $axure.globalVariableProvider.getLinkUrl($axure.pageData.url);
+</PRE><PRE>       window.location.href = targetUrl;
+       window.location.reload();
+   };
+</PRE><PRE>   $axure.popup = function(url, name, options, includeVariables) {
+       var defaultOptions = {
+           toolbars: true,
+           scrollbars: true,
+           locationbar: true,
+           statusbar: true,
+           menubar: true,
+           directories: true,
+           resizable: true,
+           centerwindow: true,
+           left: -1,
+           top: -1,
+           height: -1,
+           width: -1
+       };
+</PRE><PRE>       var selectedOptions = $.extend({}, defaultOptions, options);
+</PRE><PRE>       var optionsList = [];
+       optionsList.push('toolbar=' + (selectedOptions.toolbars ? '1' : '0'));
+       optionsList.push('scrollbars=' + (selectedOptions.scrollbars ? '1' : '0'));
+       optionsList.push('location=' + (selectedOptions.locationbar ? '1' : '0'));
+       optionsList.push('status=' + (selectedOptions.statusbar ? '1' : '0'));
+       optionsList.push('menubar=' + (selectedOptions.menubar ? '1' : '0'));
+       optionsList.push('directories=' + (selectedOptions.directories ? '1' : '0'));
+       optionsList.push('resizable=' + (selectedOptions.resizable ? '1' : '0'));
+</PRE><PRE>       if(selectedOptions.centerwindow == false){
+           if(selectedOptions.left &gt; -1){
+               optionsList.push('left=' + selectedOptions.left);
+           }
+</PRE><PRE>           if(selectedOptions.top &gt; -1){
+               optionsList.push('top=' + selectedOptions.top);
+           }
+       }
+</PRE><PRE>       var height = 0;
+       var width = 0;
+       if(selectedOptions.height &gt; 0){
+           optionsList.push('height=' + selectedOptions.height);
+           height = selectedOptions.height;
+       }
+</PRE><PRE>       if(selectedOptions.width &gt; 0){
+           optionsList.push('width=' + selectedOptions.width);
+           width = selectedOptions.width;
+       }
+</PRE><PRE>       var targetUrl = (includeVariables === false) ? url : $axure.globalVariableProvider.getLinkUrl(url);
+</PRE><PRE>       NewWindow(targetUrl, name, optionsList.join(','), selectedOptions.centerwindow, width, height);
+   };
+</PRE><PRE>   $axure.navigateParent = function(url, includeVariables){
+       var targetUrl = (includeVariables === false) ? url : $axure.globalVariableProvider.getLinkUrl(url);
+</PRE><PRE>       window.parent.location.href = targetUrl;
+   };
+</PRE><PRE>   $axure.setGlobalVariable = function(name, value) {
+       if(!name || !value){
+           return;
+       }
+</PRE><PRE>       $axure.globalVariableProvider.setVariableValue(name, value);
+   };
+</PRE><PRE>   $axure.getGlobalVariable = function(name) {
+       $axure.globalVariableProvider.getVariableValue(name);
+   };
+</PRE><PRE>   $axure.getTypeFromScriptId = function(scriptId) {
+       var scriptIdInput = scriptId.charAt(0) == '#' ? scriptId.substring(1) : scriptId;
+</PRE><PRE>       if(_pageData.scriptIdToObject[scriptIdInput]) {
+           return _pageData.scriptIdToObject[scriptIdInput].type;
+       }
+   };
+</PRE><PRE>   //Following function and its helper create a Page name to Url (file name)
+   //table, for use with getPageUrl function.
+   var loadPageNameToFileNameTable = function() {
+       var rootNodes = sitemap.rootNodes;
+       for(var i = 0; i &lt; rootNodes.length; i++) {
+           _loadPageNameToFileNameTableHelper(rootNodes[i]);
+       }
+   };
+</PRE><PRE>   var _loadPageNameToFileNameTableHelper = function(node) {
+       var fileNameArray = _pageNameToFileName[node.pageName];
+       if(!fileNameArray) _pageNameToFileName[node.pageName] = fileNameArray = [];
+       fileNameArray[fileNameArray.length] = node.url;
+</PRE><PRE>       if(node.children &amp;&amp; node.children.length &gt; 0) {
+           for(var i = 0; i &lt; node.children.length; i++) {
+               var child = node.children[i];
+               _loadPageNameToFileNameTableHelper(child);
+           }
+       }
+   };
+</PRE><PRE>   loadPageNameToFileNameTable();
+</PRE><P>})();
+</P><P>// ******* AxQuery Plugins ******** //
+(function() {
+</P><PRE>   var DYNAMIC_PANEL_TYPE = 'dynamicPanel';
+   var TEXT_BOX_TYPE = 'textBox';
+   var TEXT_AREA_TYPE = 'textArea';
+   var LIST_BOX_TYPE = 'listBox';
+   var COMBO_BOX_TYPE = 'comboBox';
+   var CHECK_BOX_TYPE = 'checkbox';
+   var RADIO_BUTTON_TYPE = 'radioButton';
+   var IMAGE_MAP_REGION_TYPE = 'imageMapRegion';
+   var IMAGE_BOX_TYPE = 'imageBox';
+   var BUTTON_SHAPE_TYPE = 'buttonShape';
+   var TREE_NODE_OBJECT_TYPE = 'treeNodeObject';
+   var TABLE_CELL_TYPE = 'tableCell';
+</PRE><PRE>   var _addJQueryFunction = function(name) {
+       $axure.fn[name] = function() {
+           var val = $.fn[name].apply(this.jQuery(), arguments);
+           return arguments[0] ? this : val;
+       };
+   };
+   var _jQueryFunctionsToAdd = ['text', 'val', 'css'];
+   for (var i = 0; i &lt; _jQueryFunctionsToAdd.length; i++) _addJQueryFunction(_jQueryFunctionsToAdd[i]);
+   
+   var _addJQueryEventFunction = function(name) {
+       $axure.fn[name] = function() {
+           $.fn[name].apply(this.jQuery(), arguments);
+           return this;
+       };
+   };
+   var _jQueryEventFunctionsToAdd = ['click', 'hover', 'mousedown', 'mouseup'];
+   for (var i = 0; i &lt; _jQueryEventFunctionsToAdd.length; i++) _addJQueryEventFunction(_jQueryEventFunctionsToAdd[i]);
+</PRE><PRE>   $axure.fn.openLink = function(url, includeVariables){
+       this.jQuery().each(function () {
+           if(!($(this).is('iframe'))) {
+               return;
+           }
+</PRE><PRE>           var objIframe = $(this).get(0);
+</PRE><PRE>           var newSrcUrl = (includeVariables === false) ? url : $axure.globalVariableProvider.getLinkUrl(url);
+           
+           var reload = FrameWindowNeedsReload(objIframe, newSrcUrl);
+</PRE><PRE>           if(!reload) {
+               objIframe.src = newSrcUrl;
+           } else {
+               objIframe.src = &quot;resources/reload.html#&quot; + encodeURI(newSrcUrl);
+           }
+       });
+</PRE><PRE>       return this;
+   };
+   
+   $axure.fn.setPanelState = function(stateNumber, options) {
+       var easingIn = 'none';
+       var easingOut = 'none';
+       var directionIn = <I>;</I>
+       var directionOut = <I>;    </I>
+       var durationIn = 500;
+       var durationOut = 500;
+</PRE><PRE>       if(options &amp;&amp; options.animateIn) {
+           easingIn = 'fade';
+           
+           if(options.animateIn.easing) {
+               if(options.animateIn.easing == 'slideLeft'){
+                   directionIn = 'left';
+               }else if(options.animateIn.easing == 'slideRight'){
+                   directionIn = 'right';
+               }else if(options.animateIn.easing == 'slideUp'){
+                   directionIn = 'up';
+               }else if(options.animateIn.easing == 'slideDown'){
+                   directionIn = 'down';
+               }
+</PRE><PRE>               if(directionIn != <I>){</I>
+                   easingIn = 'swing';
+               }
+           }
+</PRE><PRE>           if(options.animateIn.duration){
+               durationIn = options.animateIn.duration;
+           }
+       }
+</PRE><PRE>       if(options &amp;&amp; options.animateOut) {
+           easingOut = 'fade';
+           
+           if(options.animateOut.easing) {
+               if(options.animateOut.easing == 'slideLeft') {
+                   directionOut = 'left';
+               } else if(options.animateOut.easing == 'slideRight') {
+                   directionOut = 'right';
+               } else if(options.animateOut.easing == 'slideUp') {
+                   directionOut = 'up';
+               } else if(options.animateOut.easing == 'slideDown') {
+                   directionOut = 'down';
+               }
+</PRE><PRE>               if(directionOut != <I>) {</I>
+                   easingOut = 'swing';
+               }
+           }
+</PRE><PRE>           if(options.animateOut.duration){
+               durationOut = options.animateOut.duration;
+           }
+       }
+</PRE><PRE>       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids) {
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               var stateName = 'pd' + (parseInt(stateNumber) - 1) + ids[index];
+               SetPanelState(ids[index], stateName, easingIn, directionIn, durationIn, easingOut, directionOut, durationOut);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.show = function(duration) {
+       var easing = 'none';
+</PRE><PRE>       if(duration &amp;&amp; duration &gt; 0) {
+           easing = 'fade';
+       }
+       
+       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+              SetPanelVisibility(ids[index], <I>, easing, duration);</I>
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.hide = function(duration) {
+       var easing = 'none';
+</PRE><PRE>       if(duration &amp;&amp; duration &gt; 0) {
+           easing = 'fade';
+       }
+</PRE><PRE>       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               SetPanelVisibility(ids[index], 'hidden', easing, duration);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.toggleVisibility = function(duration) {
+       var easing = 'none';
+</PRE><PRE>       if(duration &amp;&amp; duration &gt; 0){
+           easing = 'fade';
+       }
+</PRE><PRE>       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               SetPanelVisibility(ids[index], 'toggle', easing, duration);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.moveTo = function(x, y, options) {
+       var easing = 'none';
+       var duration = 500;
+</PRE><PRE>       if(options &amp;&amp; options.easing){
+           easing = options.easing;
+</PRE><PRE>           if(options.duration){
+               duration = options.duration;
+           }
+       }
+</PRE><PRE>       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               MoveWidgetTo(ids[index], x, y, easing, duration);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.moveBy = function(x, y, options) {
+       var easing = 'none';
+       var duration = 500;
+</PRE><PRE>       if(options &amp;&amp; options.easing){
+           easing = options.easing;
+</PRE><PRE>           if(options.duration){
+               duration = options.duration;
+           }
+       }
+</PRE><PRE>       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               MoveWidgetBy(ids[index], x, y, easing, duration);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.bringToFront = function() {
+       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               BringToFront(ids[index]);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.sendToBack = function() {
+       var ids = this.getIds();
+</PRE><PRE>       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == DYNAMIC_PANEL_TYPE) {
+               SendToBack(ids[index]);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.text = function() {
+       if (arguments[0] == undefined) {
+           var firstId = this.getIds()[0];
+</PRE><PRE>           if(!firstId) {
+               return;
+           }
+</PRE><PRE>           return GetWidgetText(firstId);
+       } else {
+           var ids = this.getIds();
+</PRE><PRE>           for(var index in ids){
+               var currentItem = ids[index];
+</PRE><PRE>               var widgetType = $axure.getTypeFromScriptId(currentItem);
+</PRE><PRE>               if(widgetType == TEXT_BOX_TYPE || widgetType == TEXT_AREA_TYPE) { //For non rtf
+                   SetWidgetFormText(currentItem, arguments[0]);
+               } else {
+                   var idRtf = '#' + currentItem + '_rtf';
+</PRE><PRE>                   if ($(idRtf).length == 0){
+                       idRtf = '#u' + (parseInt(currentItem.substring(1)) + 1) + '_rtf';
+                   }
+</PRE><PRE>                   if ($(idRtf).length != 0){
+                       //If the richtext div already has some text in it,
+                       //preserve only the first style and get rid of the rest
+                       //If no pre-existing p-span tags, don't do anything
+                       if ($(idRtf).children('p').find('span').length &gt; 0) {
+                           $(idRtf).children('p:not(:first)').remove();
+                           $(idRtf).children('p').find('span:not(:first)').remove();
+                           
+                           //Replace new-lines with NEWLINE token, then html encode the string,
+                           //finally replace NEWLINE token with linebreak
+                           var textWithLineBreaks = arguments[0].replace(/\n/g, '--NEWLINE--');
+                           var textHtml = $('&lt;div/&gt;').text(textWithLineBreaks).html();
+                           $(idRtf).find('span').html(textHtml.replace(/--NEWLINE--/g, ''));
+                       }
+                   }
+               }
+           }
+</PRE><PRE>           return this;
+       }
+   };
+</PRE><PRE>   $axure.fn.setRichTextHtml = function() {
+       if (arguments[0] == undefined) {
+           //No getter function, so just return undefined
+           return;
+       } else {
+           var ids = this.getIds();
+</PRE><PRE>           for(var index in ids){
+               var currentItem = ids[index];
+</PRE><PRE>               var widgetType = $axure.getTypeFromScriptId(currentItem);
+</PRE><PRE>               if(widgetType == TEXT_BOX_TYPE || widgetType == TEXT_AREA_TYPE) { //Do nothing for non rtf
+                   continue;
+               } else {
+                   var idRtf = '#' + currentItem + '_rtf';
+</PRE><PRE>                   if ($(idRtf).length == 0){
+                       idRtf = '#u' + (parseInt(currentItem.substring(1)) + 1) + '_rtf';
+                   }
+</PRE><PRE>                   if ($(idRtf).length != 0){
+                       var rtfIdWithoutHashAndSuffix = idRtf.substring(1);
+                       var indexOfSuffix = rtfIdWithoutHashAndSuffix.indexOf('_rtf');
+                       rtfIdWithoutHashAndSuffix = rtfIdWithoutHashAndSuffix.substring(0, indexOfSuffix);
+</PRE><PRE>                       SetWidgetRichText(rtfIdWithoutHashAndSuffix, arguments[0]);    
+                   }
+               }
+           }
+</PRE><PRE>           return this;
+       }
+   };
+</PRE><PRE>   $axure.fn.value = function() {
+       if (arguments[0] == undefined) {
+           var firstId = this.getIds()[0];
+</PRE><PRE>           if(!firstId) {
+               return;
+           }
+</PRE><PRE>           var widgetType = $axure.getTypeFromScriptId(firstId);
+</PRE><PRE>           if(widgetType == COMBO_BOX_TYPE || widgetType == LIST_BOX_TYPE) { //for select lists and drop lists
+               return $('#' + firstId + ' :selected').text();
+           } else if (widgetType == CHECK_BOX_TYPE || widgetType == RADIO_BUTTON_TYPE) { //for radio/checkboxes
+               return this.jQuery().first().is(':checked');
+           } else { //for text based form elements
+               return this.jQuery().first().val();
+           }
+       } else {
+           var ids = this.getIds();
+</PRE><PRE>           for(var index in ids){
+               var widgetType = $axure.getTypeFromScriptId(ids[index]);
+</PRE><PRE>               var idWithHash = '#' + ids[index];
+</PRE><PRE>               if (widgetType == CHECK_BOX_TYPE || widgetType == RADIO_BUTTON_TYPE) { //for radio/checkboxes
+                   if(arguments[0] == true){
+                       $(idWithHash).attr('checked', true);
+                   } else if (arguments[0] == false){
+                       $(idWithHash).removeAttr('checked');
+                   }
+               } else { //For select lists, drop lists, text based form elements
+                   $(idWithHash).val(arguments[0]);
+               }
+           }
+</PRE><PRE>           return this;
+       }        
+   };
+</PRE><PRE>   $axure.fn.checked = function() {
+       if (arguments[0] == undefined) {
+           return this.jQuery().attr('checked');
+       } else {
+           this.jQuery().attr('checked', arguments[0]);
+           return this;
+       }
+   };
+</PRE><PRE>   $axure.fn.scroll = function(scrollOption) {
+       var easing = 'none';
+       var duration = 500;
+</PRE><PRE>       if(scrollOption &amp;&amp; scrollOption.easing){
+           easing = scrollOption.easing;
+</PRE><PRE>           if(scrollOption.duration){
+               duration = scrollOption.duration;
+           }
+       }
+</PRE><PRE>       var scrollX = true;
+       var scrollY = true;
+</PRE><PRE>       if(scrollOption.direction == 'vertical') {
+           scrollX = false;
+       } else if(scrollOption.direction == 'horizontal') {
+           scrollY = false;
+       }
+</PRE><PRE>       var ids = this.getIds();
+       for(var index in ids){
+           if($axure.getTypeFromScriptId(ids[index]) == IMAGE_MAP_REGION_TYPE) {            
+               ScrollToWidget(ids[index], scrollX, scrollY, easing, duration);
+           }
+       }
+</PRE><PRE>       return this;
+   };
+</PRE><PRE>   $axure.fn.enabled = function() {
+       if (arguments[0] == undefined) {
+           var firstId = this.getIds()[0];
+</PRE><PRE>           if(!firstId){
+               return;
+           }
+</PRE><PRE>           var widgetType = $axure.getTypeFromScriptId(firstId);
+</PRE><PRE>           if(widgetType == IMAGE_BOX_TYPE || widgetType == BUTTON_SHAPE_TYPE) { //for img/btnshape/rectangle/placeholder
+               return !(gv_DisabledWidgets[firstId]);
+           } else { //for all else
+               return this.jQuery().first().not(':disabled').length &gt; 0;
+           }
+       } else {
+           var ids = this.getIds();
+</PRE><PRE>           for(var index in ids){
+               var widgetType = $axure.getTypeFromScriptId(ids[index]);
+</PRE><PRE>               if(arguments[0] == true) {
+                   if(widgetType == IMAGE_BOX_TYPE || widgetType == BUTTON_SHAPE_TYPE) { //for img/btnshape/rect/placeholder
+                       EnableImageWidget(ids[index]);
+                   } else { //for all else
+                       $('#' + ids[index]).removeAttr('disabled');
+                   }
+               } else if(arguments[0] == false) {
+                   if(widgetType == IMAGE_BOX_TYPE || widgetType == BUTTON_SHAPE_TYPE) { //for img/btnshape/rect/placeholder
+                       DisableImageWidget(ids[index]);
+                   } else { //for all else
+                       $('#' + ids[index]).attr('disabled', 'disabled');
+                   }
+               }
+           }
+</PRE><PRE>           return this;
+       }
+   };
+</PRE><PRE>   $axure.fn.selected = function() {
+       if (arguments[0] == undefined) {
+           var firstId = this.getIds()[0];
+</PRE><PRE>           if(!firstId) return;
+</PRE><PRE>           var widgetType = $axure.getTypeFromScriptId(firstId);
+           var idToCheck = <I>;</I></PRE><PRE>           if (widgetType == TREE_NODE_OBJECT_TYPE) {
+               var treeNodeButtonShapeId = <I>;</I>
+               for(var scriptId in $axure.pageData.scriptIdToObject) {
+                   var currObj = $axure.pageData.scriptIdToObject[scriptId];
+</PRE><PRE>                   if(currObj.type == BUTTON_SHAPE_TYPE &amp;&amp; currObj.parent &amp;&amp; 
+                       currObj.parent.scriptIds &amp;&amp; currObj.parent.scriptIds[0] == firstId) {
+                       treeNodeButtonShapeId = scriptId;
+                       break;
+                   }
+               }
+</PRE><PRE>               if(treeNodeButtonShapeId == <I>) return;</I></PRE><PRE>               idToCheck = treeNodeButtonShapeId;
+           } else if (widgetType == IMAGE_BOX_TYPE || widgetType == BUTTON_SHAPE_TYPE || widgetType == TABLE_CELL_TYPE) {
+               idToCheck = firstId;
+           }
+</PRE><PRE>           if(idToCheck != <I>) return IsWidgetSelected(idToCheck);</I>
+       } else {
+           var ids = this.getIds();
+</PRE><PRE>           for(var index in ids){
+               var widgetType = $axure.getTypeFromScriptId(ids[index]);
+</PRE><PRE>               if (widgetType == TREE_NODE_OBJECT_TYPE) { //for tree node
+                   var treeRootId = $('#' + ids[index]).parents('.treeroot').attr('id');
+</PRE><PRE>                   var treeNodeButtonShapeId = <I>;</I>
+                   for(var scriptId in $axure.pageData.scriptIdToObject) {
+                       var currObj = $axure.pageData.scriptIdToObject[scriptId];
+                       
+                       if(currObj.type == BUTTON_SHAPE_TYPE &amp;&amp; currObj.parent &amp;&amp; 
+                           currObj.parent.scriptIds &amp;&amp; currObj.parent.scriptIds[0] == ids[index]) {
+                           treeNodeButtonShapeId = scriptId;
+                           break;
+                       }
+                   }
+                   
+                   if(treeNodeButtonShapeId == <I>) continue;</I>
+                   var treeNodeButtonShapeTextId = 'u' + (parseInt(treeNodeButtonShapeId.substring(1)) + 1);
+</PRE><PRE>                   if(arguments[0] == true) {
+                       eval('SelectTreeNode(currentSelected' + treeRootId + ', true, \<I> + treeNodeButtonShapeId + '\', \</I> + treeNodeButtonShapeTextId + '\')');
+                   } else if (arguments[0] == false) {
+                       eval('DeSelectTreeNode(currentSelected' + treeRootId + ', true, \<I> + treeNodeButtonShapeId + '\', \</I> + treeNodeButtonShapeTextId + '\')');
+                   }
+               } else if(widgetType == IMAGE_BOX_TYPE || widgetType == BUTTON_SHAPE_TYPE || widgetType == TABLE_CELL_TYPE) { //Image boxes, buttonshapes, tablecells/menuitem
+                   if(arguments[0] == true) {
+                       SetWidgetSelected(ids[index]);
+                   } else if (arguments[0] == false) {
+                       SetWidgetNotSelected(ids[index]);
+                   }
+               }
+           }
+</PRE><PRE>           return this;
+       } 
+   };
+</PRE><PRE>   $axure.fn.focus = function() {
+       this.jQuery().focus();
+       return this;
+   };
+</PRE><PRE>   $axure.fn.expanded = function() {
+       if (arguments[0] == undefined) {
+           var firstId = this.getIds()[0];
+</PRE><PRE>           if(!firstId) {
+               return;
+           }
+</PRE><PRE>           if($axure.getTypeFromScriptId(firstId) !== TREE_NODE_OBJECT_TYPE) {
+               return;
+           }
+</PRE><PRE>           var childContainerId = 'cnc' + firstId;
+</PRE><PRE>           var container = document.getElementById(childContainerId);
+           if (!container) {
+               return false;
+           }
+</PRE><PRE>           if(container.style.visibility != 'hidden') {
+               return true;
+           } else {
+               return false;
+           } 
+       } else {
+           var ids = this.getIds();
+          
+           for(var index in ids){
+               if($axure.getTypeFromScriptId(ids[index]) == TREE_NODE_OBJECT_TYPE) {
+                   var treeNodeId = ids[index];
+                   var childContainerId = 'cnc' + ids[index];
+                   var plusMinusId = 'u' + (parseInt(ids[index].substring(1)) + 1);
+                   
+                   if($('#' + childContainerId).length == 0) {
+                       plusMinusId = <I>;</I>
+                   }
+</PRE><PRE>                   if(arguments[0] == true) {
+                       ExpandNode(treeNodeId, childContainerId, plusMinusId);
+                   } else if(arguments[0] == false) {
+                       CollapseNode(treeNodeId, childContainerId, plusMinusId);
+                   }
+               }
+           }
+</PRE><PRE>           return this;
+       }
+   };
+</PRE><P>})();
+</P><P>
+// ******* Object Model ******** //
+(function() {
+</P><PRE>   var _implementations = { };
+</PRE><PRE>   var _initializeObject = function(type, obj) {
+       $.extend(obj, _implementations[type]);
+   };
+   $axure.initializeObject = _initializeObject;
+</PRE><PRE>   // ********** diagramObject ********* //
+   var _diagramObjectBase = {
+       getStateStyleOverrides: function(state) {
+           var styleObject = this;
+           while(styleObject.isContained) styleObject = styleObject.parent;
+</PRE><PRE>           var stateStyle = { };
+           if(state == 'mouseDown') $.extend(stateStyle, GetFullStateStyle(styleObject.style, 'mouseOver'));
+           $.extend(stateStyle, GetFullStateStyle(styleObject.style, state));
+           return stateStyle;
+       }
+   };
+   _implementations['diagramObject'] = _diagramObjectBase;
+</PRE><P>})();
+</P><P>// ******* GLOBAL VARIABLE PROVIDER ******** //
+(function () {
+</P><PRE>   var _globalVariableValues = {};
+   
+   var _globalVariableProvider = {};
+   $axure.globalVariableProvider = _globalVariableProvider;
+</PRE><PRE>   var setVariableValue = function(variable, value, suppressBroadcast) {
+       var stringVal = value.toString();
+       // truncate values to prevent overflows.
+       if (stringVal.length &gt; 300) {
+          stringVal = value.substring(0, 300);
+       }
+       _globalVariableValues[variable] = stringVal;
+</PRE><PRE>       if(suppressBroadcast !== true){
+           var varData = {
+               globalVarName : variable,
+               globalVarValue : stringVal
+           };
+</PRE><PRE>           $axure.messageCenter.postMessage('setGlobalVar', varData);
+       }
+   };
+   _globalVariableProvider.setVariableValue = setVariableValue;
+</PRE><PRE>   var getVariableValue = function(variable) {
+       if(_globalVariableValues[variable] !== undefined) return _globalVariableValues[variable];
+       switch (variable) {
+       case &quot;PageName&quot;: return $axure.pageData.page.name;
+</PRE><PRE>       case &quot;GenYear&quot;: return $axure.pageData.generationDate.getFullYear();
+       case &quot;GenMonth&quot;: return $axure.pageData.generationDate.getMonth() + 1;
+       case &quot;GenMonthName&quot;: return GetMonthString($axure.pageData.generationDate.getMonth());
+       case &quot;GenDay&quot;: return $axure.pageData.generationDate.getDate();
+       case &quot;GenDayOfWeek&quot;: return GetDayString($axure.pageData.generationDate.getDay());
+       case &quot;GenTime&quot;: return $axure.pageData.generationDate.toLocaleTimeString();
+       case &quot;GenHours&quot;: return $axure.pageData.generationDate.getHours();
+       case &quot;GenMinutes&quot;: return $axure.pageData.generationDate.getMinutes();
+       case &quot;GenSeconds&quot;: return $axure.pageData.generationDate.getSeconds();
+</PRE><PRE>       case &quot;Year&quot;: return new Date().getFullYear();
+       case &quot;Month&quot;: return new Date().getMonth() + 1;
+       case &quot;MonthName&quot;: return GetMonthString(new Date().getMonth());
+       case &quot;Day&quot;: return new Date().getDate();
+       case &quot;DayOfWeek&quot;: return GetDayString(new Date().getDay());
+       case &quot;Time&quot;: return new Date().toLocaleTimeString();
+       case &quot;Hours&quot;: return new Date().getHours();
+       case &quot;Minutes&quot;: return new Date().getMinutes();
+       case &quot;Seconds&quot;: return new Date().getSeconds();
+</PRE><PRE>       case &quot;DragX&quot;: return GetDragX();
+       case &quot;DragY&quot;: return GetDragY();
+       case &quot;TotalDragX&quot;: return GetTotalDragX();      
+       case &quot;TotalDragY&quot;: return GetTotalDragY();
+       case &quot;DragTime&quot;: return GetDragTime();
+</PRE><PRE>       default: return <I>;</I>
+       }
+   };
+   _globalVariableProvider.getVariableValue = getVariableValue;
+</PRE><PRE>   var load = function() {
+       var csum = false;
+</PRE><PRE>       var query = (window.location.href.split(&quot;#&quot;)[1] || <I>); //hash.substring(1); Firefox decodes this so &amp; in variables breaks</I>
+           if (query.length &gt; 0) {
+           var vars = query.split(&quot;&amp;&quot;);
+           for (var i = 0; i &lt; vars.length; i++) {
+               var pair = vars[i].split(&quot;=&quot;);
+               var varName = pair[0];
+               var varValue = pair[1];
+               if (varName) {
+                   if (varName == 'CSUM') {
+                       csum = true;
+                   } else setVariableValue(varName, decodeURIComponent(varValue), true);
+               }
+           }
+</PRE><PRE>           if (!csum &amp;&amp; query.length &gt; 250) {
+               alert('Prototype Warning: The variable values were too long to pass to this page.\nIf you are using IE, using Firefox will support more data.');
+           }
+       }
+   };
+</PRE><PRE>   var getLinkUrl = function(baseUrl) {
+       var toAdd = <I>;</I>
+       var definedVariables = getDefinedVariables();
+       for (var i = 0; i &lt; definedVariables.length; i++) {
+           var key = definedVariables[i];
+           var val = getVariableValue(key);
+           if (val != null &amp;&amp; val.length &gt; 0) {
+               if (toAdd.length &gt; 0) toAdd += '&amp;';
+               toAdd += key + '=' + encodeURIComponent(getVariableValue(key));
+           }
+       }
+       return toAdd.length &gt; 0 ? baseUrl + '#' + toAdd + &quot;&amp;CSUM=1&quot; : baseUrl;
+   };
+   _globalVariableProvider.getLinkUrl = getLinkUrl;
+</PRE><PRE>   var getDefinedVariables = function() {
+       return $axure.pageData.variables;
+   };
+   _globalVariableProvider.getDefinedVariables = getDefinedVariables;
+</PRE><PRE>   load();
+</PRE><P>})();
+</P><P>// ******* EVENT MANAGER ******** //
+(function() {
+</P><PRE>   var _objectIdToEventHandlers = { };
+   
+   var _eventManager = { };
+   $axure.eventManager = _eventManager;
+</PRE><PRE>   var _pageLoadFunctions = [];
+</PRE><PRE>   // initilize state
+   _eventManager.mouseOverObjectId = <I>;</I>
+   _eventManager.mouseOverLinkId = <I>;</I>
+   _eventManager.mouseDownObjectId = <I>;</I>
+   _eventManager.mouseDownLinkId = <I>;</I></PRE><PRE>   var EVENT_NAMES = ['click', 'mouseover', 'mouseout', 'change', 'keyup', 'focus', 'blur' ];
+   for(var i = 0; i &lt; EVENT_NAMES.length; i++) {
+       var eventName = EVENT_NAMES[i];
+       // we need the function here to circumvent closure modifying eventName
+       _eventManager[eventName] = (function(event) {
+           return function(scriptId, fn) {
+               var idQuery = $('#' + scriptId);
+               
+               // we need specially track link events so we can enable and disable them along with
+               // their parent widgets
+               if (idQuery.is('a')) _attachCustomObjectEvent(scriptId, event, fn);
+               // see notes below
+               else if($axure.getTypeFromScriptId(scriptId) == 'treeNodeObject') _attachTreeNodeEvent(scriptId, event, fn);
+               else _attachDefaultObjectEvent(idQuery, scriptId, event, fn);
+           };
+       })(eventName);
+   }
+</PRE><PRE>   var _attachTreeNodeEvent = function(id, eventName, fn) {
+       // we need to set the cursor here because we want to make sure that every tree node has the default
+       // cursor set and then it's overridden if it has a click
+       if (eventName == 'click') document.getElementById(id).style.cursor = 'pointer';
+</PRE><PRE>       _attachCustomObjectEvent(id, eventName, fn);
+   };
+</PRE><PRE>   var _attachDefaultObjectEvent = function(idQuery, scriptId, eventName, fn) {
+       idQuery[eventName](function () {
+           if (!IsWidgetDisabled(scriptId)) fn.apply(this, arguments);
+       });
+   };
+</PRE><PRE>   var _attachCustomObjectEvent = function(id, eventName, fn) {
+       var handlers = _objectIdToEventHandlers[id];
+       if (!handlers) _objectIdToEventHandlers[id] = handlers = { };
+</PRE><PRE>       var fnList = handlers[eventName];
+       if (!fnList) handlers[eventName] = fnList = [];
+</PRE><PRE>       fnList[fnList.length] = fn;
+   };
+   
+   var _fireObjectEvent = function(id, event, originalArgs) {
+       var element = document.getElementById(id);
+</PRE><PRE>       var handlerList = _objectIdToEventHandlers[id] &amp;&amp; _objectIdToEventHandlers[id][event];
+       if (handlerList) {
+           for (var i = 0; i &lt; handlerList.length; i++) handlerList[i].apply(element, originalArgs);
+       }
+   };
+</PRE><PRE>   var _initialize = function() {
+       // attach button shape alternate styles
+       $axure(function(obj) {
+           return obj.type != 'hyperlink' &amp;&amp;
+               obj.style &amp;&amp;
+                   obj.style.stateStyles &amp;&amp;
+                       obj.style.stateStyles.mouseOver;
+       }).hover(
+           function() {
+               var id = this.id;
+               if (id == _eventManager.mouseOverObjectId) return;
+               _eventManager.mouseOverObjectId = id;
+               SetWidgetHover(id, false);
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromShape(id));
+           },
+           function() {
+               var id = this.id;
+               if (id == _eventManager.mouseOverObjectId) {
+                   _eventManager.mouseOverLinkId = <I>;</I>
+                   _eventManager.mouseOverObjectId = <I>;</I>
+               }
+               SetWidgetNotHover(id, false);
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromShape(id));
+           });
+       
+       // initialize disabled elements
+       $axure(function(obj) {
+           return (obj.type == 'buttonShape' || obj.type == 'imageBox') &amp;&amp; obj.disabled;
+       }).enabled(false);
+       
+       // attach hyperlink mouse events
+       $axure(function(obj) {
+           return obj.type != 'hyperlink' &amp;&amp;
+               obj.style &amp;&amp;
+                   obj.style.stateStyles &amp;&amp;
+                       obj.style.stateStyles.mouseDown;
+       })
+           .mousedown(function() {
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromShape(this.id));
+   
+               _eventManager.mouseDownObjectId = this.id;
+               SetWidgetMouseDown(this.id, false);        })
+           .mouseup(function() {
+               var mouseDownId = _eventManager.mouseDownObjectId;  
+               _eventManager.mouseDownObjectId = <I>;</I>
+               
+               SetWidgetNotMouseDown(this.id, false);
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromShape(this.id));
+</PRE><PRE>               // we need to make images click, because swapping out the images prevents the click
+               var diagramObject = $axure.pageData.scriptIdToObject[mouseDownId];
+               if (mouseDownId == this.id &amp;&amp; diagramObject.type == 'imageBox'
+                   &amp;&amp; diagramObject.style.stateStyles.mouseDown.image 
+                       &amp;&amp; diagramObject.style.stateStyles.mouseDown.image.url) {
+                   $('#' + mouseDownId).click();
+               }
+           });
+       
+       // attach handlers for button shape and tree node mouse over styles
+       $axure(function(obj) {
+           return obj.type == 'buttonShape' &amp;&amp;
+               obj.parent.type == 'treeNodeObject' &amp;&amp;
+                   obj.parent.style &amp;&amp;
+                       obj.parent.style.stateStyles &amp;&amp;
+                           obj.parent.style.stateStyles.mouseOver;
+       }).hover(
+           function() {
+               SetWidgetHover(this.id, false);
+           },
+           function() {
+               SetWidgetNotHover(this.id, false);
+           });
+       
+       // handle treeNodeObject events and prevent them from bubbling up. this is necessary because otherwise
+       // both a sub menu and it's parent would get a click
+       $axure(function(obj) {
+           return obj.type == 'treeNodeObject';
+       }).click(function() {
+           _fireObjectEvent(this.id, 'click', arguments);
+</PRE><PRE>      return false;
+       }).$().each(function() {
+           if(!this.style.cursor) {
+               this.style.cursor = 'default';
+           }
+       });
+</PRE><PRE>       // attach link alternate styles
+       $('a[id^=&quot;u&quot;]').hover(
+           function() {
+               var id = this.id;
+               var mouseOverObjectId = _eventManager.mouseOverObjectId;
+               if (mouseOverObjectId &amp;&amp; IsWidgetDisabled(mouseOverObjectId)) return;
+               
+               _eventManager.mouseOverLinkId = id;
+               SetLinkHover(id);
+</PRE><PRE>               _fireObjectEvent(id, 'mouseover', arguments);
+</PRE><PRE>               $axure.annotationManager.updateLinkLocations(GetTextIdFromLink(id));
+           },
+           function() {
+               var id = this.id;
+               var mouseOverObjectId = _eventManager.mouseOverObjectId;
+               if (id == _eventManager.mouseOverLinkId) _eventManager.mouseOverLinkId = <I>;</I>
+               
+               if (mouseOverObjectId &amp;&amp; IsWidgetDisabled(mouseOverObjectId)) return;
+               
+               SetLinkNotHover(id);
+               
+               _fireObjectEvent(id, 'mouseout', arguments);
+               
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromLink(id));
+           })
+           .mousedown(function() {
+               var id = this.id;
+               var mouseOverObjectId = _eventManager.mouseOverObjectId;
+               if (IsWidgetDisabled(mouseOverObjectId)) return undefined;
+               
+               if (mouseOverObjectId) SetWidgetMouseDown(mouseOverObjectId);
+               SetLinkMouseDown(id);
+               
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromLink(id));
+               
+               return false;
+           })
+           .mouseup(function() {
+               var id = this.id;
+               var mouseOverObjectId = _eventManager.mouseOverObjectId;
+               if (mouseOverObjectId &amp;&amp; IsWidgetDisabled(mouseOverObjectId)) return;
+               
+               if (mouseOverObjectId) SetWidgetNotMouseDown(mouseOverObjectId);
+               SetLinkNotMouseDown(id);
+               
+               $axure.annotationManager.updateLinkLocations(GetTextIdFromLink(id));
+               
+           }).click(function () {
+               var id = this.id;
+               var mouseOverObjectId = _eventManager.mouseOverObjectId;
+               if (mouseOverObjectId &amp;&amp; IsWidgetDisabled(mouseOverObjectId)) return;
+                   
+               _fireObjectEvent(id, 'click', arguments);
+</PRE><PRE>               return false;
+           });
+       // finally, process the pageload
+       _pageLoad();
+   };
+   _eventManager.initialize = _initialize;
+</PRE><PRE>   var _pageLoad = function() {
+       if (arguments.length == 0) {
+           $.each(_pageLoadFunctions, function(index, fn) {
+               fn();
+           });
+       } else {
+           _pageLoadFunctions[_pageLoadFunctions.length] = arguments[0];
+       }
+   };
+   _eventManager.pageLoad = _pageLoad;
+   
+</PRE><P>})();
+</P><P>
+// ******* Annotation MANAGER ******** //
+(function() {
+</P><PRE>   var NOTE_SIZE = 10;
+</PRE><PRE>   var _annotationManager = { };
+   $axure.annotationManager = _annotationManager;
+</PRE><PRE>   var _updateLinkLocations = function(textId) {
+       var diagramObject = $axure.pageData.scriptIdToObject[textId];
+       var rotation = (diagramObject &amp;&amp; diagramObject.rotation);
+       var shapeId = GetShapeIdFromText(textId);
+     
+       // we have to do this because webkit reports the post-transform position but when you set
+       // positions it's pre-transform
+       if (WEBKIT &amp;&amp; rotation) {
+           $('#' + shapeId).css('-webkit-transform', 'scale(1)');
+           $('#' + textId).css('-webkit-transform', 'scale(1)');
+       }
+</PRE><PRE>       $('#' + textId).find('span[id$=&quot;ann&quot;]').each(function (index, value) {
+           var id = value.id.replace('ann', <I>);</I>
+           
+           var annPos = $(value).position();
+           var left = annPos.left - NOTE_SIZE;
+           var top = annPos.top;
+</PRE><PRE>           $('#' + id + 'Note').css('left', left).css('top', top);
+       });
+       
+       // undo the transform reset
+       if (WEBKIT &amp;&amp; rotation) {
+           $('#' + shapeId).css('-webkit-transform', <I>);</I>
+           $('#' + textId).css('-webkit-transform', <I>);</I>
+       }
+</PRE><PRE>   };
+   _annotationManager.updateLinkLocations = _updateLinkLocations;
+</PRE><PRE>   $(document).ready(function() {
+       $axure(function(dObj) { return dObj.annotation; }).each(function(dObj) {
+</PRE><PRE>           if (dObj.type == 'hyperlink') {
+               var scriptIds = dObj.scriptIds;
+               for (var i = 0; i &lt; scriptIds.length; i++) {
+                   
+                   var id = scriptIds[i];
+                   var textId = GetTextIdFromLink(id);
+</PRE><PRE>                   var idQuery = $('#' + id);
+                   idQuery.after(&quot;<SPAN id=".22_.2B_id_.2B_.22ann">​</SPAN>&quot;);
+</PRE><PRE>                   if ($axure.pageData.options.useLabels) {
+                       var label = $('#' + id).attr(&quot;data-label&quot;);
+                       if (!label || label == &quot;&quot;) label = &quot;?&quot;;
+</PRE>
+                        $('#' + textId).append(&quot;<DIV id=".22_.2B_id_.2B_.22Note" class="annnotelabel">&quot; + label + &quot;</DIV>&quot;);
+<PRE>                   } else {
+</PRE>
+                        $('#' + textId).append(&quot;&quot;);
+<PRE>                   }
+                   $('#' + id + 'Note').click(function(e) { ToggleWorkflow(e, id, 300, 150, false); return false; });
+</PRE><PRE>                   _updateLinkLocations(textId);
+               }
+           } else {
+               var scriptIds = dObj.scriptIds;
+               for (var i = 0; i &lt; scriptIds.length; i++) {
+                   var id = scriptIds[i];
+                   if ($axure.pageData.options.useLabels) {
+                       var label = $('#' + id).attr(&quot;data-label&quot;);
+                       if (!label || label == &quot;&quot;) label = &quot;?&quot;;
+</PRE>
+                        $('#' + id + &quot;ann&quot;).append(&quot;<DIV id=".22_.2B_id_.2B_.22Note" class="annnotelabel" style="left:0;top:0;">&quot; + label + &quot;</DIV>&quot;);
+<PRE>                   } else {
+</PRE>
+                        $('#' + id + &quot;ann&quot;).append(&quot;&quot;);
+<PRE>                   }
+                   $('#' + id + 'Note').click(function(e) { ToggleWorkflow(e, id, 300, 150, false); return false; });
+               }
+           }
+       });
+</PRE><PRE>   });
+</PRE><P>})();
+</P><P>// ******* Internet Explorer MANAGER ******** //
+// this is to handle all the stupid IE Stuff
+(function() {
+</P><PRE>   if (!bIE) return;
+</PRE><PRE>   var _applyIEFixedPosition = function() {
+       $axure(function(diagramObject) { return diagramObject.fixedVertical; }).$()
+           .appendTo($('body'))
+           .css('position', 'absolute').css('margin-left', 0 + 'px').css('margin-top', 0 + 'px');
+       
+       var handleScroll = function() {
+           $axure(function(diagramObject) { return diagramObject.fixedVertical; }).each(function(diagramObject) {
+               $.each(diagramObject.scriptIds, function(index, id) {
+                   var win = $(window);
+                   var windowWidth = win.width();
+                   var windowHeight = win.height();
+                   var windowScrollLeft = win.scrollLeft();
+                   var windowScrollTop = win.scrollTop();
+                   
+                   var newLeft = 0;
+                   var newTop = 0;
+                   var elementQuery = $('#' + id);
+                   var width = elementQuery.width();
+                   var height = elementQuery.height();
+</PRE><PRE>                   var horz = diagramObject.fixedHorizontal;
+                   if (horz == 'left') {
+                       newLeft = windowScrollLeft + diagramObject.fixedMarginHorizontal;
+                   } else if (horz == 'center') {
+                       newLeft = windowScrollLeft + ((windowWidth - width) / 2) + diagramObject.fixedMarginHorizontal;
+                   } else if (horz == 'right') {
+                       newLeft = windowScrollLeft + windowWidth - width - diagramObject.fixedMarginHorizontal;
+                   }
+                   
+                   var vert = diagramObject.fixedVertical;
+                   if (vert == 'top') {
+                       newTop = windowScrollTop + diagramObject.fixedMarginVertical;
+                   } else if (vert == 'middle') {
+                       newTop = windowScrollTop + ((windowHeight - height) / 2) + diagramObject.fixedMarginVertical;
+                   } else if (vert == 'bottom') {
+                       newTop = windowScrollTop + windowHeight - height - diagramObject.fixedMarginVertical;
+                   }
+                   elementQuery.css('top', newTop + 'px').css('left', newLeft + 'px');
+</PRE><PRE>               });
+           });
+       };
+</PRE><PRE>       $(window).scroll(handleScroll).resize(handleScroll);
+       handleScroll();
+   };
+</PRE><PRE>   var getIEOffset = function(transform, rect) {
+       var translatedVertexes = [
+           _axUtils.Vector2D(0, 0), // we dont translate, so the orgin is fixed
+           transform.mul(_axUtils.Vector2D(0, rect.height)),
+           transform.mul(_axUtils.Vector2D(rect.width, 0)),
+           transform.mul(_axUtils.Vector2D(rect.width, rect.height))];
+</PRE><PRE>       var minX = 0, minY = 0, maxX = 0, maxY = 0;
+       $.each(translatedVertexes, function(index, p) {
+           minX = Math.min(minX, p.x);
+           minY = Math.min(minY, p.y);
+           maxX = Math.max(maxX, p.x);
+           maxY = Math.max(maxY, p.y);
+       });
+</PRE><PRE>       return _axUtils.Vector2D(
+           (maxX - minX - rect.width) / 2, 
+           (maxY - minY - rect.height) / 2);
+   };
+</PRE><PRE>   var _filterFromTransform = function(transform) {
+       return &quot;progid:DXImageTransform.Microsoft.Matrix(M11=&quot; + transform.m11 +
+           &quot;, M12=&quot; + transform.m12 + &quot;, M21=&quot; + transform.m21 +
+               &quot;, M22=&quot; + transform.m22 + &quot;, SizingMethod='auto expand')&quot;;                        
+   };
+</PRE><PRE>   var _applyIERotation = function() {
+       $axure(function(diagramObject) {
+           return diagramObject.rotation &amp;&amp; Math.abs(diagramObject.rotation) &gt; 0.1
+               &amp;&amp; !diagramObject.isContained;
+       }).each(function(diagramObject) {
+           var rotation = diagramObject.rotation;
+           var transform = _axUtils.Matrix2D.identity().rotate(rotation);
+           $.each(diagramObject.scriptIds, function(index, id) {
+               var filter = _filterFromTransform(transform);
+               var elementQuery = $('#' + id);
+               var width = elementQuery.width();
+               var height = elementQuery.height();
+               elementQuery.css('filter', filter)
+                   .width(width + 1)
+                   .height(height + 1);
+</PRE><PRE>               var ieOffset = getIEOffset(transform, { width: width, height: height });
+               elementQuery.css(&quot;margin-left&quot;, -ieOffset.x).css(&quot;margin-top&quot;, -ieOffset.y);
+</PRE><PRE>               var textId = $.grep(
+                   $('#' + id).children().map(function(i, obj) { return obj.id; }), // all the child ids
+                   function(item) { return item.indexOf(id) &lt; 0; })[0]; // that are not similar to the parent
+               var textRotation = -rotation;
+               var textObject = $axure.pageData.scriptIdToObject[textId];
+               if (textObject &amp;&amp; textObject.rotation) {
+                   textRotation = textObject.rotation - rotation;
+               }
+</PRE><PRE>               var textTransform = _axUtils.Matrix2D.identity().rotate(textRotation);
+               var textQuery = $('#' + textId);
+               var textWidth = textQuery.width();
+               var textHeight = textQuery.height();
+               var textIEOffset = getIEOffset(textTransform, { width: textWidth, height: textHeight });
+               textQuery.css('filter',                    
+                   _filterFromTransform(textTransform));
+               textQuery.css(&quot;margin-left&quot;, -textIEOffset.x).css(&quot;margin-top&quot;, -textIEOffset.y);
+           });
+       });
+   };
+   
+   $(document).ready(function() {
+       _applyIEFixedPosition();
+       _applyIERotation();
+   });
+   
+   
+</PRE><P>})();
+</P><P>
+$(document).ready(function () {
+</P><PRE>   // this is because the page id is not formatted as a guid
+   var pageId = $axure.pageData.page.packageId;
+</PRE><PRE>   var pageData = {
+       id: pageId,
+       pageName: $axure.pageData.page.name,
+       location: window.location.toString(),
+       notes: $axure.pageData.page.notes
+   };
+</PRE><PRE>   // only trigger the page.data setting if the window is on the mainframe
+   if (window.name == 'mainFrame' ||
+       (!CHROME_5_LOCAL &amp;&amp; window.parent.$ &amp;&amp; window.parent.$('#mainFrame').length &gt; 0)) {
+       $axure.messageCenter.setState('page.data', pageData);
+   }
+</PRE><PRE>   $('input[type=text], input[type=password], textarea').focus(function () {
+       window.lastFocusedControl = this;
+   });
+</PRE><PRE>   $('iframe').each(function () {
+       var origSrc = $(this).attr('basesrc');
+</PRE><PRE>       if (origSrc) {
+           var newSrcUrl = origSrc.toLowerCase().indexOf('<A href="http://'" class="external free" rel="nofollow">http://'</A>) == -1 ? $axure.globalVariableProvider.getLinkUrl(origSrc) : origSrc;
+</PRE><PRE>           $(this).attr('src', newSrcUrl);
+       }
+   });
+</PRE><PRE>   $axure.messageCenter.addMessageListener(function (message, data) {
+       if (message == 'setGlobalVar') {
+           $axure.globalVariableProvider.setVariableValue(data.globalVarName, data.globalVarValue, true);
+       }
+   });
+</PRE><PRE>   var lastFocusedClickable;
+   var shouldOutline = true;
+</PRE><PRE>   $('div[tabIndex=0]').mousedown(function () {
+       shouldOutline = false;
+   });
+</PRE><PRE>   $(document).mouseup(function () {
+       shouldOutline = true;
+   });
+</PRE><PRE>   $('div[tabIndex=0],a').focus(function () {
+       if (shouldOutline) {
+           $(this).css('outline', <I>);</I>
+       } else {
+           $(this).css('outline', 'none');
+       }
+</PRE><PRE>       lastFocusedClickable = this;
+   });
+</PRE><PRE>   $('div[tabIndex=0],a').blur(function () {
+       lastFocusedClickable = null;
+   });
+</PRE><PRE>   $(document).bind('keyup', function (e) {
+       if (e.keyCode == '13' || e.keyCode == '32') {
+           if (lastFocusedClickable) $(lastFocusedClickable).click();
+       };
+   });
+</PRE><PRE>   $('[axSubmit]').keyup(function (event) {
+       if (event.keyCode == '13') {
+           var submitButton = $(this).attr('axSubmit')
+           $('#' + submitButton).click();
+       };
+   }).keydown(function (event) {
+       if (event.keyCode == '13') {
+           event.preventDefault();
+       }
+   });
+</PRE><PRE>   if ($axure.pageData.options.hideAddress) {
+       $(window).load(function () {
+           setTimeout(function () {
+               window.scrollTo(0, 0.9);
+           }, 0);
+       });
+   }
+</PRE><PRE>   if ($axure.pageData.options.preventScroll) {
+       $(document).bind('touchmove', function (event) {
+           //if nothing in the targets parent chain is scrollable
+           var $target = $(event.target);
+           var inScrollable = false;
+           var current = $target;
+           while (!current.is('body')) {
+               var elementId = current.attr('id');
+               var diagramObject = elementId &amp;&amp; $axure.pageData.scriptIdToObject[elementId];
+               if (diagramObject &amp;&amp; diagramObject.type == 'dynamicPanel' &amp;&amp; diagramObject.scrollbars != 'none') {
+                   inScrollable = true;
+                   break;
+               }
+               current = current.parent();
+           }
+</PRE><PRE>           if (!inScrollable) {
+               event.preventDefault();
+           }
+       });
+</PRE><PRE>       $axure(function (diagramObject) {
+           return diagramObject.type == 'dynamicPanel' &amp;&amp; diagramObject.scrollbars != 'none';
+       }).$().children().bind('touchstart', function (event) {
+           var target = this;
+           var top = target.scrollTop;
+           if (top &lt;= 0) target.scrollTop = 1;
+           if (top + target.offsetHeight &gt;= target.scrollHeight)
+               target.scrollTop = target.scrollHeight - target.offsetHeight - 1;
+       });
+   }
+</PRE><PRE>   BringFixedToFront();
+</PRE><PRE>   $axure.eventManager.initialize();
+</PRE><P>});
+</P><P>function InitializeSubmenu(submenudivid, tablecellid) {
+</P><PRE>   var $submenudiv = $(document.getElementById(submenudivid));
+</PRE><PRE>   // mouseenter and leave for parent table cell
+   $(document.getElementById(tablecellid)).mouseenter(function (e) {
+       // hide sibling submenus
+       $submenudiv.siblings('[id^=&quot;sm&quot;]').css('visibility', 'hidden');
+</PRE><PRE>       // show current submenu
+       $submenudiv.css('visibility', <I>);</I>
+       BringToFront(submenudivid);
+   }).mouseleave(function (e) {
+       var submenucontainer = $submenudiv.children('[id$=&quot;container&quot;]');
+</PRE><PRE>       var offset = submenucontainer.offset();
+       var subcontwidth = submenucontainer.width();
+       var subcontheight = submenucontainer.height();
+       //If mouse is not within the submenu (added 3 pixel margin to top and left calculations), then close the submenu...
+       if (e.pageX + 3 &lt; offset.left || e.pageX &gt; offset.left + subcontwidth || e.pageY + 3 &lt; offset.top || e.pageY &gt; offset.top + subcontheight) {
+           $submenudiv.find('[id^=&quot;sm&quot;]').andSelf().css('visibility', 'hidden');
+           if(!IsWidgetSelected(tablecellid)) SetWidgetOriginal(tablecellid, false);
+       }
+   });
+</PRE><PRE>   // mouseleave for submenu
+   $submenudiv.mouseleave(function (e) {
+       //close this menu and all menus below it
+       $(this).find('[id^=&quot;sm&quot;]').andSelf().css('visibility', 'hidden');
+       if(!IsWidgetSelected(tablecellid)) SetWidgetOriginal(tablecellid, false);
+   });
+</PRE><P>}
+</P><P>function getAbsoluteNodeTop(node)
+{
+</P><PRE>  var currentNode=node;
+  var top=0;
+  while(currentNode.tagName!=&quot;BODY&quot;){
+     top+=currentNode.offsetTop;
+     currentNode=currentNode.offsetParent;
+  }
+  return top;
+</PRE><P>}
+</P><P>function IsNodeVisible(nodeId) {
+</P><PRE>   var current = document.getElementById(nodeId);
+   var parent = current.parentNode;
+</PRE><PRE>   //move all the parent's children that are below the node and their annotations
+   while (current.className != &quot;treeroot&quot;) {
+       if (parent.style.visibility == 'hidden') return false;
+       current = parent; 
+       parent = parent.parentNode;
+   }
+   return true;
+</PRE><P>}
+</P><P>function ExpandNode(nodeId, childContainerId, plusMinusId) {
+</P><PRE>   var container = document.getElementById(childContainerId);
+   if (!container || container.style.visibility != 'hidden') {
+       return;
+   }
+   container.style.visibility = <I>;</I></PRE><PRE>   if (plusMinusId != <I>) {</I>
+       SetWidgetSelected(plusMinusId);
+   }
+</PRE><PRE>   var delta = GetExpandCollapseDelta(nodeId, childContainerId);
+</PRE><PRE>   var isVisible = IsNodeVisible(nodeId);
+   var current = document.getElementById(nodeId);
+   var parent = current.parentNode;
+</PRE><PRE>   //move all the parent's children that are below the node and their annotations
+   while (current.className != &quot;treeroot&quot;) {
+       var after = false;
+       var i = 0;
+       for (i=0;i&lt;parent.childNodes.length;i++) {
+           var child = parent.childNodes[i];
+           if (after &amp;&amp; child.id &amp;&amp; child.className.indexOf(&quot;treenode&quot;) &gt; -1) {
+</PRE><P>		        var id = child.id.substring(2);
+	            child.style.top = Number(child.style.top.replace(&quot;px&quot;,&quot;&quot;)) + delta;
+</P><PRE>               var tn = document.getElementById(id);
+               if (tn) tn.style.top = Number(tn.style.top.replace(&quot;px&quot;,&quot;&quot;)) + delta;
+               var ann = document.getElementById(id + &quot;ann&quot;);
+               if (ann) ann.style.top = Number(ann.style.top.replace(&quot;px&quot;,&quot;&quot;)) + delta;
+           }
+           if (child == current) after = true;
+       }
+       current = parent; 
+       parent = parent.parentNode;
+       if (!isVisible &amp;&amp; parent.style.visibility != 'hidden') break;
+   }
+</PRE><P>}
+</P><P>function CollapseNode(nodeId, childContainerId, plusMinusId) {
+</P><PRE>   var container = document.getElementById(childContainerId);
+   if (!container || container.style.visibility == 'hidden') {
+       return;
+   }
+   container.style.visibility = 'hidden';
+</PRE><PRE>   if (plusMinusId != <I>) {</I>
+       SetWidgetNotSelected(plusMinusId);
+   }
+</PRE><PRE>   var delta = GetExpandCollapseDelta(nodeId, childContainerId);
+</PRE><PRE>   var isVisible = IsNodeVisible(nodeId);
+   var current = document.getElementById(nodeId);
+   var parent = current.parentNode;
+</PRE><PRE>   //move all the parent's children that are below the node and their annotations
+   while (current.className != &quot;treeroot&quot;) {
+       var after = false;
+       var i = 0;
+       for (i=0;i&lt;parent.childNodes.length;i++) {
+           var child = parent.childNodes[i];
+           if (after &amp;&amp; child.id &amp;&amp; child.className.indexOf(&quot;treenode&quot;) &gt; -1) {
+</PRE><P>		        var id = child.id.substring(2);
+	            child.style.top = Number(child.style.top.replace(&quot;px&quot;,&quot;&quot;)) - delta;
+</P><PRE>               var tn = document.getElementById(id);
+               if (tn) tn.style.top = Number(tn.style.top.replace(&quot;px&quot;,&quot;&quot;)) - delta;
+               var ann = document.getElementById(id + &quot;ann&quot;);
+               if (ann) ann.style.top = Number(ann.style.top.replace(&quot;px&quot;,&quot;&quot;)) - delta;
+           }
+           if (child == current) after = true;
+       }
+       current = parent; 
+       parent = current.parentNode;
+       if (!isVisible &amp;&amp; parent.style.visibility != 'hidden') break;
+   }
+</PRE><P>}
+</P><P>function GetExpandCollapseDelta(nodeId, childContainerId) {
+</P><PRE>   //find the distance by diffing the bottom of the node to the bottom of the last child
+   var node = document.getElementById(nodeId);
+   var lastNode = GetLastVisibleChild(childContainerId);
+</PRE><PRE>   var nodetop = getAbsoluteNodeTop(node);
+   var nodebottom = nodetop + Number(node.style.height.replace(&quot;px&quot;,&quot;&quot;));
+   var lastNodeTop = getAbsoluteNodeTop(lastNode);
+   var lastNodeBottom = lastNodeTop + Number(lastNode.style.height.replace(&quot;px&quot;,&quot;&quot;));
+   var delta = lastNodeBottom - nodebottom;
+   return delta;
+</PRE><P>}
+</P><P>function GetLastVisibleChild(containerId) {
+</P><PRE>   var container = document.getElementById(containerId);
+   
+   //get the last node that's not an annotation
+   var lastNode = container.lastChild;
+   while (!lastNode.id || lastNode.className.indexOf(&quot;treenode&quot;) &lt; 0) {
+       lastNode = lastNode.previousSibling;
+   }
+   var lastNodeId = lastNode.id;
+</PRE><PRE>   //see if it has a visible container for child nodes
+   var subContainer = document.getElementById('cnc' + lastNodeId);
+   if (subContainer &amp;&amp; subContainer.style.visibility != 'hidden') {
+       return GetLastVisibleChild(subContainer.id);  
+   }
+</PRE><PRE>   return lastNode;
+</PRE><P>}
+</P><P>
+var initializedTreeNodes = new Object();
+</P><P>function InitializeTreeNode(nodeId, plusminusid, childContainerId, selectText) {
+</P><PRE>   if (initializedTreeNodes[nodeId]) return;
+</PRE><PRE>   $('#' + plusminusid).click(function() {
+       var container = document.getElementById(childContainerId);
+       if (container.style.visibility != 'hidden')
+           CollapseNode(nodeId, childContainerId, plusminusid);
+       else
+           ExpandNode(nodeId, childContainerId, plusminusid);
+       eval(selectText);
+</PRE><PRE>       return false;
+   }).css('cursor', 'default');
+</PRE><PRE>   initializedTreeNodes[nodeId] = true;
+</PRE><P>}
+</P><P>function SelectTreeNode(currentSelected, applySelected, buttonShapeId, buttonShapeTextId) {
+</P><PRE>   if (currentSelected.buttonShapeId &amp;&amp; currentSelected.buttonShapeId != <I>) {</I>
+       SetWidgetNotSelected(currentSelected.buttonShapeId);
+   }    
+   if (applySelected) {
+       SetWidgetSelected(buttonShapeId);
+   }
+   currentSelected.buttonShapeId = buttonShapeId;
+   currentSelected.buttonShapeTextId = buttonShapeTextId;        
+</PRE><P>}
+</P><P>function DeSelectTreeNode(currentSelected, applySelected, buttonShapeId, buttonShapeTextId) {
+</P><PRE>   if (currentSelected.buttonShapeId &amp;&amp; currentSelected.buttonShapeId == buttonShapeId) {
+       SetWidgetNotSelected(currentSelected.buttonShapeId);
+       currentSelected.buttonShapeId = <I>;</I>
+       currentSelected.buttonShapeTextId = <I>;</I>
+   }
+</PRE><P>}
+</P><P>function ToggleSelectTreeNode(currentSelected, applySelected, buttonShapeId, buttonShapeTextId) {
+</P><PRE>   if (currentSelected.buttonShapeId &amp;&amp; currentSelected.buttonShapeId == buttonShapeId) {
+       DeSelectTreeNode(currentSelected, applySelected, buttonShapeId, buttonShapeTextId);
+   } else {
+       SelectTreeNode(currentSelected, applySelected, buttonShapeId, buttonShapeTextId);
+   }
+</PRE><P>}
+</P><P>/* extend canvas */
+var gv_hasCanvas = false;
+(function(){
+	var _canvas = document.createElement('canvas'), proto, abbrev;
+	if (gv_hasCanvas = !!(_canvas.getContext &amp;&amp; _canvas.getContext('2d')) &amp;&amp; typeof(CanvasGradient) !== 'undefined') {
+		function chain(func) {
+		    return function() {
+		        return func.apply(this, arguments) || this;
+		    };
+		}
+</P><P>		with (proto = CanvasRenderingContext2D.prototype) for (var func in abbrev = {
+			a: arc,
+			b: beginPath,
+			n: clearRect,
+			c: clip,
+			p: closePath,
+			g: createLinearGradient,
+			f: fill,
+			j: fillRect,
+			z: function(s){ this.fillStyle = s;},
+			l: lineTo,
+			w: function(w){ this.lineWidth = w;},
+			m: moveTo,
+			q: quadraticCurveTo,
+			h: rect,
+			r: restore,
+			o: rotate,
+			s: save,
+			x: scale,
+			y: function(s){this.strokeStyle=s},
+			u: setTransform,
+			k: stroke,
+			i: strokeRect,
+			t: translate
+		}) proto[func] = chain(abbrev[func]);
+		CanvasGradient.prototype.a = chain(CanvasGradient.prototype.addColorStop);
+	}
+})();
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:Ciencias-UNAM/scripts/beforepagescript">http://2013.igem.org/Team:Ciencias-UNAM/scripts/beforepagescript</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Ciencias-UNAM/scripts/beforepagescript" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Ciencias-UNAM/scripts/beforepagescript" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/beforepagescript&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/beforepagescript&amp;oldid=157307" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

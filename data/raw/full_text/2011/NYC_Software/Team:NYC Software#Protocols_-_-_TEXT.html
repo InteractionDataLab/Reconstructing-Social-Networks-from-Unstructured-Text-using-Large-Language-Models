@@ -1,0 +1,76 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:NYC Software/Protocols
+From 2011.igem.org
+Introduction
+Home
+Meet the Team
+Deinococcus
+The Deino Genera
+Genome Sequencing
+Data
+Tools
+Primer Design
+BLAST Tool
+Human Practices
+Maker Faire
+Safety
+Future applications
+Bioremediation
+Colonization of Mars
+Notebook
+Summary
+Protocols
+Attributions
+Our Partners
+Sponsors
+NYC Wetware
+iGEM Teams
+NYC-iGEM software
+Unix Pipe for Genome CDS Comparisons
+This is the bash shell script we developed to predict genes in our genomes, align them to the D. rad genome, filter poorer quality hits, and build BED files we could use for visualization.
+From it you can learn what commands to use to do the various operations.
+# Unix Code scratch for Shell Scripting Gene Predictions + Alignment
+# Will predict genes in foreign Deinos, extract predicted sequences, align them to the Drad genome and finally make a BED file to visualize tracks
+genomes=~/Deinos/genomes
+glimmer=~/Deinos/glimmer
+predicts=~/Deinos/glimmer/script_predicts
+CDSs=~/Deinos/glimmer/CDSs
+alignments_root=~/Deinos/CDS_alignments/All_CDSs_to_Drad_genome
+SAMs=~/Deinos/CDS_alignments/All_CDSs_to_Drad_genome/SAMs
+BAMs=~/Deinos/CDS_alignments/All_CDSs_to_Drad_genome/BAMs
+BEDs=~/Deinos/CDS_alignments/All_CDSs_to_Drad_genome/BEDs
+#EMPTY ALL DIRECTORIES
+for y in $predicts $CDSs $SAMs $BAMs $BEDs; do cd $y; rm *; cd ~/Deinos/; done
+#predict genes in Deino species using ICM model based on Drad's CDSs
+for x in `ls $genomes`;  do  glimmer3 $genomes/$x $glimmer/ICMs/Drad_CDS.icm $predicts/$x.glimmer;  done
+#Extract CDSs using these predictions
+for x in `ls $genomes`; do extract $genomes/$x $predicts/$x.glimmer.predict > $CDSs/$x.CDSs.fa; done
+#Align predicted genes to Drad genome to create SAM file
+for x in `ls $CDSs`;  do  bwa bwasw -f $SAMs/$x.sam ~/Deinos/BWA_INDEXES/Drad/Drad_full_genome.fa $CDSs/$x;  done
+#Convert to BAM
+for x in `ls $SAMs`;  do samtools view -b -S -o $BAMs/$x.bam $SAMs/$x;  done
+#Sort BAM
+for x in `ls $BAMs`; do samtools sort $BAMs/$x $BAMs/$x.sorted; echo $x 'sorted'; done
+#Create BED file
+for x in `ls $BAMs | grep sorted`; do bamToBed -i $BAMs/$x > $BEDs/$x.bed; echo 'bed file created for ' $x; done
+#echo done
+echo "SUCCESS!!!! (hopefully) - see for yourself:"
+echo "These are the word counts for the files in the BEDs directory:"
+for x in `ls $BEDs`; do cd $BEDs; wc $x; done
+Retrieved from " http://2011.igem.org/Team:NYC_Software/Protocols "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

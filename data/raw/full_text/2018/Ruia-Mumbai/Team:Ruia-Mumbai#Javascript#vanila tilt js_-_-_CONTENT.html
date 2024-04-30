@@ -1,0 +1,263 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Ruia-Mumbai_Javascript_vanila_tilt_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Ruia-Mumbai/Javascript/vanila tilt js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>var VanillaTilt = (function () {
+'use strict';
+</P><P>/**
+</P><PRE>* Created by È˜andor Sergiu (micku7zu) on 1/27/2017.
+* Original idea: <A rel="nofollow" class="external free" href="https://github.com/gijsroge/tilt.js">https://github.com/gijsroge/tilt.js</A>
+* MIT License.
+* Version 1.4.1
+*/
+</PRE><P>class VanillaTilt {
+</P><PRE> constructor(element, settings = {}) {
+   if (!(element instanceof Node)) {
+     throw (&quot;Can't initialize VanillaTilt because &quot; + element + &quot; is not a Node.&quot;);
+   }
+</PRE><PRE>   this.width = null;
+   this.height = null;
+   this.left = null;
+   this.top = null;
+   this.transitionTimeout = null;
+   this.updateCall = null;
+</PRE><PRE>   this.updateBind = this.update.bind(this);
+   this.resetBind = this.reset.bind(this);
+</PRE><PRE>   this.element = element;
+   this.settings = this.extendSettings(settings);
+</PRE><PRE>   this.reverse = this.settings.reverse ? -1 : 1;
+</PRE><PRE>   this.glare = this.isSettingTrue(this.settings.glare);
+   this.glarePrerender = this.isSettingTrue(this.settings[&quot;glare-prerender&quot;]);
+</PRE><PRE>   if (this.glare) {
+     this.prepareGlare();
+   }
+</PRE><PRE>   this.addEventListeners();
+ }
+</PRE><PRE> isSettingTrue(setting) {
+   return setting === &quot;&quot; || setting === true || setting === 1;
+ }
+</PRE><PRE> addEventListeners() {
+   this.onMouseEnterBind = this.onMouseEnter.bind(this);
+   this.onMouseMoveBind = this.onMouseMove.bind(this);
+   this.onMouseLeaveBind = this.onMouseLeave.bind(this);
+   this.onWindowResizeBind = this.onWindowResizeBind.bind(this);
+</PRE><PRE>   this.element.addEventListener(&quot;mouseenter&quot;, this.onMouseEnterBind);
+   this.element.addEventListener(&quot;mousemove&quot;, this.onMouseMoveBind);
+   this.element.addEventListener(&quot;mouseleave&quot;, this.onMouseLeaveBind);
+   if (this.glare) {
+     window.addEventListener(&quot;resize&quot;, this.onWindowResizeBind);
+   }
+ }
+</PRE><PRE> removeEventListeners() {
+   this.element.removeEventListener(&quot;mouseenter&quot;, this.onMouseEnterBind);
+   this.element.removeEventListener(&quot;mousemove&quot;, this.onMouseMoveBind);
+   this.element.removeEventListener(&quot;mouseleave&quot;, this.onMouseLeaveBind);
+   if (this.glare) {
+     window.removeEventListener(&quot;resize&quot;, this.onWindowResizeBind);
+   }
+ }
+</PRE><PRE> destroy() {
+   clearTimeout(this.transitionTimeout);
+   if (this.updateCall !== null) {
+     cancelAnimationFrame(this.updateCall);
+   }
+</PRE><PRE>   this.reset();
+</PRE><PRE>   this.removeEventListeners();
+   this.element.vanillaTilt = null;
+   delete this.element.vanillaTilt;
+</PRE><PRE>   this.element = null;
+ }
+</PRE><PRE> onMouseEnter(event) {
+   this.updateElementPosition();
+   this.element.style.willChange = &quot;transform&quot;;
+   this.setTransition();
+ }
+</PRE><PRE> onMouseMove(event) {
+   if (this.updateCall !== null) {
+     cancelAnimationFrame(this.updateCall);
+   }
+</PRE><PRE>   this.event = event;
+   this.updateCall = requestAnimationFrame(this.updateBind);
+ }
+</PRE><PRE> onMouseLeave(event) {
+   this.setTransition();
+</PRE><PRE>   if (this.settings.reset) {
+     requestAnimationFrame(this.resetBind);
+   }
+ }
+</PRE><PRE> reset() {
+   this.event = {
+     pageX: this.left + this.width / 2,
+     pageY: this.top + this.height / 2
+   };
+</PRE><PRE>   this.element.style.transform = &quot;perspective(&quot; + this.settings.perspective + &quot;px) &quot; +
+     &quot;rotateX(0deg) &quot; +
+     &quot;rotateY(0deg) &quot; +
+     &quot;scale3d(1, 1, 1)&quot;;
+</PRE><PRE>   if (this.glare) {
+     this.glareElement.style.transform = 'rotate(180deg) translate(-50%, -50%)';
+     this.glareElement.style.opacity = '0';
+   }
+ }
+</PRE><PRE> getValues() {
+   let x = (this.event.clientX - this.left) / this.width;
+   let y = (this.event.clientY - this.top) / this.height;
+</PRE><PRE>   x = Math.min(Math.max(x, 0), 1);
+   y = Math.min(Math.max(y, 0), 1);
+</PRE><PRE>   let tiltX = (this.reverse * (this.settings.max / 2 - x * this.settings.max)).toFixed(2);
+   let tiltY = (this.reverse * (y * this.settings.max - this.settings.max / 2)).toFixed(2);
+   let angle = Math.atan2(this.event.clientX - (this.left + this.width / 2), -(this.event.clientY - (this.top + this.height / 2))) * (180 / Math.PI);
+</PRE><PRE>   return {
+     tiltX: tiltX,
+     tiltY: tiltY,
+     percentageX: x * 100,
+     percentageY: y * 100,
+     angle: angle
+   };
+ }
+</PRE><PRE> updateElementPosition() {
+   let rect = this.element.getBoundingClientRect();
+</PRE><PRE>   this.width = this.element.offsetWidth;
+   this.height = this.element.offsetHeight;
+   this.left = rect.left;
+   this.top = rect.top;
+ }
+</PRE><PRE> update() {
+   let values = this.getValues();
+</PRE><PRE>   this.element.style.transform = &quot;perspective(&quot; + this.settings.perspective + &quot;px) &quot; +
+     &quot;rotateX(&quot; + (this.settings.axis === &quot;x&quot; ? 0 : values.tiltY) + &quot;deg) &quot; +
+     &quot;rotateY(&quot; + (this.settings.axis === &quot;y&quot; ? 0 : values.tiltX) + &quot;deg) &quot; +
+     &quot;scale3d(&quot; + this.settings.scale + &quot;, &quot; + this.settings.scale + &quot;, &quot; + this.settings.scale + &quot;)&quot;;
+</PRE><PRE>   if (this.glare) {
+     this.glareElement.style.transform = `rotate(${values.angle}deg) translate(-50%, -50%)`;
+     this.glareElement.style.opacity = `${values.percentageY * this.settings[&quot;max-glare&quot;] / 100}`;
+   }
+</PRE><PRE>   this.element.dispatchEvent(new CustomEvent(&quot;tiltChange&quot;, {
+     &quot;detail&quot;: values
+   }));
+</PRE><PRE>   this.updateCall = null;
+ }
+</PRE><PRE> /**
+  * Appends the glare element (if glarePrerender equals false)
+  * and sets the default style
+  */
+ prepareGlare() {
+   // If option pre-render is enabled we assume all html/css is present for an optimal glare effect.
+   if (!this.glarePrerender) {
+     // Create glare element
+     const jsTiltGlare = document.createElement(&quot;div&quot;);
+     jsTiltGlare.classList.add(&quot;js-tilt-glare&quot;);
+</PRE><PRE>     const jsTiltGlareInner = document.createElement(&quot;div&quot;);
+     jsTiltGlareInner.classList.add(&quot;js-tilt-glare-inner&quot;);
+</PRE><PRE>     jsTiltGlare.appendChild(jsTiltGlareInner);
+     this.element.appendChild(jsTiltGlare);
+   }
+</PRE><PRE>   this.glareElementWrapper = this.element.querySelector(&quot;.js-tilt-glare&quot;);
+   this.glareElement = this.element.querySelector(&quot;.js-tilt-glare-inner&quot;);
+</PRE><PRE>   if (this.glarePrerender) {
+     return;
+   }
+</PRE><PRE>   Object.assign(this.glareElementWrapper.style, {
+     &quot;position&quot;: &quot;absolute&quot;,
+     &quot;top&quot;: &quot;0&quot;,
+     &quot;left&quot;: &quot;0&quot;,
+     &quot;width&quot;: &quot;100%&quot;,
+     &quot;height&quot;: &quot;100%&quot;,
+     &quot;overflow&quot;: &quot;hidden&quot;
+   });
+</PRE><PRE>   Object.assign(this.glareElement.style, {
+     'position': 'absolute',
+     'top': '50%',
+     'left': '50%',
+     'pointer-events': 'none',
+     'background-image': `linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%)`,
+     'width': `${this.element.offsetWidth * 2}px`,
+     'height': `${this.element.offsetWidth * 2}px`,
+     'transform': 'rotate(180deg) translate(-50%, -50%)',
+     'transform-origin': '0% 0%',
+     'opacity': '0',
+   });
+ }
+</PRE><PRE> updateGlareSize() {
+   Object.assign(this.glareElement.style, {
+     'width': `${this.element.offsetWidth * 2}`,
+     'height': `${this.element.offsetWidth * 2}`,
+   });
+ }
+</PRE><PRE> onWindowResizeBind() {
+   this.updateGlareSize();
+ }
+</PRE><PRE> setTransition() {
+   clearTimeout(this.transitionTimeout);
+   this.element.style.transition = this.settings.speed + &quot;ms &quot; + this.settings.easing;
+   if (this.glare) this.glareElement.style.transition = `opacity ${this.settings.speed}ms ${this.settings.easing}`;
+</PRE><PRE>   this.transitionTimeout = setTimeout(() =&gt; {
+     this.element.style.transition = &quot;&quot;;
+     if (this.glare) {
+       this.glareElement.style.transition = &quot;&quot;;
+     }
+   }, this.settings.speed);
+</PRE><PRE> }
+</PRE><PRE> extendSettings(settings) {
+   let defaultSettings = {
+     reverse: false,
+     max: 35,
+     perspective: 1000,
+     easing: &quot;cubic-bezier(.03,.98,.52,.99)&quot;,
+     scale: &quot;1&quot;,
+     speed: &quot;300&quot;,
+     transition: true,
+     axis: null,
+     glare: false,
+     &quot;max-glare&quot;: 1,
+     &quot;glare-prerender&quot;: false,
+     reset: true
+   };
+</PRE><PRE>   let newSettings = {};
+   for (var property in defaultSettings) {
+     if (property in settings) {
+       newSettings[property] = settings[property];
+     } else if (this.element.hasAttribute(&quot;data-tilt-&quot; + property)) {
+       let attribute = this.element.getAttribute(&quot;data-tilt-&quot; + property);
+       try {
+         newSettings[property] = JSON.parse(attribute);
+       } catch (e) {
+         newSettings[property] = attribute;
+       }
+</PRE><PRE>     } else {
+       newSettings[property] = defaultSettings[property];
+     }
+   }
+</PRE><PRE>   return newSettings;
+ }
+</PRE><PRE> static init(elements, settings) {
+   if (elements instanceof Node) {
+     elements = [elements];
+   }
+</PRE><PRE>   if (elements instanceof NodeList) {
+     elements = [].slice.call(elements);
+   }
+</PRE><PRE>   if (!(elements instanceof Array)) {
+     return;
+   }
+</PRE><PRE>   elements.forEach((element) =&gt; {
+     if (!(&quot;vanillaTilt&quot; in element)) {
+       element.vanillaTilt = new VanillaTilt(element, settings);
+     }
+   });
+ }
+</PRE><P>}
+</P><P>if (typeof document !== &quot;undefined&quot;) {
+</P><PRE> /* expose the class to window */
+ window.VanillaTilt = VanillaTilt;
+</PRE><PRE> /**
+  * Auto load
+  */
+ VanillaTilt.init(document.querySelectorAll(&quot;[data-tilt]&quot;));
+</PRE><P>}
+</P><P>return VanillaTilt;
+</P><P>}());
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

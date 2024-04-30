@@ -1,0 +1,60 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_William_and_Mary_outreach_db_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:William and Mary/outreach db js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+This file contains functions for initializing and accessing the database;
+It assumes that alasql has been included in whichever page calling it;
+</P><UL><LI>/</LI></UL><P>var OUTREACH_URL = '<A rel="nofollow" class="external free" href="https://2017.igem.org/Team:William_and_Mary/Outreach_DB/database_csv?action=raw&amp;ctype=text/csv'">https://2017.igem.org/Team:William_and_Mary/Outreach_DB/database_csv?action=raw&amp;ctype=text/csv'</A>
+var outreach_db ={};
+console.log('init_outreach.js');
+(function(outreach_db){
+</P><PRE> var initialized = false;
+ outreach_db.init = function (clear_local=false){
+   return alasql.promise('CREATE TABLE IF NOT EXISTS outreach').then(
+     function(){
+       return alasql.promise('SELECT * INTO outreach FROM CSV(?)', [OUTREACH_URL])
+     }
+   )
+ }
+</PRE><PRE> outreach_db.list_tags = function(){
+   tag_data = {}
+   tag_types = ['Section', 'Year', 'Outreach Category',
+   'Award', 'Project Tag', 'Product Tag',
+   'Audience', 'Goal', 'Data Type']
+   for (tag_type of tag_types){
+     tags = alasql('COLUMN OF SELECT DISTINCT ['+tag_type+'] FROM outreach')
+     tags = tags.filter(  // to remove 0 for null rows in column
+       obj=&gt; obj
+     ).map(    // to split multitags
+       s=&gt;String(s).split(',')
+       .map(jQuery.trim)
+     ).reduce(  // to flatten array of form [[a, b], [c, d]]
+       (a, b)=&gt;a.concat(b),
+       []
+     )
+     tag_data[tag_type]=Array.from(new Set(tags))
+   }
+   return(tag_data);
+ }
+</PRE><PRE> outreach_db.compile_sql = function(selected_tags){
+   // use existing template, or compile one in case there's none
+   outreach_db.compile_sql.sql_template = outreach_db.compile_sql.sql_template||Handlebars.compile($('#querystring-template').html())
+   // none selected = don't filter on this tag type
+   for (tag_type in selected_tags){
+     if (selected_tags[tag_type].length == 0){
+       delete selected_tags[tag_type]
+     }
+   }
+   return outreach_db.compile_sql.sql_template(selected_tags)
+ }
+</PRE><PRE> outreach_db.get_by_id = function(id){
+   data = alasql('SELECT * FROM outreach WHERE CAST([id] as STRING)=?', [id]);// need to cast id as string or numeric ids won't work
+   return data[0];
+ }
+</PRE><P>})(outreach_db)
+console.log('done outreach.js')
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

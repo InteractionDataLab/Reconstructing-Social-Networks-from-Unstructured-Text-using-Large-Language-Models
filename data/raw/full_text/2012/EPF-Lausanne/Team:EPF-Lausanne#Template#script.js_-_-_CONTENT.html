@@ -1,0 +1,537 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_EPF-Lausanne_Template_script_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:EPF-Lausanne/Template/script.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:EPF-Lausanne/Template/script.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:EPF-Lausanne/Template/script.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:EPF-Lausanne/Template/script.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:EPF-Lausanne/Template/script.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:EPF-Lausanne/Template/script.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>//Generate private namespace
+window.EPFL = (function(){
+</P><PRE> //Little hack to stop MediaWiki from replacing ampersands...
+ var amp = unescape(&quot;%26&quot;);
+ return {
+   namingRegex: /^(\/|([A-Z][a-z]*))*[0-9]*$/,
+   dateRegex: /^([0-9]+) ([A-Z][a-z]+) ([0-9]+)$/,
+   registerNewPageButton: function(titleID, buttonID, base, preload, check){
+     $(buttonID).click(function(){
+       if(check != undefined){
+         if(!check(base, $(titleID).val())){
+           if(!confirm(&quot;The title doesn't seem to follow the naming conventions.\nAre you sure you want to create this page?&quot;)){
+             return;
+           }
+         }
+       }
+       window.location.href = &quot;/wiki/index.php?title=&quot;+base+&quot;/&quot;+$(titleID).val()+amp+&quot;action=edit&quot;+amp+&quot;preload=&quot;+preload;
+     });
+   },
+   checkNamingConventions: function(base, title){
+     return EPFL.namingRegex.test(title);
+   },
+   getPage: function(){
+     var title = $(&quot;.firstHeading&quot;).text();
+     var prefix = &quot;Team:EPF-Lausanne/&quot;;
+     title = title.substr(prefix.length);
+     titleParts = title.split(&quot;/&quot;);
+     
+     if(titleParts.length &gt; 0 &amp;&amp; titleParts[0] == &quot;Template&quot;){
+       titleParts.shift();
+     }
+     return titleParts;
+   },
+   setup: function(){
+     EPFL.setupProtocols();
+     EPFL.setupCalendar();
+     EPFL.setupPlanning();
+     EPFL.setupTitle();
+     EPFL.setupTOC();
+     EPFL.setupNotebookNavButtons();
+     $('p')
+       .filter(function(){
+         return $.trim($(this).text()) === <I>&amp;&amp; $.trim($(this).html()).length &lt; 10;</I>
+       })
+       .remove();
+   },
+   setupTOC: function(){
+     var toc = $(&quot;#toc&quot;);
+     toc.remove();
+     $(&quot;.paper&quot;).prepend(toc);
+   },
+   setupNotebookNavButtons: function(){
+     var months = [&quot;&quot;, &quot;January&quot;, &quot;February&quot;, &quot;March&quot;, &quot;April&quot;, &quot;May&quot;, &quot;June&quot;, &quot;July&quot;, &quot;August&quot;, &quot;September&quot;, &quot;October&quot;, &quot;November&quot;, &quot;December&quot;];
+     //Note: Valid for 2012, if you're reusing this script, update this:
+     var days = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     
+     var exists = function(day, month, year){
+       if(year != 2012) return false;
+       if(month &lt;= 6){
+         if(month == 3 &amp;&amp; day == 19) return true;
+         if(month == 4 &amp;&amp; day == 4) return true;
+         if(month == 5 &amp;&amp; (day &gt;= 30 || day == 25)) return true;
+         if(month == 6 &amp;&amp; (day &lt;= 1 || day == 13 || day == 28 || day == 29)) return true;
+         return false;
+       }
+       if(month &gt;= 10) return false;
+       if(month == 7){
+         if(day &gt;= 4 &amp;&amp; day &lt;= 7) return true;
+         if(day &gt;= 10 &amp;&amp; day &lt;= 13) return true;
+         if(day &gt;= 16) return true;
+         return false;
+       }
+       if(month == 8) return true;
+       if(month == 9 &amp;&amp; day &lt;= 26) return true;
+       return false;
+     };
+     
+     var getCorrectDate = function(day, month, year){
+         if(day &lt; 1){
+           month--;
+           day = days[month];
+         }
+         if(day &gt; days[month]){
+           month++;
+           day = 1;
+         }
+         if(month &lt; 1){
+           year--;
+           month = 12;
+         }
+         if(month &gt; 12){
+           year++;
+           month = 1;
+         }
+         
+         return [day, month, year];
+     }
+     
+     var buildString = function(d){
+       if(exists(d[0], d[1], d[2])){
+         return d[0]+&quot; &quot;+months[d[1]]+&quot; &quot;+d[2];
+       }else{
+         return &quot;&quot;;
+       }
+     }
+     
+     if(EPFL.getPage().length == 2 &amp;&amp; EPFL.getPage()[0] == &quot;Notebook&quot;){
+       var date = EPFL.getPage()[1];
+       
+       var parts = EPFL.dateRegex.exec(date);
+       if(parts != null){
+         var day = parseInt(parts[1], 10);
+         var month = 6;
+         for(var i = 1; i &lt; 12; i++){
+           if(months[i] == parts[2]){
+             month = i;
+           }
+         }
+         var year = parseInt(parts[3], 10);
+         
+         var prevDate = getCorrectDate(day-1, month, year);
+         while(prevDate[2] == 2012 &amp;&amp; !exists(prevDate[0], prevDate[1], prevDate[2])){
+           prevDate = getCorrectDate(prevDate[0]-1, prevDate[1], prevDate[2]);
+         }
+         
+         var nextDate = getCorrectDate(day+1, month, year);
+         while(nextDate[2] == 2012 &amp;&amp; !exists(nextDate[0], nextDate[1], nextDate[2])){
+           nextDate = getCorrectDate(nextDate[0]+1, nextDate[1], nextDate[2]);
+         }
+         var prev = buildString(prevDate);
+         var next = buildString(nextDate);
+         
+         $(&quot;.page-content&quot;).prepend(
+</PRE>
+            $(&quot;<DIV>&quot;)
+<PRE>             .css({&quot;clear&quot;: &quot;both&quot;}));
+         
+         if(prev.length &gt; 0){
+           $(&quot;.page-content&quot;).prepend(
+             $(&quot;&lt;a&gt;&quot;)
+               .css({&quot;float&quot;: &quot;left&quot;})
+               .attr(&quot;href&quot;, &quot;/Team:EPF-Lausanne/Notebook/&quot;+prev)
+               .html(&quot;\u2190 &quot;+prev));
+         }
+         
+         if(next.length &gt; 0){
+           $(&quot;.page-content&quot;).prepend(
+             $(&quot;&lt;a&gt;&quot;)
+               .css({&quot;float&quot;: &quot;right&quot;})
+               .attr(&quot;href&quot;, &quot;/Team:EPF-Lausanne/Notebook/&quot;+next)
+               .html(next+&quot; \u2192&quot;));
+         }
+       }
+     }
+   },
+   setupPlanning: function(){
+     if(EPFL.getPage()[0] == &quot;Planning&quot;){
+       $(&quot;.toctext, .mw-headline&quot;).each(function(){
+         var text = $(this).text().trim();
+         
+         if(text.substr(0, 1) == &quot;\u2713&quot;){
+           $(this).addClass(&quot;planning-finished&quot;);
+         }else{
+           var parts = text.split(&quot; - &quot;);
+           if(parts.length == 1){
+             $(this).addClass(&quot;planning-todo&quot;);
+           }else{
+             $(this).addClass(&quot;planning-taken&quot;);
+           }
+         }
+       });
+     }
+   },
+   setupProtocols: function(){
+     var hide = false;
+     $(&quot;.protocol-title&quot;).each(function(){
+       if($.trim($(this).parent().parent().attr(&quot;class&quot;)) != &quot;protocol-remove-style&quot;){
+         hide = true;
+         var link = $(&quot;&lt;a&gt;&quot;)
+           .attr(&quot;href&quot;, &quot;#&quot;)
+           .click(
+             function(){
+               $(this).parent().parent().children().last().toggle()
+               return false;
+           });
+         
+         var children = $(this).children().children();
+         $(this).empty();
+         link.append(children);
+         $(this).append(link);
+       }else{
+         var txt = $(this).text();
+         $(this).empty();
+         $(this).text(txt);
+       }
+     });
+     if(hide)
+       $(&quot;.protocol-inner-box&quot;).hide();
+   },
+   setupCalendar: function(){
+     if(EPFL.getPage().length == 1 &amp;&amp; EPFL.getPage()[0] == &quot;Notebook&quot;){
+       var toAdd = amp+&quot;preload=Team:EPF-Lausanne/Notebook/Template/NewEntry&quot;;
+         $(&quot;.month tr td a&quot;)
+           .filter(
+             function(){ 
+               return $(this).attr(&quot;href&quot;).length &gt; 80;
+             })
+           .each(
+             function(){
+               $(this).attr(&quot;href&quot;, $(this).attr(&quot;href&quot;)+toAdd);
+             }
+           );
+     }
+   },
+   setupTitle: function(){
+     var title = &quot;&quot;;
+     if(window.titleOverride !== undefined &amp;&amp; window.titleOverride !== &quot;&quot; &amp;&amp; window.titleOverride !== &quot; &quot; &amp;&amp; window.titleOverride !== &quot;{{{1}}}&quot;){
+       title = window.titleOverride;
+     }else{
+       var title = $($(&quot;.firstHeading&quot;)[0]).text();
+       var prefix = &quot;Team:EPF-Lausanne/&quot;;
+       title = title.substr(prefix.length);
+       titleParts = title.split(&quot;/&quot;);
+       
+       switch(titleParts[0]){
+         case &quot;Template&quot;:
+           titleParts.shift();
+           break;
+       }
+       
+       var result = titleParts.join(&quot; &quot;);
+       
+       if(titleParts.length &gt; 1){
+         result = titleParts.shift()+&quot;: &quot;+titleParts.join(&quot; &quot;);
+       }
+       
+       if(result == &quot;&quot;){
+         result = &quot;Home&quot;;
+       }
+       title = result;
+     }
+     
+     $(&quot;#pageTitle&quot;).text(title);
+   }
+ };
+</PRE><P>}());
+</P><P>if(!window.console){
+</P><PRE> //Dummy console...
+ window.console = {
+   log: function(){ }
+ };
+</PRE><P>}
+</P><P>window.Doodles = (function(){
+</P><PRE> var SPACE_MIN = 80;
+ var SPACE_MAX = 400;
+ var WIDTH = 120;
+ var MAX_DOODLES_PER_BAR = 100;
+ var MAX_RETRIES = 100;
+ 
+ var all = [
+   //{ height: 114, src: &quot;&quot; },
+   { height: 27, src: &quot;&quot; },
+   { height: 131, src: &quot;&quot; },
+   { height: 87, src: &quot;&quot; },
+   { height: 138, src: &quot;&quot; },
+   { height: 76, src: &quot;&quot; },
+ 
+ 
+   { height: 156, src: &quot;&quot; },
+   { height: 175, src: &quot;&quot; },
+   { height: 141, src: &quot;&quot; },
+   { height: 71, src: &quot;&quot; },
+   { height: 128, src: &quot;&quot; },
+   { height: 98, src: &quot;&quot; }
+ 
+ ];
+ 
+ var isHomePage = function(){
+   var title = $($(&quot;.firstHeading&quot;)[0]).text();
+   var prefix = &quot;Team:EPF-Lausanne/&quot;;
+   title = title.substr(prefix.length);
+   titleParts = title.split(&quot;/&quot;);
+   
+   switch(titleParts[0]){
+     case &quot;Template&quot;:
+       titleParts.shift();
+       break;
+   }
+   
+   var result = titleParts.join(&quot; &quot;);
+   
+   if(result == &quot;&quot;){
+     return true;
+   }
+   return false;
+ }
+ 
+ var contentHeight = 0;
+ var doodleBars = [];
+ var barUsage = [{max: 0, images: []}, {max: 0, images: []}];
+ var previous = undefined;
+ var firstLoad = true;
+ 
+ return {
+   onLoad: function(){
+     if(firstLoad){
+       var that = this;
+       setTimeout(function(){ that.onLoad(); }, 1000);
+       firstLoad = false;
+     }
+     
+     //console.log(&quot;Doodle onload&quot;);
+     contentHeight = $(&quot;.page-content&quot;).height() - 50;
+     doodleBars = $(&quot;.doodle-bar&quot;);
+     //doodleBars.height(contentHeight);
+     
+     this.addDoodles();
+   },
+   addDoodles: function(){
+     //console.log(&quot;Adding doodles to left&quot;);
+     
+     if(isHomePage()){
+       this.addDoodle(1, 400);
+     }
+     
+     //Add a doodle at one of the sides (random) at y = 0
+     this.addDoodle(Math.round(Math.random()), 0);
+     
+     for(var i = 0; i &lt; MAX_DOODLES_PER_BAR; i++){
+       if(!this.addDoodle(0)) break;
+     }
+     
+     //console.log(&quot;Adding doodles to right&quot;);
+     for(var i = 0; i &lt; MAX_DOODLES_PER_BAR; i++){
+       if(!this.addDoodle(1)) break;
+     }
+   },
+   addDoodle: function(barNumber, nextDistance){
+     //console.log(&quot;Trying to add doodle to&quot;, barNumber);
+     var bar = $(doodleBars[barNumber]);
+     var usage = barUsage[barNumber];
+     
+     //console.log(&quot;Current usage vs contentHeight: &quot;, usage.max, contentHeight);
+     if(usage.max &gt; contentHeight) return false;
+     
+     if(nextDistance === undefined)
+       nextDistance = SPACE_MIN + Math.floor(Math.random()*(SPACE_MAX-SPACE_MIN+1));
+     
+     var nextImage = all[Math.floor(Math.random()*all.length)];
+     for(var i = 0; i &lt; MAX_RETRIES; i++){
+       if(previous == nextImage){
+         nextImage = all[Math.floor(Math.random()*all.length)];
+       }else{
+         break;
+       }
+     }
+     
+     if(previous == nextImage) return false;
+     
+     previous = nextImage;
+     
+     if(usage.max + nextDistance + nextImage.height &gt; contentHeight) return false;
+     
+</PRE>
+      var container = $(&quot;<DIV>&quot;)
+<PRE>         .css({
+           &quot;background&quot;: &quot;url('&quot;+nextImage.src+&quot;')&quot;,
+           &quot;width&quot;: WIDTH+&quot;px&quot;,
+           &quot;height&quot;: nextImage.height+&quot;px&quot;,
+           &quot;margin-top&quot;: nextDistance+&quot;px&quot;
+         });
+     bar.append(container);
+     /*
+     var img = 
+       $(&quot;&lt;img&gt;&quot;)
+         .load(function(){ container.append(img); })
+         .attr(&quot;width&quot;, WIDTH)
+         .attr(&quot;height&quot;, nextImage.height)
+         .attr(&quot;src&quot;, nextImage.src);*/
+     
+     usage.max += nextDistance + nextImage.height;
+     
+     return true;
+   }
+ };
+</PRE><P>})();
+</P><P>window.Menu = (function(){
+</P><PRE> var items = [&quot;introduction&quot;, &quot;project&quot;, &quot;notebook&quot;, &quot;human&quot;, &quot;acknowledgments&quot;];
+ var positions = {&quot;introduction&quot;: -300, &quot;project&quot;: -170, &quot;notebook&quot;: -60, &quot;human&quot;: 75, &quot;acknowledgments&quot;: 240};
+ 
+ var subMenus = {
+   introduction: [
+     [&quot;Home&quot;, &quot;/Team:EPF-Lausanne&quot;],
+     [&quot;Team&quot;, &quot;/Team:EPF-Lausanne/Team&quot;],
+     [&quot;Photos&quot;, &quot;/Team:EPF-Lausanne/Photos&quot;]
+   ],
+   project: [
+     [&quot;Project Contents&quot;, &quot;/Team:EPF-Lausanne/Project&quot;],
+     [&quot;Modeling&quot;, &quot;/Team:EPF-Lausanne/Modeling&quot;],
+     [&quot;Results&quot;, &quot;/Team:EPF-Lausanne/Results&quot;],
+     [&quot;Parts Submitted to the Registry&quot;, &quot;<A href="https://2012.igem.org/Team:EPF-Lausanne/Parts" class="external free" rel="nofollow">https://2012.igem.org/Team:EPF-Lausanne/Parts</A>&quot;]
+   ],
+   notebook: [
+     [&quot;Notebook&quot;, &quot;/Team:EPF-Lausanne/Notebook&quot;],
+     [&quot;Protocols&quot;, &quot;/Team:EPF-Lausanne/Protocol&quot;]
+   ],
+   human: [
+     [&quot;Human Practices&quot;, &quot;/Team:EPF-Lausanne/HumanPractices&quot;],
+     [&quot;Talks&quot;, &quot;/Team:EPF-Lausanne/Human/Talks&quot;],
+     [&quot;Survey&quot;, &quot;/Team:EPF-Lausanne/Human/Survey&quot;],
+     [&quot;Primer Design&quot;, &quot;/Team:EPF-Lausanne/PrimerDesignHelper&quot;],
+     [&quot;Cell Creator&quot;, &quot;/Team:EPF-Lausanne/CellCreator&quot;],
+     [&quot;Safety&quot;, &quot;/Team:EPF-Lausanne/Safety&quot;],
+   ],
+   acknowledgments: [
+     [&quot;Attributions&quot;, &quot;/Team:EPF-Lausanne/Acknowledgments&quot;],
+     [&quot;References&quot;, &quot;/Team:EPF-Lausanne/References&quot;],
+     [&quot;Sponsors&quot;, &quot;/Team:EPF-Lausanne/Sponsors&quot;]
+   ]
+ };
+ 
+ // Default to notebook
+ var current = &quot;notebook&quot;;
+ var leaveTimer = undefined;
+ var leaveMenu = function(){
+   current = window.menu != &quot;&quot; ? window.menu.toLowerCase() : &quot;notebook&quot;;
+   window.Menu.update();
+ };
+ var attachEvents = function(name){
+   $(&quot;.menu-&quot;+name).mouseover(function(){
+     if(leaveTimer !== undefined){
+       clearTimeout(leaveTimer);
+       leaveTimer = undefined;
+     }
+     current = name;
+     window.Menu.update();
+   });
+   $(&quot;.menu-&quot;+name).mouseout(function(){
+     if(leaveTimer === undefined){
+       leaveTimer = setTimeout(leaveMenu, 1000);
+     }
+   });
+ };
+ return {
+   onLoad: function(){
+     // Default to notebook
+     if(window.menu === undefined || window.menu === &quot;&quot; || window.menu === &quot; &quot; || window.menu === &quot;{{{1}}}&quot;){
+       window.menu = &quot;notebook&quot;;
+     }
+     current = window.menu != &quot;&quot; ? window.menu.toLowerCase() : &quot;notebook&quot;;
+     
+     for(var i = 0; i &lt; items.length; i++){
+       attachEvents(items[i]);
+     }
+     
+     $(&quot;.sub-menu&quot;).mouseover(function(){
+       if(leaveTimer !== undefined){
+         clearTimeout(leaveTimer);
+         leaveTimer = undefined;
+       }
+     });
+     
+     $(&quot;.sub-menu&quot;).mouseout(function(){
+       if(leaveTimer === undefined){
+         leaveTimer = setTimeout(leaveMenu, 1000);
+       }
+     });
+     
+     $(&quot;.paper-arrow&quot;).show();
+     window.Menu.update();
+   },
+   update: function(){
+     if(current === undefined || current === &quot;&quot; || current === &quot; &quot;|| current === &quot;{{{1}}}&quot; || !positions[current]){
+       $(&quot;.paper-arrow&quot;).hide();
+     }else{
+       $(&quot;.paper-arrow&quot;).show();
+       var newPos = positions[current]+&quot;px&quot;;
+       $(&quot;.paper-arrow&quot;).css({left: newPos});
+     }
+     this.updateSubMenu();
+   },
+   updateSubMenu: function(){
+     var subMenu = subMenus[current];
+     
+     var sub = $(&quot;.sub-menu .simple-navi ul&quot;);
+     sub.empty();
+     
+     if(subMenu !== undefined &amp;&amp; subMenu.length &gt; 0){
+</PRE>
+        sub.append($(&quot;<LI>&quot;).attr(&quot;class&quot;, &quot;left&quot;).append($(&quot;<SPAN>&quot;)));
+        
+        for(var i = 0; i &lt; subMenu.length; i++){
+          sub.append($(&quot;</SPAN></LI><LI>&quot;)
+            .append($(&quot;&lt;a&gt;&quot;)
+              .attr(&quot;href&quot;, subMenu[i][1])
+              .append($(&quot;<SPAN>&quot;).text(subMenu[i][0]))));
+        }
+        
+        sub.append($(&quot;</SPAN></LI><LI>&quot;).attr(&quot;class&quot;, &quot;right&quot;).append($(&quot;<SPAN>&quot;)));
+        
+        var center = positions[current];
+        width = sub.width();
+        
+        var x = 330 + center - width/2;
+        var dx = 0;
+        
+        if(width &gt; 660){
+          dx = -center;
+        }else if(x &lt; -40){
+          dx = -x - 40;
+        }else if(x + width &gt; 660){
+          dx = 660 - width - x;
+        }
+        
+        sub.css({&quot;position&quot;: &quot;relative&quot;, &quot;left&quot;: (center+dx)+&quot;px&quot;});
+      }
+    }
+  };
+})();
+
+$(function(){
+  Menu.onLoad();
+  Doodles.onLoad();
+});
+
+runOnloadHook = function(){
+  EPFL.setup();
+};</SPAN></LI></DIV></DIV><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:EPF-Lausanne/Template/script.js">http://2012.igem.org/Team:EPF-Lausanne/Template/script.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:EPF-Lausanne/Template/script.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:EPF-Lausanne/Template/script.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:EPF-Lausanne/Template/script.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:EPF-Lausanne/Template/script.js&amp;oldid=229601" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

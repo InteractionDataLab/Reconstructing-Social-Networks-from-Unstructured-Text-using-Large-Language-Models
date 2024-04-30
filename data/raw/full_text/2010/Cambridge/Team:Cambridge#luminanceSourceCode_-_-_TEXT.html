@@ -1,0 +1,506 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Cambridge/luminanceSourceCode
+From 2010.igem.org
+Introduction
+Home
+Meet the Team
+Photo Gallery
+Videos
+Parts submitted
+Project Firefly
+Introduction
+Background
+Coloured outputs
+Luciferin recovery
+Modelling
+Characterisation
+Project Vibrio
+Introduction
+Background
+The LuxBrick
+Codon optimisation
+Modelling
+Characterisation
+Tools
+Gibthon
+BioBrick → GenBank
+Ligation Calculator
+The E.glometer
+Gibson Assembly
+Introduction
+How it works
+Protocol
+RFC
+Considerations
+Human Practices
+Safety
+Future applications
+Biosensors
+Lighting
+Notebook
+Summary
+Week 1
+Week 2
+Week 3
+Week 4
+Week 5
+Week 6
+Week 7
+Week 8
+Week 9
+Week 10
+Week 11
+Week 12
+Beyond Week 12
+Protocols
+Our Partners
+Sponsors
+iGEM Teams
+University
+Publicity
+Source Code for Luminance calculator
+This program calculates the conversion factor between your total radiant output intensity and your luminance output intensity.
+To use this program:
+create a new folder
+save the source code below into a file called LuminanceCalculator.cc
+save the data under scotopic into a file called scotopic.dat
+save the data under photopic into a file called photopic.dat
+create your own spectra file by inputting the (xi,f(xi)) coordinates of the spectral distribution file, no spaces just carriage returns i.e. in the format:
+x1
+f(x1)
+x2
+f(x2)
+...
+x2
+f(x2)
+10 values is usually enough, but more would be better. x should be in nanometre (nm) f(x) should be in SI
+save the above as spectra.dat
+open a terminal
+navigate to the folder which all of the above are in
+compile using the command: g++ LuminanceCalculator.cc -o LuminanceCalculator.cc
+run the program
+Source Code
+include <iostream>
+include <vector>
+include <fstream>
+include <math.h>
+ifndef __mjdmatrix_h
+define __mjdmatrix_h
+include <iostream>
+using namespace std; // generic object (class) definition of matrix: template <class D> class matrix{
+// NOTE: maxsize determines available memory storage, but  // actualsize determines the actual size of the stored matrix in use  // at a particular time.  int maxsize;  // max number of rows (same as max number of columns)  int actualsize;  // actual size (rows, or columns) of the stored matrix  D* data;      // where the data contents of the matrix are stored  void allocate()   {    delete[] data;    data = new D [maxsize*maxsize];    };  matrix() {};                  // private ctor's  matrix(int newmaxsize) {matrix(newmaxsize,newmaxsize);};
+public:
+void print() {  for(int i=0; i<maxsize; i++){  for(int j=0; j<maxsize; j++){
+cout << getvalue(i,j) << "  ";  }  cout << endl;  }
+};
+D getvalue(int row, int column){return data[ row * maxsize + column ];};
+matrix(int newmaxsize, int newactualsize)  { // the only public ctor    if (newmaxsize <= 0) newmaxsize = 5;    maxsize = newmaxsize;     if ((newactualsize <= newmaxsize)&&(newactualsize>0))      actualsize = newactualsize;    else       actualsize = newmaxsize;    // since allocate() will first call delete[] on data:    data = 0;    allocate();    };  ~matrix() { delete[] data; };
+void comparetoidentity()  {    int worstdiagonal = 0;    D maxunitydeviation = 0.0;    D currentunitydeviation;    for ( int i = 0; i < actualsize; i++ )  {      currentunitydeviation = data[i*maxsize+i] - 1.;      if ( currentunitydeviation < 0.0) currentunitydeviation *= -1.;      if ( currentunitydeviation > maxunitydeviation )  {           maxunitydeviation = currentunitydeviation;           worstdiagonal = i;           }      }    int worstoffdiagonalrow = 0;    int worstoffdiagonalcolumn = 0;    D maxzerodeviation = 0.0;    D currentzerodeviation ;    for ( int i = 0; i < actualsize; i++ )  {      for ( int j = 0; j < actualsize; j++ )  {        if ( i == j ) continue;  // we look only at non-diagonal terms        currentzerodeviation = data[i*maxsize+j];        if ( currentzerodeviation < 0.0) currentzerodeviation *= -1.0;        if ( currentzerodeviation > maxzerodeviation )  {          maxzerodeviation = currentzerodeviation;          worstoffdiagonalrow = i;          worstoffdiagonalcolumn = j;          }
+}      }    cout << "Worst diagonal value deviation from unity: " << maxunitydeviation << " at row/column " << worstdiagonal << endl;    cout << "Worst off-diagonal value deviation from zero: " << maxzerodeviation << " at row = " << worstoffdiagonalrow << ", column = " << worstoffdiagonalcolumn << endl;  }
+void settoproduct(matrix& left, matrix& right)  {    actualsize = left.getactualsize();    if ( maxsize < left.getactualsize() )   {      maxsize = left.getactualsize();      allocate();      }    for ( int i = 0; i < actualsize; i++ )      for ( int j = 0; j < actualsize; j++ )  {        D sum = 0.0;        D leftvalue, rightvalue;        bool success;        for (int c = 0; c < actualsize; c++)  {            left.getvalue(i,c,leftvalue,success);            right.getvalue(c,j,rightvalue,success);            sum += leftvalue * rightvalue;            }        setvalue(i,j,sum);        }    }
+void copymatrix(matrix& source)  {    actualsize = source.getactualsize();    if ( maxsize < source.getactualsize() )  {      maxsize = source.getactualsize();      allocate();      }    for ( int i = 0; i < actualsize; i++ )      for ( int j = 0; j < actualsize; j++ )  {        D value;        bool success;        source.getvalue(i,j,value,success);        data[i*maxsize+j] = value;        }    };
+void setactualsize(int newactualsize) {    if ( newactualsize > maxsize )      {        maxsize = newactualsize ; // * 2;  // wastes memory but saves                                      // time otherwise required for                                      // operation new[]        allocate();      }    if (newactualsize >= 0) actualsize = newactualsize;    };
+int getactualsize() { return actualsize; };
+void getvalue(int row, int column, D& returnvalue, bool& success)   {    if ( (row>=maxsize) || (column>=maxsize)       || (row<0) || (column<0) )      {  success = false;         return;    }    returnvalue = data[ row * maxsize + column ];    success = true;    };
+bool setvalue(int row, int column, D newvalue)  {    if ( (row >= maxsize) || (column >= maxsize)         || (row<0) || (column<0) ) return false;    data[ row * maxsize + column ] = newvalue;    return true;    };
+void invert()  {    if (actualsize <= 0) return;  // sanity check    if (actualsize == 1) return;  // must be of dimension >= 2    for (int i=1; i < actualsize; i++) data[i] /= data[0]; // normalize row 0    for (int i=1; i < actualsize; i++)  {       for (int j=i; j < actualsize; j++)  { // do a column of L        D sum = 0.0;        for (int k = 0; k < i; k++)              sum += data[j*maxsize+k] * data[k*maxsize+i];        data[j*maxsize+i] -= sum;        }      if (i == actualsize-1) continue;      for (int j=i+1; j < actualsize; j++)  {  // do a row of U        D sum = 0.0;        for (int k = 0; k < i; k++)            sum += data[i*maxsize+k]*data[k*maxsize+j];        data[i*maxsize+j] =            (data[i*maxsize+j]-sum) / data[i*maxsize+i];        }      }    for ( int i = 0; i < actualsize; i++ )  // invert L      for ( int j = i; j < actualsize; j++ )  {        D x = 1.0;        if ( i != j ) {          x = 0.0;          for ( int k = i; k < j; k++ )               x -= data[j*maxsize+k]*data[k*maxsize+i];          }        data[j*maxsize+i] = x / data[j*maxsize+j];        }    for ( int i = 0; i < actualsize; i++ )   // invert U      for ( int j = i; j < actualsize; j++ )  {        if ( i == j ) continue;        D sum = 0.0;        for ( int k = i; k < j; k++ )            sum += data[k*maxsize+j]*( (i==k) ? 1.0 : data[i*maxsize+k] );        data[i*maxsize+j] = -sum;        }    for ( int i = 0; i < actualsize; i++ )   // final inversion      for ( int j = 0; j < actualsize; j++ )  {        D sum = 0.0;        for ( int k = ((i>j)?i:j); k < actualsize; k++ )              sum += ((j==k)?1.0:data[j*maxsize+k])*data[k*maxsize+i];        data[j*maxsize+i] = sum;        }    };
+};
+endif
+using namespace std;
+class Function {  private:  vector <double> wavelength;  vector <double> function;  vector <double> lambda;
+double RBF(double, double);  double sigma;  double width;  int SIZE;
+public:  void getData(const char*);  void findLambda(double);  void fix();
+double size(){return wavelength.size();}  double lat(int i){return lambda.at(i);}  double wat(int i){return wavelength.at(i);}  double fat(int i){return function.at(i);}  void wequals(int i, double value){wavelength.at(i)=value;}  void fequals(int i, double value){function.at(i)=value;}
+void eraseBeginning(int);  void erase(int);
+void print();  void print(double,double,double);  void printStore();
+double value(double);
+};
+double X(double j, double a, double h) {return a+j*h;} double H(double a,double b,double n) {return (b-a)/n;}
+double integral (double a, double b, Function);
+void runProgram(char*,char*);
+double luminousFlux(Function, Function);
+define MINI 400
+define MAXI 750
+define CONSTANT 0.7
+define N 10000
+ifndef SPECTRA
+define SPECTRA "spectra.dat"
+endif
+int main() {  char b;  cout << "This program will tell you the conversion factor between Radiance and Luminance for your chosen object with known radiation spectrum" << endl;
+cout << endl << "Do you want scotopic (low light) [s] or photopic (normal light) [p] Luminance?" << endl;
+while(b!='p'&&b!='s'){cout << "please input s or p" << endl; cin >> b;}  cout << endl;
+if(b=='s')  runProgram("scotopic.dat",SPECTRA);  if(b=='p')  runProgram("photopic.dat",SPECTRA);
+return 0; }
+void runProgram(char* lumFile, char* specFile) {  Function luminosity, spectra;
+cout << "Getting luminosity data..." << endl;  luminosity.getData(lumFile);  cout << "Calculating luminosity function..." << endl;  luminosity.findLambda(CONSTANT);
+cout << "Getting spectral data..." << endl;  spectra.getData(specFile);  cout << "Calculating spectral function..." << endl;  spectra.findLambda(CONSTANT);
+cout << "Calculating luminous flux..." << endl;  double x=luminousFlux(luminosity,spectra) ;
+cout << "Conversion Factor is: " << x << endl << endl; }
+void testData(char* data,double CONST, char* output) {  Function a;  a.getData(data);  a.findLambda(CONST);
+ofstream fout(output);
+if(!fout)  {cout << "Could not open file " << output << " program terminated." << endl; fout.close(); return;}
+for(double i=MINI; i<=MAXI ; i+=0.1)  fout << i << "\t" << a.value(i) << endl;
+// for(double i=0; i<a.size() ; i++) // cout << a.wat(i) << "\t" << a.fat(i)<<"\t" << a.lat(i)<< endl;
+fout.close();
+}
+double luminousFlux(Function x, Function y) {  double sum1=0, sum2=0;  int a=400,b=750;  double h=H(a,b,N);
+for(double j=1; j<=(N/2)-1;j++)  {sum1+=x.value(X(2*j,a,h))*y.value(X(2*j,a,h));}
+for(double j=1; j<=N/2; j++)  {sum2+=x.value(X(2*j-1,a,h))*y.value(X(2*j-1,a,h));}
+return 683.002*((h/3)*( x.value(a)*y.value(a)+ 2*sum1 + 4*sum2 + x.value(b)*y.value(b) ))/integral(a,b,y);
+}
+double integral (double a, double b, Function func) {  double sum1=0, sum2=0;  double h=H(a,b,N);
+for(double j=1; j<=(N/2)-1;j++)  {sum1+=func.value( X( 2*j , a , h ) );}
+for(double j=1; j<=N/2; j++)  {sum2+=func.value( X( (2*j)-1 , a , h ) );}
+return (h/3)* ( func.value(a)+ 2*sum1 + 4*sum2 + func.value(b) ); }
+//.............................................................................................................
+void Function::getData(const char* a) {  double num;
+SIZE=200;
+ifstream fin(a);  if(!fin)  {cout << "Could not open file " << a << " program terminated." << endl; fin.close(); return;}
+fin >> num;  for (int i=0; !fin.eof(); i++ )   {  if(!(i%2)){ wavelength.push_back(num); fin >> num;}  else { function.push_back(num); fin >> num;}  }
+fin.close();
+int total=wavelength.size();  vector <double> tempwavelength;  vector <double> tempfunction;
+if(total>SIZE){   for(int i=0; i<wavelength.size(); i++) {    if(i%(total/SIZE)==0){   tempwavelength.push_back(wavelength.at(i));   tempfunction.push_back(function.at(i));  }}  wavelength.clear(); function.clear();  for(int i=0; i<tempwavelength.size(); i++) {    wavelength.push_back(tempwavelength.at(i));   function.push_back(tempfunction.at(i));  }  }
+width=(wavelength.back()-wavelength.front())/wavelength.size();
+}
+void Function::print(double min, double max, double increment) {  for(double i=min; i<=max ; i+=increment)  cout << i << "\t" << value(i) << endl; }
+void Function::printStore() {  for(double i=0; i<wavelength.size() ; i++)  cout << wavelength.at(i) << "\t" << function.at(i) << endl;
+}
+void Function::print() {  for(int i=0; i<wavelength.size(); i++)  {   cout << wavelength.at(i) << "\t" << function.at(i) << endl;  }
+}
+double Function::RBF(double a, double b) {  return exp(-(a-b)*(a-b)/(2*sigma*sigma));  //return fabs(a-b);  //return 1/sqrt(1+sigma*(a-b)*(a-b)); }
+void Function::findLambda(double CONST) {   sigma=width*CONST;
+int M=wavelength.size();
+matrix <double> PHI(M,M);  matrix <double> lamb(M,1);  matrix <double> func(M,1);
+for (int i=0; i<M; i++) {  func.setvalue(i,1,function.at(i));  for (int j=0; j<M; j++) {  PHI.setvalue(i,j,RBF(wavelength.at(i),wavelength.at(j)));
+}}
+PHI.invert(); lamb.settoproduct(PHI,func);
+double value;bool success;
+for(int i=0; i<M; i++){lambda.push_back(lamb.getvalue(i,1));} }
+double Function::value(double x) {  double sum=0;  for(int i=0; i<wavelength.size(); i++) sum+=lambda.at(i)*RBF(x,wavelength.at(i));
+return sum; }
+void Function::fix() {  for(int i=0; i<wavelength.size(); i++){   for(int j=0;j<i; j++){   if(wavelength.at(i)==wavelength.at(j)) {wavelength.erase(wavelength.begin()+j); function.erase(function.begin()+j); j=j-1;}  }}
+}
+void Function::eraseBeginning(int i) {  i/=2;  function.erase(function.begin(), function.begin()+i);  wavelength.erase(wavelength.begin(),wavelength.begin()+i); }
+Photopic
+380
+3.9000e-005
+385
+6.4000e-005
+390
+1.2000e-004
+395
+2.1700e-004
+400
+3.9600e-004
+405
+6.4000e-004
+410
+1.2100e-003
+415
+2.1800e-003
+420
+4.0000e-003
+425
+7.3000e-003
+430
+1.1600e-002
+435
+1.6840e-002
+440
+2.3000e-002
+445
+2.9800e-002
+450
+3.8000e-002
+455
+4.8000e-002
+460
+6.0000e-002
+465
+7.3900e-002
+470
+9.0980e-002
+475
+1.1260e-001
+480
+1.3902e-001
+485
+1.6930e-001
+490
+2.0802e-001
+495
+2.5860e-001
+500
+3.2300e-001
+505
+4.0730e-001
+510
+5.0300e-001
+515
+6.0820e-001
+520
+7.1000e-001
+525
+7.9320e-001
+530
+8.6200e-001
+535
+9.1485e-001
+540
+9.5400e-001
+545
+9.8030e-001
+550
+9.9495e-001
+555
+1.0000e+000
+560
+9.9500e-001
+565
+9.7860e-001
+570
+9.5200e-001
+575
+9.1540e-001
+580
+8.7000e-001
+585
+8.1630e-001
+590
+7.5700e-001
+595
+6.9490e-001
+600
+6.3100e-001
+605
+5.6680e-001
+610
+5.0300e-001
+615
+4.4120e-001
+620
+3.8100e-001
+625
+3.2100e-001
+630
+2.6500e-001
+635
+2.1700e-001
+640
+1.7500e-001
+645
+1.3820e-001
+650
+1.0700e-001
+655
+8.1600e-002
+660
+6.1000e-002
+665
+4.4580e-002
+670
+3.2000e-002
+675
+2.3200e-002
+680
+1.7000e-002
+685
+1.1920e-002
+690
+8.2100e-003
+695
+5.7230e-003
+700
+4.1020e-003
+705
+2.9290e-003
+710
+2.0910e-003
+715
+1.4840e-003
+720
+1.0470e-003
+725
+7.4000e-004
+730
+5.2000e-004
+Scotopic
+380
+5.890e-004
+385
+1.108e-003
+390
+2.209e-003
+395
+4.530e-003
+400
+9.290e-003
+405
+1.852e-002
+410
+3.484e-002
+415
+6.040e-002
+420
+9.660e-002
+425
+1.436e-001
+430
+1.998e-001
+435
+2.625e-001
+440
+3.281e-001
+445
+3.931e-001
+450
+4.550e-001
+455
+5.130e-001
+460
+5.670e-001
+465
+6.200e-001
+470
+6.760e-001
+475
+7.340e-001
+480
+7.930e-001
+485
+8.510e-001
+490
+9.040e-001
+495
+9.490e-001
+500
+9.820e-001
+505
+9.980e-001
+510
+9.970e-001
+515
+9.750e-001
+520
+9.350e-001
+525
+8.800e-001
+530
+8.110e-001
+535
+7.330e-001
+540
+6.500e-001
+545
+5.640e-001
+550
+4.810e-001
+555
+4.020e-001
+560
+3.288e-001
+565
+2.639e-001
+570
+2.076e-001
+575
+1.602e-001
+580
+1.212e-001
+585
+8.990e-002
+590
+6.550e-002
+595
+4.690e-002
+600
+3.315e-002
+605
+2.312e-002
+610
+1.593e-002
+615
+1.088e-002
+620
+7.370e-003
+625
+4.970e-003
+630
+3.335e-003
+635
+2.235e-003
+640
+1.497e-003
+645
+1.005e-003
+650
+6.770e-004
+655
+4.590e-004
+660
+3.129e-004
+665
+2.146e-004
+670
+1.480e-004
+675
+1.026e-004
+680
+7.150e-005
+685
+5.010e-005
+690
+3.533e-005
+695
+2.501e-005
+700
+1.780e-005
+705
+1.273e-005
+710
+9.140e-006
+715
+6.600e-006
+720
+4.780e-006
+725
+3.482e-006
+730
+2.546e-006
+735
+1.870e-006
+740
+1.379e-006
+745
+1.022e-006
+750
+7.600e-007
+755
+5.670e-007
+760
+4.250e-007
+765
+3.196e-007
+770
+2.413e-007
+775
+1.829e-007
+780
+1.390e-007
+Retrieved from " http://2010.igem.org/Team:Cambridge/luminanceSourceCode "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

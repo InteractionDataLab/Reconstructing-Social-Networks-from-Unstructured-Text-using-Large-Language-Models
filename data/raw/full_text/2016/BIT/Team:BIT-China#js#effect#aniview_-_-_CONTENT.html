@@ -1,0 +1,84 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_BIT-China_js_effect_aniview skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:BIT-China/js/effect/aniview</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>(function() {
+</P><PRE>   //custom scroll replacement to allow for interval-based 'polling'
+   //rathar than checking on every pixel
+   var uniqueCntr = 0;
+   $.fn.scrolled = function(waitTime, fn) {
+       if (typeof waitTime === 'function') {
+           fn = waitTime;
+           waitTime = 200;
+       }
+       var tag = 'scrollTimer' + uniqueCntr++;
+       this.scroll(function() {
+           var self = $(this);
+           var timer = self.data(tag);
+           if (timer) {
+               clearTimeout(timer);
+           }
+           timer = setTimeout(function() {
+               self.removeData(tag);
+               fn.call(self[0]);
+           }, waitTime);
+           self.data(tag, timer);
+       });
+   };
+</PRE><PRE>   $.fn.AniView = function(options) {
+</PRE><PRE>       //some default settings. animateThreshold controls the trigger point
+       //for animation and is subtracted from the bottom of the viewport.
+       var settings = $.extend({
+           animateThreshold: 0,
+           scrollPollInterval: 20
+       }, options);
+</PRE><PRE>       //keep the matched elements in a variable for easy reference
+       var collection = this;
+</PRE><PRE>       //cycle through each matched element and wrap it in a block/div
+       //and then proceed to fade out the inner contents of each matched element
+       $(collection).each(function(index, element) {
+</PRE>
+            $(element).wrap('');
+<PRE>           $(element).css('opacity', 0);
+       });
+</PRE><PRE>       /**
+        * returns boolean representing whether element's top is coming into bottom of viewport
+        *
+        * @param HTMLDOMElement element the current element to check
+        */
+       function EnteringViewport(element) {
+           var elementOffset = $(element).offset();
+           var elementTop = elementOffset.top + $(element).scrollTop();
+           var elementBottom = elementOffset.top + $(element).scrollTop() + $(element).height();
+           var viewportBottom = $(window).scrollTop() + $(window).height();
+           return (elementTop &lt; (viewportBottom - settings.animateThreshold)) ? true : false;
+       }
+</PRE><PRE>       //cycle through each matched element to make sure any which should be animated into view,
+       //are animated on page load rather than needing to wait for initial 'scrolled' event
+       $(collection).each(function(index, element) {
+           var elementParentContainer = $(element).parent('.av-container');
+           if ($(element).is('[av-animation]') &amp;&amp; !$(elementParentContainer).hasClass('av-visible') &amp;&amp; EnteringViewport(elementParentContainer)) {
+               $(element).css('opacity', 1);
+               $(elementParentContainer).addClass('av-visible');
+               $(element).addClass('animated ' + $(element).attr('av-animation'));
+           }
+       });
+</PRE><PRE>       //enable the scrolled event timer to watch for elements coming into the viewport
+       //from the bottom. default polling time is 20 ms. This can be changed using
+       //'scrollPollInterval' from the user visible options
+       $(window).scrolled(settings.scrollPollInterval, function() {
+           $(collection).each(function(index, element) {
+               var elementParentContainer = $(element).parent('.av-container');
+               if ($(element).is('[av-animation]') &amp;&amp; !$(elementParentContainer).hasClass('av-visible') &amp;&amp; EnteringViewport(elementParentContainer)) {
+                   $(element).css('opacity', 1);
+                   $(elementParentContainer).addClass('av-visible');
+                   $(element).addClass('animated ' + $(element).attr('av-animation'));
+               }
+           });
+       });
+   };
+</PRE><P>})();
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,419 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_CIEI-BJ_js_team_slider skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:CIEI-BJ/js/team/slider</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>(function($) {
+</P><PRE> 'use strict';
+</PRE><PRE> /**
+  * Helpers methods
+  */
+</PRE><PRE> function supportCSS3(prop) {
+   var prefix = ['-webkit-', '-moz-', <I>];</I>
+   var root = document.documentElement;
+</PRE><PRE>   function camelCase(str) {
+     return str.replace(/\-([a-z])/gi, function(match, $1) {
+       return $1.toUpperCase();
+     });
+   }
+   for (var i = prefix.length - 1; i &gt;= 0; i--) {
+     var css3prop = camelCase(prefix[i] + prop);
+     if (css3prop in root.style) {
+       return css3prop;
+     }
+   }
+   return false;
+ }
+</PRE><PRE> function transitionEnd() {
+   var transitions = {
+     'transition': 'transitionend',
+     'WebkitTransition': 'webkitTransitionEnd',
+     'MozTransition': 'mozTransitionEnd'
+   };
+   var root = document.documentElement;
+   for (var name in transitions) {
+     if (root.style[name] !== undefined) {
+       return transitions[name];
+     }
+   }
+   return false;
+ }
+</PRE><PRE> function support3d() {
+   if (!window.getComputedStyle) {
+     return false;
+   }
+   var el = document.createElement('div'),
+     has3d,
+     transform = supportCSS3('transform');
+</PRE><PRE>   document.body.insertBefore(el, null);
+</PRE><PRE>   el.style[transform] = 'translate3d(1px,1px,1px)';
+   has3d = getComputedStyle(el)[transform];
+</PRE><PRE>   document.body.removeChild(el);
+</PRE><PRE>   return (has3d !== undefined &amp;&amp; has3d.length &gt; 0 &amp;&amp; has3d !== &quot;none&quot;);
+ }
+</PRE><PRE> var Touch = {
+   hasTouch: !!((&quot;ontouchstart&quot; in window) || window.DocumentTouch &amp;&amp; document instanceof DocumentTouch),
+   event: function() {
+     return {
+       start: (this.hasTouch) ? 'touchstart' : 'mousedown',
+       move: (this.hasTouch) ? 'touchmove' : 'mousemove',
+       end: (this.hasTouch) ? 'touchend' : 'mouseup',
+       leave: (this.hasTouch) ? 'touchleave' : 'mouseout'
+     };
+   }
+ };
+</PRE><PRE> function throttle(func, wait, options) {
+   var context, args, result;
+   var timeout = null;
+   var previous = 0;
+   if (!options) options = {};
+   var later = function () {
+     previous = options.leading === false ? 0 : Date.now();
+     timeout = null;
+     result = func.apply(context, args);
+     if (!timeout) context = args = null;
+   };
+   return function () {
+     var now = Date.now();
+     if (!previous &amp;&amp; options.leading === false) previous = now;
+     var remaining = wait - (now - previous);
+     context = this;
+     args = arguments;
+     if (remaining &lt;= 0 || remaining &gt; wait) {
+       if (timeout) {
+         clearTimeout(timeout);
+         timeout = null;
+       }
+       previous = now;
+       result = func.apply(context, args);
+       if (!timeout) context = args = null;
+     } else if (!timeout &amp;&amp; options.trailing !== false) {
+       timeout = setTimeout(later, remaining);
+     }
+     return result;
+   };
+ }
+</PRE><PRE> var PLUGIN = 'ikSlider';
+</PRE><PRE> var ikSlider = function(el, options) {
+</PRE><PRE>   var settings = $.extend({
+     touch: true,
+     infinite: false,
+     autoPlay: true,
+     pauseOnHover: true,
+     delay: 10000,
+     responsive: true,
+     controls: true,
+     arrows: true,
+     caption: true,
+     speed: 300,
+     cssEase: 'ease-out'
+   }, options || {});
+</PRE><PRE>   var $container = el;
+   var $slider = $container.find('.slider');
+   var $arrows = $container.find('.slider__switch');
+   var $caption = $slider.find('.slider__caption');
+   var $slide = $slider.find('.slider__item');
+   var sliderStyle = $slider.get(0).style;
+   var slideLen = $slide.length;
+   var slideWidth = $container.outerWidth();
+   var sliderWidth = slideLen * slideWidth;
+   var current = 0;
+   var offset = 0;
+   var busy = false;
+   var touchFlag = false;
+   var $controlPanel;
+   var $navControl;
+   var timer;
+</PRE><PRE>   var transformProperty = supportCSS3('transform');
+   var transitionProperty = supportCSS3('transition');
+   var has3d = support3d();
+</PRE><PRE>   function init() {
+</PRE><PRE>     // Calculate dimensions
+     _dimmensions();
+</PRE><PRE>     if (settings.responsive) {
+       $(window).on('resize.' + PLUGIN, throttle(_responsive, 50));
+     }
+</PRE><PRE>     // If caption false, hide caption
+     !settings.caption &amp;&amp; $caption.attr('disabled', true);
+</PRE><PRE>     // Create nav controls
+     settings.controls &amp;&amp; _controls();
+</PRE><PRE>     if (settings.touch) {
+       // if the image img tag set attribute graggable false
+       $slide.find('img').attr('draggable', false);
+       // Binding touch events
+       _touchEnable();
+     }
+</PRE><PRE>     if (settings.autoPlay) {
+       _autoPlay();
+       if (settings.pauseOnHover) {
+         $container.on('mouseenter.' + PLUGIN, function() {
+           clearInterval(timer);
+         });
+         $container.on('mouseleave.' + PLUGIN, _autoPlay);
+       }
+     }
+</PRE><PRE>     if (settings.arrows) {
+</PRE><PRE>       // if infinite setting false hide arrows
+       !settings.infinite &amp;&amp; _stopinfinite('prev');
+</PRE><PRE>       $arrows.on('click.' + PLUGIN, function(e) {
+         e.preventDefault();
+         if (this.getAttribute('data-ikslider-dir') === 'next') {
+           show(current + 1);
+         } else {
+           show(current - 1);
+         }
+       });
+     } else {
+       $arrows.attr('disabled', true);
+     }
+   }
+</PRE><PRE>   function _controls() {
+     $controlPanel = $('&lt;div/&gt;', {
+         'class': 'slider-nav'
+       })
+       .appendTo($container);
+</PRE><PRE>     var links = [];
+</PRE><PRE>     for (var i = 0; slideLen &gt; i; i++) {
+       var act = (current === i) ? 'is-active' : <I>;</I>
+       links.push('&lt;a class=&quot;slider-nav__control ' + act + '&quot; data-ikslider-control=&quot;' + i + '&quot;&gt;&lt;/a&gt;');
+     }
+     $controlPanel.html(links.join(<I>));</I>
+     $navControl = $controlPanel.find('.slider-nav__control');
+     $controlPanel.on('click.' + PLUGIN, '.slider-nav__control', function(e) {
+       e.preventDefault();
+       if ($(this).hasClass('is-active')) return;
+       show(parseInt(this.getAttribute('data-ikslider-control'), 10));
+     });
+   }
+</PRE><PRE>   function _touchEnable() {
+     $slider.addClass('has-touch');
+     var touchX;
+     var touchY;
+     var delta;
+     var target;
+</PRE><PRE>     $slider.on(Touch.event().start + '.' + PLUGIN, function(e) {
+       if (touchFlag || busy) return;
+</PRE><PRE>       var touch;
+       if (e.originalEvent.targetTouches) {
+         target = e.originalEvent.targetTouches[0].target;
+         touch = e.originalEvent.targetTouches[0];
+       } else {
+         touch = e.originalEvent;
+         e.preventDefault();
+       }
+</PRE><PRE>       delta = 0;
+       touchX = touch.pageX || touch.clientX;
+       touchY = touch.pageY || touch.clientY;
+       touchFlag = true;
+</PRE><PRE>     });
+     $slider.on(Touch.event().move + '.' + PLUGIN, function(e) {
+       if (!touchFlag) return;
+</PRE><PRE>       var touch;
+       if (e.originalEvent.targetTouches) {
+         if (e.originalEvent.targetTouches.length &gt; 1 || target !== e.originalEvent.targetTouches[0].target) {
+           return;
+         }
+         touch = e.originalEvent.targetTouches[0];
+       } else {
+         e.preventDefault();
+         touch = e.originalEvent;
+       }
+</PRE><PRE>       var currentX = touch.pageX || touch.clientX;
+       var currentY = touch.pageY || touch.clientY;
+</PRE><PRE>       if (Math.abs(touchX - currentX) &gt;= Math.abs(touchY - currentY)) {
+         delta = touchX - currentX;
+         _move(parseInt(offset, 10) - delta);
+       }
+     });
+     $slider.on(Touch.event().end + '.' + PLUGIN, function(e) {
+       if (!touchFlag) return;
+       var swipeTo = delta &lt; 0 ? current - 1 : current + 1;
+</PRE><PRE>       if (Math.abs(delta) &lt; 50 || (!settings.infinite &amp;&amp; (swipeTo &gt; slideLen - 1 || swipeTo &lt; 0))) {
+         touchFlag = false;
+         _move(offset, true);
+         return;
+       }
+       touchFlag = false;
+       target = null;
+       show(swipeTo);
+     });
+     $slider.on(Touch.event().leave + '.' + PLUGIN, function() {
+       if (touchFlag) {
+         _move(offset, true);
+         touchFlag = false;
+       }
+     });
+   }
+</PRE><PRE>   function show(slide) {
+     if (busy) return;
+     if (slide === current) return;
+     current = (slide &gt; slideLen - 1) ? 0 : slide;
+     if (slide &lt; 0) {
+       current = slideLen - 1;
+     }
+</PRE><PRE>   if (!settings.infinite) {
+</PRE><PRE>       $arrows.attr('disabled', false);
+       if (slide === slideLen - 1) {
+         _stopinfinite('next');
+       }
+</PRE><PRE>       if (current === 0) {
+         _stopinfinite('prev');
+       }
+</PRE><PRE>     }
+</PRE><PRE>     offset = -(slideWidth * (current));
+</PRE><PRE>     if (settings.controls) {
+       $navControl.removeClass('is-active')
+         .eq(current)
+         .addClass('is-active');
+     }
+     busy = true;
+     _move(offset, true);
+</PRE><PRE>     _triggerChange();
+   }
+</PRE><PRE>   function _move(value, hasAnimate) {
+</PRE><PRE>     if (transitionProperty &amp;&amp; transformProperty) {
+</PRE><PRE>       (hasAnimate) ?
+       sliderStyle[transitionProperty] = transformProperty + ' ' + settings.speed + 'ms ' + settings.cssEase: sliderStyle[transitionProperty] = &quot;none&quot;;
+</PRE><PRE>       (has3d) ?
+       sliderStyle[transformProperty] = 'translate3d(' + value + 'px, 0, 0)': sliderStyle[transformProperty] = 'translateX(' + value + 'px)';
+</PRE><PRE>       if (hasAnimate) {
+         $slider.one(transitionEnd(), function(e) {
+           busy = false;
+         });
+       } else {
+         busy = false;
+       }
+     } else {
+       if (hasAnimate) {
+         $slider.animate({
+           'margin-left': value
+         }, settings.speed, 'linear', function() {
+           busy = false;
+         });
+       } else {
+         $slider.css('margin-left', value);
+         busy = false;
+       }
+</PRE><PRE>     }
+   }
+</PRE><PRE>   // Change event trigger
+   function _triggerChange() {
+     var eventSlide = $.Event('changeSlide.' + PLUGIN, {
+       currentSlide: current
+     });
+     $container.trigger(eventSlide);
+   }
+</PRE><PRE>   function _autoPlay() {
+     if (timer) clearInterval(timer);
+     timer = setInterval(function() {
+       if (!touchFlag) {
+         show(current + 1);
+       }
+     }, settings.delay);
+   }
+</PRE><PRE>   function _stopinfinite(direction) {
+     $container.find('.slider__switch--' + direction).attr('disabled', true);
+   }
+</PRE><PRE>   function _dimmensions() {
+     slideWidth = $container.outerWidth();
+     sliderWidth = slideLen * slideWidth;
+</PRE><PRE>     $slide.css('width', slideWidth);
+     sliderStyle['width'] = sliderWidth + 'px';
+   }
+</PRE><PRE>   function _responsive() {
+</PRE><PRE>     if (timer) clearInterval(timer);
+     _dimmensions();
+</PRE><PRE>     offset = -(slideWidth * current);
+     _move(offset);
+</PRE><PRE>     settings.autoPlay &amp;&amp; _autoPlay();
+   }
+</PRE><PRE>   function destroy() {
+     sliderStyle['width'] = <I>;</I>
+     sliderStyle[transformProperty] = <I>;</I>
+     sliderStyle[transitionProperty] = <I>;</I>
+     $slide.css('width', <I>);</I>
+     if (settings.autoPlay) {
+       if (timer) clearInterval(timer);
+       $container.off('mouseenter.' + PLUGIN);
+       $container.off('mouseleave.' + PLUGIN);
+     }
+     if (settings.arrows) {
+       $arrows.off('click.' + PLUGIN);
+       $arrows.attr('disabled', false);
+     }
+     if (settings.controls) {
+       $controlPanel.off('click.' + PLUGIN).remove();
+     }
+</PRE><PRE>     $caption.attr('disabled', false);
+</PRE><PRE>     if (settings.touch) {
+       $slider
+         .removeClass('has-touch')
+         .off(Touch.event().start + '.' + PLUGIN)
+         .off(Touch.event().move + '.' + PLUGIN)
+         .off(Touch.event().end + '.' + PLUGIN)
+         .off(Touch.event().leave + '.' + PLUGIN);
+       touchFlag = false;
+     }
+     if (settings.responsive) {
+       $(window).off('resize.' + PLUGIN);
+     }
+     $container.removeData(PLUGIN);
+     $container = null;
+     $slider = null;
+     $arrows = null;
+     $caption = null;
+     $slide = null;
+     $controlPanel = null;
+     $navControl = null;
+     sliderStyle = null;
+     slideLen = null;
+     slideWidth = null;
+     sliderWidth = null;
+     current = null;
+     offset = null;
+     busy = null;
+     timer = null;
+     has3d = null;
+     busy = false;
+     transformProperty = null;
+     transitionProperty = null;
+   }
+</PRE><PRE>   /**
+    * @return {methods} [Public slider methods API]
+    */
+   return {
+     init: init,
+     show: show,
+     destroy: destroy
+   };
+</PRE><PRE> };
+</PRE><PRE> $.fn[PLUGIN] = function(opt) {
+   var _this = this;
+   this.each(function() {
+     var $this = $(this);
+     var slider = $this.data(PLUGIN);
+     var options = typeof opt === 'object' &amp;&amp; opt;
+     if (!slider &amp;&amp; /(destroy|\d+)/.test(opt)) return;
+     if (!slider) {
+       slider = new ikSlider($this, options);
+       $this.data('ikSlider', slider);
+       slider.init();
+     }
+     if (typeof opt === 'string' || typeof opt === 'number' &amp;&amp; opt !== 'init') {
+       if (typeof opt === 'number') {
+         _this = slider.show(opt);
+       } else {
+         if(slider[opt]) {
+           _this = slider[opt]();
+         } else {
+           throw new Error('Error:: ikSlider has no method: ' + opt);
+         }
+       }
+     }
+     return _this;
+   });
+ };
+</PRE><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

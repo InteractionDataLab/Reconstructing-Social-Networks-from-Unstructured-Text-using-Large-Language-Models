@@ -1,0 +1,30 @@
+Team:ATOMS-Turkiye/ajaxload
+/* AJAX-loading adapted from Team TU-Munich 2013
+/
+/* GLOABAL VARIABLES for AJAX-anchor loading */ var lastAnchor = ""; var anchorClicked = false;
+function ajaxBinding() {
+var links = new Array();  var externalLinks = new Array();  console.log("AJAX setup!");  //var candidates = $('#bodyContent a, #footer-box a').not('.bx-controls a');  //var candidates = $('#headerWrapper a, #footer a');  var candidates = $('a').not('#top-menu-14 a, .editsection a');  for (i = 0; i < candidates.length; i++) {    if ( candidates[i].href.search('2015.igem.org/Team:ATOMS-Turkiye') != -1)    {      if(candidates[i].href.search('2015.igem.org/Team:ATOMS-Turkiye/') != -1)      {        links.push(candidates[i]);      //console.log(candidates[i]);      }    }else{      externalLinks.push(candidates[i]);    }  }
+$(links).click(function(e){    console.log(this.href);    if(this.href.search('#') == -1){      if(document.URL.indexOf(this.href) > -1){        console.log('scroll to top!' );        window.scrollTo(0,0);      }      e.preventDefault();      History.pushState(null, this.href.substring(21) + ' - 2015.igem.org', this.href);    }else{      if(document.URL.indexOf(this.href.split('#')[0]) > -1){        e.preventDefault();       // $(this.href.split('#')[1]).scrollTo();        $('html, body').animate({        scrollTop: (Number($("#" + this.href.split('#')[1]).offset().top) - Number(105))    }, 500);      }else{        e.preventDefault();                anchorClicked = true;        lastAnchor = "#" + this.href.split('#')[1];                 History.pushState(null, this.href.substring(21) + ' - 2015.igem.org', this.href.split('#')[0]);      }    }  });    $(externalLinks).attr("target","_blank");
+$("div.thumbinner > a img").slimbox({}, function(el) {  url = el.src;  if (url.indexOf('thumb') != -1) {   url = url.substring(0, url.lastIndexOf('/'));   url = url.replace('/thumb/', '/');  }  description = $(el).parents("div.thumbinner").children("div.thumbcaption").text();  return [url, description]; }, function(el) {  return (this == el); });
+$("#footer").insertAfter("#page-wrapper") }
+function ajaxLoad(url) {
+ajaxSrc = url;  $.ajax({    url: ajaxSrc,    type: "GET",    error: function(xhr, status) {      window.location = ajaxSrc;    },    success: function(render) {      oldContent = $('#page-wrapper').children();      newContent = $(render).find('#page-wrapper').children();      $(oldContent).remove();      $('#page-wrapper').prepend(newContent);      window.scrollTo(0,0);            // external anchor link simulation      if (anchorClicked)      {        $('html, body').animate({        scrollTop: (Number($(lastAnchor).offset().top) - Number(105))        }, 1);        anchorClicked = false;      }            ajaxReady();    }  });
+}
+function ajaxStateChange(e) {
+//alert(History.getState().url);  ajaxLoad(History.getState().url);
+}
+History.Adapter.bind(window, 'statechange', ajaxStateChange);
+$(document).ready(initiateStuff);
+function initiateStuff() {
+ajaxBinding();  scrollSpy();
+}
+function scrollSpy(){
+// scroll spy initiation
+if($('.scroll-spy').xscrolly!=null)
+$('.scroll-spy').xscrolly({        change: function($el) {          //$el.addClass('active');                    // remove active          $(".active-item").removeClass("active-item");                    // reset navigation          $(".nav-item.active").removeClass("active");          $(".current-top-nav").addClass("active");          $("#sub-navigation > ul").hide();          $("#" + $(".current-top-nav").attr('id') + "-sub").show();                          // scroll spy          console.log("#inpage-nav-" + $el.data("scroll"));          $("#inpage-nav-" + $el.data("scroll")).addClass("active-item");        }      });
+}
+function ajaxReady() {
+ga('send', 'pageview');
+$('.thumbinner').each(function() {
+$(this).width($(this).width() + 6);  });  ajaxBinding();      MathJax.Hub.Queue(["Typeset",MathJax.Hub]);  scrollSpy();  //myDocumentReady();
+}

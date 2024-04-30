@@ -1,0 +1,117 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_University_College_London_js_ddpowerzoomer"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:University_College_London/js/ddpowerzoomer">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:University_College_London/js/ddpowerzoomer&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:University_College_London/js/ddpowerzoomer&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:University_College_London/js/ddpowerzoomer&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:University_College_London/js/ddpowerzoomer" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:University College London/js/ddpowerzoomer</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>/*Image Power Zoomer v1.1 (June 18th, 2010)
+</P><UL><LI> This notice must stay intact for usage 
+</LI><LI> Author: Dynamic Drive at <A href="http://www.dynamicdrive.com/" class="external free" rel="nofollow">http://www.dynamicdrive.com/</A></LI><LI> Visit <A href="http://www.dynamicdrive.com/" class="external free" rel="nofollow">http://www.dynamicdrive.com/</A> for full source code
+</LI><LI>/
+</LI></UL><P>//June 18th, 10: Adds ability to specify a different, higher resolution version of the original image as the image shown inside the magnifying glass.
+</P><P>jQuery.noConflict()
+</P><P>var ddpowerzoomer={
+	dsetting: {defaultpower:2, powerrange:[2,2], magnifiersize:[250, 250]},
+	mousewheelevt: (/Firefox/i.test(navigator.userAgent))? &quot;DOMMouseScroll&quot; : &quot;mousewheel&quot;, //FF doesn't recognize mousewheel as of FF3.x
+	$magnifier: {outer:null, inner:null, image:null},
+	activeimage: null,
+</P><P>	movemagnifier:function(e, moveBol, zoomdir){
+		var activeimage=ddpowerzoomer.activeimage //get image mouse is currently over
+		var activeimginfo=activeimage.info
+		var coords=activeimginfo.coords //get offset coordinates of image relative to upper left corner of page
+		var $magnifier=ddpowerzoomer.$magnifier
+		var magdimensions=activeimginfo.magdimensions //get dimensions of magnifier
+		var power=activeimginfo.power.current
+		var powerrange=activeimginfo.power.range
+		var x=e.pageX-coords.left //get x coords of mouse within image (where top corner of image is 0)
+		var y=e.pageY-coords.top
+		if (moveBol==true){
+			if (e.pageX&gt;=coords.left &amp;&amp; e.pageX&lt;=coords.right &amp;&amp; e.pageY&gt;=coords.top &amp;&amp; e.pageY&lt;=coords.bottom)  //if mouse is within currently within boundaries of active base image
+				$magnifier.outer.css({left:e.pageX-magdimensions[0]/2, top:e.pageY-magdimensions[1]/2})	//move magnifier so it follows the cursor
+			else{ //if mouse is outside base image
+				ddpowerzoomer.activeimage=null
+				$magnifier.outer.hide() //hide magnifier
+			}
+		}
+		else if (zoomdir){ //if zoom in
+			var od=activeimginfo.dimensions //get dimensions of image
+			var newpower=(zoomdir==&quot;in&quot;)? Math.min(power+1, powerrange[1]) : Math.max(power-1, powerrange[0]) //get new power from zooming in or out
+			var nd=[od[0]*newpower, od[1]*newpower] //calculate dimensions of new enlarged image within magnifier
+			$magnifier.image.css({width:nd[0], height:nd[1]})
+			activeimginfo.power.current=newpower //set current power to new power after magnification
+		}
+		power=activeimginfo.power.current //get current power
+		var newx=-x*power+magdimensions[0]/2 //calculate x coord to move enlarged image
+		var newy=-y*power+magdimensions[1]/2
+		$magnifier.inner.css({left:newx, top:newy}) //move image wrapper within magnifier so the correct image area is shown
+	},
+</P><P>	setupimage:function($, imgref, options){
+		var s=jQuery.extend({}, ddpowerzoomer.dsetting, options)
+		var $imgref=$(imgref)
+		imgref.info={ //create object to remember various info regarding image 
+			power: {current:s.defaultpower, range:s.powerrange},
+			magdimensions: s.magnifiersize,
+			dimensions: [$imgref.width(), $imgref.height()],
+			coords: null
+		}
+		$imgref.unbind('mouseenter').mouseenter(function(e){ //mouseenter event over base image
+			var $magnifier=ddpowerzoomer.$magnifier
+			$magnifier.outer.css({width:s.magnifiersize[0], height:s.magnifiersize[1]}) //set magnifier's size
+			var offset=$imgref.offset() //get image offset from document
+			var power=imgref.info.power.current
+			$magnifier.inner.html('&lt;img src=&quot;'+options.largeimagesrc+'&quot;/&gt;') //get base image's src and create new image inside magnifier based on it
+			$magnifier.image=$magnifier.outer.find('img:first')
+				.css({width:imgref.info.dimensions[0]*power, height:imgref.info.dimensions[1]*power}) //set size of enlarged image
+			var coords={left:offset.left, top:offset.top, right:offset.left+imgref.info.dimensions[0], bottom:offset.top+imgref.info.dimensions[1]}
+			imgref.info.coords=coords //remember left, right, and bottom right coordinates of image relative to doc
+			$magnifier.outer.show()
+			ddpowerzoomer.activeimage=imgref
+		})
+	},
+</P><P>	
+	init:function($){
+		var $magnifier=$('&lt;div style=&quot;position:absolute;width:100px;height:100px;display:none;overflow:hidden;border:1px solid black;z-index:10;&quot; /&gt;')
+			.append('&lt;div style=&quot;position:relative;left:0;top:0;&quot; /&gt;')
+			.appendTo(document.body) //create magnifier container and add to doc
+		ddpowerzoomer.$magnifier={outer:$magnifier, inner:$magnifier.find('div:eq(0)'), image:null} //reference and remember various parts of magnifier
+		$magnifier=ddpowerzoomer.$magnifier
+		$(document).unbind('mousemove.trackmagnifier').bind('mousemove.trackmagnifier', function(e){ //bind mousemove event to doc
+			if (ddpowerzoomer.activeimage){ //if mouse is currently over a magnifying image
+				ddpowerzoomer.movemagnifier(e, true) //move magnifier
+			}
+		}) //end document.mousemove
+</P><P>
+	}
+} //ddpowerzoomer
+</P><P>jQuery.fn.addpowerzoom=function(options){
+	var $=jQuery
+	return this.each(function(){ //return jQuery obj
+		if (this.tagName!=&quot;IMG&quot;)
+			return true //skip to next matched element
+		if (typeof options==&quot;undefined&quot;)
+			options={}
+		if (options.largeimage &amp;&amp; options.largeimage.length&gt;0){ //preload large image?
+			options.preloadimg=new Image()
+			options.preloadimg.src=options.largeimage
+		}
+		var $imgref=$(this)
+		options.largeimagesrc=(options.preloadimg)? options.preloadimg.src : $imgref.attr('src')
+		if (parseInt(this.style.width)&gt;0 &amp;&amp; parseInt(this.style.height)&gt;0) //if image has explicit CSS width/height defined
+			ddpowerzoomer.setupimage($, this, options)
+		else if (this.complete){ //account for IE not firing image.onload
+			ddpowerzoomer.setupimage($, this, options)
+		}
+		else{
+			$imgref.bind('load', function(){
+				ddpowerzoomer.setupimage($, this, options)
+			})
+		}
+	})
+}
+</P><P>jQuery(document).ready(function($){ //initialize power zoomer on DOM load
+	ddpowerzoomer.init($)
+})
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:University_College_London/js/ddpowerzoomer">http://2012.igem.org/Team:University_College_London/js/ddpowerzoomer</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:University_College_London/js/ddpowerzoomer" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:University_College_London/js/ddpowerzoomer" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:University_College_London/js/ddpowerzoomer&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:University_College_London/js/ddpowerzoomer&amp;oldid=116999" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

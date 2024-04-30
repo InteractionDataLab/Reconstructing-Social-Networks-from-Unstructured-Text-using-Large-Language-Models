@@ -1,0 +1,282 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+GPT Curation Evaluation (Inter-team)
+
+First, Load the necessary data files, libraries and functions
+
+```{r}
+#parameters
+
+version = "two-step" #Prompt type - specific indicates prompts with explicit instructions and examples (one/two shot)
+output_format = "lol" #Output in a list of list format
+
+#model = "gpt-3.5-turbo-instruct"
+#model = "gpt-3.5-turbo-16k"
+model = "gpt-4-turbo"
+#model = "gpt-4-0125-preview"
+#model = "gpt-4"
+
+temperature = "0-3" #Temperature used in the first extraction step of the pipeline
+temperature_matching = "0-3" #Temperature used in the second matching step of the pipeline
+temperature_context_matching = "0-3"
+breaks_matching = 10 #How many names are grouped together into one GPT request in the matching step
+breaks_context_matching = 10
+
+process_st = function(dir, source, team, target)
+{
+  if(is.na(dir))
+    return(target)
+  if(dir == "st")
+    return(target)
+  if(dir == "ts")
+    return(team)
+}
+
+match_team_names = function(edges, mapping)
+{
+  colnames(edges) = c("team", "target", "year", "context", "id", "source")
+  colnames(mapping) = c("team", "matching", "year")
+  
+  edges = merge(edges, mapping, by.x = c("team", "year"), by.y = c("team", "year"), all.x = TRUE)
+  colnames(edges)[colnames(edges) == "matching"] = "team_matched"
+
+  edges = merge(edges, mapping, by.x = c("target", "year"), by.y = c("team", "year"), all.x = TRUE)
+  colnames(edges)[colnames(edges) == "matching"] = "target_matched"
+
+  edges_filtered = edges[!is.na(edges$team_matched) & (!is.na(edges$target_matched)) & !edges$team_matched == "other" & !edges$target_matched == "other",]
+
+  edges_filtered = edges_filtered[!edges_filtered$team_matched == edges_filtered$target_matched, c("team_matched", "target_matched", "year", "id", "context", "source")]
+ 
+   #edges_filtered = edges_filtered %>% group_by(team_matched, target_matched, year, id, context) %>% summarise(count = n())
+  
+  colnames(edges_filtered) = c("team", "target", "year", "id", "context", "source")
+  
+  edges_filtered$direction = NA
+
+  edges_filtered$direction[edges_filtered$team == edges_filtered$source] = "st"
+  edges_filtered$direction[edges_filtered$target == edges_filtered$source] = "ts"
+
+  edges_filtered = edges_filtered %>% rowwise() %>% summarise(year = year, team = ifelse(!is.na(direction), source, team), target = process_st(direction, source, team, target), context = context, direction = direction, id = id, source = source)
+  
+  edges_filtered = edges_filtered[edges_filtered$team == edges_filtered$source | edges_filtered$target == edges_filtered$source, ]
+
+  edges_filtered = edges_filtered[!edges_filtered$team == edges_filtered$target,]
+  
+  return(edges_filtered %>% select(-c("source")))
+}
+
+process_team_names = function(team_name)
+{
+  t = trimws(team_name) #Removes trailing whitespaces
+  t = tolower(team_name) #Makes lowercase
+  t = gsub("_", " ", t) #Substitutes underscore with space
+  t = gsub("-", " ", t) #Substitutes hyphen with space
+  t = gsub(",", "", t) #Substitutes comma with space
+ 
+  #t = gsub("team", " ", t)
+  #t = gsub("igem", " ", t)
+  
+  return(trimws(t)) #Returns removing trailing whitespaces 
+}
+
+#Function to Evaluate the precision and recall scores
+
+eval_precision_recall = function(predicted_edges, actual_edges)
+{
+  actual_edges$in_predicted = FALSE
+  
+  for (i in 1:nrow(actual_edges))
+  {
+    team = actual_edges$team[i]
+    target = actual_edges$target[i]
+    year = actual_edges$year[i]
+    id = actual_edges$id[i]
+    
+    if (nrow(predicted_edges[predicted_edges$team == team & predicted_edges$target == target & predicted_edges$year == year & predicted_edges$id == id,]) > 0 | nrow(predicted_edges[predicted_edges$team == target & predicted_edges$target == team & predicted_edges$year == year & predicted_edges$id == id,]) > 0)
+      actual_edges$in_predicted[i] = TRUE
+    
+  }
+  
+  #return(data.frame(precision = sum(predicted_edges$in_actual, na.rm = TRUE)/nrow(predicted_edges), recall = sum(predicted_edges$in_actual, na.rm = TRUE)/nrow(actual_edges)))
+  return(actual_edges)
+  
+}
+
+```
+
+```{r}
+
+library(dplyr)
+
+#Load the Original processed files
+
+meta = read.csv("../data/raw/team_meta.csv", stringsAsFactors = FALSE) #iGEM team metadata
+meta$team_processed = process_team_names(meta$Team)
+
+mc_manual_1 = read.csv("../data/processed/manually_curated/collab_inter-team/1_manual.csv", stringsAsFactors = FALSE)[,c("team", "target", "year", "context", "text")]
+mc_manual_1$chunk_id = NA
+mc_manual_1$batch_id = 1
+flag = 1
+mc_manual_1$chunk_id[1] = 0
+
+for (i in 2:nrow(mc_manual_1))
+{
+  if (mc_manual_1$team[i] == mc_manual_1$team[i-1] & mc_manual_1$text[i] == mc_manual_1$text[i-1])
+    mc_manual_1$chunk_id[i] = mc_manual_1$chunk_id[i-1]
+  else
+    mc_manual_1$chunk_id[i] = mc_manual_1$chunk_id[i-1] + 1
+}
+
+mc_manual_2 = read.csv("../data/processed/manually_curated/collab_inter-team/2_manual.csv", stringsAsFactors = FALSE)[,c("team", "target", "year", "context", "text")]
+mc_manual_2$chunk_id = NA
+mc_manual_2$batch_id = 2
+flag = 1
+mc_manual_2$chunk_id[1] = 0
+
+for (i in 2:nrow(mc_manual_2))
+{
+  if (mc_manual_2$team[i] == mc_manual_2$team[i-1] & mc_manual_2$text[i] == mc_manual_2$text[i-1])
+    mc_manual_2$chunk_id[i] = mc_manual_2$chunk_id[i-1]
+  else
+    mc_manual_2$chunk_id[i] = mc_manual_2$chunk_id[i-1] + 1
+}
+
+mc_manual = rbind(mc_manual_1, mc_manual_2) %>% select(-c("text"))
+mc_manual$id = paste(mc_manual$batch_id, mc_manual$chunk_id, sep = "-")
+
+mc_manual$target = lapply(mc_manual$target, FUN = function(x) trimws(strsplit(x, ",")[[1]])) 
+mc_manual = tidyr::unnest(mc_manual, cols = "target")
+mc_manual$context = lapply(mc_manual$context, FUN = function(x) trimws(strsplit(x, ",")[[1]])) 
+mc_manual = tidyr::unnest(mc_manual, cols = "context")
+mc_manual_chunks = mc_manual %>% group_by(team, target, year, id, context) %>% summarise(count_manual = n())
+mc_manual_chunks$team = process_team_names(mc_manual_chunks$team)
+mc_manual_chunks$target = process_team_names(mc_manual_chunks$target)
+mc_manual_chunks$context = process_team_names(mc_manual_chunks$context)
+
+mc_manual_chunks_context = mc_manual_chunks %>% group_by(team, target, year, id, context) %>% summarise(count_manual = n())
+mc_manual_chunks = mc_manual_chunks %>% group_by(team, target, year, id) %>% summarise(count_manual = n())
+mc_manual_chunks$in_manual = TRUE
+
+```
+
+Load the Fuzzy data files
+
+```{r}
+
+
+mc_fuzzy = read.csv("../data/processed/fuzzy_curated/inter-team_test_batches_fuzzy_curated.csv", stringsAsFactors = FALSE)
+
+mc_fuzzy = mc_fuzzy[mc_fuzzy$batch_id %in% c(1,2), c("Team", "Target", "year", "batch_id", "chunk_id")]
+mc_fuzzy$id = paste(mc_fuzzy$batch_id, mc_fuzzy$chunk_id, sep = "-")
+mc_fuzzy_chunks = mc_fuzzy %>% group_by(Team, Target, year, id) %>% summarise(count = n())
+colnames(mc_fuzzy_chunks) = c("team", "target", "year", "id", "count_fuzzy")
+mc_fuzzy_chunks$team = process_team_names(mc_fuzzy_chunks$team)
+mc_fuzzy_chunks$target = process_team_names(mc_fuzzy_chunks$target)
+mc_fuzzy_chunks$in_fuzzy = TRUE
+
+```
+
+
+Evaluate the performance of specified model and store the results
+
+```{r}
+
+df_curated = read.csv(paste("../data/processed/gpt_curated/inter-team/processed_", version, "_", model, "_", temperature, ".csv", sep = ""), stringsAsFactors = FALSE) #Curated relationships 
+df_curated$id = paste(df_curated$batch_id, df_curated$chunk_id, sep = "-")
+
+df_curated$team_processed = process_team_names(df_curated$team)
+df_curated$target_processed = process_team_names(df_curated$target)
+
+fname = paste("../data/processed/gpt_curated/inter-team/processed_team_name_matchings_", breaks_matching, "_", version, "_", model, "_", temperature_matching, "_", temperature, ".csv", sep = "")
+team_matchings = read.csv(fname, stringsAsFactors = FALSE) 
+team_matchings$team = process_team_names(team_matchings$team)
+
+t1 = meta[,c("team_processed", "Team", "Year")]
+colnames(t1) = c("team", "matching", "year")
+team_matchings = rbind(team_matchings, t1)
+#team_matchings = team_matchings[team_matchings$matching %in% meta$Team,]
+  
+df = match_team_names(df_curated[,c("team_processed", "target_processed", "year", "context", "id", "source_team")], team_matchings)
+#df = merge(df, context_matchings, by.x = c("context"), by.y = c("context"), all.x = TRUE)
+
+df = df %>% group_by(team, target, year, id) %>% summarise(count_gpt = n())
+df$team = process_team_names(df$team)
+df$target = process_team_names(df$target)
+df$in_gpt = TRUE
+
+#Merge GPT and Manual
+
+df_merged = merge(df, mc_manual_chunks, by.x = c("team", "target", "year", "id"), by.y = c("team", "target", "year", "id"), all.x = TRUE, all.y = TRUE)
+
+df_merged = merge(df_merged, mc_fuzzy_chunks, by.x = c("team", "target", "year", "id"), by.y = c("team", "target", "year", "id"), all.x = TRUE, all.y = TRUE)
+
+  
+```
+
+```{r}
+
+#Version with Categories
+
+df = match_team_names(df_curated[,c("team_processed", "target_processed", "year", "context", "id", "source_team")], team_matchings)
+df$team = process_team_names(df$team)
+df$target = process_team_names(df$target)
+
+fname = paste("../data/processed/gpt_curated/inter-team/processed_context_matching_", version, "_", breaks_context_matching , "_", model, "_", temperature_context_matching, "_", temperature, ".csv", sep = "")
+context_matchings = read.csv(fname, stringsAsFactors = FALSE)
+context_matchings = context_matchings[!duplicated(context_matchings),]
+
+df = merge(df, context_matchings, by.x = c("context"), by.y = c("context"), all.x = TRUE)
+df = df %>% group_by(team, target, year, category, id) %>% summarise(count_gpt = n()) 
+colnames(df) = c("team", "target", "year", "context_gpt", "id", "count_gpt")
+#df$in_gpt = TRUE
+
+colnames(mc_manual_chunks_context) = c("team", "target", "year", "id", "context_manual", "count_manual")
+#mc_manual_chunks_context$in_manual = TRUE
+
+df_merged_context = merge(df, mc_manual_chunks_context, by.x  = c("team", "target", "year", "id"), by.y  = c("team", "target", "year", "id"), all.x = TRUE, all.y = TRUE)
+
+```
+
+
+
+Jackknife Errorbars
+
+```{r}
+
+batch_ids = union(paste(1, "-", 1:100, sep = ""), paste(2, "-", 1:100, sep = ""))
+
+jackknife_se = function(estimates, actual)
+{
+  se = sqrt(sum((estimates-actual)**2)*((length(estimates)-1)/length(estimates)))
+  return(se)
+}
+
+
+df_stats_jackknife = data.frame()
+  
+for (i in batch_ids)
+{
+  t = df_merged[!df_merged$id %in% i,]
+  
+  precision = sum(t$in_manual == TRUE & t$in_gpt == TRUE, na.rm = TRUE)/sum(t$in_gpt == TRUE, na.rm = TRUE)
+  recall = sum(t$in_manual == TRUE & t$in_gpt == TRUE, na.rm = TRUE)/sum(t$in_manual == TRUE, na.rm = TRUE)
+  
+  df_stats_jackknife = rbind(df_stats_jackknife, data.frame(chunk_removed = i, type = "gpt", precision = precision, recall = recall))
+  
+  precision = sum(t$in_manual == TRUE & t$in_fuzzy == TRUE, na.rm = TRUE)/sum(t$in_fuzzy == TRUE, na.rm = TRUE)
+  recall = sum(t$in_manual == TRUE & t$in_fuzzy == TRUE, na.rm = TRUE)/sum(t$in_manual == TRUE, na.rm = TRUE)
+  
+  df_stats_jackknife = rbind(df_stats_jackknife, data.frame(chunk_removed = i, type = "fuzzy", precision = precision, recall = recall))
+    
+}
+
+```
+
+```{r}
+
+save(df_merged, df_stats_jackknife, df_merged_context, file = paste("../data/processed/gpt_curated/inter-team/comparison_manual_gpt_fuzzy_", version, "_", breaks_matching, "_", model, "_", temperature_matching, "_", temperature, ".RData", sep = ""))
+
+```

@@ -1,0 +1,154 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:LCG-UNAM-Mexico:CA
+From 2009.igem.org
+Home
+Record
+Project
+Description>>
+Design
+Delivery
+Defense
+Parts
+Resources
+Results
+Conclusions
+Modelling
+Wet Lab
+Objectives
+Experiments
+Team
+Team
+Acknowledgments
+Collaborations
+Sponsors
+?
+Site map
+Glossary
+Multi-Scale Stochastic Modeling for bacteria behaviour and Bacteriophage infection using Cellular Automata
+Contents
+Cellular Automata
+Simulations and Results
+Design
+The Algorithm
+References
+Cellular Automata
+A cellular automaton is discrete dynamical system: a grid in a n-dimensional space in which each cell has one of a finite number of states, say on and off. The state for a given cell at time t is a function of it’s own state and the states of its neighbours at time t-1.
+As time advances in discrete steps, the system evolves according to universal laws. Every time the clock ticks, the cells update their states simultaneously.
+Cellular Automaton can simulate continuous physical systems described by Partial Differential Equations (PDE) .
+The evolution in time depends on the rules that you define, in fact you can define any rule you want and you will get amazing and funny patterns.
+It has been proved that a CA can be a Universal Turing Machine, in fact different CA are used to make a wide variety of computations. You can simulate a lot of different complex systems using a CA and you can also see emergence of complex behaviour by defining simple rules in a CA ( | Game Of Life ) .
+If we think of the cells in the grid as if they were biological cells we can simulate a population of bacteria, tissue growth, swarming etc. With our Cellular Automata we are going to simulate the behaviour of the whole infection process, it is the final step in our multi-scale model.
+Simulations
+Cellular Automata Output Left-Up: bacteria representation the state is indicated by the color. Right-Up: Bacteria Growth Curve, population size is relative to the charge capacity. Left-Down: AHL concentration in enviroment. Right-Down: Phage Growth Curve. Image was captured at time = 208 min. Grid Size = 100x100
+Here are examples of the CA's output. The figure shows the CA, the bacteria population size, AHL concentration in the xy plane and the population size of phages. With this ouput we can see the evolution of the system (see video).
+The main goal of the Cellular Automata was to assemble the information contained in the Molecular Distributions (particularly the BSD with a population simulation in order to observe the behaviour of the whole system under different conditions.  The experimental work with T7 and the CA show the same overall behaviour.
+By changing the initial conditions and parameters on our CA it's possible to simulate a wide range of bacteriophage infection processes.  The CA was designed to work along with the molecular simulations in a single Matlab script, but it's alwats possible to use the CA as a stand alone application to simulate infection dynamics.
+Wild Type Infection
+Experiment: T3 and T7 infection on E. Coli; population proportion:19 bacterias/1 phage; Optical Density at 550nm
+The above video shows the simulation of the T7 infection process in wild type Escherichia Coli. Our Experimental results for the bacterial growth curve exhibit the same behaviour. The initial condition for both experiment and simulation is a proportion: 1 phage for each 19 bacteria. As expected the bacteria population losses the fight. About 100 min after infection all bacteria are dead.
+The image on the left shows our experimental results for T3 and T7 infection on Wild Type E. Coli. The same  initial conditions in the experiment were used in the above Automata Simulation.
+Infection With Our system
+Molecuar Simulations using the kamikaze system showed that our construction works as expected. We performed a sensitivity analysis for the crucial parameter in our kamikaze system: the ribosome deactivation rate by Colicin E3. We observed that over a wide range of values (10^-1 - 10^-4) the mean of the BSD was reduced to 0, nevertheless we performed CA simulations for both the zero and non zero mean BS.
+Cellular Automaton Simulation. Mean of the Burst Size Distribution Sampled: 0.0
+The above video shows a simulation in which we used the results obtained from the molecular simulations using the kamikaze system. Burst Size Mean = 0. Bacteria wins the fight. This behaviour is observed for a wide range of values for the rate of ribosome inactivation by Colicin E3 (10e-1 ~ 10e-4). This results suggests that our system indeed works as expected. Experimental results for Colicin E3 kinetics are needed in order to validate and improve our model, sadly we didn’t obtained this results.
+Cellular Automaton Simulation. Mean of the Burst Size Distribution Sampled: 5.8
+Using the value of 5.8 for the burst size we observe that the population, after a brave struggle with phages, sadly dies. This result was expected since the latency period of T7 is smaller than the duplication time of E.Coli and each infected bacterium will produce an average of 6 phages!
+Our system work as expected for burst size values less or equal to 1. Sensitivity analysis shows that our system works for a wide range of values for the ribosome inactivation rate but even a small burst size value like 6 will eventually kill the whole population.
+Design
+Comparision between E. Coli micrography and a simulation of duplication and movement in the CA.
+We will use the word cell for the elements of the grid in the automaton and the word bacterium for E coli.
+The state of the cells in the CA is an array of integers representing different parameters.
+CA[i,j] =[s, d, l, r, i, lt, bs, np, ahl]
+s = 1 if there is a bacteria in this cell 0 otherwise.
+d = direction [1, 2, ... 8]  (random variable)
+l = persistence time REFERENCE
+r = time until duplication (random variable)
+i = infection state.  1 if infected 0 otherwise.
+lt = time until lysis (random variable).
+bs= Burst Size, amount of phages an infected bacteria will produce (random variable)
+np= number of phages.
+ahl= AHL concetration.
+We sample indexes of the rows and columns in the grid at random and then we iterate in that order, thus we have a random sampling without replacement that require only 2n random numbers instead of <math>n^2</math>.
+Since infected E. Coli will produce AHL we need to simulate diffussion. Suceptible E. Coli will measure AHL concentration in its local enviroment, AHL will activate antisense RNA against T7's DNA polimerase. Diffusion is simulated using discrete version of Flick's second law
+. The rate of AHL production and the amount of AHL infected E. Coli will produce before lysis can be estimated using the results of the Stochastic Molecular Simulations .
+The antisense RNA will change the molecular dynamics inside the cell and it will delay the phage production, we can
+For each time tick: sample at random the cells in the CA and check if there is a bacterium, if so:
+*Check if it should duplicate, change direction or move.
+*We also have phages in the grid so we need to check for infections on each iteration: if there are phages in a cell      occupied by a bacterium this will become infected with some fixed probability.
+*If a bacterium is infected and is time for lysis it will release new phages to the CA cell, this number is sampled      from the Burst Size Distribution generated by the [[Team:LCG-UNAM-Mexico:Molecular      model | Stochastic Molecular Simulations]].
+*Diffuse AHL
+*Update CA State
+The Algorithm
+This pseudo code is a simplified version of the Matlab script we implemented which is available at request.
+To implement the algorithm we used two CA data structures but for simplicity we present here all the operations on a single CA object.
+Comments start with     //
+For each cell in the CA sampled at random*:
+//Infection
+       if   np>0 and runif(0,1)<infectionProb
+               //bacteria becomes infected.
+i = 1;     
+               bs= sampleBurstSizeDistribution();
+               lt = sampleLysisTimeDistribution();
+                //bacterium cannot duplicate or move anymore.
+               r = l = NULL;
+               continue;
+       //For Infected Bacteria:
+       elseif i==1
+               if lt==0  //Is time for lysis?.
+                       //number of phages at t-1 plus those produced by
+//the bacterium.
+np += bs;   
+s=0; //bacterium death.
+               else
+                       lt--;
+               
+               continue;
+//Duplication.
+elseif r ==0
+               if checkForAvailableSpace(neighbourhood_ij) == TRUE
+                       duplicate;
+               sampleDuplicationTimeDistribution();
+               set r for the new bacteria;
+               continue;
+       //Change Direction
+       elseif l==0
+               d=randomSample([1,2,..,8]);
+               r=r-1;   l =persistence_time;
+               
+       //Movement.        
+       else                
+//check if the space the bacterium is moving towards //is empty.
+               (New_i  New_j) = checkForSpace(i.j,d)
+               r--; l--;
+               //move bacterium
+CA[New_i, New_j ]= CA[i ,j];
+//Bacterium left an empty space in the CA.
+CA[i,j]= [ 0 ];
+end
+References
+Brinch Hansen, 1993 Parallel Cellular Automata: A Model Program for Computational Science.
+Harvey. Parameters of the Generation Time Distribution. 1971
+Lee et. al. 1995. A Cellular Automaton Model for the Proliferation of Migrating Contact-Inhibited Cells.
+Von Neumann, J. 1966. Theory of Self-Reproducing Automata.
+Plank and Harvey. Generation Time Statistics of Escherichia Coli B Measured by Synchronous Culture Techniques.1979
+Wolfram. http://mathworld.wolfram.com/ElementaryCellularAutomaton.html . 2009
+Yin, Evolution of Bacteriophage T7 in a growing plate. 1992.
+Yin, Replication of viruses in a growing plaque:  a reaction-diffusion model.
+Yin,Amplification and Spread of Viruses in a Growing Plaque. 1999
+Retrieved from " http://2009.igem.org/Team:LCG-UNAM-Mexico:CA "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

@@ -1,0 +1,126 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:BCCS-Bristol/Modeling-Progress
+From 2008.igem.org
+Home
+The Team
+The Project
+Submitted Parts
+Modelling
+Wet Lab
+Calendar
+Miscellaneous
+Modelling Progress Report
+16th - 23rd July
+Implemented run & tumble motion
+With/without chemotaxis
+Implemented interactions between objects (bacteria and particles)
+24th - 30th July
+Adapted gamma distribution for tumble angle
+Added trace to particles, and to the mean position of the bacteria
+Changed run length calculation heuristic
+31st July - 5th August
+Implemented wrapping boundaries
+Written a class that allows parameters to be altered whilst the program is running
+7th August - 13th August
+Implemented bacterium sensing memory
+4th August - 20th August
+Added solid boundaries
+Parameter file defined and new class created to handle batch jobs
+21st August - 27th August
+Implemented multi-thread optimisations
+Ran first simulation batches of on blue crystal
+28th August - 3rd September
+Formulated GRN
+Continued running simulations
+4th September - 10th September
+Research of GRN parameters
+Implementation of GRN in MATLAB
+Simulations
+11th September - 17th September
+Investigation of GRN sensitivity to variation of CpMax and AHL input
+Analysis of simulation results.
+18th September - 24th September
+Simulations
+Further analysis of simulation results.
+Modelling section of IGEM presentation
+Modelling Progress Details
+16th - 23rd July
+Run and Tumble Motion
+A fairly realistic model of bacterial motion; bacterial motion consists of two phases:
+The run; movement in a straight line. Speed is constant and equal for all bacteria
+The tumble; stationary rotation
+All parameters are determined at the start of the respective phase. The run time is sampled by feeding a random number in the range [0, 1] to an inverse exponential function, with parameters found from the literature. Tumble time and tumble angle are determined independently, as tumbles can occur at different speeds due to the independent nature of the flagella motors. Tumble time is gamma-distributed, and determined in the same way as run length; tumble angle is sampled from a fourth-order polynomial approximation of an inverse gamma distribution. The tumble angle is bi-directional, with an equal probability of clockwise or anticlockwise tumbles; however, there is a slight forward bias – i.e. the mean angle is less than 90 degrees.
+Chemotaxis
+The chemotactic gradient has an effect on the mean run length of a bacterium; runs up the gradient have a longer mean length. A chemotactic gradient can therefore be simulated by sampling run length from one of two exponential distributions with different means, depending on the direction of movement. Using a single distribution for run length regardless of direction corresponds to the isotropic case, where no chemotactic gradient is in place.
+Interactions
+Implementation of interactions required a change in the movement heuristic. The movement was previously determined by speed and direction. This was substituted in favour of a force-based physics engine. A bacterium experiences forces due to its own intended movement, if it is in a run phase, and the reaction forces resulting from interactions between other objects (bacteria and particles). Particles only experience reaction forces. For each object, all forces are resolved to determine a single resultant force with x and y components; this resultant force is used to calculate a velocity using Stokes’ Law for spheres moving through fluids with low Reynolds numbers. Because the Reynolds numbers involved are so small (around 10-6), inertia is negligible so acceleration is ignored and velocity is calculated at each time step independently of the previous velocity.
+24th - 30th July
+Gamma Distribution
+Mario commented that the polynomial approximation seemed to result in greater tumbling angles than those expected from the literature. This problem was resolved using a database of 1000 pre-computed values derived from the matlab inverse gamma distribution.
+Object Tracing
+Whilst watching the simulations we noticed that is hard to follow a particles path; we therefore added tracers, with a colour gradient representing time, to the particle. The positions of the particles over time are stored in a database. This could be used for statistical analysis in future.
+We also trace the mean position of all bacteria over time to observe any emergent behaviour.
+Run Length Calculation
+Previously the run length was determined at the start of each run. To allow chemotactic behaviour over more complex chemical fields, a Bernoulli Process was implemented instead; during a run, at each time step there is a fixed probability that the run will be terminated. The probability takes one of three values, depending on the bacterium’s perception of the chemoattractant. The three cases are:
+If the bacterium is unable to detect a change in chemoattractant concentration it perceives itself to be in an isotropic environment. This occurs when the concentration change of the chemoattractant is below a sensitivity threshold.
+A perceived increase in chemoattractant concentration will result in a lower run termination probability.
+A perceived decrease in chemoattractant will result in a higher run termination probability.
+31st July - 6th August
+Wrapping Boundaries
+New class was implemented to limit the diffusion of bacteria in the simulation space. A wrapping boundary consists of a line and an offset vector. When an object touches the line its position is changed according to the offset vector. These can be used to simulate a continuous stream of bacteria past an area of interest (the neighbourhood of the particles), whilst only computing the movement of a small number of bacteria.
+Run-time Parameter Control
+Previously all parameters were ‘hardwired’ into the program, meaning that they had to be changed by hand before the simulation was run. A new parameters class was constructed that allows us to change parameters whilst the program is running, enabling us to run batches of simulations for statistical analysis. A GUI was also added so that the user can change parameters without needed to alter the code.
+7th August - 13th August
+Bacterium Memory
+Bacteria require a memory to enable temporal comparison of chemoattractant concentrations, giving each bacterium an indication of how its actions affect the percieved quality of its environment. Previously this memory was simply a comparision of the concentration bacterium's current and previous position, i.e. the bacteria had a memory of one time step ~ 0.01 seconds. The memory of a bacteria was implemented using a model by Segall et all who proposed that bacteria in fact have a 4 second memory, comparing the average concentration of the last second with the average concentration of the previous 3 seconds.
+14th August - 20th August
+Solid Boundaries
+Some simulations require solid boundaries rather than the wrapping boundaries. These solid boundaries are included using potential functions to apply resistive forces in a similar manner to the implementation of object interactions.
+Parameter File Definition and Batch Jobs
+Due to the stochastic nature of the model simulations will have to be run several times before any significant conclusions can be drawn. A new class BSimBatch was written which allows a batch of simulations to be defined in a single file. The file shall include parameters defining each of the parameters of the simulation as well as parameters defining properties of the batch simulation such as simulation length and number of simulations to be run. The batch simulation outputs files containing data related to the positions of bacteria and particles as well as videos of all simulations.
+21st August - 27th August
+Multi-Thread Optimisations
+After runnning several small-scale simulations, it became clear that simulations of a larger scale would take far too long to run. BSim was multi-threaded to combat this problem. This process allows the program to split itself into two or more simultaneously running tasks, significantly reducing processing times.
+First Large-Scale Simulations
+Some test simulations were ran to ensure that there were no problems when running BSim on the blue crystal supercomputer. Once these trial runs were completed, the results were checked and a routine defining the process of running large scale simulations was formalised.
+28th August - 3rd September
+GRN Formulation
+After the GRN controlling the internal state of the cell had been finalised by the wet lab team it was modelled as a system of differential equations. These equations modelled the variation of mRNA and protein concentrations over time. The system consists conceptually as two seperate parts; a sender and a reciever. The sender produces a chemical signal when the bacteria adheres. This signal diffuses and is sensed by other bacteria. The reciever produces the mCherry fluorescent protein when it senses that the chemical signal concentration reaches a threshold.
+Simulations
+Simulations were run that modelled:
+Movement of bacteria following a chemotactic gradient
+Movement of a particle with different numbers of chemotactic bacteria adhered to its surface
+4th September - 10th September
+Researched GRN parameters
+The series of differential equations drawn up to model the GRN included over 20 parameters. Each of these parameters had to be researched before being given values.
+Modelling GRN
+Once the GRNs parameters were found it was possible to start modelling the system and investigating how the GRN responded when initial conditions were varied. The GRN was modelled in MATLAB using the numerical differential equation solver ODE45.
+Simulations
+Simulations were run this week to investigate the effect of bacterial density when following the binding induced chemotactic activation and short-range coordination construction rules.
+11th September - 17th September
+Investigation of GRN sensitivity to variation of CpMax and AHL input
+To assess the sender GRN we were interested in how the strength of the response regulator CpMax affects the overall dynamics and the final output of AHL. For a CpMax range of [0.1, 100]. For the transport aspect of the system we investigated how the concentration distribution varied over time. A delta input of size 50 was used and the concentration distribution calculated over a 30 minute period. For the receiver we wanted to understand how varying AHL concentration altered output of our signalling protein mCherry.
+Analysis of simulation results
+Graphs showing the time series of the average position of the particles for different densities in each simulation were created.
+18th September - 24th September
+Further analysis of simulation results
+The data obtained from our simulations was used to compare the efficiency of the different bacteria construction rules
+Modelling section of IGEM presentation
+Once all simulations and GRNs were analysed the modelling section was written.A member of the wet lab team were included in the presentation team to ensure that the language used would be accessible to people without a thorough understanding of computer progamming.
+Retrieved from " http://2008.igem.org/Team:BCCS-Bristol/Modeling-Progress "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

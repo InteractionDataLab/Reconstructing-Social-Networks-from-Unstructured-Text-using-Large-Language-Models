@@ -1,0 +1,263 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Shenzhen BGIC 0101/Tutorial/nucleomod
+From 2013.igem.org
+Home
+Team
+Software »
+Overview
+Modules
+Next Version
+New Standard
+Compatibility
+Tutorial
+Web-Based Trial
+Downloads
+Requirements »
+Human Practices
+Safety
+Collaboration
+Medal Criteria
+Contact
+Tutorial
+NucleoMod
+NucleoMod can modify CDS based on synonymous mutation. It has 5 applications. Firstly, NucleoMod is used to design CRISPR sites on NeoChr so that we can silence the wild type genes. Secondly, it can erase specific enzyme sites according to the users' selection. Thirdly, users can create an enzyme site in selected region of specific genes. Fourthly, it can optimize the codon efficiency to increase the expression level. Finally, it can smash the tandem repeat bases to reduce the synthesis difficulty.
+Plugins
+This module contains 5 plugins: CRISPR design, erase enzyme site, create enzyme site, codon optimization, repeat smash. All plugins are included in the main program.
+2.1 CRISPR design
+This plugin is used to design CRISPR site of NeoChr genes so that we can silence the wild type genes. We use blast+ to ensure the uniqueness of CRISPR sites. If you are using more than one plugin at the same time, this plugin will start firstly and deliver the data to next plugin. Otherwise it will generate a new fasta file for sequence and gff file for annotation.
+2.1.1 Internal operation
+First, this plugin extracts sequence and annotation from the NeoChr FASTA file and GFF3 file, respectively. Regular expression will be applied to find the 23bp basic structure of CRISPR site, with a head of ‘G’ then following 20 facultative bases and finally followed by ‘GG’. All the sequences and locus will be record in an array.
+Second, the blast+ will be used to check whether the 12bp sequences (from 9th to 20th) are uniq in the wild type genome. Only uniq sites will be reserved.
+Third, synonymous substitution method will be applied to change one base between the 9th to 20th bases of the CRISPR structure. The result will be record in GFF as an element of gene. If –verbose is set, the designed number will be report in STDOUT.
+Finally, if this plugin is the last module, the sequence and annotation information will be recreated in FASTA and GFF format.
+2.1.2 Example
+We have two input forms to execute the plugin:
+Run CRISPR design plugin only:
+perl NucleoMod.pl -inputfa NeoChr.fa -inputgff NeoChr.gff -outputgff new_annotation.gff -outputfa new_chr.fa -crisprnum 2 -database saccharomyces_cerevisiae_chr.fa
+2.1.3 Parameters
+Parameter
+Description
+Default
+Selectable range
+inputfa
+The NeoChr sequence file in FASTA format
+string
+inputgff
+The NeoChr annotation file in GFF3 format
+string
+outputgff
+Output of new chromosome annotation in GFF3 format
+string
+outputfa
+Output of new chromosome sequence in FASTA format
+string
+verbose
+Output the detailed information in STDOUT
+none
+option
+crisprnum
+Number of CRISPR site to be design per gene
+Int (>0)
+database
+The sequence of reference genome, used as blast+ database
+string
+help
+Show help information
+2.1.4 The format of output file
+The output files are standard GFF and FASTA format files.
+1. GFF file
+2. FASTA file
+3. Detailed information in STDOUT
+2.2 Erase enzyme site
+Given a list of restriction enzyme information, this plugin will erase the restriction sites in every gene. If you are using more than one plugin at the same time, this plugin will start after CRISPR design and deliver the data to next plugin. Otherwise it will generate a new fasta file for sequence and gff file for annotation.
+2.2.1 Internal operation
+The enzyme information will be extracted. (If the –borbrickstandard parameter is set, it will also remove EcoRI, XbaI, SpeI, PstI and NotI) The recognize site will be reformatted to regular expression and searched in the CDS regions. Once a restriction site is matched, synonymous substitution method will be applied to try to erase the enzyme site. When the substitution is finished, the plugin will restart the next search from 1 base after the last matched position. If this plugin is the last module, the sequence and annotation information will be recreated in FASTA and GFF format.
+2.2.2 Example
+perl NucleoMod.pl -inputfa NeoChr.fa -inputgff NeoChr.gff -outputgff new_annotation.gff -outputfa new_chr.fa –biobrickstandard [-delenzymelist enzyme.list ]
+Format of enzyme.list:
+Company   enzyme_name   enzyme_site   …
+Eg. NEB       BamHI        G/GATCC
+2.2.3 Parameters
+Parameter
+Description
+Default
+Selectable range
+inputfa
+The NeoChr sequence file in FASTA format
+string
+inputgff
+The NeoChr annotation file in GFF3 format
+string
+outputgff
+Output of new chromosome annotation in GFF3 format
+string
+outputfa
+Output of new chromosome sequence in FASTA format
+string
+verbose
+Output the detailed information in STDOUT
+none
+option
+biobrickstandard
+Erase the biobrick standard enzyme site
+none
+option
+delenzymelist
+The file of enzyme going to delete
+string
+detail
+Show the erased enzyme site in new gff
+none
+option
+help
+Show help information
+2.2.4 The format of output
+The output files are standard GFF and FASTA format.
+1. GFF file
+2. FASTA file
+3. Detailed information in STDOUT
+2.3 Create enzyme site
+Given a list of restriction enzyme information, this plugin can create a new enzyme site in specific region of selected gene. If you are using more than one plugin at the same time, this plugin will start after erase enzyme site and deliver the data to next plugin. Otherwise it will generate a new fasta file for sequence and gff file for annotation.
+2.3.1 Internal operation
+First, information of enzyme site will be extracted. According to 3 reading frames, a searching tree will be constructed and converted to regular expression.  The plugin will search the selected regions and then change the sequence to enzyme site by synonymous substitution method. If this plugin is the last module, the sequence and annotation information will be recreated in FASTA and GFF format.
+2.3.2 Example
+perl NucleoMod.pl -inputfa NeoChr.fa -inputgff NeoChr.gff -outputgff new_annotation.gff -outputfa new_chr.fa -addenzymelist enzyme.list -addenzymeconfig gene_id,start_pos,end_pos,enzyme_name
+2.3.3 Parameters
+Parameter
+Description
+Default
+Selectable range
+inputfa
+The NeoChr sequence file in FASTA format
+string
+inputgff
+The NeoChr annotation file in GFF3 format
+string
+outputgff
+Output of new chromosome annotation in GFF3 format
+string
+outputfa
+Output of new chromosome sequence in FASTA format
+string
+verbose
+Output the detailed information in STDOUT
+none
+option
+addenzymelist
+The file of enzyme to get enzyme site information
+string
+addenzymeconfig
+A array of string to specify enzyme and regions
+string,int,int,string
+help
+Show help information
+2.3.4 The format of ouput
+The output files are standard GFF and FASTA format.
+1. GFF file
+2. FASTA file
+3. Detailed information in STDOUT
+2.4 Codon optimization
+Given a codon priority list, this plugin is used to optimize the codon so that we can increase the expression of selected genes. If you are using more than one plugin at the same time, this plugin will start after create enzyme site and deliver the data to next plugin. Otherwise it will generate a new fasta file for sequence and gff file for annotation.
+2.4.1 Internal operation
+The codon with same amino acid will be separated into 3 ranks, best normal and worst. Every codon of selected gene will be check whether the codon is in best rank. The codon in normal or worst will be change to best rank by synonymous substitution method. If this plugin is the last module, the sequence and annotation information will be recreated in FASTA and GFF format.
+2.4.2 Example
+perl NucleoMod.pl -inputfa NeoChr.fa -inputgff NeoChr.gff -outputgff new_annotation.gff -outputfa new_chr.fa -codonoptimize CodonPriority.txt -optimizeallgene [-optimizegenelist gene1,gene2,gene3 ]
+2.4.3 Parameters
+Parameter
+Description
+Default
+Selectable range
+inputfa
+The NeoChr sequence file in FASTA format
+string
+inputgff
+The NeoChr annotation file in GFF3 format
+string
+outputgff
+Output of new chromosome annotation in GFF3 format
+string
+outputfa
+Output of new chromosome sequence in FASTA format
+string
+verbose
+Output the detailed information in STDOUT
+none
+option
+codonoptimize
+Codon priority list to get the ranking information
+string
+optimizeallgene
+Optimize all genes in inputgff
+option
+optimizegenelist
+A list of gene going to optimize,  separate by comma
+string,string,string,...
+detail
+Show the optimization sequence in new gff
+none
+option
+help
+Show help information
+2.4.4 The format of ouput
+The output files are standard GFF and FASTA format.
+1. GFF file
+2 .FASTA file
+3. Detailed information in STDOUT
+2.5 Repeat smash
+This plugin go through the CDS region to find out the tandem repeat bases. Synonymous substitution method will be applied to break long tandem repeat base to reduce the synthesis difficulty. If you are using more than one plugin at the same time, this plugin will start finally and then it will generate a new fasta file for sequence and gff file for annotation.
+2.5.1 Internal operation
+Regular expression is used to find out the tandem repeat bases longer then specified length (usually longer than 5bp). From the third of the matched sequence, synonymous substitution method will be applied to break the tandem repeat bases.  If the substitution is successful and the rest sequence is still longer than the cutoff, then it will move to next 3 bases and do the same thing.  The sequence and annotation information will be recreated in FASTA and GFF format.
+2.3.2 Example
+perl NucleoMod.pl -inputfa NeoChr.fa -inputgff NeoChr.gff -outputgff new_annotation.gff -outputfa new_chr.fa -repeatsmash 5
+2.3.3 Parameters
+Parameter
+Description
+Default
+Selectable range
+inputfa
+The NeoChr sequence file in FASTA format
+string
+inputgff
+The NeoChr annotation file in GFF3 format
+string
+outputgff
+Output of new chromosome annotation in GFF3 format
+string
+outputfa
+Output of new chromosome sequence in FASTA format
+string
+verbose
+Output the detailed information in STDOUT
+none
+option
+repeatsmash
+The tandem repeat bases longer or equal to this cutoff will be smashed
+int
+detail
+Show the repeat smash result in new gff
+none
+option
+help
+Show help information
+2.3.4 The format of ouput
+The output files are standard GFF and FASTA format.
+1. GFF file
+2. FASTA file
+3. Detailed information in STDOUT
+Retrieved from " http://2013.igem.org/Team:Shenzhen_BGIC_0101/Tutorial/nucleomod "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

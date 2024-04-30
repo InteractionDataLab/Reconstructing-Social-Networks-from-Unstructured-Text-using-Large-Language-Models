@@ -1,0 +1,278 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_axure_drag_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/axure/drag.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>$axure.internal(function($ax) {
+</P><PRE>   var widgetDragInfo = new Object();
+   var _drag = {};
+   $ax.drag = _drag;
+</PRE><PRE>   $ax.drag.GetWidgetDragInfo = function() {
+       return $.extend({}, widgetDragInfo);
+   };
+</PRE><PRE>   $ax.drag.StartDragWidget = function(event, id) {
+       $ax.setjBrowserEvent(jQuery.Event(event));
+       if(event.donotdrag) return;
+</PRE><PRE>       var x, y;
+       var tg;
+       if(IE_10_AND_BELOW) {
+           x = window.event.clientX + window.document.documentElement.scrollLeft + window.document.body.scrollLeft;
+           y = window.event.clientY + window.document.documentElement.scrollTop + window.document.body.scrollTop;
+           tg = window.event.srcElement;
+       } else {
+           if(event.changedTouches) {
+               x = event.changedTouches[0].pageX;
+               y = event.changedTouches[0].pageY;
+           } else {
+               x = event.pageX;
+               y = event.pageY;
+               event.preventDefault();
+           }
+           tg = event.target;
+       }
+</PRE><PRE>       widgetDragInfo.hasStarted = false;
+       widgetDragInfo.widgetId = id;
+       widgetDragInfo.cursorStartX = x;
+       widgetDragInfo.cursorStartY = y;
+       widgetDragInfo.lastX = x;
+       widgetDragInfo.lastY = y;
+       widgetDragInfo.currentX = x;
+       widgetDragInfo.currentY = y;
+</PRE><PRE>       widgetDragInfo.movedWidgets = new Object();
+       widgetDragInfo.startTime = (new Date()).getTime();
+       widgetDragInfo.targetWidget = tg;
+</PRE><PRE>       var movedownName = IE_10_AND_BELOW &amp;&amp; $ax.features.supports.windowsMobile ?
+           $ax.features.eventNames.mouseDownName : $ax.features.eventNames.mouseMoveName;
+       $ax.event.addEvent(document, movedownName, _dragWidget, true);
+       $ax.event.addEvent(document, $ax.features.eventNames.mouseUpName, _stopDragWidget, true);
+</PRE><P>//        if(IE &amp;&amp; BROWSER_VERSION &lt; 9) {
+//            if($ax.features.supports.windowsMobile) {
+//                window.document.attachEvent($ax.features.eventNames.mouseDownName, _dragWidget);
+//                window.document.attachEvent($ax.features.eventNames.mouseUpName, _stopDragWidget);
+//            } else {
+//                window.document.attachEvent('on' + $ax.features.eventNames.mouseMoveName, _dragWidget);
+//                window.document.attachEvent('on' + $ax.features.eventNames.mouseUpName, _stopDragWidget);
+//            }
+//        } else {
+//            window.document.addEventListener($ax.features.eventNames.mouseMoveName, _dragWidget, true);
+//            window.document.addEventListener($ax.features.eventNames.mouseUpName, _stopDragWidget, true);
+//        }
+</P><PRE>       $ax.legacy.SuppressBubble(event);
+   };
+</PRE><PRE>   var _dragWidget = function(event) {
+       $ax.setjBrowserEvent(jQuery.Event(event));
+</PRE><PRE>       var x, y;
+       if(IE_10_AND_BELOW) {
+           x = window.event.clientX + window.document.documentElement.scrollLeft + window.document.body.scrollLeft;
+           y = window.event.clientY + window.document.documentElement.scrollTop + window.document.body.scrollTop;
+       } else {
+           if(event.changedTouches) {
+               x = event.changedTouches[0].pageX;
+               y = event.changedTouches[0].pageY;
+               //allow scroll (defaults) if only swipe events have cases and delta x is less than 5px and not blocking scrolling
+               var deltaX = x - widgetDragInfo.currentX;
+               var target = window.document.getElementById(widgetDragInfo.widgetId);
+               if($ax.event.hasSyntheticEvent(widgetDragInfo.widgetId, &quot;onDrag&quot;) || $ax.event.hasSyntheticEvent(widgetDragInfo.widgetId, &quot;onSwipeUp&quot;) ||
+                   $ax.event.hasSyntheticEvent(widgetDragInfo.widgetId, &quot;onSwipeDown&quot;) || (deltaX * deltaX) &gt; 25
+                   || ($ax.document.configuration.preventScroll &amp;&amp; $ax.legacy.GetScrollable(target) == window.document.body)) {
+                   event.preventDefault();
+               }
+           } else {
+               x = event.pageX;
+               y = event.pageY;
+           }
+       }
+       widgetDragInfo.xDelta = x - widgetDragInfo.currentX;
+       widgetDragInfo.yDelta = y - widgetDragInfo.currentY;
+       widgetDragInfo.lastX = widgetDragInfo.currentX;
+       widgetDragInfo.lastY = widgetDragInfo.currentY;
+       widgetDragInfo.currentX = x;
+       widgetDragInfo.currentY = y;
+</PRE><PRE>       widgetDragInfo.currentTime = (new Date()).getTime();
+</PRE><PRE>       $ax.legacy.SuppressBubble(event);
+</PRE><PRE>       if(!widgetDragInfo.hasStarted) {
+           widgetDragInfo.hasStarted = true;
+           $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onDragStart&quot;);
+</PRE><PRE>           widgetDragInfo.oldBodyCursor = window.document.body.style.cursor;
+           window.document.body.style.cursor = 'move';
+           var widget = window.document.getElementById(widgetDragInfo.widgetId);
+           widgetDragInfo.oldCursor = widget.style.cursor;
+           widget.style.cursor = 'move';
+       }
+</PRE><PRE>       $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onDrag&quot;);
+   };
+</PRE><PRE>   var _suppressClickAfterDrag = function(event) {
+       _removeSuppressEvents();
+</PRE><PRE>       $ax.legacy.SuppressBubble(event);
+   };
+</PRE><PRE>   var _removeSuppressEvents = function () {
+       if(IE_10_AND_BELOW) {
+           $ax.event.removeEvent(event.srcElement, 'click', _suppressClickAfterDrag, undefined, true);
+           $ax.event.removeEvent(widgetDragInfo.targetWidget, 'mousemove', _removeSuppressEvents, undefined, true);
+       } else {
+           $ax.event.removeEvent(document, &quot;click&quot;, _suppressClickAfterDrag, true);
+           $ax.event.removeEvent(document, 'mousemove', _removeSuppressEvents, true);
+       }
+   };
+</PRE><PRE>   var _stopDragWidget = function(event) {
+       $ax.setjBrowserEvent(jQuery.Event(event));
+</PRE><PRE>       var tg;
+</PRE><PRE>       var movedownName = IE_10_AND_BELOW &amp;&amp; $ax.features.supports.windowsMobile ?
+           $ax.features.eventNames.mouseDownName : $ax.features.eventNames.mouseMoveName;
+       $ax.event.removeEvent(document, movedownName, _dragWidget, true);
+       $ax.event.removeEvent(document, $ax.features.eventNames.mouseUpName, _stopDragWidget, true);
+</PRE><PRE>       tg = IE_10_AND_BELOW ? window.event.srcElement : event.target;
+</PRE><P>//
+//
+//        if(OLD_IE &amp;&amp; BROWSER_VERSION &lt; 9) {
+//            if($ax.features.supports.windowsMobile) {
+//                window.document.detachEvent($ax.features.eventNames.mouseDownName, _dragWidget);
+//                window.document.detachEvent($ax.features.eventNames.mouseUpName, _stopDragWidget);
+//
+//            } else {
+//                window.document.detachEvent('on' + $ax.features.eventNames.mouseMoveName, _dragWidget);
+//                window.document.detachEvent('on' + $ax.features.eventNames.mouseUpName, _stopDragWidget);
+//            }
+//            tg = window.event.srcElement;
+//        } else {
+//            window.document.removeEventListener($ax.features.eventNames.mouseMoveName, _dragWidget, true);
+//            window.document.removeEventListener($ax.features.eventNames.mouseUpName, _stopDragWidget, true);
+//            tg = event.target;
+//        }
+</P><PRE>       if(widgetDragInfo.hasStarted) {
+           widgetDragInfo.currentTime = (new Date()).getTime();
+           $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onDragDrop&quot;);
+</PRE><PRE>           if($ax.globalVariableProvider.getVariableValue('totaldragx') &lt; -30 &amp;&amp; $ax.globalVariableProvider.getVariableValue('dragtime') &lt; 1000) {
+               $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onSwipeLeft&quot;);
+           }
+</PRE><PRE>           if($ax.globalVariableProvider.getVariableValue('totaldragx') &gt; 30 &amp;&amp; $ax.globalVariableProvider.getVariableValue('dragtime') &lt; 1000) {
+               $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onSwipeRight&quot;);
+           }
+</PRE><PRE>           var totalDragY = $ax.globalVariableProvider.getVariableValue('totaldragy');
+           if(totalDragY &lt; -30 &amp;&amp; $ax.globalVariableProvider.getVariableValue('dragtime') &lt; 1000) {
+               $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onSwipeUp&quot;);
+           }
+</PRE><PRE>           if(totalDragY &gt; 30 &amp;&amp; $ax.globalVariableProvider.getVariableValue('dragtime') &lt; 1000) {
+               $ax.event.raiseSyntheticEvent(widgetDragInfo.widgetId, &quot;onSwipeDown&quot;);
+           }
+</PRE><PRE>           window.document.body.style.cursor = widgetDragInfo.oldBodyCursor;
+           var widget = window.document.getElementById(widgetDragInfo.widgetId);
+           // It may be null if OnDragDrop filtered out the widget
+           if(widget != null) widget.style.cursor = widgetDragInfo.oldCursor;
+</PRE><PRE>           if(widgetDragInfo.targetWidget == tg &amp;&amp; !event.changedTouches) {
+               // suppress the click after the drag on desktop browsers
+               if(IE_10_AND_BELOW &amp;&amp; widgetDragInfo.targetWidget) {
+                   $ax.event.addEvent(widgetDragInfo.targetWidget, 'click', _suppressClickAfterDrag, true, true);
+                   $ax.event.addEvent(widgetDragInfo.targetWidget, &quot;onmousemove&quot;, _removeSuppressEvents, true, true);
+               } else {
+                   $ax.event.addEvent(document, &quot;click&quot;, _suppressClickAfterDrag, true);
+                   $ax.event.addEvent(document, &quot;mousemove&quot;, _removeSuppressEvents, true);
+</PRE><PRE>               }
+</PRE><P>//
+//
+//                if(IE &amp;&amp; BROWSER_VERSION &lt; 9 &amp;&amp; widgetDragInfo.targetWidget) {
+//                    widgetDragInfo.targetWidget.attachEvent(&quot;onclick&quot;, _suppressClickAfterDrag);
+//                    widgetDragInfo.targetWidget.attachEvent(&quot;onmousemove&quot;, _removeSuppressEvents);
+//                } else {
+//                    window.document.addEventListener(&quot;click&quot;, _suppressClickAfterDrag, true);
+//                    window.document.addEventListener(&quot;mousemove&quot;, _removeSuppressEvents, true);
+//                }
+</P><PRE>           }
+       }
+</PRE><PRE>       widgetDragInfo.hasStarted = false;
+       widgetDragInfo.movedWidgets = new Object();
+</PRE><PRE>       return false;
+   };
+</PRE><PRE>   $ax.drag.GetDragX = function() {
+       if(widgetDragInfo.hasStarted) return widgetDragInfo.xDelta;
+       return 0;
+   };
+</PRE><PRE>   $ax.drag.GetDragY = function() {
+       if(widgetDragInfo.hasStarted) return widgetDragInfo.yDelta;
+       return 0;
+   };
+</PRE><PRE>   $ax.drag.GetTotalDragX = function() {
+       if(widgetDragInfo.hasStarted) return widgetDragInfo.currentX - widgetDragInfo.cursorStartX;
+       return 0;
+   };
+</PRE><PRE>   $ax.drag.GetTotalDragY = function() {
+       if(widgetDragInfo.hasStarted) return widgetDragInfo.currentY - widgetDragInfo.cursorStartY;
+       return 0;
+   };
+</PRE><PRE>   $ax.drag.GetDragTime = function() {
+       if(widgetDragInfo.hasStarted) return widgetDragInfo.currentTime - widgetDragInfo.startTime;
+       return 600000;
+   };
+</PRE><PRE>   //    $ax.drag.GetCursorRectangles = function() {
+   //        var rects = new Object();
+   //        rects.lastRect = new rect($ax.lastMouseLocation.x, $ax.lastMouseLocation.y, 1, 1);
+   //        rects.currentRect = new rect($ax.mouseLocation.x, $ax.mouseLocation.y, 1, 1);
+   //        return rects;
+   //    };
+</PRE><PRE>   //    $ax.drag.GetWidgetRectangles = function(id) {
+   //        var widget = window.document.getElementById(id);
+   //        var rects = new Object();
+   //        rects.lastRect = new rect($ax.legacy.getAbsoluteLeft(widget), $ax.legacy.getAbsoluteTop(widget), Number($('#' + id).css('width').replace(&quot;px&quot;, &quot;&quot;)), Number($('#' + id).css('height').replace(&quot;px&quot;, &quot;&quot;)));
+   //        rects.currentRect = rects.lastRect;
+   //        return rects;
+   //    };
+</PRE><PRE>   //    $ax.drag.IsEntering = function(movingRects, targetRects) {
+   //        return !movingRects.lastRect.IntersectsWith(targetRects.currentRect) &amp;&amp; movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+   //    };
+</PRE><PRE>   //    $ax.drag.IsLeaving = function(movingRects, targetRects) {
+   //        return movingRects.lastRect.IntersectsWith(targetRects.currentRect) &amp;&amp; !movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+   //    };
+</PRE><PRE>   //    function IsOver(movingRects, targetRects) {
+   //        return movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+   //    }
+</PRE><PRE>   //    function IsNotOver(movingRects, targetRects) {
+   //        return !IsOver(movingRects, targetRects);
+   //    }
+</PRE><PRE>   $ax.drag.LogMovedWidgetForDrag = function (id, dragInfo) {
+       dragInfo = dragInfo || widgetDragInfo;
+       if(dragInfo.hasStarted) {
+           var containerIndex = id.indexOf('_container');
+           if(containerIndex != -1) id = id.substring(0, containerIndex);
+</PRE><PRE>           // If state or other non-widget id, this should not be dragged, and should exit out to avoid exceptions.
+           if(!$obj(id)) return;
+</PRE><PRE>           var query = $ax('#' + id);
+           var x = query.left();
+           var y = query.top();
+</PRE><PRE>           var movedWidgets = dragInfo.movedWidgets;
+           if(!movedWidgets[id]) {
+               movedWidgets[id] = new Location(x, y);
+           }
+       }
+   };
+</PRE><PRE>   var Location = function(x, y) {
+       this.x = x;
+       this.y = y;
+   };
+   $ax.drag.location = Location;
+</PRE><PRE>   var Rectangle = $ax.drag.Rectangle = function(x, y, width, height) {
+       this.x = x;
+       this.y = y;
+       this.width = width;
+       this.height = height;
+       this.right = x + width;
+       this.bottom = y + height;
+   };
+</PRE><PRE>   Rectangle.prototype.IntersectsWith = function(rect) {
+       if(this.Invalid()) return false;
+       if(rect.length) {
+           for(var i = 0; i &lt; rect.length; i++) if(!rect[i].Invalid &amp;&amp; this.IntersectsWith(rect[i])) return true;
+           return false;
+       }
+       if(rect.Invalid()) return false;
+       return this.x &lt; rect.right &amp;&amp; this.right &gt; rect.x &amp;&amp; this.y &lt; rect.bottom &amp;&amp; this.bottom &gt; rect.y;
+   };
+</PRE><PRE>   Rectangle.prototype.Invalid = function() {
+       return this.x == -1 &amp;&amp; this.y == -1 &amp;&amp; this.width == -1 &amp;&amp; this.height == -1;
+   };
+</PRE><PRE>   Rectangle.prototype.Move = function(x, y) {
+       return new Rectangle(x, y, this.width, this.height);
+   };
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

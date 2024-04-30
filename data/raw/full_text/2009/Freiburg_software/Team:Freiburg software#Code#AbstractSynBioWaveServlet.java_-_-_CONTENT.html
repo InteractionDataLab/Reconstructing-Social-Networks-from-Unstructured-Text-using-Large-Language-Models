@@ -1,0 +1,146 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Freiburg_software_Code_AbstractSynBioWaveServlet_java"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu"><UL><LI class="selected"><A href="/Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Freiburg software/Code/AbstractSynBioWaveServlet.java</H1><DIV id="bodyContent"><H3 id="siteSub">From 2009.igem.org</H3><DIV id="custom-header"><DIV id="tabs"><UL><LI><A class="home_active" href="https://2009.igem.org/Team:Freiburg_software"><SPAN>Home</SPAN></A></LI><LI><A class="team_active" href="https://2009.igem.org/Team:Freiburg_software/Team"><SPAN>The Team</SPAN></A></LI><LI><A class="project_active" href="https://2009.igem.org/Team:Freiburg_software/Project"><SPAN>The Project</SPAN></A></LI><LI><A class="code_active" href="https://2009.igem.org/Team:Freiburg_software/Code"><SPAN>The Code</SPAN></A></LI><LI><A class="guide_active" href="https://2009.igem.org/Team:Freiburg_software/UserGuide"><SPAN>User Guide</SPAN></A></LI><LI><A class="notebook_active" href="https://2009.igem.org/Team:Freiburg_software/Notebook"><SPAN>Notebook</SPAN></A></LI><LI><A class="miscellaneous_active" href="https://2009.igem.org/Team:Freiburg_software/Miscellaneous"><SPAN>Miscellaneous</SPAN></A></LI></UL></DIV></DIV><H2><SPAN class="mw-headline" id="org.synbiowave.servlet.AbstractSynBioWaveRobot">org.synbiowave.servlet.AbstractSynBioWaveRobot</SPAN></H2><PRE>
+/*
+    Copyright: synbiowave
+     
+    License: GPL
+     
+    Authors: Jörg Wassolesk
+     
+    Version: 0.1 
+    
+    DESCRIPTION:
+    	This class provides the functions for recieving url-connections.
+    	
+    	Our central SynBioWave-Robot extends this class in instead of AbstractSbwRobot.
+    	All others don't. This class enhances the servlet capabilities of the Google Wave Robot Servlet to serve also file up - and
+        download.
+*/
+
+package org.synbiowave.servlet;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Date;
+import java.util.Iterator;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.fileupload.FileItemIterator;
+import org.apache.commons.fileupload.FileItemStream;
+import org.apache.commons.fileupload.FileUploadBase.SizeLimitExceededException;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.io.IOUtils;
+import org.biojava.bio.seq.Feature;
+import org.biojavax.bio.db.HashRichSequenceDB;
+import org.biojavax.bio.db.RichSequenceDB;
+import org.biojavax.bio.seq.RichSequence;
+import org.biojavax.bio.seq.RichSequenceIterator;
+import org.synbiowave.biojava.Util;
+import org.synbiowave.database.DatastoreManager;
+import org.synbiowave.database.Sequence;
+import org.synbiowave.sequence.SequenceView;
+
+import com.google.wave.api.AbstractRobotServlet;
+import com.google.wave.api.Annotation;
+import com.google.wave.api.Range;
+
+// TODO: Auto-generated Javadoc
+/**
+ * The Class AbstractSynBioWaveServlet.
+ */
+@SuppressWarnings(&quot;serial&quot;)
+public abstract class AbstractSynBioWaveServlet extends AbstractRobotServlet{
+
+	/** The current sequence. */
+	protected Long currentSequence=null;
+	
+	/** The format. */
+	protected String format=&quot;genbank&quot;;
+
+	/* (non-Javadoc)
+	 * @see com.google.wave.api.AbstractRobotServlet#doPost(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
+	 */
+	@Override
+	protected void doPost(HttpServletRequest req,HttpServletResponse resp) throws IOException {
+		if(req.getContentType().equals(&quot;application/json; charset=UTF-8&quot;)){super.doPost(req,resp);}
+		else if(req.getContentType().contains(&quot;multipart/form-data&quot;)){
+			try{
+				ServletFileUpload fileUpload=new ServletFileUpload();
+				resp.setContentType(&quot;text/html&quot;);
+				try{
+					FileItemIterator iterator=fileUpload.getItemIterator(req);
+					while(iterator.hasNext()){
+						FileItemStream item=iterator.next();
+						InputStream in=item.openStream();
+						if(!item.isFormField()){
+							try{
+								String plain=IOUtils.toString(in);
+								try{
+									RichSequenceIterator rsi=
+                                                                                 Util.read(new ByteArrayInputStream(plain.getBytes()));
+									boolean single=true;
+									RichSequence rs;
+									while(rsi.hasNext()){
+										rs=rsi.nextRichSequence();
+										String type;
+										if(rs.getAlphabet().getName()!=null){
+                                                                                          type=rs.getAlphabet().getName();}
+										else{type=SequenceView.isSequence(rs.seqString());}
+										Sequence sequence= 
+                                                                                          new Sequence(&quot;import&quot;,
+                                                                                                   System.currentTimeMillis(),
+                                                                                                   null,null,null,rs.seqString(),type);
+										if(rs.getDescription()!=null
+                                                                                           &amp;&amp;rs.getDescription().length()&gt;1){
+                                                                                                    sequence.setName
+                                                                                                    (rs.getDescription());}
+										else{
+                                                                                           sequence.setName(&quot;Import&quot;+&quot;(&quot;+
+                                                                                           new Date
+                                                                                          (System.currentTimeMillis()).toString()
+                                                                                            +&quot;)&quot;);}
+										if(rsi.hasNext()){
+											Iterator&lt;Feature&gt; fi=rs.features();
+											while(fi.hasNext()){
+												Feature f=fi.next();
+												sequence.addAnnotation(
+                                                                                                new Annotation(&quot;feature&quot;,f.getType(),
+                                                                                                new Range(f.getLocation().getMin(),
+                                                                                                f.getLocation().getMax())));}}
+										else if(single){sequence.setPlain(plain);}
+										single=false;
+										currentSequence=
+                                                                                          DatastoreManager.store(sequence).getId();}}
+								catch(Exception exc){}}
+							finally{IOUtils.closeQuietly(in);}}}} 
+				catch(SizeLimitExceededException e){}} 
+			catch(Exception ex){}}
+		else if(req.getContentType().contains(&quot;application/x-www-form-urlencoded&quot;)){
+			try{
+				Sequence sequence=DatastoreManager.getByID(new Sequence(),currentSequence);
+				org.biojava.bio.seq.Sequence s = Util.convertToRichSequence(sequence);
+				RichSequenceDB rsdb=new HashRichSequenceDB();
+				rsdb.addSequence(s);
+				String extension;
+				if(format.equals(&quot;genbank&quot;)){
+					if(sequence.getType().equals(&quot;PROTEIN&quot;)){extension=&quot;gp&quot;;}
+					else{extension=&quot;gb&quot;;}}
+				else{extension=format;}
+		        resp.setContentType(&quot;text/plain&quot;);
+		        resp.setHeader(&quot;Content-Disposition&quot;,&quot;attachment;filename=\&quot;&quot;+sequence.getName()+&quot;.&quot;+extension+&quot;\&quot;&quot;);
+				Util.write(resp.getOutputStream(),rsdb.getRichSequenceIterator(),format);}
+			catch (Exception ex) {}}}
+}
+ 
+</PRE><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2009.igem.org/Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java">http://2009.igem.org/Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java</A>&quot;</DIV></DIV></DIV><DIV id="footer-box"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Freiburg_software/Code/AbstractSynBioWaveServlet.java&amp;oldid=160394" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2009.igem.org:Privacy_policy" title="2009.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2009.igem.org:General_disclaimer" title="2009.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

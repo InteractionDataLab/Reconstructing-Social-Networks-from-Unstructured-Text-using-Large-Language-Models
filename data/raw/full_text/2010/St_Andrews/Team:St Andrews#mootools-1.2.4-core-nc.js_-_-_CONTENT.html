@@ -1,0 +1,3423 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_St_Andrews_mootools-1_2_4-core-nc_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:St_Andrews/mootools-1.2.4-core-nc.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:St_Andrews/mootools-1.2.4-core-nc.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:St_Andrews/mootools-1.2.4-core-nc.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:St_Andrews/mootools-1.2.4-core-nc.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:St_Andrews/mootools-1.2.4-core-nc.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:St Andrews/mootools-1.2.4-core-nc.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2010.igem.org</H3><P>/*
+---
+</P><P>script: Core.js
+</P><P>description: The core of MooTools, contains all the base functions and the Native and Hash implementations. Required by all the other scripts.
+</P><P>license: MIT-style license.
+</P><P>copyright: Copyright (c) 2006-2008 [Valerio Proietti](<A href="http://mad4milk.net/" class="external free" rel="nofollow">http://mad4milk.net/</A>).
+</P><P>authors: The MooTools production team (<A href="http://mootools.net/developers/" class="external free" rel="nofollow">http://mootools.net/developers/</A>)
+</P><P>inspiration:
+- Class implementation inspired by [Base.js](<A href="http://dean.edwards.name/weblog/2006/03/base/" class="external free" rel="nofollow">http://dean.edwards.name/weblog/2006/03/base/</A>) Copyright (c) 2006 Dean Edwards, [GNU Lesser General Public License](<A href="http://opensource.org/licenses/lgpl-license.php" class="external free" rel="nofollow">http://opensource.org/licenses/lgpl-license.php</A>)
+- Some functionality inspired by [Prototype.js](<A href="http://prototypejs.org" class="external free" rel="nofollow">http://prototypejs.org</A>) Copyright (c) 2005-2007 Sam Stephenson, [MIT License](<A href="http://opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://opensource.org/licenses/mit-license.php</A>)
+</P><P>provides: [Mootools, Native, Hash.base, Array.each, $util]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var MooTools = {
+	'version': '1.2.4',
+	'build': '0d9113241a90b9cd5643b926795852a2026710d4'
+};
+</P><P>var Native = function(options){
+	options = options || {};
+	var name = options.name;
+	var legacy = options.legacy;
+	var protect = options.protect;
+	var methods = options.implement;
+	var generics = options.generics;
+	var initialize = options.initialize;
+	var afterImplement = options.afterImplement || function(){};
+	var object = initialize || legacy;
+	generics = generics !== false;
+</P><P>	object.constructor = Native;
+	object.$family = {name: 'native'};
+	if (legacy &amp;&amp; initialize) object.prototype = legacy.prototype;
+	object.prototype.constructor = object;
+</P><P>	if (name){
+		var family = name.toLowerCase();
+		object.prototype.$family = {name: family};
+		Native.typize(object, family);
+	}
+</P><P>	var add = function(obj, name, method, force){
+		if (!protect || force || !obj.prototype[name]) obj.prototype[name] = method;
+		if (generics) Native.genericize(obj, name, protect);
+		afterImplement.call(obj, name, method);
+		return obj;
+	};
+</P><P>	object.alias = function(a1, a2, a3){
+		if (typeof a1 == 'string'){
+			var pa1 = this.prototype[a1];
+			if ((a1 = pa1)) return add(this, a2, a1, a3);
+		}
+		for (var a in a1) this.alias(a, a1[a], a2);
+		return this;
+	};
+</P><P>	object.implement = function(a1, a2, a3){
+		if (typeof a1 == 'string') return add(this, a1, a2, a3);
+		for (var p in a1) add(this, p, a1[p], a2);
+		return this;
+	};
+</P><P>	if (methods) object.implement(methods);
+</P><P>	return object;
+};
+</P><P>Native.genericize = function(object, property, check){
+	if ((!check || !object[property]) &amp;&amp; typeof object.prototype[property] == 'function') object[property] = function(){
+		var args = Array.prototype.slice.call(arguments);
+		return object.prototype[property].apply(args.shift(), args);
+	};
+};
+</P><P>Native.implement = function(objects, properties){
+	for (var i = 0, l = objects.length; i &lt; l; i++) objects[i].implement(properties);
+};
+</P><P>Native.typize = function(object, family){
+	if (!object.type) object.type = function(item){
+		return ($type(item) === family);
+	};
+};
+</P><P>(function(){
+	var natives = {'Array': Array, 'Date': Date, 'Function': Function, 'Number': Number, 'RegExp': RegExp, 'String': String};
+	for (var n in natives) new Native({name: n, initialize: natives[n], protect: true});
+</P><P>	var types = {'boolean': Boolean, 'native': Native, 'object': Object};
+	for (var t in types) Native.typize(types[t], t);
+</P><P>	var generics = {
+		'Array': [&quot;concat&quot;, &quot;indexOf&quot;, &quot;join&quot;, &quot;lastIndexOf&quot;, &quot;pop&quot;, &quot;push&quot;, &quot;reverse&quot;, &quot;shift&quot;, &quot;slice&quot;, &quot;sort&quot;, &quot;splice&quot;, &quot;toString&quot;, &quot;unshift&quot;, &quot;valueOf&quot;],
+		'String': [&quot;charAt&quot;, &quot;charCodeAt&quot;, &quot;concat&quot;, &quot;indexOf&quot;, &quot;lastIndexOf&quot;, &quot;match&quot;, &quot;replace&quot;, &quot;search&quot;, &quot;slice&quot;, &quot;split&quot;, &quot;substr&quot;, &quot;substring&quot;, &quot;toLowerCase&quot;, &quot;toUpperCase&quot;, &quot;valueOf&quot;]
+	};
+	for (var g in generics){
+		for (var i = generics[g].length; i--;) Native.genericize(natives[g], generics[g][i], true);
+	}
+})();
+</P><P>var Hash = new Native({
+</P><P>	name: 'Hash',
+</P><P>	initialize: function(object){
+		if ($type(object) == 'hash') object = $unlink(object.getClean());
+		for (var key in object) this[key] = object[key];
+		return this;
+	}
+</P><P>});
+</P><P>Hash.implement({
+</P><P>	forEach: function(fn, bind){
+		for (var key in this){
+			if (this.hasOwnProperty(key)) fn.call(bind, this[key], key, this);
+		}
+	},
+</P><P>	getClean: function(){
+		var clean = {};
+		for (var key in this){
+			if (this.hasOwnProperty(key)) clean[key] = this[key];
+		}
+		return clean;
+	},
+</P><P>	getLength: function(){
+		var length = 0;
+		for (var key in this){
+			if (this.hasOwnProperty(key)) length++;
+		}
+		return length;
+	}
+</P><P>});
+</P><P>Hash.alias('forEach', 'each');
+</P><P>Array.implement({
+</P><P>	forEach: function(fn, bind){
+		for (var i = 0, l = this.length; i &lt; l; i++) fn.call(bind, this[i], i, this);
+	}
+</P><P>});
+</P><P>Array.alias('forEach', 'each');
+</P><P>function $A(iterable){
+	if (iterable.item){
+		var l = iterable.length, array = new Array(l);
+		while (l--) array[l] = iterable[l];
+		return array;
+	}
+	return Array.prototype.slice.call(iterable);
+};
+</P><P>function $arguments(i){
+	return function(){
+		return arguments[i];
+	};
+};
+</P><P>function $chk(obj){
+	return !!(obj || obj === 0);
+};
+</P><P>function $clear(timer){
+	clearTimeout(timer);
+	clearInterval(timer);
+	return null;
+};
+</P><P>function $defined(obj){
+	return (obj != undefined);
+};
+</P><P>function $each(iterable, fn, bind){
+	var type = $type(iterable);
+	((type == 'arguments' || type == 'collection' || type == 'array') ? Array : Hash).each(iterable, fn, bind);
+};
+</P><P>function $empty(){};
+</P><P>function $extend(original, extended){
+	for (var key in (extended || {})) original[key] = extended[key];
+	return original;
+};
+</P><P>function $H(object){
+	return new Hash(object);
+};
+</P><P>function $lambda(value){
+	return ($type(value) == 'function') ? value : function(){
+		return value;
+	};
+};
+</P><P>function $merge(){
+	var args = Array.slice(arguments);
+	args.unshift({});
+	return $mixin.apply(null, args);
+};
+</P><P>function $mixin(mix){
+	for (var i = 1, l = arguments.length; i &lt; l; i++){
+		var object = arguments[i];
+		if ($type(object) != 'object') continue;
+		for (var key in object){
+			var op = object[key], mp = mix[key];
+			mix[key] = (mp &amp;&amp; $type(op) == 'object' &amp;&amp; $type(mp) == 'object') ? $mixin(mp, op) : $unlink(op);
+		}
+	}
+	return mix;
+};
+</P><P>function $pick(){
+	for (var i = 0, l = arguments.length; i &lt; l; i++){
+		if (arguments[i] != undefined) return arguments[i];
+	}
+	return null;
+};
+</P><P>function $random(min, max){
+	return Math.floor(Math.random() * (max - min + 1) + min);
+};
+</P><P>function $splat(obj){
+	var type = $type(obj);
+	return (type) ? ((type != 'array' &amp;&amp; type != 'arguments') ? [obj] : obj) : [];
+};
+</P><P>var $time = Date.now || function(){
+	return +new Date;
+};
+</P><P>function $try(){
+	for (var i = 0, l = arguments.length; i &lt; l; i++){
+		try {
+			return arguments[i]();
+		} catch(e){}
+	}
+	return null;
+};
+</P><P>function $type(obj){
+	if (obj == undefined) return false;
+	if (obj.$family) return (obj.$family.name == 'number' &amp;&amp; !isFinite(obj)) ? false : obj.$family.name;
+	if (obj.nodeName){
+		switch (obj.nodeType){
+			case 1: return 'element';
+			case 3: return (/\S/).test(obj.nodeValue) ? 'textnode' : 'whitespace';
+		}
+	} else if (typeof obj.length == 'number'){
+		if (obj.callee) return 'arguments';
+		else if (obj.item) return 'collection';
+	}
+	return typeof obj;
+};
+</P><P>function $unlink(object){
+	var unlinked;
+	switch ($type(object)){
+		case 'object':
+			unlinked = {};
+			for (var p in object) unlinked[p] = $unlink(object[p]);
+		break;
+		case 'hash':
+			unlinked = new Hash(object);
+		break;
+		case 'array':
+			unlinked = [];
+			for (var i = 0, l = object.length; i &lt; l; i++) unlinked[i] = $unlink(object[i]);
+		break;
+		default: return object;
+	}
+	return unlinked;
+};
+</P><P>
+/*
+---
+</P><P>script: Browser.js
+</P><P>description: The Browser Core. Contains Browser initialization, Window and Document, and the Browser Hash.
+</P><P>license: MIT-style license.
+</P><P>requires: 
+- /Native
+- /$util
+</P><P>provides: [Browser, Window, Document, $exec]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Browser = $merge({
+</P><P>	Engine: {name: 'unknown', version: 0},
+</P><P>	Platform: {name: (window.orientation != undefined) ? 'ipod' : (navigator.platform.match(/mac|win|linux/i) || ['other'])[0].toLowerCase()},
+</P><P>	Features: {xpath: !!(document.evaluate), air: !!(window.runtime), query: !!(document.querySelector)},
+</P><P>	Plugins: {},
+</P><P>	Engines: {
+</P><P>		presto: function(){
+			return (!window.opera) ? false : ((arguments.callee.caller) ? 960 : ((document.getElementsByClassName) ? 950 : 925));
+		},
+</P><P>		trident: function(){
+			return (!window.ActiveXObject) ? false : ((window.XMLHttpRequest) ? ((document.querySelectorAll) ? 6 : 5) : 4);
+		},
+</P><P>		webkit: function(){
+			return (navigator.taintEnabled) ? false : ((Browser.Features.xpath) ? ((Browser.Features.query) ? 525 : 420) : 419);
+		},
+</P><P>		gecko: function(){
+			return (!document.getBoxObjectFor &amp;&amp; window.mozInnerScreenX == null) ? false : ((document.getElementsByClassName) ? 19 : 18);
+		}
+</P><P>	}
+</P><P>}, Browser || {});
+</P><P>Browser.Platform[Browser.Platform.name] = true;
+</P><P>Browser.detect = function(){
+</P><P>	for (var engine in this.Engines){
+		var version = this.Engines[engine]();
+		if (version){
+			this.Engine = {name: engine, version: version};
+			this.Engine[engine] = this.Engine[engine + version] = true;
+			break;
+		}
+	}
+</P><P>	return {name: engine, version: version};
+</P><P>};
+</P><P>Browser.detect();
+</P><P>Browser.Request = function(){
+	return $try(function(){
+		return new XMLHttpRequest();
+	}, function(){
+		return new ActiveXObject('MSXML2.XMLHTTP');
+	}, function(){
+		return new ActiveXObject('Microsoft.XMLHTTP');
+	});
+};
+</P><P>Browser.Features.xhr = !!(Browser.Request());
+</P><P>Browser.Plugins.Flash = (function(){
+	var version = ($try(function(){
+		return navigator.plugins['Shockwave Flash'].description;
+	}, function(){
+		return new ActiveXObject('ShockwaveFlash.ShockwaveFlash').GetVariable('$version');
+	}) || '0 r0').match(/\d+/g);
+	return {version: parseInt(version[0] || 0 + '.' + version[1], 10) || 0, build: parseInt(version[2], 10) || 0};
+})();
+</P><P>function $exec(text){
+	if (!text) return text;
+	if (window.execScript){
+		window.execScript(text);
+	} else {
+		var script = document.createElement('script');
+		script.setAttribute('type', 'text/javascript');
+		script[(Browser.Engine.webkit &amp;&amp; Browser.Engine.version &lt; 420) ? 'innerText' : 'text'] = text;
+		document.head.appendChild(script);
+		document.head.removeChild(script);
+	}
+	return text;
+};
+</P><P>Native.UID = 1;
+</P><P>var $uid = (Browser.Engine.trident) ? function(item){
+	return (item.uid || (item.uid = [Native.UID++]))[0];
+} : function(item){
+	return item.uid || (item.uid = Native.UID++);
+};
+</P><P>var Window = new Native({
+</P><P>	name: 'Window',
+</P><P>	legacy: (Browser.Engine.trident) ? null: window.Window,
+</P><P>	initialize: function(win){
+		$uid(win);
+		if (!win.Element){
+			win.Element = $empty;
+			if (Browser.Engine.webkit) win.document.createElement(&quot;iframe&quot;); //fixes safari 2
+			win.Element.prototype = (Browser.Engine.webkit) ? window[&quot;<A href="/wiki/index.php?title=DOMElement.prototype&amp;action=edit&amp;redlink=1" class="new" title="DOMElement.prototype (page does not exist)">DOMElement.prototype</A>&quot;] : {};
+		}
+		win.document.window = win;
+		return $extend(win, Window.Prototype);
+	},
+</P><P>	afterImplement: function(property, value){
+		window[property] = Window.Prototype[property] = value;
+	}
+</P><P>});
+</P><P>Window.Prototype = {$family: {name: 'window'}};
+</P><P>new Window(window);
+</P><P>var Document = new Native({
+</P><P>	name: 'Document',
+</P><P>	legacy: (Browser.Engine.trident) ? null: window.Document,
+</P><P>	initialize: function(doc){
+		$uid(doc);
+		doc.head = doc.getElementsByTagName('head')[0];
+		doc.html = doc.getElementsByTagName('html')[0];
+		if (Browser.Engine.trident &amp;&amp; Browser.Engine.version &lt;= 4) $try(function(){
+			doc.execCommand(&quot;BackgroundImageCache&quot;, false, true);
+		});
+		if (Browser.Engine.trident) doc.window.attachEvent('onunload', function(){
+			doc.window.detachEvent('onunload', arguments.callee);
+			doc.head = doc.html = doc.window = null;
+		});
+		return $extend(doc, Document.Prototype);
+	},
+</P><P>	afterImplement: function(property, value){
+		document[property] = Document.Prototype[property] = value;
+	}
+</P><P>});
+</P><P>Document.Prototype = {$family: {name: 'document'}};
+</P><P>new Document(document);
+</P><P>
+/*
+---
+</P><P>script: Array.js
+</P><P>description: Contains Array Prototypes like each, contains, and erase.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /$util
+- /Array.each
+</P><P>provides: [Array]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Array.implement({
+</P><P>	every: function(fn, bind){
+		for (var i = 0, l = this.length; i &lt; l; i++){
+			if (!fn.call(bind, this[i], i, this)) return false;
+		}
+		return true;
+	},
+</P><P>	filter: function(fn, bind){
+		var results = [];
+		for (var i = 0, l = this.length; i &lt; l; i++){
+			if (fn.call(bind, this[i], i, this)) results.push(this[i]);
+		}
+		return results;
+	},
+</P><P>	clean: function(){
+		return this.filter($defined);
+	},
+</P><P>	indexOf: function(item, from){
+		var len = this.length;
+		for (var i = (from &lt; 0) ? Math.max(0, len + from) : from || 0; i &lt; len; i++){
+			if (this[i] === item) return i;
+		}
+		return -1;
+	},
+</P><P>	map: function(fn, bind){
+		var results = [];
+		for (var i = 0, l = this.length; i &lt; l; i++) results[i] = fn.call(bind, this[i], i, this);
+		return results;
+	},
+</P><P>	some: function(fn, bind){
+		for (var i = 0, l = this.length; i &lt; l; i++){
+			if (fn.call(bind, this[i], i, this)) return true;
+		}
+		return false;
+	},
+</P><P>	associate: function(keys){
+		var obj = {}, length = Math.min(this.length, keys.length);
+		for (var i = 0; i &lt; length; i++) obj[keys[i]] = this[i];
+		return obj;
+	},
+</P><P>	link: function(object){
+		var result = {};
+		for (var i = 0, l = this.length; i &lt; l; i++){
+			for (var key in object){
+				if (object[key](this[i])){
+					result[key] = this[i];
+					delete object[key];
+					break;
+				}
+			}
+		}
+		return result;
+	},
+</P><P>	contains: function(item, from){
+		return this.indexOf(item, from) != -1;
+	},
+</P><P>	extend: function(array){
+		for (var i = 0, j = array.length; i &lt; j; i++) this.push(array[i]);
+		return this;
+	},
+</P><P>	getLast: function(){
+		return (this.length) ? this[this.length - 1] : null;
+	},
+</P><P>	getRandom: function(){
+		return (this.length) ? this[$random(0, this.length - 1)] : null;
+	},
+</P><P>	include: function(item){
+		if (!this.contains(item)) this.push(item);
+		return this;
+	},
+</P><P>	combine: function(array){
+		for (var i = 0, l = array.length; i &lt; l; i++) this.include(array[i]);
+		return this;
+	},
+</P><P>	erase: function(item){
+		for (var i = this.length; i--; i){
+			if (this[i] === item) this.splice(i, 1);
+		}
+		return this;
+	},
+</P><P>	empty: function(){
+		this.length = 0;
+		return this;
+	},
+</P><P>	flatten: function(){
+		var array = [];
+		for (var i = 0, l = this.length; i &lt; l; i++){
+			var type = $type(this[i]);
+			if (!type) continue;
+			array = array.concat((type == 'array' || type == 'collection' || type == 'arguments') ? Array.flatten(this[i]) : this[i]);
+		}
+		return array;
+	},
+</P><P>	hexToRgb: function(array){
+		if (this.length != 3) return null;
+		var rgb = this.map(function(value){
+			if (value.length == 1) value += value;
+			return value.toInt(16);
+		});
+		return (array) ? rgb : 'rgb(' + rgb + ')';
+	},
+</P><P>	rgbToHex: function(array){
+		if (this.length &lt; 3) return null;
+		if (this.length == 4 &amp;&amp; this[3] == 0 &amp;&amp; !array) return 'transparent';
+		var hex = [];
+		for (var i = 0; i &lt; 3; i++){
+			var bit = (this[i] - 0).toString(16);
+			hex.push((bit.length == 1) ? '0' + bit : bit);
+		}
+		return (array) ? hex : '#' + hex.join(<I>);</I>
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Function.js
+</P><P>description: Contains Function Prototypes like create, bind, pass, and delay.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Native
+- /$util
+</P><P>provides: [Function]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Function.implement({
+</P><P>	extend: function(properties){
+		for (var property in properties) this[property] = properties[property];
+		return this;
+	},
+</P><P>	create: function(options){
+		var self = this;
+		options = options || {};
+		return function(event){
+			var args = options.arguments;
+			args = (args != undefined) ? $splat(args) : Array.slice(arguments, (options.event) ? 1 : 0);
+			if (options.event) args = [event || window.event].extend(args);
+			var returns = function(){
+				return self.apply(options.bind || null, args);
+			};
+			if (options.delay) return setTimeout(returns, options.delay);
+			if (options.periodical) return setInterval(returns, options.periodical);
+			if (options.attempt) return $try(returns);
+			return returns();
+		};
+	},
+</P><P>	run: function(args, bind){
+		return this.apply(bind, $splat(args));
+	},
+</P><P>	pass: function(args, bind){
+		return this.create({bind: bind, arguments: args});
+	},
+</P><P>	bind: function(bind, args){
+		return this.create({bind: bind, arguments: args});
+	},
+</P><P>	bindWithEvent: function(bind, args){
+		return this.create({bind: bind, arguments: args, event: true});
+	},
+</P><P>	attempt: function(args, bind){
+		return this.create({bind: bind, arguments: args, attempt: true})();
+	},
+</P><P>	delay: function(delay, bind, args){
+		return this.create({bind: bind, arguments: args, delay: delay})();
+	},
+</P><P>	periodical: function(periodical, bind, args){
+		return this.create({bind: bind, arguments: args, periodical: periodical})();
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Number.js
+</P><P>description: Contains Number Prototypes like limit, round, times, and ceil.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Native
+- /$util
+</P><P>provides: [Number]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Number.implement({
+</P><P>	limit: function(min, max){
+		return Math.min(max, Math.max(min, this));
+	},
+</P><P>	round: function(precision){
+		precision = Math.pow(10, precision || 0);
+		return Math.round(this * precision) / precision;
+	},
+</P><P>	times: function(fn, bind){
+		for (var i = 0; i &lt; this; i++) fn.call(bind, i, this);
+	},
+</P><P>	toFloat: function(){
+		return parseFloat(this);
+	},
+</P><P>	toInt: function(base){
+		return parseInt(this, base || 10);
+	}
+</P><P>});
+</P><P>Number.alias('times', 'each');
+</P><P>(function(math){
+	var methods = {};
+	math.each(function(name){
+		if (!Number[name]) methods[name] = function(){
+			return Math[name].apply(null, [this].concat($A(arguments)));
+		};
+	});
+	Number.implement(methods);
+})(['abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor', 'log', 'max', 'min', 'pow', 'sin', 'sqrt', 'tan']);
+</P><P>
+/*
+---
+</P><P>script: String.js
+</P><P>description: Contains String Prototypes like camelCase, capitalize, test, and toInt.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Native
+</P><P>provides: [String]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>String.implement({
+</P><P>	test: function(regex, params){
+		return ((typeof regex == 'string') ? new RegExp(regex, params) : regex).test(this);
+	},
+</P><P>	contains: function(string, separator){
+		return (separator) ? (separator + this + separator).indexOf(separator + string + separator) &gt; -1 : this.indexOf(string) &gt; -1;
+	},
+</P><P>	trim: function(){
+		return this.replace(/^\s+|\s+$/g, <I>);</I>
+	},
+</P><P>	clean: function(){
+		return this.replace(/\s+/g, ' ').trim();
+	},
+</P><P>	camelCase: function(){
+		return this.replace(/-\D/g, function(match){
+			return match.charAt(1).toUpperCase();
+		});
+	},
+</P><P>	hyphenate: function(){
+		return this.replace(/[A-Z]/g, function(match){
+			return ('-' + match.charAt(0).toLowerCase());
+		});
+	},
+</P><P>	capitalize: function(){
+		return this.replace(/\b[a-z]/g, function(match){
+			return match.toUpperCase();
+		});
+	},
+</P><P>	escapeRegExp: function(){
+		return this.replace(/([-.*+?^${}()|[\]\/\\])/g, '\\$1');
+	},
+</P><P>	toInt: function(base){
+		return parseInt(this, base || 10);
+	},
+</P><P>	toFloat: function(){
+		return parseFloat(this);
+	},
+</P><P>	hexToRgb: function(array){
+		var hex = this.match(/^#?(\w{1,2})(\w{1,2})(\w{1,2})$/);
+		return (hex) ? hex.slice(1).hexToRgb(array) : null;
+	},
+</P><P>	rgbToHex: function(array){
+		var rgb = this.match(/\d{1,3}/g);
+		return (rgb) ? rgb.rgbToHex(array) : null;
+	},
+</P><P>	stripScripts: function(option){
+		var scripts = <I>;</I>
+		var text = this.replace(/&lt;script[^&gt;]*&gt;([\s\S]*?)&lt;\/script&gt;/gi, function(){
+			scripts += arguments[1] + '\n';
+			return <I>;</I>
+		});
+		if (option === true) $exec(scripts);
+		else if ($type(option) == 'function') option(scripts, text);
+		return text;
+	},
+</P><P>	substitute: function(object, regexp){
+		return this.replace(regexp || (/\\?\{([^{}]+)\}/g), function(match, name){
+			if (match.charAt(0) == '\\') return match.slice(1);
+			return (object[name] != undefined) ? object[name] : <I>;</I>
+		});
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Hash.js
+</P><P>description: Contains Hash Prototypes. Provides a means for overcoming the JavaScript practical impossibility of extending native Objects.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Hash.base
+</P><P>provides: [Hash]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Hash.implement({
+</P><P>	has: Object.prototype.hasOwnProperty,
+</P><P>	keyOf: function(value){
+		for (var key in this){
+			if (this.hasOwnProperty(key) &amp;&amp; this[key] === value) return key;
+		}
+		return null;
+	},
+</P><P>	hasValue: function(value){
+		return (Hash.keyOf(this, value) !== null);
+	},
+</P><P>	extend: function(properties){
+		Hash.each(properties || {}, function(value, key){
+			Hash.set(this, key, value);
+		}, this);
+		return this;
+	},
+</P><P>	combine: function(properties){
+		Hash.each(properties || {}, function(value, key){
+			Hash.include(this, key, value);
+		}, this);
+		return this;
+	},
+</P><P>	erase: function(key){
+		if (this.hasOwnProperty(key)) delete this[key];
+		return this;
+	},
+</P><P>	get: function(key){
+		return (this.hasOwnProperty(key)) ? this[key] : null;
+	},
+</P><P>	set: function(key, value){
+		if (!this[key] || this.hasOwnProperty(key)) this[key] = value;
+		return this;
+	},
+</P><P>	empty: function(){
+		Hash.each(this, function(value, key){
+			delete this[key];
+		}, this);
+		return this;
+	},
+</P><P>	include: function(key, value){
+		if (this[key] == undefined) this[key] = value;
+		return this;
+	},
+</P><P>	map: function(fn, bind){
+		var results = new Hash;
+		Hash.each(this, function(value, key){
+			results.set(key, fn.call(bind, value, key, this));
+		}, this);
+		return results;
+	},
+</P><P>	filter: function(fn, bind){
+		var results = new Hash;
+		Hash.each(this, function(value, key){
+			if (fn.call(bind, value, key, this)) results.set(key, value);
+		}, this);
+		return results;
+	},
+</P><P>	every: function(fn, bind){
+		for (var key in this){
+			if (this.hasOwnProperty(key) &amp;&amp; !fn.call(bind, this[key], key)) return false;
+		}
+		return true;
+	},
+</P><P>	some: function(fn, bind){
+		for (var key in this){
+			if (this.hasOwnProperty(key) &amp;&amp; fn.call(bind, this[key], key)) return true;
+		}
+		return false;
+	},
+</P><P>	getKeys: function(){
+		var keys = [];
+		Hash.each(this, function(value, key){
+			keys.push(key);
+		});
+		return keys;
+	},
+</P><P>	getValues: function(){
+		var values = [];
+		Hash.each(this, function(value){
+			values.push(value);
+		});
+		return values;
+	},
+</P><P>	toQueryString: function(base){
+		var queryString = [];
+		Hash.each(this, function(value, key){
+			if (base) key = base + '[' + key + ']';
+			var result;
+			switch ($type(value)){
+				case 'object': result = Hash.toQueryString(value, key); break;
+				case 'array':
+					var qs = {};
+					value.each(function(val, i){
+						qs[i] = val;
+					});
+					result = Hash.toQueryString(qs, key);
+				break;
+				default: result = key + '=' + encodeURIComponent(value);
+			}
+			if (value != undefined) queryString.push(result);
+		});
+</P><P>		return queryString.join('&amp;');
+	}
+</P><P>});
+</P><P>Hash.alias({keyOf: 'indexOf', hasValue: 'contains'});
+</P><P>
+/*
+---
+</P><P>script: Event.js
+</P><P>description: Contains the Event Class, to make the event object cross-browser.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Window
+- /Document
+- /Hash
+- /Array
+- /Function
+- /String
+</P><P>provides: [Event]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Event = new Native({
+</P><P>	name: 'Event',
+</P><P>	initialize: function(event, win){
+		win = win || window;
+		var doc = win.document;
+		event = event || win.event;
+		if (event.$extended) return event;
+		this.$extended = true;
+		var type = event.type;
+		var target = event.target || event.srcElement;
+		while (target &amp;&amp; target.nodeType == 3) target = target.parentNode;
+</P><P>		if (type.test(/key/)){
+			var code = event.which || event.keyCode;
+			var key = Event.Keys.keyOf(code);
+			if (type == 'keydown'){
+				var fKey = code - 111;
+				if (fKey &gt; 0 &amp;&amp; fKey &lt; 13) key = 'f' + fKey;
+			}
+			key = key || String.fromCharCode(code).toLowerCase();
+		} else if (type.match(/(click|mouse|menu)/i)){
+			doc = (!doc.compatMode || doc.compatMode == 'CSS1Compat') ? doc.html : doc.body;
+			var page = {
+				x: event.pageX || event.clientX + doc.scrollLeft,
+				y: event.pageY || event.clientY + doc.scrollTop
+			};
+			var client = {
+				x: (event.pageX) ? event.pageX - win.pageXOffset : event.clientX,
+				y: (event.pageY) ? event.pageY - win.pageYOffset : event.clientY
+			};
+			if (type.match(/DOMMouseScroll|mousewheel/)){
+				var wheel = (event.wheelDelta) ? event.wheelDelta / 120 : -(event.detail || 0) / 3;
+			}
+			var rightClick = (event.which == 3) || (event.button == 2);
+			var related = null;
+			if (type.match(/over|out/)){
+				switch (type){
+					case 'mouseover': related = event.relatedTarget || event.fromElement; break;
+					case 'mouseout': related = event.relatedTarget || event.toElement;
+				}
+				if (!(function(){
+					while (related &amp;&amp; related.nodeType == 3) related = related.parentNode;
+					return true;
+				}).create({attempt: Browser.Engine.gecko})()) related = false;
+			}
+		}
+</P><P>		return $extend(this, {
+			event: event,
+			type: type,
+</P><P>			page: page,
+			client: client,
+			rightClick: rightClick,
+</P><P>			wheel: wheel,
+</P><P>			relatedTarget: related,
+			target: target,
+</P><P>			code: code,
+			key: key,
+</P><P>			shift: event.shiftKey,
+			control: event.ctrlKey,
+			alt: event.altKey,
+			meta: event.metaKey
+		});
+	}
+</P><P>});
+</P><P>Event.Keys = new Hash({
+	'enter': 13,
+	'up': 38,
+	'down': 40,
+	'left': 37,
+	'right': 39,
+	'esc': 27,
+	'space': 32,
+	'backspace': 8,
+	'tab': 9,
+	'delete': 46
+});
+</P><P>Event.implement({
+</P><P>	stop: function(){
+		return this.stopPropagation().preventDefault();
+	},
+</P><P>	stopPropagation: function(){
+		if (this.event.stopPropagation) this.event.stopPropagation();
+		else this.event.cancelBubble = true;
+		return this;
+	},
+</P><P>	preventDefault: function(){
+		if (this.event.preventDefault) this.event.preventDefault();
+		else this.event.returnValue = false;
+		return this;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Class.js
+</P><P>description: Contains the Class Function for easily creating, extending, and implementing reusable Classes.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /$util
+- /Native
+- /Array
+- /String
+- /Function
+- /Number
+- /Hash
+</P><P>provides: [Class]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>function Class(params){
+</P><P>	if (params instanceof Function) params = {initialize: params};
+</P><P>	var newClass = function(){
+		Object.reset(this);
+		if (newClass._prototyping) return this;
+		this._current = $empty;
+		var value = (this.initialize) ? this.initialize.apply(this, arguments) : this;
+		delete this._current; delete this.caller;
+		return value;
+	}.extend(this);
+</P><P>	newClass.implement(params);
+</P><P>	newClass.constructor = Class;
+	newClass.prototype.constructor = newClass;
+</P><P>	return newClass;
+</P><P>};
+</P><P>Function.prototype.protect = function(){
+	this._protected = true;
+	return this;
+};
+</P><P>Object.reset = function(object, key){
+</P><P>	if (key == null){
+		for (var p in object) Object.reset(object, p);
+		return object;
+	}
+</P><P>	delete object[key];
+</P><P>	switch ($type(object[key])){
+		case 'object':
+			var F = function(){};
+			F.prototype = object[key];
+			var i = new F;
+			object[key] = Object.reset(i);
+		break;
+		case 'array': object[key] = $unlink(object[key]); break;
+	}
+</P><P>	return object;
+</P><P>};
+</P><P>new Native({name: 'Class', initialize: Class}).extend({
+</P><P>	instantiate: function(F){
+		F._prototyping = true;
+		var proto = new F;
+		delete F._prototyping;
+		return proto;
+	},
+</P><P>	wrap: function(self, key, method){
+		if (method._origin) method = method._origin;
+</P><P>		return function(){
+			if (method._protected &amp;&amp; this._current == null) throw new Error('The method &quot;' + key + '&quot; cannot be called.');
+			var caller = this.caller, current = this._current;
+			this.caller = current; this._current = arguments.callee;
+			var result = method.apply(this, arguments);
+			this._current = current; this.caller = caller;
+			return result;
+		}.extend({_owner: self, _origin: method, _name: key});
+</P><P>	}
+</P><P>});
+</P><P>Class.implement({
+</P><P>	implement: function(key, value){
+</P><P>		if ($type(key) == 'object'){
+			for (var p in key) this.implement(p, key[p]);
+			return this;
+		}
+</P><P>		var mutator = Class.Mutators[key];
+</P><P>		if (mutator){
+			value = mutator.call(this, value);
+			if (value == null) return this;
+		}
+</P><P>		var proto = this.prototype;
+</P><P>		switch ($type(value)){
+</P><P>			case 'function':
+				if (value._hidden) return this;
+				proto[key] = Class.wrap(this, key, value);
+			break;
+</P><P>			case 'object':
+				var previous = proto[key];
+				if ($type(previous) == 'object') $mixin(previous, value);
+				else proto[key] = $unlink(value);
+			break;
+</P><P>			case 'array':
+				proto[key] = $unlink(value);
+			break;
+</P><P>			default: proto[key] = value;
+</P><P>		}
+</P><P>		return this;
+</P><P>	}
+</P><P>});
+</P><P>Class.Mutators = {
+</P><P>	Extends: function(parent){
+</P><P>		this.parent = parent;
+		this.prototype = Class.instantiate(parent);
+</P><P>		this.implement('parent', function(){
+			var name = this.caller._name, previous = this.caller._owner.parent.prototype[name];
+			if (!previous) throw new Error('The method &quot;' + name + '&quot; has no parent.');
+			return previous.apply(this, arguments);
+		}.protect());
+</P><P>	},
+</P><P>	Implements: function(items){
+		$splat(items).each(function(item){
+			if (item instanceof Function) item = Class.instantiate(item);
+			this.implement(item);
+		}, this);
+</P><P>	}
+</P><P>};
+</P><P>
+/*
+---
+</P><P>script: Class.Extras.js
+</P><P>description: Contains Utility Classes that can be implemented into your own Classes to ease the execution of many common tasks.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Class
+</P><P>provides: [Chain, Events, Options]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Chain = new Class({
+</P><P>	$chain: [],
+</P><P>	chain: function(){
+		this.$chain.extend(Array.flatten(arguments));
+		return this;
+	},
+</P><P>	callChain: function(){
+		return (this.$chain.length) ? this.$chain.shift().apply(this, arguments) : false;
+	},
+</P><P>	clearChain: function(){
+		this.$chain.empty();
+		return this;
+	}
+</P><P>});
+</P><P>var Events = new Class({
+</P><P>	$events: {},
+</P><P>	addEvent: function(type, fn, internal){
+		type = Events.removeOn(type);
+		if (fn != $empty){
+			this.$events[type] = this.$events[type] || [];
+			this.$events[type].include(fn);
+			if (internal) fn.internal = true;
+		}
+		return this;
+	},
+</P><P>	addEvents: function(events){
+		for (var type in events) this.addEvent(type, events[type]);
+		return this;
+	},
+</P><P>	fireEvent: function(type, args, delay){
+		type = Events.removeOn(type);
+		if (!this.$events || !this.$events[type]) return this;
+		this.$events[type].each(function(fn){
+			fn.create({'bind': this, 'delay': delay, 'arguments': args})();
+		}, this);
+		return this;
+	},
+</P><P>	removeEvent: function(type, fn){
+		type = Events.removeOn(type);
+		if (!this.$events[type]) return this;
+		if (!fn.internal) this.$events[type].erase(fn);
+		return this;
+	},
+</P><P>	removeEvents: function(events){
+		var type;
+		if ($type(events) == 'object'){
+			for (type in events) this.removeEvent(type, events[type]);
+			return this;
+		}
+		if (events) events = Events.removeOn(events);
+		for (type in this.$events){
+			if (events &amp;&amp; events != type) continue;
+			var fns = this.$events[type];
+			for (var i = fns.length; i--; i) this.removeEvent(type, fns[i]);
+		}
+		return this;
+	}
+</P><P>});
+</P><P>Events.removeOn = function(string){
+	return string.replace(/^on([A-Z])/, function(full, first){
+		return first.toLowerCase();
+	});
+};
+</P><P>var Options = new Class({
+</P><P>	setOptions: function(){
+		this.options = $merge.run([this.options].extend(arguments));
+		if (!this.addEvent) return this;
+		for (var option in this.options){
+			if ($type(this.options[option]) != 'function' || !(/^on[A-Z]/).test(option)) continue;
+			this.addEvent(option, this.options[option]);
+			delete this.options[option];
+		}
+		return this;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Element.js
+</P><P>description: One of the most important items in MooTools. Contains the dollar function, the dollars function, and an handful of cross-browser, time-saver methods to let you easily work with HTML Elements.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Window
+- /Document
+- /Array
+- /String
+- /Function
+- /Number
+- /Hash
+</P><P>provides: [Element, Elements, $, $$, Iframe]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Element = new Native({
+</P><P>	name: 'Element',
+</P><P>	legacy: window.Element,
+</P><P>	initialize: function(tag, props){
+		var konstructor = Element.Constructors.get(tag);
+		if (konstructor) return konstructor(props);
+		if (typeof tag == 'string') return document.newElement(tag, props);
+		return document.id(tag).set(props);
+	},
+</P><P>	afterImplement: function(key, value){
+		Element.Prototype[key] = value;
+		if (Array[key]) return;
+		Elements.implement(key, function(){
+			var items = [], elements = true;
+			for (var i = 0, j = this.length; i &lt; j; i++){
+				var returns = this[i][key].apply(this[i], arguments);
+				items.push(returns);
+				if (elements) elements = ($type(returns) == 'element');
+			}
+			return (elements) ? new Elements(items) : items;
+		});
+	}
+</P><P>});
+</P><P>Element.Prototype = {$family: {name: 'element'}};</P><P>Element.Constructors = new Hash;
+</P><P>var IFrame = new Native({
+</P><P>	name: 'IFrame',
+</P><P>	generics: false,
+</P><P>	initialize: function(){
+		var params = Array.link(arguments, {properties: Object.type, iframe: $defined});
+		var props = params.properties || {};
+		var iframe = document.id(params.iframe);
+		var onload = props.onload || $empty;
+		delete props.onload;
+		props.id = props.name = $pick(props.id, props.name, iframe ? (iframe.id || iframe.name) : 'IFrame_' + $time());
+		iframe = new Element(iframe || 'iframe', props);
+		var onFrameLoad = function(){
+			var host = $try(function(){
+				return iframe.contentWindow.location.host;
+			});
+			if (!host || host == window.location.host){
+				var win = new Window(iframe.contentWindow);
+				new Document(iframe.contentWindow.document);
+				$extend(win.Element.prototype, Element.Prototype);
+			}
+			onload.call(iframe.contentWindow, iframe.contentWindow.document);
+		};
+		var contentWindow = $try(function(){
+			return iframe.contentWindow;
+		});
+		((contentWindow &amp;&amp; contentWindow.document.body) || window.frames[props.id]) ? onFrameLoad() : iframe.addListener('load', onFrameLoad);
+		return iframe;
+	}
+</P><P>});
+</P><P>var Elements = new Native({
+</P><P>	initialize: function(elements, options){
+		options = $extend({ddup: true, cash: true}, options);
+		elements = elements || [];
+		if (options.ddup || options.cash){
+			var uniques = {}, returned = [];
+			for (var i = 0, l = elements.length; i &lt; l; i++){
+				var el = document.id(elements[i], !options.cash);
+				if (options.ddup){
+					if (uniques[el.uid]) continue;
+					uniques[el.uid] = true;
+				}
+				if (el) returned.push(el);
+			}
+			elements = returned;
+		}
+		return (options.cash) ? $extend(elements, this) : elements;
+	}
+</P><P>});
+</P><P>Elements.implement({
+</P><P>	filter: function(filter, bind){
+		if (!filter) return this;
+		return new Elements(Array.filter(this, (typeof filter == 'string') ? function(item){
+			return item.match(filter);
+		} : filter, bind));
+	}
+</P><P>});
+</P><P>Document.implement({
+</P><P>	newElement: function(tag, props){
+		if (Browser.Engine.trident &amp;&amp; props){
+			['name', 'type', 'checked'].each(function(attribute){
+				if (!props[attribute]) return;
+				tag += ' ' + attribute + '=&quot;' + props[attribute] + '&quot;';
+				if (attribute != 'checked') delete props[attribute];
+			});
+			tag = '&lt;' + tag + '&gt;';
+		}
+		return document.id(this.createElement(tag)).set(props);
+	},
+</P><P>	newTextNode: function(text){
+		return this.createTextNode(text);
+	},
+</P><P>	getDocument: function(){
+		return this;
+	},
+</P><P>	getWindow: function(){
+		return this.window;
+	},
+</P><P>	id: (function(){
+</P><P>		var types = {
+</P><P>			string: function(id, nocash, doc){
+				id = doc.getElementById(id);
+				return (id) ? types.element(id, nocash) : null;
+			},
+</P><P>			element: function(el, nocash){
+				$uid(el);
+				if (!nocash &amp;&amp; !el.$family &amp;&amp; !(/^object|embed$/i).test(el.tagName)){
+					var proto = Element.Prototype;
+					for (var p in proto) el[p] = proto[p];
+				};
+				return el;
+			},
+</P><P>			object: function(obj, nocash, doc){
+				if (obj.toElement) return types.element(obj.toElement(doc), nocash);
+				return null;
+			}
+</P><P>		};
+</P><P>		types.textnode = types.whitespace = types.window = types.document = $arguments(0);
+</P><P>		return function(el, nocash, doc){
+			if (el &amp;&amp; el.$family &amp;&amp; el.uid) return el;
+			var type = $type(el);
+			return (types[type]) ? types[type](el, nocash, doc || document) : null;
+		};
+</P><P>	})()
+</P><P>});
+</P><P>if (window.$ == null) Window.implement({
+	$: function(el, nc){
+		return document.id(el, nc, this.document);
+	}
+});
+</P><P>Window.implement({
+</P><P>	$$: function(selector){
+		if (arguments.length == 1 &amp;&amp; typeof selector == 'string') return this.document.getElements(selector);
+		var elements = [];
+		var args = Array.flatten(arguments);
+		for (var i = 0, l = args.length; i &lt; l; i++){
+			var item = args[i];
+			switch ($type(item)){
+				case 'element': elements.push(item); break;
+				case 'string': elements.extend(this.document.getElements(item, true));
+			}
+		}
+		return new Elements(elements);
+	},
+</P><P>	getDocument: function(){
+		return this.document;
+	},
+</P><P>	getWindow: function(){
+		return this;
+	}
+</P><P>});
+</P><P>Native.implement([Element, Document], {
+</P><P>	getElement: function(selector, nocash){
+		return document.id(this.getElements(selector, true)[0] || null, nocash);
+	},
+</P><P>	getElements: function(tags, nocash){
+		tags = tags.split(',');
+		var elements = [];
+		var ddup = (tags.length &gt; 1);
+		tags.each(function(tag){
+			var partial = this.getElementsByTagName(tag.trim());
+			(ddup) ? elements.extend(partial) : elements = partial;
+		}, this);
+		return new Elements(elements, {ddup: ddup, cash: !nocash});
+	}
+</P><P>});
+</P><P>(function(){
+</P><P>var collected = {}, storage = {};
+var props = {input: 'checked', option: 'selected', textarea: (Browser.Engine.webkit &amp;&amp; Browser.Engine.version &lt; 420) ? 'innerHTML' : 'value'};
+</P><P>var get = function(uid){
+	return (storage[uid] || (storage[uid] = {}));
+};
+</P><P>var clean = function(item, retain){
+	if (!item) return;
+	var uid = item.uid;
+	if (Browser.Engine.trident){
+		if (item.clearAttributes){
+			var clone = retain &amp;&amp; item.cloneNode(false);
+			item.clearAttributes();
+			if (clone) item.mergeAttributes(clone);
+		} else if (item.removeEvents){
+			item.removeEvents();
+		}
+		if ((/object/i).test(item.tagName)){
+			for (var p in item){
+				if (typeof item[p] == 'function') item[p] = $empty;
+			}
+			Element.dispose(item);
+		}
+	}	
+	if (!uid) return;
+	collected[uid] = storage[uid] = null;
+};
+</P><P>var purge = function(){
+	Hash.each(collected, clean);
+	if (Browser.Engine.trident) $A(document.getElementsByTagName('object')).each(clean);
+	if (window.CollectGarbage) CollectGarbage();
+	collected = storage = null;
+};
+</P><P>var walk = function(element, walk, start, match, all, nocash){
+	var el = element[start || walk];
+	var elements = [];
+	while (el){
+		if (el.nodeType == 1 &amp;&amp; (!match || Element.match(el, match))){
+			if (!all) return document.id(el, nocash);
+			elements.push(el);
+		}
+		el = el[walk];
+	}
+	return (all) ? new Elements(elements, {ddup: false, cash: !nocash}) : null;
+};
+</P><P>var attributes = {
+	'html': 'innerHTML',
+	'class': 'className',
+	'for': 'htmlFor',
+	'defaultValue': 'defaultValue',
+	'text': (Browser.Engine.trident || (Browser.Engine.webkit &amp;&amp; Browser.Engine.version &lt; 420)) ? 'innerText' : 'textContent'
+};
+var bools = ['compact', 'nowrap', 'ismap', 'declare', 'noshade', 'checked', 'disabled', 'readonly', 'multiple', 'selected', 'noresize', 'defer'];
+var camels = ['value', 'type', 'defaultValue', 'accessKey', 'cellPadding', 'cellSpacing', 'colSpan', 'frameBorder', 'maxLength', 'readOnly', 'rowSpan', 'tabIndex', 'useMap'];
+</P><P>bools = bools.associate(bools);
+</P><P>Hash.extend(attributes, bools);
+Hash.extend(attributes, camels.associate(camels.map(String.toLowerCase)));
+</P><P>var inserters = {
+</P><P>	before: function(context, element){
+		if (element.parentNode) element.parentNode.insertBefore(context, element);
+	},
+</P><P>	after: function(context, element){
+		if (!element.parentNode) return;
+		var next = element.nextSibling;
+		(next) ? element.parentNode.insertBefore(context, next) : element.parentNode.appendChild(context);
+	},
+</P><P>	bottom: function(context, element){
+		element.appendChild(context);
+	},
+</P><P>	top: function(context, element){
+		var first = element.firstChild;
+		(first) ? element.insertBefore(context, first) : element.appendChild(context);
+	}
+</P><P>};
+</P><P>inserters.inside = inserters.bottom;
+</P><P>Hash.each(inserters, function(inserter, where){
+</P><P>	where = where.capitalize();
+</P><P>	Element.implement('inject' + where, function(el){
+		inserter(this, document.id(el, true));
+		return this;
+	});
+</P><P>	Element.implement('grab' + where, function(el){
+		inserter(document.id(el, true), this);
+		return this;
+	});
+</P><P>});
+</P><P>Element.implement({
+</P><P>	set: function(prop, value){
+		switch ($type(prop)){
+			case 'object':
+				for (var p in prop) this.set(p, prop[p]);
+				break;
+			case 'string':
+				var property = Element.Properties.get(prop);
+				(property &amp;&amp; property.set) ? property.set.apply(this, Array.slice(arguments, 1)) : this.setProperty(prop, value);
+		}
+		return this;
+	},
+</P><P>	get: function(prop){
+		var property = Element.Properties.get(prop);
+		return (property &amp;&amp; property.get) ? property.get.apply(this, Array.slice(arguments, 1)) : this.getProperty(prop);
+	},
+</P><P>	erase: function(prop){
+		var property = Element.Properties.get(prop);
+		(property &amp;&amp; property.erase) ? property.erase.apply(this) : this.removeProperty(prop);
+		return this;
+	},
+</P><P>	setProperty: function(attribute, value){
+		var key = attributes[attribute];
+		if (value == undefined) return this.removeProperty(attribute);
+		if (key &amp;&amp; bools[attribute]) value = !!value;
+		(key) ? this[key] = value : this.setAttribute(attribute, <I> + value);</I>
+		return this;
+	},
+</P><P>	setProperties: function(attributes){
+		for (var attribute in attributes) this.setProperty(attribute, attributes[attribute]);
+		return this;
+	},
+</P><P>	getProperty: function(attribute){
+		var key = attributes[attribute];
+		var value = (key) ? this[key] : this.getAttribute(attribute, 2);
+		return (bools[attribute]) ? !!value : (key) ? value : value || null;
+	},
+</P><P>	getProperties: function(){
+		var args = $A(arguments);
+		return args.map(this.getProperty, this).associate(args);
+	},
+</P><P>	removeProperty: function(attribute){
+		var key = attributes[attribute];
+		(key) ? this[key] = (key &amp;&amp; bools[attribute]) ? false : <I> : this.removeAttribute(attribute);</I>
+		return this;
+	},
+</P><P>	removeProperties: function(){
+		Array.each(arguments, this.removeProperty, this);
+		return this;
+	},
+</P><P>	hasClass: function(className){
+		return this.className.contains(className, ' ');
+	},
+</P><P>	addClass: function(className){
+		if (!this.hasClass(className)) this.className = (this.className + ' ' + className).clean();
+		return this;
+	},
+</P><P>	removeClass: function(className){
+		this.className = this.className.replace(new RegExp('(^|\\s)' + className + '(?:\\s|$)'), '$1');
+		return this;
+	},
+</P><P>	toggleClass: function(className){
+		return this.hasClass(className) ? this.removeClass(className) : this.addClass(className);
+	},
+</P><P>	adopt: function(){
+		Array.flatten(arguments).each(function(element){
+			element = document.id(element, true);
+			if (element) this.appendChild(element);
+		}, this);
+		return this;
+	},
+</P><P>	appendText: function(text, where){
+		return this.grab(this.getDocument().newTextNode(text), where);
+	},
+</P><P>	grab: function(el, where){
+		inserters[where || 'bottom'](document.id(el, true), this);
+		return this;
+	},
+</P><P>	inject: function(el, where){
+		inserters[where || 'bottom'](this, document.id(el, true));
+		return this;
+	},
+</P><P>	replaces: function(el){
+		el = document.id(el, true);
+		el.parentNode.replaceChild(this, el);
+		return this;
+	},
+</P><P>	wraps: function(el, where){
+		el = document.id(el, true);
+		return this.replaces(el).grab(el, where);
+	},
+</P><P>	getPrevious: function(match, nocash){
+		return walk(this, 'previousSibling', null, match, false, nocash);
+	},
+</P><P>	getAllPrevious: function(match, nocash){
+		return walk(this, 'previousSibling', null, match, true, nocash);
+	},
+</P><P>	getNext: function(match, nocash){
+		return walk(this, 'nextSibling', null, match, false, nocash);
+	},
+</P><P>	getAllNext: function(match, nocash){
+		return walk(this, 'nextSibling', null, match, true, nocash);
+	},
+</P><P>	getFirst: function(match, nocash){
+		return walk(this, 'nextSibling', 'firstChild', match, false, nocash);
+	},
+</P><P>	getLast: function(match, nocash){
+		return walk(this, 'previousSibling', 'lastChild', match, false, nocash);
+	},
+</P><P>	getParent: function(match, nocash){
+		return walk(this, 'parentNode', null, match, false, nocash);
+	},
+</P><P>	getParents: function(match, nocash){
+		return walk(this, 'parentNode', null, match, true, nocash);
+	},
+</P><P>	getSiblings: function(match, nocash){
+		return this.getParent().getChildren(match, nocash).erase(this);
+	},
+</P><P>	getChildren: function(match, nocash){
+		return walk(this, 'nextSibling', 'firstChild', match, true, nocash);
+	},
+</P><P>	getWindow: function(){
+		return this.ownerDocument.window;
+	},
+</P><P>	getDocument: function(){
+		return this.ownerDocument;
+	},
+</P><P>	getElementById: function(id, nocash){
+		var el = this.ownerDocument.getElementById(id);
+		if (!el) return null;
+		for (var parent = el.parentNode; parent != this; parent = parent.parentNode){
+			if (!parent) return null;
+		}
+		return document.id(el, nocash);
+	},
+</P><P>	getSelected: function(){
+		return new Elements($A(this.options).filter(function(option){
+			return option.selected;
+		}));
+	},
+</P><P>	getComputedStyle: function(property){
+		if (this.currentStyle) return this.currentStyle[property.camelCase()];
+		var computed = this.getDocument().defaultView.getComputedStyle(this, null);
+		return (computed) ? computed.getPropertyValue([property.hyphenate()]) : null;
+	},
+</P><P>	toQueryString: function(){
+		var queryString = [];
+		this.getElements('input, select, textarea', true).each(function(el){
+			if (!el.name || el.disabled || el.type == 'submit' || el.type == 'reset' || el.type == 'file') return;
+			var value = (el.tagName.toLowerCase() == 'select') ? Element.getSelected(el).map(function(opt){
+				return opt.value;
+			}) : ((el.type == 'radio' || el.type == 'checkbox') &amp;&amp; !el.checked) ? null : el.value;
+			$splat(value).each(function(val){
+				if (typeof val != 'undefined') queryString.push(el.name + '=' + encodeURIComponent(val));
+			});
+		});
+		return queryString.join('&amp;');
+	},
+</P><P>	clone: function(contents, keepid){
+		contents = contents !== false;
+		var clone = this.cloneNode(contents);
+		var clean = function(node, element){
+			if (!keepid) node.removeAttribute('id');
+			if (Browser.Engine.trident){
+				node.clearAttributes();
+				node.mergeAttributes(element);
+				node.removeAttribute('uid');
+				if (node.options){
+					var no = node.options, eo = element.options;
+					for (var j = no.length; j--;) no[j].selected = eo[j].selected;
+				}
+			}
+			var prop = props[element.tagName.toLowerCase()];
+			if (prop &amp;&amp; element[prop]) node[prop] = element[prop];
+		};
+</P><P>		if (contents){
+			var ce = clone.getElementsByTagName('*'), te = this.getElementsByTagName('*');
+			for (var i = ce.length; i--;) clean(ce[i], te[i]);
+		}
+</P><P>		clean(clone, this);
+		return document.id(clone);
+	},
+</P><P>	destroy: function(){
+		Element.empty(this);
+		Element.dispose(this);
+		clean(this, true);
+		return null;
+	},
+</P><P>	empty: function(){
+		$A(this.childNodes).each(function(node){
+			Element.destroy(node);
+		});
+		return this;
+	},
+</P><P>	dispose: function(){
+		return (this.parentNode) ? this.parentNode.removeChild(this) : this;
+	},
+</P><P>	hasChild: function(el){
+		el = document.id(el, true);
+		if (!el) return false;
+		if (Browser.Engine.webkit &amp;&amp; Browser.Engine.version &lt; 420) return $A(this.getElementsByTagName(el.tagName)).contains(el);
+		return (this.contains) ? (this != el &amp;&amp; this.contains(el)) : !!(this.compareDocumentPosition(el) &amp; 16);
+	},
+</P><P>	match: function(tag){
+		return (!tag || (tag == this) || (Element.get(this, 'tag') == tag));
+	}
+</P><P>});
+</P><P>Native.implement([Element, Window, Document], {
+</P><P>	addListener: function(type, fn){
+		if (type == 'unload'){
+			var old = fn, self = this;
+			fn = function(){
+				self.removeListener('unload', fn);
+				old();
+			};
+		} else {
+			collected[this.uid] = this;
+		}
+		if (this.addEventListener) this.addEventListener(type, fn, false);
+		else this.attachEvent('on' + type, fn);
+		return this;
+	},
+</P><P>	removeListener: function(type, fn){
+		if (this.removeEventListener) this.removeEventListener(type, fn, false);
+		else this.detachEvent('on' + type, fn);
+		return this;
+	},
+</P><P>	retrieve: function(property, dflt){
+		var storage = get(this.uid), prop = storage[property];
+		if (dflt != undefined &amp;&amp; prop == undefined) prop = storage[property] = dflt;
+		return $pick(prop);
+	},
+</P><P>	store: function(property, value){
+		var storage = get(this.uid);
+		storage[property] = value;
+		return this;
+	},
+</P><P>	eliminate: function(property){
+		var storage = get(this.uid);
+		delete storage[property];
+		return this;
+	}
+</P><P>});
+</P><P>window.addListener('unload', purge);
+</P><P>})();
+</P><P>Element.Properties = new Hash;
+</P><P>Element.Properties.style = {
+</P><P>	set: function(style){
+		this.style.cssText = style;
+	},
+</P><P>	get: function(){
+		return this.style.cssText;
+	},
+</P><P>	erase: function(){
+		this.style.cssText = <I>;</I>
+	}
+</P><P>};
+</P><P>Element.Properties.tag = {
+</P><P>	get: function(){
+		return this.tagName.toLowerCase();
+	}
+</P><P>};
+</P><P>Element.Properties.html = (function(){
+	var wrapper = document.createElement('div');
+</P><P>	var translations = {
+</P>
+		table: [1, '<TABLE>', '</TABLE>'],
+<P>		select: [1, '&lt;select&gt;', '&lt;/select&gt;'],
+</P>
+		tbody: [2, '<TABLE>&lt;tbody&gt;', '&lt;/tbody&gt;</TABLE>'],
+		tr: [3, '<TABLE>&lt;tbody&gt;<TBODY><TR>', '</TR>&lt;/tbody&gt;</TBODY></TABLE>']
+<P>	};
+	translations.thead = translations.tfoot = translations.tbody;
+</P><P>	var html = {
+		set: function(){
+			var html = Array.flatten(arguments).join(<I>);</I>
+			var wrap = Browser.Engine.trident &amp;&amp; translations[this.get('tag')];
+			if (wrap){
+				var first = wrapper;
+				first.innerHTML = wrap[1] + html + wrap[2];
+				for (var i = wrap[0]; i--;) first = first.firstChild;
+				this.empty().adopt(first.childNodes);
+			} else {
+				this.innerHTML = html;
+			}
+		}
+	};
+</P><P>	html.erase = html.set;
+</P><P>	return html;
+})();
+</P><P>if (Browser.Engine.webkit &amp;&amp; Browser.Engine.version &lt; 420) Element.Properties.text = {
+	get: function(){
+		if (this.innerText) return this.innerText;
+		var temp = this.ownerDocument.newElement('div', {html: this.innerHTML}).inject(this.ownerDocument.body);
+		var text = temp.innerText;
+		temp.destroy();
+		return text;
+	}
+};
+</P><P>
+/*
+---
+</P><P>script: Element.Event.js
+</P><P>description: Contains Element methods for dealing with events. This file also includes mouseenter and mouseleave custom Element Events.
+</P><P>license: MIT-style license.
+</P><P>requires: 
+- /Element
+- /Event
+</P><P>provides: [Element.Event]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Element.Properties.events = {set: function(events){
+	this.addEvents(events);
+}};
+</P><P>Native.implement([Element, Window, Document], {
+</P><P>	addEvent: function(type, fn){
+		var events = this.retrieve('events', {});
+		events[type] = events[type] || {'keys': [], 'values': []};
+		if (events[type].keys.contains(fn)) return this;
+		events[type].keys.push(fn);
+		var realType = type, custom = Element.Events.get(type), condition = fn, self = this;
+		if (custom){
+			if (custom.onAdd) custom.onAdd.call(this, fn);
+			if (custom.condition){
+				condition = function(event){
+					if (custom.condition.call(this, event)) return fn.call(this, event);
+					return true;
+				};
+			}
+			realType = custom.base || realType;
+		}
+		var defn = function(){
+			return fn.call(self);
+		};
+		var nativeEvent = Element.NativeEvents[realType];
+		if (nativeEvent){
+			if (nativeEvent == 2){
+				defn = function(event){
+					event = new Event(event, self.getWindow());
+					if (condition.call(self, event) === false) event.stop();
+				};
+			}
+			this.addListener(realType, defn);
+		}
+		events[type].values.push(defn);
+		return this;
+	},
+</P><P>	removeEvent: function(type, fn){
+		var events = this.retrieve('events');
+		if (!events || !events[type]) return this;
+		var pos = events[type].keys.indexOf(fn);
+		if (pos == -1) return this;
+		events[type].keys.splice(pos, 1);
+		var value = events[type].values.splice(pos, 1)[0];
+		var custom = Element.Events.get(type);
+		if (custom){
+			if (custom.onRemove) custom.onRemove.call(this, fn);
+			type = custom.base || type;
+		}
+		return (Element.NativeEvents[type]) ? this.removeListener(type, value) : this;
+	},
+</P><P>	addEvents: function(events){
+		for (var event in events) this.addEvent(event, events[event]);
+		return this;
+	},
+</P><P>	removeEvents: function(events){
+		var type;
+		if ($type(events) == 'object'){
+			for (type in events) this.removeEvent(type, events[type]);
+			return this;
+		}
+		var attached = this.retrieve('events');
+		if (!attached) return this;
+		if (!events){
+			for (type in attached) this.removeEvents(type);
+			this.eliminate('events');
+		} else if (attached[events]){
+			while (attached[events].keys[0]) this.removeEvent(events, attached[events].keys[0]);
+			attached[events] = null;
+		}
+		return this;
+	},
+</P><P>	fireEvent: function(type, args, delay){
+		var events = this.retrieve('events');
+		if (!events || !events[type]) return this;
+		events[type].keys.each(function(fn){
+			fn.create({'bind': this, 'delay': delay, 'arguments': args})();
+		}, this);
+		return this;
+	},
+</P><P>	cloneEvents: function(from, type){
+		from = document.id(from);
+		var fevents = from.retrieve('events');
+		if (!fevents) return this;
+		if (!type){
+			for (var evType in fevents) this.cloneEvents(from, evType);
+		} else if (fevents[type]){
+			fevents[type].keys.each(function(fn){
+				this.addEvent(type, fn);
+			}, this);
+		}
+		return this;
+	}
+</P><P>});
+</P><P>Element.NativeEvents = {
+	click: 2, dblclick: 2, mouseup: 2, mousedown: 2, contextmenu: 2, //mouse buttons
+	mousewheel: 2, DOMMouseScroll: 2, //mouse wheel
+	mouseover: 2, mouseout: 2, mousemove: 2, selectstart: 2, selectend: 2, //mouse movement
+	keydown: 2, keypress: 2, keyup: 2, //keyboard
+	focus: 2, blur: 2, change: 2, reset: 2, select: 2, submit: 2, //form elements
+	load: 1, unload: 1, beforeunload: 2, resize: 1, move: 1, DOMContentLoaded: 1, readystatechange: 1, //window
+	error: 1, abort: 1, scroll: 1 //misc
+};
+</P><P>(function(){
+</P><P>var $check = function(event){
+	var related = event.relatedTarget;
+	if (related == undefined) return true;
+	if (related === false) return false;
+	return ($type(this) != 'document' &amp;&amp; related != this &amp;&amp; related.prefix != 'xul' &amp;&amp; !this.hasChild(related));
+};
+</P><P>Element.Events = new Hash({
+</P><P>	mouseenter: {
+		base: 'mouseover',
+		condition: $check
+	},
+</P><P>	mouseleave: {
+		base: 'mouseout',
+		condition: $check
+	},
+</P><P>	mousewheel: {
+		base: (Browser.Engine.gecko) ? 'DOMMouseScroll' : 'mousewheel'
+	}
+</P><P>});
+</P><P>})();
+</P><P>
+/*
+---
+</P><P>script: Element.Style.js
+</P><P>description: Contains methods for interacting with the styles of Elements in a fashionable way.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Element
+</P><P>provides: [Element.Style]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Element.Properties.styles = {set: function(styles){
+	this.setStyles(styles);
+}};
+</P><P>Element.Properties.opacity = {
+</P><P>	set: function(opacity, novisibility){
+		if (!novisibility){
+			if (opacity == 0){
+				if (this.style.visibility != 'hidden') this.style.visibility = 'hidden';
+			} else {
+				if (this.style.visibility != 'visible') this.style.visibility = 'visible';
+			}
+		}
+		if (!this.currentStyle || !this.currentStyle.hasLayout) this.style.zoom = 1;
+		if (Browser.Engine.trident) this.style.filter = (opacity == 1) ? <I> : 'alpha(opacity=' + opacity * 100 + ')';</I>
+		this.style.opacity = opacity;
+		this.store('opacity', opacity);
+	},
+</P><P>	get: function(){
+		return this.retrieve('opacity', 1);
+	}
+</P><P>};
+</P><P>Element.implement({
+</P><P>	setOpacity: function(value){
+		return this.set('opacity', value, true);
+	},
+</P><P>	getOpacity: function(){
+		return this.get('opacity');
+	},
+</P><P>	setStyle: function(property, value){
+		switch (property){
+			case 'opacity': return this.set('opacity', parseFloat(value));
+			case 'float': property = (Browser.Engine.trident) ? 'styleFloat' : 'cssFloat';
+		}
+		property = property.camelCase();
+		if ($type(value) != 'string'){
+			var map = (Element.Styles.get(property) || '@').split(' ');
+			value = $splat(value).map(function(val, i){
+				if (!map[i]) return <I>;</I>
+				return ($type(val) == 'number') ? map[i].replace('@', Math.round(val)) : val;
+			}).join(' ');
+		} else if (value == String(Number(value))){
+			value = Math.round(value);
+		}
+		this.style[property] = value;
+		return this;
+	},
+</P><P>	getStyle: function(property){
+		switch (property){
+			case 'opacity': return this.get('opacity');
+			case 'float': property = (Browser.Engine.trident) ? 'styleFloat' : 'cssFloat';
+		}
+		property = property.camelCase();
+		var result = this.style[property];
+		if (!$chk(result)){
+			result = [];
+			for (var style in Element.ShortStyles){
+				if (property != style) continue;
+				for (var s in Element.ShortStyles[style]) result.push(this.getStyle(s));
+				return result.join(' ');
+			}
+			result = this.getComputedStyle(property);
+		}
+		if (result){
+			result = String(result);
+			var color = result.match(/rgba?\([\d\s,]+\)/);
+			if (color) result = result.replace(color[0], color[0].rgbToHex());
+		}
+		if (Browser.Engine.presto || (Browser.Engine.trident &amp;&amp; !$chk(parseInt(result, 10)))){
+			if (property.test(/^(height|width)$/)){
+				var values = (property == 'width') ? ['left', 'right'] : ['top', 'bottom'], size = 0;
+				values.each(function(value){
+					size += this.getStyle('border-' + value + '-width').toInt() + this.getStyle('padding-' + value).toInt();
+				}, this);
+				return this['offset' + property.capitalize()] - size + 'px';
+			}
+			if ((Browser.Engine.presto) &amp;&amp; String(result).test('px')) return result;
+			if (property.test(/(border(.+)Width|margin|padding)/)) return '0px';
+		}
+		return result;
+	},
+</P><P>	setStyles: function(styles){
+		for (var style in styles) this.setStyle(style, styles[style]);
+		return this;
+	},
+</P><P>	getStyles: function(){
+		var result = {};
+		Array.flatten(arguments).each(function(key){
+			result[key] = this.getStyle(key);
+		}, this);
+		return result;
+	}
+</P><P>});
+</P><P>Element.Styles = new Hash({
+	left: '@px', top: '@px', bottom: '@px', right: '@px',
+	width: '@px', height: '@px', maxWidth: '@px', maxHeight: '@px', minWidth: '@px', minHeight: '@px',
+	backgroundColor: 'rgb(@, @, @)', backgroundPosition: '@px @px', color: 'rgb(@, @, @)',
+	fontSize: '@px', letterSpacing: '@px', lineHeight: '@px', clip: 'rect(@px @px @px @px)',
+	margin: '@px @px @px @px', padding: '@px @px @px @px', border: '@px @ rgb(@, @, @) @px @ rgb(@, @, @) @px @ rgb(@, @, @)',
+	borderWidth: '@px @px @px @px', borderStyle: '@ @ @ @', borderColor: 'rgb(@, @, @) rgb(@, @, @) rgb(@, @, @) rgb(@, @, @)',
+	zIndex: '@', 'zoom': '@', fontWeight: '@', textIndent: '@px', opacity: '@'
+});
+</P><P>Element.ShortStyles = {margin: {}, padding: {}, border: {}, borderWidth: {}, borderStyle: {}, borderColor: {}};
+</P><P>['Top', 'Right', 'Bottom', 'Left'].each(function(direction){
+	var Short = Element.ShortStyles;
+	var All = Element.Styles;
+	['margin', 'padding'].each(function(style){
+		var sd = style + direction;
+		Short[style][sd] = All[sd] = '@px';
+	});
+	var bd = 'border' + direction;
+	Short.border[bd] = All[bd] = '@px @ rgb(@, @, @)';
+	var bdw = bd + 'Width', bds = bd + 'Style', bdc = bd + 'Color';
+	Short[bd] = {};
+	Short.borderWidth[bdw] = Short[bd][bdw] = All[bdw] = '@px';
+	Short.borderStyle[bds] = Short[bd][bds] = All[bds] = '@';
+	Short.borderColor[bdc] = Short[bd][bdc] = All[bdc] = 'rgb(@, @, @)';
+});
+</P><P>
+/*
+---
+</P><P>script: Element.Dimensions.js
+</P><P>description: Contains methods to work with size, scroll, or positioning of Elements and the window object.
+</P><P>license: MIT-style license.
+</P><P>credits:
+- Element positioning based on the [qooxdoo](<A href="http://qooxdoo.org/" class="external free" rel="nofollow">http://qooxdoo.org/</A>) code and smart browser fixes, [LGPL License](<A href="http://www.gnu.org/licenses/lgpl.html" class="external free" rel="nofollow">http://www.gnu.org/licenses/lgpl.html</A>).
+- Viewport dimensions based on [YUI](<A href="http://developer.yahoo.com/yui/" class="external free" rel="nofollow">http://developer.yahoo.com/yui/</A>) code, [BSD License](<A href="http://developer.yahoo.com/yui/license.html" class="external free" rel="nofollow">http://developer.yahoo.com/yui/license.html</A>).
+</P><P>requires:
+- /Element
+</P><P>provides: [Element.Dimensions]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>(function(){
+</P><P>Element.implement({
+</P><P>	scrollTo: function(x, y){
+		if (isBody(this)){
+			this.getWindow().scrollTo(x, y);
+		} else {
+			this.scrollLeft = x;
+			this.scrollTop = y;
+		}
+		return this;
+	},
+</P><P>	getSize: function(){
+		if (isBody(this)) return this.getWindow().getSize();
+		return {x: this.offsetWidth, y: this.offsetHeight};
+	},
+</P><P>	getScrollSize: function(){
+		if (isBody(this)) return this.getWindow().getScrollSize();
+		return {x: this.scrollWidth, y: this.scrollHeight};
+	},
+</P><P>	getScroll: function(){
+		if (isBody(this)) return this.getWindow().getScroll();
+		return {x: this.scrollLeft, y: this.scrollTop};
+	},
+</P><P>	getScrolls: function(){
+		var element = this, position = {x: 0, y: 0};
+		while (element &amp;&amp; !isBody(element)){
+			position.x += element.scrollLeft;
+			position.y += element.scrollTop;
+			element = element.parentNode;
+		}
+		return position;
+	},
+</P><P>	getOffsetParent: function(){
+		var element = this;
+		if (isBody(element)) return null;
+		if (!Browser.Engine.trident) return element.offsetParent;
+		while ((element = element.parentNode) &amp;&amp; !isBody(element)){
+			if (styleString(element, 'position') != 'static') return element;
+		}
+		return null;
+	},
+</P><P>	getOffsets: function(){
+		if (this.getBoundingClientRect){
+			var bound = this.getBoundingClientRect(),
+				html = document.id(this.getDocument().documentElement),
+				htmlScroll = html.getScroll(),
+				elemScrolls = this.getScrolls(),
+				elemScroll = this.getScroll(),
+				isFixed = (styleString(this, 'position') == 'fixed');
+</P><P>			return {
+				x: bound.left.toInt() + elemScrolls.x - elemScroll.x + ((isFixed) ? 0 : htmlScroll.x) - html.clientLeft,
+				y: bound.top.toInt()  + elemScrolls.y - elemScroll.y + ((isFixed) ? 0 : htmlScroll.y) - html.clientTop
+			};
+		}
+</P><P>		var element = this, position = {x: 0, y: 0};
+		if (isBody(this)) return position;
+</P><P>		while (element &amp;&amp; !isBody(element)){
+			position.x += element.offsetLeft;
+			position.y += element.offsetTop;
+</P><P>			if (Browser.Engine.gecko){
+				if (!borderBox(element)){
+					position.x += leftBorder(element);
+					position.y += topBorder(element);
+				}
+				var parent = element.parentNode;
+				if (parent &amp;&amp; styleString(parent, 'overflow') != 'visible'){
+					position.x += leftBorder(parent);
+					position.y += topBorder(parent);
+				}
+			} else if (element != this &amp;&amp; Browser.Engine.webkit){
+				position.x += leftBorder(element);
+				position.y += topBorder(element);
+			}
+</P><P>			element = element.offsetParent;
+		}
+		if (Browser.Engine.gecko &amp;&amp; !borderBox(this)){
+			position.x -= leftBorder(this);
+			position.y -= topBorder(this);
+		}
+		return position;
+	},
+</P><P>	getPosition: function(relative){
+		if (isBody(this)) return {x: 0, y: 0};
+		var offset = this.getOffsets(),
+				scroll = this.getScrolls();
+		var position = {
+			x: offset.x - scroll.x,
+			y: offset.y - scroll.y
+		};
+		var relativePosition = (relative &amp;&amp; (relative = document.id(relative))) ? relative.getPosition() : {x: 0, y: 0};
+		return {x: position.x - relativePosition.x, y: position.y - relativePosition.y};
+	},
+</P><P>	getCoordinates: function(element){
+		if (isBody(this)) return this.getWindow().getCoordinates();
+		var position = this.getPosition(element),
+				size = this.getSize();
+		var obj = {
+			left: position.x,
+			top: position.y,
+			width: size.x,
+			height: size.y
+		};
+		obj.right = obj.left + obj.width;
+		obj.bottom = obj.top + obj.height;
+		return obj;
+	},
+</P><P>	computePosition: function(obj){
+		return {
+			left: obj.x - styleNumber(this, 'margin-left'),
+			top: obj.y - styleNumber(this, 'margin-top')
+		};
+	},
+</P><P>	setPosition: function(obj){
+		return this.setStyles(this.computePosition(obj));
+	}
+</P><P>});
+</P><P>
+Native.implement([Document, Window], {
+</P><P>	getSize: function(){
+		if (Browser.Engine.presto || Browser.Engine.webkit){
+			var win = this.getWindow();
+			return {x: win.innerWidth, y: win.innerHeight};
+		}
+		var doc = getCompatElement(this);
+		return {x: doc.clientWidth, y: doc.clientHeight};
+	},
+</P><P>	getScroll: function(){
+		var win = this.getWindow(), doc = getCompatElement(this);
+		return {x: win.pageXOffset || doc.scrollLeft, y: win.pageYOffset || doc.scrollTop};
+	},
+</P><P>	getScrollSize: function(){
+		var doc = getCompatElement(this), min = this.getSize();
+		return {x: Math.max(doc.scrollWidth, min.x), y: Math.max(doc.scrollHeight, min.y)};
+	},
+</P><P>	getPosition: function(){
+		return {x: 0, y: 0};
+	},
+</P><P>	getCoordinates: function(){
+		var size = this.getSize();
+		return {top: 0, left: 0, bottom: size.y, right: size.x, height: size.y, width: size.x};
+	}
+</P><P>});
+</P><P>// private methods
+</P><P>var styleString = Element.getComputedStyle;
+</P><P>function styleNumber(element, style){
+	return styleString(element, style).toInt() || 0;
+};
+</P><P>function borderBox(element){
+	return styleString(element, '-moz-box-sizing') == 'border-box';
+};
+</P><P>function topBorder(element){
+	return styleNumber(element, 'border-top-width');
+};
+</P><P>function leftBorder(element){
+	return styleNumber(element, 'border-left-width');
+};
+</P><P>function isBody(element){
+	return (/^(?:body|html)$/i).test(element.tagName);
+};
+</P><P>function getCompatElement(element){
+	var doc = element.getDocument();
+	return (!doc.compatMode || doc.compatMode == 'CSS1Compat') ? doc.html : doc.body;
+};
+</P><P>})();
+</P><P>//aliases
+Element.alias('setPosition', 'position'); //compatability
+</P><P>Native.implement([Window, Document, Element], {
+</P><P>	getHeight: function(){
+		return this.getSize().y;
+	},
+</P><P>	getWidth: function(){
+		return this.getSize().x;
+	},
+</P><P>	getScrollTop: function(){
+		return this.getScroll().y;
+	},
+</P><P>	getScrollLeft: function(){
+		return this.getScroll().x;
+	},
+</P><P>	getScrollHeight: function(){
+		return this.getScrollSize().y;
+	},
+</P><P>	getScrollWidth: function(){
+		return this.getScrollSize().x;
+	},
+</P><P>	getTop: function(){
+		return this.getPosition().y;
+	},
+</P><P>	getLeft: function(){
+		return this.getPosition().x;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Selectors.js
+</P><P>description: Adds advanced CSS-style querying capabilities for targeting HTML Elements. Includes pseudo selectors.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Element
+</P><P>provides: [Selectors]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Native.implement([Document, Element], {
+</P><P>	getElements: function(expression, nocash){
+		expression = expression.split(',');
+		var items, local = {};
+		for (var i = 0, l = expression.length; i &lt; l; i++){
+			var selector = expression[i], elements = Selectors.Utils.search(this, selector, local);
+			if (i != 0 &amp;&amp; elements.item) elements = $A(elements);
+			items = (i == 0) ? elements : (items.item) ? $A(items).concat(elements) : items.concat(elements);
+		}
+		return new Elements(items, {ddup: (expression.length &gt; 1), cash: !nocash});
+	}
+</P><P>});
+</P><P>Element.implement({
+</P><P>	match: function(selector){
+		if (!selector || (selector == this)) return true;
+		var tagid = Selectors.Utils.parseTagAndID(selector);
+		var tag = tagid[0], id = tagid[1];
+		if (!Selectors.Filters.byID(this, id) || !Selectors.Filters.byTag(this, tag)) return false;
+		var parsed = Selectors.Utils.parseSelector(selector);
+		return (parsed) ? Selectors.Utils.filter(this, parsed, {}) : true;
+	}
+</P><P>});
+</P><P>var Selectors = {Cache: {nth: {}, parsed: {}}};
+</P><P>Selectors.RegExps = {
+	id: (/#([\w-]+)/),
+	tag: (/^(\w+|\*)/),
+	quick: (/^(\w+|\*)$/),
+	splitter: (/\s*([+&gt;~\s])\s*([a-zA-Z#.*:\[])/g),
+	combined: (/\.([\w-]+)|\[(\w+)(?:([!*^$~|]?=)([&quot;']?)([^\4]*?)\4)?\]|:([\w-]+)(?:\([&quot;']?(.*?)?[&quot;']?\)|$)/g)
+};
+</P><P>Selectors.Utils = {
+</P><P>	chk: function(item, uniques){
+		if (!uniques) return true;
+		var uid = $uid(item);
+		if (!uniques[uid]) return uniques[uid] = true;
+		return false;
+	},
+</P><P>	parseNthArgument: function(argument){
+		if (Selectors.Cache.nth[argument]) return Selectors.Cache.nth[argument];
+		var parsed = argument.match(/^([+-]?\d*)?([a-z]+)?([+-]?\d*)?$/);
+		if (!parsed) return false;
+		var inta = parseInt(parsed[1], 10);
+		var a = (inta || inta === 0) ? inta : 1;
+		var special = parsed[2] || false;
+		var b = parseInt(parsed[3], 10) || 0;
+		if (a != 0){
+			b--;
+			while (b &lt; 1) b += a;
+			while (b &gt;= a) b -= a;
+		} else {
+			a = b;
+			special = 'index';
+		}
+		switch (special){
+			case 'n': parsed = {a: a, b: b, special: 'n'}; break;
+			case 'odd': parsed = {a: 2, b: 0, special: 'n'}; break;
+			case 'even': parsed = {a: 2, b: 1, special: 'n'}; break;
+			case 'first': parsed = {a: 0, special: 'index'}; break;
+			case 'last': parsed = {special: 'last-child'}; break;
+			case 'only': parsed = {special: 'only-child'}; break;
+			default: parsed = {a: (a - 1), special: 'index'};
+		}
+</P><P>		return Selectors.Cache.nth[argument] = parsed;
+	},
+</P><P>	parseSelector: function(selector){
+		if (Selectors.Cache.parsed[selector]) return Selectors.Cache.parsed[selector];
+		var m, parsed = {classes: [], pseudos: [], attributes: []};
+		while ((m = Selectors.RegExps.combined.exec(selector))){
+			var cn = m[1], an = m[2], ao = m[3], av = m[5], pn = m[6], pa = m[7];
+			if (cn){
+				parsed.classes.push(cn);
+			} else if (pn){
+				var parser = Selectors.Pseudo.get(pn);
+				if (parser) parsed.pseudos.push({parser: parser, argument: pa});
+				else parsed.attributes.push({name: pn, operator: '=', value: pa});
+			} else if (an){
+				parsed.attributes.push({name: an, operator: ao, value: av});
+			}
+		}
+		if (!parsed.classes.length) delete parsed.classes;
+		if (!parsed.attributes.length) delete parsed.attributes;
+		if (!parsed.pseudos.length) delete parsed.pseudos;
+		if (!parsed.classes &amp;&amp; !parsed.attributes &amp;&amp; !parsed.pseudos) parsed = null;
+		return Selectors.Cache.parsed[selector] = parsed;
+	},
+</P><P>	parseTagAndID: function(selector){
+		var tag = selector.match(Selectors.RegExps.tag);
+		var id = selector.match(Selectors.RegExps.id);
+		return [(tag) ? tag[1] : '*', (id) ? id[1] : false];
+	},
+</P><P>	filter: function(item, parsed, local){
+		var i;
+		if (parsed.classes){
+			for (i = parsed.classes.length; i--; i){
+				var cn = parsed.classes[i];
+				if (!Selectors.Filters.byClass(item, cn)) return false;
+			}
+		}
+		if (parsed.attributes){
+			for (i = parsed.attributes.length; i--; i){
+				var att = parsed.attributes[i];
+				if (!Selectors.Filters.byAttribute(item, att.name, att.operator, att.value)) return false;
+			}
+		}
+		if (parsed.pseudos){
+			for (i = parsed.pseudos.length; i--; i){
+				var psd = parsed.pseudos[i];
+				if (!Selectors.Filters.byPseudo(item, psd.parser, psd.argument, local)) return false;
+			}
+		}
+		return true;
+	},
+</P><P>	getByTagAndID: function(ctx, tag, id){
+		if (id){
+			var item = (ctx.getElementById) ? ctx.getElementById(id, true) : Element.getElementById(ctx, id, true);
+			return (item &amp;&amp; Selectors.Filters.byTag(item, tag)) ? [item] : [];
+		} else {
+			return ctx.getElementsByTagName(tag);
+		}
+	},
+</P><P>	search: function(self, expression, local){
+		var splitters = [];
+</P><P>		var selectors = expression.trim().replace(Selectors.RegExps.splitter, function(m0, m1, m2){
+			splitters.push(m1);
+			return ':)' + m2;
+		}).split(':)');
+</P><P>		var items, filtered, item;
+</P><P>		for (var i = 0, l = selectors.length; i &lt; l; i++){
+</P><P>			var selector = selectors[i];
+</P><P>			if (i == 0 &amp;&amp; Selectors.RegExps.quick.test(selector)){
+				items = self.getElementsByTagName(selector);
+				continue;
+			}
+</P><P>			var splitter = splitters[i - 1];
+</P><P>			var tagid = Selectors.Utils.parseTagAndID(selector);
+			var tag = tagid[0], id = tagid[1];
+</P><P>			if (i == 0){
+				items = Selectors.Utils.getByTagAndID(self, tag, id);
+			} else {
+				var uniques = {}, found = [];
+				for (var j = 0, k = items.length; j &lt; k; j++) found = Selectors.Getters[splitter](found, items[j], tag, id, uniques);
+				items = found;
+			}
+</P><P>			var parsed = Selectors.Utils.parseSelector(selector);
+</P><P>			if (parsed){
+				filtered = [];
+				for (var m = 0, n = items.length; m &lt; n; m++){
+					item = items[m];
+					if (Selectors.Utils.filter(item, parsed, local)) filtered.push(item);
+				}
+				items = filtered;
+			}
+</P><P>		}
+</P><P>		return items;
+</P><P>	}
+</P><P>};
+</P><P>Selectors.Getters = {
+</P><P>	' ': function(found, self, tag, id, uniques){
+		var items = Selectors.Utils.getByTagAndID(self, tag, id);
+		for (var i = 0, l = items.length; i &lt; l; i++){
+			var item = items[i];
+			if (Selectors.Utils.chk(item, uniques)) found.push(item);
+		}
+		return found;
+	},
+</P><P>	'&gt;': function(found, self, tag, id, uniques){
+		var children = Selectors.Utils.getByTagAndID(self, tag, id);
+		for (var i = 0, l = children.length; i &lt; l; i++){
+			var child = children[i];
+			if (child.parentNode == self &amp;&amp; Selectors.Utils.chk(child, uniques)) found.push(child);
+		}
+		return found;
+	},
+</P><P>	'+': function(found, self, tag, id, uniques){
+		while ((self = self.nextSibling)){
+			if (self.nodeType == 1){
+				if (Selectors.Utils.chk(self, uniques) &amp;&amp; Selectors.Filters.byTag(self, tag) &amp;&amp; Selectors.Filters.byID(self, id)) found.push(self);
+				break;
+			}
+		}
+		return found;
+	},
+</P><P>	'~': function(found, self, tag, id, uniques){
+		while ((self = self.nextSibling)){
+			if (self.nodeType == 1){
+				if (!Selectors.Utils.chk(self, uniques)) break;
+				if (Selectors.Filters.byTag(self, tag) &amp;&amp; Selectors.Filters.byID(self, id)) found.push(self);
+			}
+		}
+		return found;
+	}
+</P><P>};
+</P><P>Selectors.Filters = {
+</P><P>	byTag: function(self, tag){
+		return (tag == '*' || (self.tagName &amp;&amp; self.tagName.toLowerCase() == tag));
+	},
+</P><P>	byID: function(self, id){
+		return (!id || (self.id &amp;&amp; self.id == id));
+	},
+</P><P>	byClass: function(self, klass){
+		return (self.className &amp;&amp; self.className.contains &amp;&amp; self.className.contains(klass, ' '));
+	},
+</P><P>	byPseudo: function(self, parser, argument, local){
+		return parser.call(self, argument, local);
+	},
+</P><P>	byAttribute: function(self, name, operator, value){
+		var result = Element.prototype.getProperty.call(self, name);
+		if (!result) return (operator == '!=');
+		if (!operator || value == undefined) return true;
+		switch (operator){
+			case '=': return (result == value);
+			case '*=': return (result.contains(value));
+			case '^=': return (result.substr(0, value.length) == value);
+			case '$=': return (result.substr(result.length - value.length) == value);
+			case '!=': return (result != value);
+			case '~=': return result.contains(value, ' ');
+			case '|=': return result.contains(value, '-');
+		}
+		return false;
+	}
+</P><P>};
+</P><P>Selectors.Pseudo = new Hash({
+</P><P>	// w3c pseudo selectors
+</P><P>	checked: function(){
+		return this.checked;
+	},
+</P><P>	empty: function(){
+		return !(this.innerText || this.textContent || <I>).length;</I>
+	},
+</P><P>	not: function(selector){
+		return !Element.match(this, selector);
+	},
+</P><P>	contains: function(text){
+		return (this.innerText || this.textContent || <I>).contains(text);</I>
+	},
+</P><P>	'first-child': function(){
+		return Selectors.Pseudo.index.call(this, 0);
+	},
+</P><P>	'last-child': function(){
+		var element = this;
+		while ((element = element.nextSibling)){
+			if (element.nodeType == 1) return false;
+		}
+		return true;
+	},
+</P><P>	'only-child': function(){
+		var prev = this;
+		while ((prev = prev.previousSibling)){
+			if (prev.nodeType == 1) return false;
+		}
+		var next = this;
+		while ((next = next.nextSibling)){
+			if (next.nodeType == 1) return false;
+		}
+		return true;
+	},
+</P><P>	'nth-child': function(argument, local){
+		argument = (argument == undefined) ? 'n' : argument;
+		var parsed = Selectors.Utils.parseNthArgument(argument);
+		if (parsed.special != 'n') return Selectors.Pseudo[parsed.special].call(this, parsed.a, local);
+		var count = 0;
+		local.positions = local.positions || {};
+		var uid = $uid(this);
+		if (!local.positions[uid]){
+			var self = this;
+			while ((self = self.previousSibling)){
+				if (self.nodeType != 1) continue;
+				count ++;
+				var position = local.positions[$uid(self)];
+				if (position != undefined){
+					count = position + count;
+					break;
+				}
+			}
+			local.positions[uid] = count;
+		}
+		return (local.positions[uid] % parsed.a == parsed.b);
+	},
+</P><P>	// custom pseudo selectors
+</P><P>	index: function(index){
+		var element = this, count = 0;
+		while ((element = element.previousSibling)){
+			if (element.nodeType == 1 &amp;&amp; ++count &gt; index) return false;
+		}
+		return (count == index);
+	},
+</P><P>	even: function(argument, local){
+		return Selectors.Pseudo['nth-child'].call(this, '2n+1', local);
+	},
+</P><P>	odd: function(argument, local){
+		return Selectors.Pseudo['nth-child'].call(this, '2n', local);
+	},
+</P><P>	selected: function(){
+		return this.selected;
+	},
+</P><P>	enabled: function(){
+		return (this.disabled === false);
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: DomReady.js
+</P><P>description: Contains the custom event domready.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Element.Event
+</P><P>provides: [DomReady]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Element.Events.domready = {
+</P><P>	onAdd: function(fn){
+		if (Browser.loaded) fn.call(this);
+	}
+</P><P>};
+</P><P>(function(){
+</P><P>	var domready = function(){
+		if (Browser.loaded) return;
+		Browser.loaded = true;
+		window.fireEvent('domready');
+		document.fireEvent('domready');
+	};
+</P><P>	window.addEvent('load', domready);
+</P><P>	if (Browser.Engine.trident){
+		var temp = document.createElement('div');
+		(function(){
+			($try(function(){
+				temp.doScroll(); // Technique by Diego Perini
+				return document.id(temp).inject(document.body).set('html', 'temp').dispose();
+			})) ? domready() : arguments.callee.delay(50);
+		})();
+	} else if (Browser.Engine.webkit &amp;&amp; Browser.Engine.version &lt; 525){
+		(function(){
+			(['loaded', 'complete'].contains(document.readyState)) ? domready() : arguments.callee.delay(50);
+		})();
+	} else {
+		document.addEvent('DOMContentLoaded', domready);
+	}
+</P><P>})();
+</P><P>
+/*
+---
+</P><P>script: JSON.js
+</P><P>description: JSON encoder and decoder.
+</P><P>license: MIT-style license.
+</P><P>See Also: &lt;<A href="http://www.json.org/" class="external free" rel="nofollow">http://www.json.org/</A>&gt;</P><P>requires:
+- /Array
+- /String
+- /Number
+- /Function
+- /Hash
+</P><P>provides: [JSON]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var JSON = new Hash(this.JSON &amp;&amp; {
+	stringify: JSON.stringify,
+	parse: JSON.parse
+}).extend({
+</P><P>	$specialChars: {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\f': '\\f', '\r': '\\r', '&quot;' : '\\&quot;', '\\': '\\\\'},
+</P><P>	$replaceChars: function(chr){
+		return JSON.$specialChars[chr] || '\\u00' + Math.floor(chr.charCodeAt() / 16).toString(16) + (chr.charCodeAt() % 16).toString(16);
+	},
+</P><P>	encode: function(obj){
+		switch ($type(obj)){
+			case 'string':
+				return '&quot;' + obj.replace(/[\x00-\x1f\\&quot;]/g, JSON.$replaceChars) + '&quot;';
+			case 'array':
+				return '[' + String(obj.map(JSON.encode).clean()) + ']';
+			case 'object': case 'hash':
+				var string = [];
+				Hash.each(obj, function(value, key){
+					var json = JSON.encode(value);
+					if (json) string.push(JSON.encode(key) + ':' + json);
+				});
+				return '{' + string + '}';
+			case 'number': case 'boolean': return String(obj);
+			case false: return 'null';
+		}
+		return null;
+	},
+</P><P>	decode: function(string, secure){
+		if ($type(string) != 'string' || !string.length) return null;
+		if (secure &amp;&amp; !(/^[,:{}\[\]0-9.\-+Eaeflnr-u \n\r\t]*$/).test(string.replace(/\\./g, '@').replace(/&quot;[^&quot;\\\n\r]*&quot;/g, <I>))) return null;</I>
+		return eval('(' + string + ')');
+	}
+</P><P>});
+</P><P>Native.implement([Hash, Array, String, Number], {
+</P><P>	toJSON: function(){
+		return JSON.encode(this);
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Cookie.js
+</P><P>description: Class for creating, reading, and deleting browser Cookies.
+</P><P>license: MIT-style license.
+</P><P>credits:
+- Based on the functions by Peter-Paul Koch (<A href="http://quirksmode.org" class="external free" rel="nofollow">http://quirksmode.org</A>).
+</P><P>requires:
+- /Options
+</P><P>provides: [Cookie]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Cookie = new Class({
+</P><P>	Implements: Options,
+</P><P>	options: {
+		path: false,
+		domain: false,
+		duration: false,
+		secure: false,
+		document: document
+	},
+</P><P>	initialize: function(key, options){
+		this.key = key;
+		this.setOptions(options);
+	},
+</P><P>	write: function(value){
+		value = encodeURIComponent(value);
+		if (this.options.domain) value += '; domain=' + this.options.domain;
+		if (this.options.path) value += '; path=' + this.options.path;
+		if (this.options.duration){
+			var date = new Date();
+			date.setTime(date.getTime() + this.options.duration * 24 * 60 * 60 * 1000);
+			value += '; expires=' + date.toGMTString();
+		}
+		if (this.options.secure) value += '; secure';
+		this.options.document.cookie = this.key + '=' + value;
+		return this;
+	},
+</P><P>	read: function(){
+		var value = this.options.document.cookie.match('(?:^|;)\\s*' + this.key.escapeRegExp() + '=([^;]*)');
+		return (value) ? decodeURIComponent(value[1]) : null;
+	},
+</P><P>	dispose: function(){
+		new Cookie(this.key, $merge(this.options, {duration: -1})).write(<I>);</I>
+		return this;
+	}
+</P><P>});
+</P><P>Cookie.write = function(key, value, options){
+	return new Cookie(key, options).write(value);
+};
+</P><P>Cookie.read = function(key){
+	return new Cookie(key).read();
+};
+</P><P>Cookie.dispose = function(key, options){
+	return new Cookie(key, options).dispose();
+};
+</P><P>
+/*
+---
+</P><P>script: Swiff.js
+</P><P>description: Wrapper for embedding SWF movies. Supports External Interface Communication.
+</P><P>license: MIT-style license.
+</P><P>credits: 
+- Flash detection &amp; Internet Explorer + Flash Player 9 fix inspired by SWFObject.
+</P><P>requires:
+- /Options
+- /$util
+</P><P>provides: [Swiff]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Swiff = new Class({
+</P><P>	Implements: [Options],
+</P><P>	options: {
+		id: null,
+		height: 1,
+		width: 1,
+		container: null,
+		properties: {},
+		params: {
+			quality: 'high',
+			allowScriptAccess: 'always',
+			wMode: 'transparent',
+			swLiveConnect: true
+		},
+		callBacks: {},
+		vars: {}
+	},
+</P><P>	toElement: function(){
+		return this.object;
+	},
+</P><P>	initialize: function(path, options){
+		this.instance = 'Swiff_' + $time();
+</P><P>		this.setOptions(options);
+		options = this.options;
+		var id = this.id = options.id || this.instance;
+		var container = document.id(options.container);
+</P><P>		Swiff.CallBacks[this.instance] = {};
+</P><P>		var params = options.params, vars = options.vars, callBacks = options.callBacks;
+		var properties = $extend({height: options.height, width: options.width}, options.properties);
+</P><P>		var self = this;
+</P><P>		for (var callBack in callBacks){
+			Swiff.CallBacks[this.instance][callBack] = (function(option){
+				return function(){
+					return option.apply(self.object, arguments);
+				};
+			})(callBacks[callBack]);
+			vars[callBack] = 'Swiff.CallBacks.' + this.instance + '.' + callBack;
+		}
+</P><P>		params.flashVars = Hash.toQueryString(vars);
+		if (Browser.Engine.trident){
+			properties.classid = 'clsid:D27CDB6E-AE6D-11cf-96B8-444553540000';
+			params.movie = path;
+		} else {
+			properties.type = 'application/x-shockwave-flash';
+			properties.data = path;
+		}
+		var build = '&lt;object id=&quot;' + id + '&quot;';
+		for (var property in properties) build += ' ' + property + '=&quot;' + properties[property] + '&quot;';
+		build += '&gt;';
+		for (var param in params){
+			if (params[param]) build += '&lt;param name=&quot;' + param + '&quot; value=&quot;' + params[param] + '&quot; /&gt;';
+		}
+		build += '&lt;/object&gt;';
+		this.object = ((container) ? container.empty() : new Element('div')).set('html', build).firstChild;
+	},
+</P><P>	replaces: function(element){
+		element = document.id(element, true);
+		element.parentNode.replaceChild(this.toElement(), element);
+		return this;
+	},
+</P><P>	inject: function(element){
+		document.id(element, true).appendChild(this.toElement());
+		return this;
+	},
+</P><P>	remote: function(){
+		return Swiff.remote.apply(Swiff, [this.toElement()].extend(arguments));
+	}
+</P><P>});
+</P><P>Swiff.CallBacks = {};
+</P><P>Swiff.remote = function(obj, fn){
+	var rs = obj.CallFunction('&lt;invoke name=&quot;' + fn + '&quot; returntype=&quot;javascript&quot;&gt;' + __flash__argumentsToXML(arguments, 2) + '&lt;/invoke&gt;');
+	return eval(rs);
+};
+</P><P>
+/*
+---
+</P><P>script: Fx.js
+</P><P>description: Contains the basic animation logic to be extended by all other Fx Classes.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Chain
+- /Events
+- /Options
+</P><P>provides: [Fx]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Fx = new Class({
+</P><P>	Implements: [Chain, Events, Options],
+</P><P>	options: {
+		/*
+		onStart: $empty,
+		onCancel: $empty,
+		onComplete: $empty,
+		*/
+		fps: 50,
+		unit: false,
+		duration: 500,
+		link: 'ignore'
+	},
+</P><P>	initialize: function(options){
+		this.subject = this.subject || this;
+		this.setOptions(options);
+		this.options.duration = Fx.Durations[this.options.duration] || this.options.duration.toInt();
+		var wait = this.options.wait;
+		if (wait === false) this.options.link = 'cancel';
+	},
+</P><P>	getTransition: function(){
+		return function(p){
+			return -(Math.cos(Math.PI * p) - 1) / 2;
+		};
+	},
+</P><P>	step: function(){
+		var time = $time();
+		if (time &lt; this.time + this.options.duration){
+			var delta = this.transition((time - this.time) / this.options.duration);
+			this.set(this.compute(this.from, this.to, delta));
+		} else {
+			this.set(this.compute(this.from, this.to, 1));
+			this.complete();
+		}
+	},
+</P><P>	set: function(now){
+		return now;
+	},
+</P><P>	compute: function(from, to, delta){
+		return Fx.compute(from, to, delta);
+	},
+</P><P>	check: function(){
+		if (!this.timer) return true;
+		switch (this.options.link){
+			case 'cancel': this.cancel(); return true;
+			case 'chain': this.chain(this.caller.bind(this, arguments)); return false;
+		}
+		return false;
+	},
+</P><P>	start: function(from, to){
+		if (!this.check(from, to)) return this;
+		this.from = from;
+		this.to = to;
+		this.time = 0;
+		this.transition = this.getTransition();
+		this.startTimer();
+		this.onStart();
+		return this;
+	},
+</P><P>	complete: function(){
+		if (this.stopTimer()) this.onComplete();
+		return this;
+	},
+</P><P>	cancel: function(){
+		if (this.stopTimer()) this.onCancel();
+		return this;
+	},
+</P><P>	onStart: function(){
+		this.fireEvent('start', this.subject);
+	},
+</P><P>	onComplete: function(){
+		this.fireEvent('complete', this.subject);
+		if (!this.callChain()) this.fireEvent('chainComplete', this.subject);
+	},
+</P><P>	onCancel: function(){
+		this.fireEvent('cancel', this.subject).clearChain();
+	},
+</P><P>	pause: function(){
+		this.stopTimer();
+		return this;
+	},
+</P><P>	resume: function(){
+		this.startTimer();
+		return this;
+	},
+</P><P>	stopTimer: function(){
+		if (!this.timer) return false;
+		this.time = $time() - this.time;
+		this.timer = $clear(this.timer);
+		return true;
+	},
+</P><P>	startTimer: function(){
+		if (this.timer) return false;
+		this.time = $time() - this.time;
+		this.timer = this.step.periodical(Math.round(1000 / this.options.fps), this);
+		return true;
+	}
+</P><P>});
+</P><P>Fx.compute = function(from, to, delta){
+	return (to - from) * delta + from;
+};
+</P><P>Fx.Durations = {'short': 250, 'normal': 500, 'long': 1000};
+</P><P>
+/*
+---
+</P><P>script: Fx.CSS.js
+</P><P>description: Contains the CSS animation logic. Used by Fx.Tween, Fx.Morph, Fx.Elements.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Fx
+- /Element.Style
+</P><P>provides: [Fx.CSS]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Fx.CSS = new Class({
+</P><P>	Extends: Fx,
+</P><P>	//prepares the base from/to object
+</P><P>	prepare: function(element, property, values){
+		values = $splat(values);
+		var values1 = values[1];
+		if (!$chk(values1)){
+			values[1] = values[0];
+			values[0] = element.getStyle(property);
+		}
+		var parsed = values.map(this.parse);
+		return {from: parsed[0], to: parsed[1]};
+	},
+</P><P>	//parses a value into an array
+</P><P>	parse: function(value){
+		value = $lambda(value)();
+		value = (typeof value == 'string') ? value.split(' ') : $splat(value);
+		return value.map(function(val){
+			val = String(val);
+			var found = false;
+			Fx.CSS.Parsers.each(function(parser, key){
+				if (found) return;
+				var parsed = parser.parse(val);
+				if ($chk(parsed)) found = {value: parsed, parser: parser};
+			});
+			found = found || {value: val, parser: Fx.CSS.Parsers.String};
+			return found;
+		});
+	},
+</P><P>	//computes by a from and to prepared objects, using their parsers.
+</P><P>	compute: function(from, to, delta){
+		var computed = [];
+		(Math.min(from.length, to.length)).times(function(i){
+			computed.push({value: from[i].parser.compute(from[i].value, to[i].value, delta), parser: from[i].parser});
+		});
+		computed.$family = {name: 'fx:css:value'};
+		return computed;
+	},
+</P><P>	//serves the value as settable
+</P><P>	serve: function(value, unit){
+		if ($type(value) != 'fx:css:value') value = this.parse(value);
+		var returned = [];
+		value.each(function(bit){
+			returned = returned.concat(bit.parser.serve(bit.value, unit));
+		});
+		return returned;
+	},
+</P><P>	//renders the change to an element
+</P><P>	render: function(element, property, value, unit){
+		element.setStyle(property, this.serve(value, unit));
+	},
+</P><P>	//searches inside the page css to find the values for a selector
+</P><P>	search: function(selector){
+		if (Fx.CSS.Cache[selector]) return Fx.CSS.Cache[selector];
+		var to = {};
+		Array.each(document.styleSheets, function(sheet, j){
+			var href = sheet.href;
+			if (href &amp;&amp; href.contains('://') &amp;&amp; !href.contains(document.domain)) return;
+			var rules = sheet.rules || sheet.cssRules;
+			Array.each(rules, function(rule, i){
+				if (!rule.style) return;
+				var selectorText = (rule.selectorText) ? rule.selectorText.replace(/^\w+/, function(m){
+					return m.toLowerCase();
+				}) : null;
+				if (!selectorText || !selectorText.test('^' + selector + '$')) return;
+				Element.Styles.each(function(value, style){
+					if (!rule.style[style] || Element.ShortStyles[style]) return;
+					value = String(rule.style[style]);
+					to[style] = (value.test(/^rgb/)) ? value.rgbToHex() : value;
+				});
+			});
+		});
+		return Fx.CSS.Cache[selector] = to;
+	}
+</P><P>});
+</P><P>Fx.CSS.Cache = {};
+</P><P>Fx.CSS.Parsers = new Hash({
+</P><P>	Color: {
+		parse: function(value){
+			if (value.match(/^#[0-9a-f]{3,6}$/i)) return value.hexToRgb(true);
+			return ((value = value.match(/(\d+),\s*(\d+),\s*(\d+)/))) ? [value[1], value[2], value[3]] : false;
+		},
+		compute: function(from, to, delta){
+			return from.map(function(value, i){
+				return Math.round(Fx.compute(from[i], to[i], delta));
+			});
+		},
+		serve: function(value){
+			return value.map(Number);
+		}
+	},
+</P><P>	Number: {
+		parse: parseFloat,
+		compute: Fx.compute,
+		serve: function(value, unit){
+			return (unit) ? value + unit : value;
+		}
+	},
+</P><P>	String: {
+		parse: $lambda(false),
+		compute: $arguments(1),
+		serve: $arguments(0)
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Fx.Tween.js
+</P><P>description: Formerly Fx.Style, effect to transition any CSS property for an element.
+</P><P>license: MIT-style license.
+</P><P>requires: 
+- /Fx.CSS
+</P><P>provides: [Fx.Tween, Element.fade, Element.highlight]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Fx.Tween = new Class({
+</P><P>	Extends: Fx.CSS,
+</P><P>	initialize: function(element, options){
+		this.element = this.subject = document.id(element);
+		this.parent(options);
+	},
+</P><P>	set: function(property, now){
+		if (arguments.length == 1){
+			now = property;
+			property = this.property || this.options.property;
+		}
+		this.render(this.element, property, now, this.options.unit);
+		return this;
+	},
+</P><P>	start: function(property, from, to){
+		if (!this.check(property, from, to)) return this;
+		var args = Array.flatten(arguments);
+		this.property = this.options.property || args.shift();
+		var parsed = this.prepare(this.element, this.property, args);
+		return this.parent(parsed.from, parsed.to);
+	}
+</P><P>});
+</P><P>Element.Properties.tween = {
+</P><P>	set: function(options){
+		var tween = this.retrieve('tween');
+		if (tween) tween.cancel();
+		return this.eliminate('tween').store('tween:options', $extend({link: 'cancel'}, options));
+	},
+</P><P>	get: function(options){
+		if (options || !this.retrieve('tween')){
+			if (options || !this.retrieve('tween:options')) this.set('tween', options);
+			this.store('tween', new Fx.Tween(this, this.retrieve('tween:options')));
+		}
+		return this.retrieve('tween');
+	}
+</P><P>};
+</P><P>Element.implement({
+</P><P>	tween: function(property, from, to){
+		this.get('tween').start(arguments);
+		return this;
+	},
+</P><P>	fade: function(how){
+		var fade = this.get('tween'), o = 'opacity', toggle;
+		how = $pick(how, 'toggle');
+		switch (how){
+			case 'in': fade.start(o, 1); break;
+			case 'out': fade.start(o, 0); break;
+			case 'show': fade.set(o, 1); break;
+			case 'hide': fade.set(o, 0); break;
+			case 'toggle':
+				var flag = this.retrieve('fade:flag', this.get('opacity') == 1);
+				fade.start(o, (flag) ? 0 : 1);
+				this.store('fade:flag', !flag);
+				toggle = true;
+			break;
+			default: fade.start(o, arguments);
+		}
+		if (!toggle) this.eliminate('fade:flag');
+		return this;
+	},
+</P><P>	highlight: function(start, end){
+		if (!end){
+			end = this.retrieve('highlight:original', this.getStyle('background-color'));
+			end = (end == 'transparent') ? '#fff' : end;
+		}
+		var tween = this.get('tween');
+		tween.start('background-color', start || '#ffff88', end).chain(function(){
+			this.setStyle('background-color', this.retrieve('highlight:original'));
+			tween.callChain();
+		}.bind(this));
+		return this;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Fx.Morph.js
+</P><P>description: Formerly Fx.Styles, effect to transition any number of CSS properties for an element using an object of rules, or CSS based selector rules.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Fx.CSS
+</P><P>provides: [Fx.Morph]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Fx.Morph = new Class({
+</P><P>	Extends: Fx.CSS,
+</P><P>	initialize: function(element, options){
+		this.element = this.subject = document.id(element);
+		this.parent(options);
+	},
+</P><P>	set: function(now){
+		if (typeof now == 'string') now = this.search(now);
+		for (var p in now) this.render(this.element, p, now[p], this.options.unit);
+		return this;
+	},
+</P><P>	compute: function(from, to, delta){
+		var now = {};
+		for (var p in from) now[p] = this.parent(from[p], to[p], delta);
+		return now;
+	},
+</P><P>	start: function(properties){
+		if (!this.check(properties)) return this;
+		if (typeof properties == 'string') properties = this.search(properties);
+		var from = {}, to = {};
+		for (var p in properties){
+			var parsed = this.prepare(this.element, p, properties[p]);
+			from[p] = parsed.from;
+			to[p] = parsed.to;
+		}
+		return this.parent(from, to);
+	}
+</P><P>});
+</P><P>Element.Properties.morph = {
+</P><P>	set: function(options){
+		var morph = this.retrieve('morph');
+		if (morph) morph.cancel();
+		return this.eliminate('morph').store('morph:options', $extend({link: 'cancel'}, options));
+	},
+</P><P>	get: function(options){
+		if (options || !this.retrieve('morph')){
+			if (options || !this.retrieve('morph:options')) this.set('morph', options);
+			this.store('morph', new Fx.Morph(this, this.retrieve('morph:options')));
+		}
+		return this.retrieve('morph');
+	}
+</P><P>};
+</P><P>Element.implement({
+</P><P>	morph: function(props){
+		this.get('morph').start(props);
+		return this;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Fx.Transitions.js
+</P><P>description: Contains a set of advanced transitions to be used with any of the Fx Classes.
+</P><P>license: MIT-style license.
+</P><P>credits:
+- Easing Equations by Robert Penner, &lt;<A href="http://www.robertpenner.com/easing/" class="external free" rel="nofollow">http://www.robertpenner.com/easing/</A>&gt;, modified and optimized to be used with MooTools.
+</P><P>requires:
+- /Fx
+</P><P>provides: [Fx.Transitions]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Fx.implement({
+</P><P>	getTransition: function(){
+		var trans = this.options.transition || Fx.Transitions.Sine.easeInOut;
+		if (typeof trans == 'string'){
+			var data = trans.split(':');
+			trans = Fx.Transitions;
+			trans = trans[data[0]] || trans[data[0].capitalize()];
+			if (data[1]) trans = trans['ease' + data[1].capitalize() + (data[2] ? data[2].capitalize() : <I>)];</I>
+		}
+		return trans;
+	}
+</P><P>});
+</P><P>Fx.Transition = function(transition, params){
+	params = $splat(params);
+	return $extend(transition, {
+		easeIn: function(pos){
+			return transition(pos, params);
+		},
+		easeOut: function(pos){
+			return 1 - transition(1 - pos, params);
+		},
+		easeInOut: function(pos){
+			return (pos &lt;= 0.5) ? transition(2 * pos, params) / 2 : (2 - transition(2 * (1 - pos), params)) / 2;
+		}
+	});
+};
+</P><P>Fx.Transitions = new Hash({
+</P><P>	linear: $arguments(0)
+</P><P>});
+</P><P>Fx.Transitions.extend = function(transitions){
+	for (var transition in transitions) Fx.Transitions[transition] = new Fx.Transition(transitions[transition]);
+};
+</P><P>Fx.Transitions.extend({
+</P><P>	Pow: function(p, x){
+		return Math.pow(p, x[0] || 6);
+	},
+</P><P>	Expo: function(p){
+		return Math.pow(2, 8 * (p - 1));
+	},
+</P><P>	Circ: function(p){
+		return 1 - Math.sin(Math.acos(p));
+	},
+</P><P>	Sine: function(p){
+		return 1 - Math.sin((1 - p) * Math.PI / 2);
+	},
+</P><P>	Back: function(p, x){
+		x = x[0] || 1.618;
+		return Math.pow(p, 2) * ((x + 1) * p - x);
+	},
+</P><P>	Bounce: function(p){
+		var value;
+		for (var a = 0, b = 1; 1; a += b, b /= 2){
+			if (p &gt;= (7 - 4 * a) / 11){
+				value = b * b - Math.pow((11 - 6 * a - 11 * p) / 4, 2);
+				break;
+			}
+		}
+		return value;
+	},
+</P><P>	Elastic: function(p, x){
+		return Math.pow(2, 10 * --p) * Math.cos(20 * p * Math.PI * (x[0] || 1) / 3);
+	}
+</P><P>});
+</P><P>['Quad', 'Cubic', 'Quart', 'Quint'].each(function(transition, i){
+	Fx.Transitions[transition] = new Fx.Transition(function(p){
+		return Math.pow(p, [i + 2]);
+	});
+});
+</P><P>
+/*
+---
+</P><P>script: Request.js
+</P><P>description: Powerful all purpose Request Class. Uses XMLHTTPRequest.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Element
+- /Chain
+- /Events
+- /Options
+- /Browser
+</P><P>provides: [Request]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>var Request = new Class({
+</P><P>	Implements: [Chain, Events, Options],
+</P><P>	options: {/*
+		onRequest: $empty,
+		onComplete: $empty,
+		onCancel: $empty,
+		onSuccess: $empty,
+		onFailure: $empty,
+		onException: $empty,*/
+		url: <I>,</I>
+		data: <I>,</I>
+		headers: {
+			'X-Requested-With': 'XMLHttpRequest',
+			'Accept': 'text/javascript, text/html, application/xml, text/xml, */*'
+		},
+		async: true,
+		format: false,
+		method: 'post',
+		link: 'ignore',
+		isSuccess: null,
+		emulation: true,
+		urlEncoded: true,
+		encoding: 'utf-8',
+		evalScripts: false,
+		evalResponse: false,
+		noCache: false
+	},
+</P><P>	initialize: function(options){
+		this.xhr = new Browser.Request();
+		this.setOptions(options);
+		this.options.isSuccess = this.options.isSuccess || this.isSuccess;
+		this.headers = new Hash(this.options.headers);
+	},
+</P><P>	onStateChange: function(){
+		if (this.xhr.readyState != 4 || !this.running) return;
+		this.running = false;
+		this.status = 0;
+		$try(function(){
+			this.status = this.xhr.status;
+		}.bind(this));
+		this.xhr.onreadystatechange = $empty;
+		if (this.options.isSuccess.call(this, this.status)){
+			this.response = {text: this.xhr.responseText, xml: this.xhr.responseXML};
+			this.success(this.response.text, this.response.xml);
+		} else {
+			this.response = {text: null, xml: null};
+			this.failure();
+		}
+	},
+</P><P>	isSuccess: function(){
+		return ((this.status &gt;= 200) &amp;&amp; (this.status &lt; 300));
+	},
+</P><P>	processScripts: function(text){
+		if (this.options.evalResponse || (/(ecma|java)script/).test(this.getHeader('Content-type'))) return $exec(text);
+		return text.stripScripts(this.options.evalScripts);
+	},
+</P><P>	success: function(text, xml){
+		this.onSuccess(this.processScripts(text), xml);
+	},
+</P><P>	onSuccess: function(){
+		this.fireEvent('complete', arguments).fireEvent('success', arguments).callChain();
+	},
+</P><P>	failure: function(){
+		this.onFailure();
+	},
+</P><P>	onFailure: function(){
+		this.fireEvent('complete').fireEvent('failure', this.xhr);
+	},
+</P><P>	setHeader: function(name, value){
+		this.headers.set(name, value);
+		return this;
+	},
+</P><P>	getHeader: function(name){
+		return $try(function(){
+			return this.xhr.getResponseHeader(name);
+		}.bind(this));
+	},
+</P><P>	check: function(){
+		if (!this.running) return true;
+		switch (this.options.link){
+			case 'cancel': this.cancel(); return true;
+			case 'chain': this.chain(this.caller.bind(this, arguments)); return false;
+		}
+		return false;
+	},
+</P><P>	send: function(options){
+		if (!this.check(options)) return this;
+		this.running = true;
+</P><P>		var type = $type(options);
+		if (type == 'string' || type == 'element') options = {data: options};
+</P><P>		var old = this.options;
+		options = $extend({data: old.data, url: old.url, method: old.method}, options);
+		var data = options.data, url = String(options.url), method = options.method.toLowerCase();
+</P><P>		switch ($type(data)){
+			case 'element': data = document.id(data).toQueryString(); break;
+			case 'object': case 'hash': data = Hash.toQueryString(data);
+		}
+</P><P>		if (this.options.format){
+			var format = 'format=' + this.options.format;
+			data = (data) ? format + '&amp;' + data : format;
+		}
+</P><P>		if (this.options.emulation &amp;&amp; !['get', 'post'].contains(method)){
+			var _method = '_method=' + method;
+			data = (data) ? _method + '&amp;' + data : _method;
+			method = 'post';
+		}
+</P><P>		if (this.options.urlEncoded &amp;&amp; method == 'post'){
+			var encoding = (this.options.encoding) ? '; charset=' + this.options.encoding : <I>;</I>
+			this.headers.set('Content-type', 'application/x-www-form-urlencoded' + encoding);
+		}
+</P><P>		if (this.options.noCache){
+			var noCache = 'noCache=' + new Date().getTime();
+			data = (data) ? noCache + '&amp;' + data : noCache;
+		}
+</P><P>		var trimPosition = url.lastIndexOf('/');
+		if (trimPosition &gt; -1 &amp;&amp; (trimPosition = url.indexOf('#')) &gt; -1) url = url.substr(0, trimPosition);
+</P><P>		if (data &amp;&amp; method == 'get'){
+			url = url + (url.contains('?') ? '&amp;' : '?') + data;
+			data = null;
+		}
+</P><P>		this.xhr.open(method.toUpperCase(), url, this.options.async);
+</P><P>		this.xhr.onreadystatechange = this.onStateChange.bind(this);
+</P><P>		this.headers.each(function(value, key){
+			try {
+				this.xhr.setRequestHeader(key, value);
+			} catch (e){
+				this.fireEvent('exception', [key, value]);
+			}
+		}, this);
+</P><P>		this.fireEvent('request');
+		this.xhr.send(data);
+		if (!this.options.async) this.onStateChange();
+		return this;
+	},
+</P><P>	cancel: function(){
+		if (!this.running) return this;
+		this.running = false;
+		this.xhr.abort();
+		this.xhr.onreadystatechange = $empty;
+		this.xhr = new Browser.Request();
+		this.fireEvent('cancel');
+		return this;
+	}
+</P><P>});
+</P><P>(function(){
+</P><P>var methods = {};
+['get', 'post', 'put', 'delete', 'GET', 'POST', 'PUT', 'DELETE'].each(function(method){
+	methods[method] = function(){
+		var params = Array.link(arguments, {url: String.type, data: $defined});
+		return this.send($extend(params, {method: method}));
+	};
+});
+</P><P>Request.implement(methods);
+</P><P>})();
+</P><P>Element.Properties.send = {
+</P><P>	set: function(options){
+		var send = this.retrieve('send');
+		if (send) send.cancel();
+		return this.eliminate('send').store('send:options', $extend({
+			data: this, link: 'cancel', method: this.get('method') || 'post', url: this.get('action')
+		}, options));
+	},
+</P><P>	get: function(options){
+		if (options || !this.retrieve('send')){
+			if (options || !this.retrieve('send:options')) this.set('send', options);
+			this.store('send', new Request(this.retrieve('send:options')));
+		}
+		return this.retrieve('send');
+	}
+</P><P>};
+</P><P>Element.implement({
+</P><P>	send: function(url){
+		var sender = this.get('send');
+		sender.send({data: this, url: url || sender.options.url});
+		return this;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Request.HTML.js
+</P><P>description: Extends the basic Request Class with additional methods for interacting with HTML responses.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Request
+- /Element
+</P><P>provides: [Request.HTML]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Request.HTML = new Class({
+</P><P>	Extends: Request,
+</P><P>	options: {
+		update: false,
+		append: false,
+		evalScripts: true,
+		filter: false
+	},
+</P><P>	processHTML: function(text){
+		var match = text.match(/&lt;body[^&gt;]*&gt;([\s\S]*?)&lt;\/body&gt;/i);
+		text = (match) ? match[1] : text;
+</P><P>		var container = new Element('div');
+</P><P>		return $try(function(){
+			var root = '&lt;root&gt;' + text + '&lt;/root&gt;', doc;
+			if (Browser.Engine.trident){
+				doc = new ActiveXObject('Microsoft.XMLDOM');
+				doc.async = false;
+				doc.loadXML(root);
+			} else {
+				doc = new DOMParser().parseFromString(root, 'text/xml');
+			}
+			root = doc.getElementsByTagName('root')[0];
+			if (!root) return null;
+			for (var i = 0, k = root.childNodes.length; i &lt; k; i++){
+				var child = Element.clone(root.childNodes[i], true, true);
+				if (child) container.grab(child);
+			}
+			return container;
+		}) || container.set('html', text);
+	},
+</P><P>	success: function(text){
+		var options = this.options, response = this.response;
+</P><P>		response.html = text.stripScripts(function(script){
+			response.javascript = script;
+		});
+</P><P>		var temp = this.processHTML(response.html);
+</P><P>		response.tree = temp.childNodes;
+		response.elements = temp.getElements('*');
+</P><P>		if (options.filter) response.tree = response.elements.filter(options.filter);
+		if (options.update) document.id(options.update).empty().set('html', response.html);
+		else if (options.append) document.id(options.append).adopt(temp.getChildren());
+		if (options.evalScripts) $exec(response.javascript);
+</P><P>		this.onSuccess(response.tree, response.elements, response.html, response.javascript);
+	}
+</P><P>});
+</P><P>Element.Properties.load = {
+</P><P>	set: function(options){
+		var load = this.retrieve('load');
+		if (load) load.cancel();
+		return this.eliminate('load').store('load:options', $extend({data: this, link: 'cancel', update: this, method: 'get'}, options));
+	},
+</P><P>	get: function(options){
+		if (options || ! this.retrieve('load')){
+			if (options || !this.retrieve('load:options')) this.set('load', options);
+			this.store('load', new Request.HTML(this.retrieve('load:options')));
+		}
+		return this.retrieve('load');
+	}
+</P><P>};
+</P><P>Element.implement({
+</P><P>	load: function(){
+		this.get('load').send(Array.link(arguments, {data: Object.type, url: String.type}));
+		return this;
+	}
+</P><P>});
+</P><P>
+/*
+---
+</P><P>script: Request.JSON.js
+</P><P>description: Extends the basic Request Class with additional methods for sending and receiving JSON data.
+</P><P>license: MIT-style license.
+</P><P>requires:
+- /Request JSON
+</P><P>provides: [Request.HTML]
+</P><P>...
+</P><UL><LI>/
+</LI></UL><P>Request.JSON = new Class({
+</P><P>	Extends: Request,
+</P><P>	options: {
+		secure: true
+	},
+</P><P>	initialize: function(options){
+		this.parent(options);
+		this.headers.extend({'Accept': 'application/json', 'X-Request': 'JSON'});
+	},
+</P><P>	success: function(text){
+		this.response.json = JSON.decode(text, this.options.secure);
+		this.onSuccess(this.response.json, text);
+	}
+</P><P>});
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2010.igem.org/Team:St_Andrews/mootools-1.2.4-core-nc.js">http://2010.igem.org/Team:St_Andrews/mootools-1.2.4-core-nc.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:St_Andrews/mootools-1.2.4-core-nc.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:St_Andrews/mootools-1.2.4-core-nc.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:St_Andrews/mootools-1.2.4-core-nc.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:St_Andrews/mootools-1.2.4-core-nc.js&amp;oldid=25211" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2010.igem.org:Privacy_policy" title="2010.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2010.igem.org:General_disclaimer" title="2010.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

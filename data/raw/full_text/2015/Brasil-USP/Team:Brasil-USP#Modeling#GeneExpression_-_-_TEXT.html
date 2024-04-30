@@ -1,0 +1,99 @@
+Team:Brasil-USP/Modeling/GeneExpression
+Toggle navigation
+Brasil-USP
+Home
+Project
+Description
+Brainstorming
+Design
+Reactors
+Results
+Modeling
+Lcp Bioinformatics
+Molecular Docking
+Promoters and Exportation
+Rubber degradation
+Judging Criteria
+Parts
+Parts
+Team Parts
+Assembly Maps
+Notebook
+Protocols
+Notebook
+Safety
+Policy&Practices
+Policy & Practices
+Human Practices
+ANIP
+CBL
+São Carlos 8
+RECUR
+Women in Science
+Patent
+USP Innovation Agency
+Events
+Meetup (Jamboré)
+Events
+Team
+Official Profile
+Like our Facebook page
+About our team
+Collaborations
+Attributions
+Sponsors
+Interlab
+Entrepreneurship
+Gene Expression
+Modeling results
+Table of contents
+Main objective
+Deterministic modeling
+RoxA and Lcp Production
+Kill Switch: hokD
+Fitting the parameters
+Fluctuation analysis
+    Here we show our models to predict gene expression from our main circuits using roxA and lcp. We also show a detailed study of the kill switch mechanism we have used.
+    The main process we want to model in this section is the expression and translation of the genes involved in our circuits. Qualitatively, this whole process is triggered by the attachment of an enzyme that synthesizes RNA, known as RNA polymerase (RNAP), to the DNA near a gene. Promoters contain specific DNA sequences such as response elements that provide a secure initial binding site for RNA polymerase and for proteins called transcription factors that recruit RNAP. Then, mRNA associated with that gene is generated which can then be translated into a protein by ribosomes. This second process (translation) is triggered when a ribosome binds at a special region, called Ribosomal Binding Site (RBS). At the end of the day, a protein is produced.
+    At this point, the protein might be in its function conformal structure or not. We will stop at this point for now and model this whole process from rather coarser level of details: we will simulate populations of mRNAs and proteins and predict their concentration over time. As a sneaky-peek  of what is to come, this is the basic prediction of our model:
+    Notice that when Rhamnose concentration (black line) drops, TetR also drops and HokD starts to be produced, killing the cell.
+Main objective
+    Before we start dwelling with our mathematical modeling, let's state what are our main objectives and goals with this model. We want to
+construct a model easily adjustable to a wide variety of cell strains, chassis and different protocols.
+predict accurately protein/enzyme concentration after long periods (stationary states).
+take into account the inducer concentration to evaluate enzyme production.
+    These are the main points we will keep in mind while developing our models. In especial, our objective 1 is the most fundamental of all: as this solution to rubber degradation sill still be scaled up to an industrial level, and considering that both chassis and strain will highly be modified in such process, fitting the exact parameters from our experiments should not be the number one priority. Conversely, we want a highly scalable model that can be easily adjusted according to easy experiments that can be performed once these parameters are chosen.
+Deterministic modeling
+    As mentioned above, we want to model the gene expression. Fundamentally, RNA polymerase (RNAP) binds to a transcription factor and triggers the transcription of a gene into mRNA; subsequently, ribosomes starts the translation of that mRNA into a protein/enzyme. The schematics below summarizes it.
+    Each process is based on the combination of two elements: first, a RNAP and the gene; then, ribosome and mRNA. The simplest way to model such combinations and their products is to use a Dynamical Systems approach 1,2, similar to techniques employed in Population Dynamics 3. For a introductory text on this subject, click here.
+RoxA and Lcp Production
+    In particular, we assume an inducible promoter such as pLac (BBa_R0010) or pRha (BBa_K914003) . Let \(P_{p}(t)\) be the concentration of promoter inducer over time, which will control the level of expression of our circuit. The concentration of RoxA and Lcp proteins are \(P_{r}(t)\) and \(P_{\ell}(t)\), respectively. Finally, TetR concentration is denoted by \(P_{t}(t)\), which blocks the Kill Switch mechanism, hindering cell growth by the production of HokD with concentration \(P_{h}(t)\).
+    Let's start defining the differential equation for the production of RoxA and Lcp. Their concentration depend only on the concentration of promoter inducer and their own degradation rate. Let's define \(\delta_r\) and \(\delta_{\ell}\) as the degradation rate of RoxA and Lcp respectively. Additionally, to set the promotion levels, we define the \(\beta\) parameter. Then, the differential equations become:
+\[ \frac{dP_{r}(t)}{dt} = - \delta_r P_{r}(t) + \beta \frac{P^n_{p}(t)}{K^n + P^n_{p}(t)} \]         \[ \frac{dP_{\ell}(t)}{dt} = - \delta_{\ell} P_{\ell}(t) + \beta \frac{P^n_{p}(t)}{K^n + P^n_{p}(t)} \]
+    Notice that we have modeled the promoter activity as a Hill function. Jointly, tetR will be also expressed and its differential equation can be written as follows:
+\[ \frac{dP_{t}(t)}{dt} = - \delta_{t} P_{t}(t) + \beta \frac{P^n_{p}(t)}{K^n + P^n_{p}(t)} \]
+To adjust the parameters, see below . For instance, below we show simulations where \(P_r(t)\) is evaluated with several different values of \(\delta_r\). They essentially change the half-life of the protein.
+Kill Switch: hokD
+    The Kill Switch mechanism induces a self-destruction mechanism, based on a toxic enzyme, HokD. It is regulated by pTet (BBa_R0040) . This assures cells won't leaeve. expression will then depend on \(P_t (t)\),
+\[ \frac{dP_{h}(t)}{dt} = - \delta_{h} P_{h}(t) + \beta_0 + \beta_t \frac{1}{\frac{P^n_{t}(t)}{K^n} + 1} , \]
+    where \(\beta_0\) is the leakeage term 2 and \(\beta_t\) defines the level of promotion of the tetR promoter. It is interesting to note that hok-RNA has a pretty long half-life time (about 30min 4) and it is believed that hokD-RNA may present similar properties. Thus, \(\delta_{h}^{-1}\) should be of order of several minutes.
+    The number of cells can also be estimated, and easily adjusted to experiments (see next section). In general, cells will tend to have a mostly steady growth rate. Particularly, this will in fact depend on RoxA and Lcp concentrations, since enzymes impair cellular growth 5. When HokD is expressed, then two trends start to compete: HokD triggers a self-destruction mechanism as new cells appear. A very simple model can be proposed to describe this time evolution:
+\[ \frac{dN(t)}{dt} = \eta \left( P_{r}(t), P_{\ell} (t) \right) - \delta_{k} P_{h}(t) , \]
+    These to trends are given by the rates \( \eta \left( P_{r}(t), P_{\ell} (t) \right) \)  and \( \delta_{k} P_{h}(t) \). Below, we show some simulations demonstrating the usual behavior behind this model.
+Fitting the parameters
+    We have shown all graphs with arbitrary units following topic number 1 of our main objectives. In this section, we quickly describe experiments to fit our parameters. Regarding their units, to fix all units you will only need to choose your concentration unit and a time scale. Often, you will not have concentrations, but fluorescence instead. If normalized by optical density, they can be used interchangeably. For instance, if your data is measured in hours and your concentrations are, say, PFU (Particular Fluorescence Units, i.e., your own units of fluoresnce), then units of \( beta \) will be \( \mbox{PFU} h^{-1} \). Conversely, if you have concentrations, say, in \(n\mbox{g} \mu \ell^{-1}\), then units of \( beta \) will be \( n\mbox{g} \, \mu \ell^{-1} h^{-1} \).
+    To measure parameters \(\beta\) and \(\beta_t\) part K1819000 can be easily used ( submitted this year by our team ) to link with RoxA, Lcp and TetR. Note that we have also submitted roxA and lcp genes in the BioBrick format , which should make this experiment easier. By measuring then the evolution of fluorescence per cell, \(\beta\) and (\beta_t\) can be easily fitted using a variety of methods such as minimizing quadratic error.
+    Degradation parameters \(\delta_x\) (with \(x=r, \ell, t, h\)) can be fitted using the same methodology, but measuring the half-time of the fluorescence decay. This should give \(2 / \mbox{log}_2(\delta_x)\).
+    In particular, to evaluate \( \delta_k \) a very simple experiment can be performed: using different concentrations of tetR, optical density (OD) can be measured over time. The lower the concentration of TetR proteins, the steeper the decay in OD. Measuring the half-life of this decay, we get \(2 / \mbox{log}_2(\delta_k)\). Unfortunately, due to time constraints our experiments were not conclusive.
+Fluctuation analysis
+    Deterministic models within a context of population dynamics (i.e., populations of chemicals evolving and interacting in time) are well suited for very large concentrations, where fluctuations are indeed suppressed and a clear average effect tends to dominate. If that is not the case, fluctuations are rather important and fundamental to describe the phenomenon. To describe some level of randomness in the system (such as the possibility of RNAp not binding to a promoter) we use Stochastic models . In general, chemical reactions are somewhat at the edge of both cases: fluctuations are expected and may give rise to interesting effects (such as stochastic resonance), but averages is a very good first step to describe our quantities of interest. However, there is a price to using Stochastic Processes for modeling: they are considerably more expensive and complex than their deterministic counterparts. Thus, beyond doubt, it would be essential for us to have some kind of control or estimation on fluctuations over the deterministic approach presented above. To achieve this, we will next introduce a classical technique in Stochastic Processes and show some analytical and numerical procedures to embed and investigate fluctuations in our modeling.
+    Interestingly enough, there is a way to closely related Stochastic and Deterministic models: it is not very hard to construct a Stochastic Process whose average dynamics matches quite well with a given Deterministic model. To better understand this bridge, suppose you have a stochastic process describing the evolution of a variable \(X(t)\). You want the average evolution of \(X(t)\) to match the dynamics a given Deterministic model. You can calculate the \(n\)-th order momentum \(\langle X^n \rangle (t) = E\big[X(t)^n\big]\), where \(E[\cdot]\) denotes a probability average (or expectation), as function of time. For instance, supposing you have a master equation (as we will below), then you can manipulate it into a differential equation for \(\langle X \rangle (t)\) (i.e., average of \(X\)) that depends on \(\langle X^2 \rangle (t)\). If you write another differential equation, from you master equation, for \(\langle X^2 \rangle (t)\) it will depend on \(\langle X^3 \rangle (t)\). Guess what? The equations will never close, always depending on higher and higher order momenta. This is a problem, since you would have an infinite number of equations to solve!!
+    The simples possible way to solve this issue is as follows. Thus, as a first approximation to the equation for \(\langle X \rangle (t)\) you can neglect \(\langle X^2 \rangle\) term as simply \(\langle X \rangle^2\), having then a equation that depends only on the first order momentum \(\langle X \rangle\). As a second approximation, you can go up to the equation for \(\langle X^2 \rangle (t)\) and regard \(\langle X^3 \rangle (t)\) as \(\langle X \rangle^3 (t)\). Then you will end up with two equations that depend only on \(\langle X \rangle (t)\) and \(\langle X^2 \rangle\). Techniques based on this principle are called momentum-closure techniques.
+References
+1. An Introduction to Systems Biology, by Uri Alon. Chapman and Hall/CRC.
+2. Control Theory and Systems Biology, by Pablo Iglesias & Brian Ingalls. MIT Press.
+3. Mathematical Biology, by James D. Murray. Springer.
+4. Omid R. Faridani et al. Competitive inhibition of natural antisense Sok-RNA interactions activates Hok-mediated cell killing in Escherichia coli. Nucleic Acids Research, 2006, 34:20, p. 5922
+5. Birke, J.; Rother, W.; Schmitt, G.; Jendrossek, D.Functional identification of rubber oxygenase (RoxA) in soil and marine myxobacteria. Appl Environ Microbiol, 2013, v.79(20), p. 6391-9
+© 2015 Brasil-USP Team · iGEM · IFSC · USP
+Back to top

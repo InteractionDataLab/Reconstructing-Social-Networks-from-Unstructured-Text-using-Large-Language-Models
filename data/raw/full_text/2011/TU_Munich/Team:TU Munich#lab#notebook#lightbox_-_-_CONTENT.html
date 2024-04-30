@@ -1,0 +1,120 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_TU_Munich_lab_notebook_lightbox"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:TU_Munich/lab/notebook/lightbox">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:TU_Munich/lab/notebook/lightbox&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:TU_Munich/lab/notebook/lightbox&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:TU_Munich/lab/notebook/lightbox&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:TU_Munich/lab/notebook/lightbox" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:TU Munich/lab/notebook/lightbox</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2011.igem.org</H3><DIV class="ui-corner-all subcontent tabcontent"><H1>Lightbox design</H1><P><B>People: Fabian, Leonhard</B></P><P>For the assays an apparatus to irradiate the bacteria with light of different wavelengths was needed.
+Basically any sufficiently dark box that is small enough to fit in your incubator is usable as chassis.
+</P><P>We used an old paperboard container and drilled some small holes into it to fix the LEDs (we used the wavelengths 450 for blue light activation, 650 for red light deactivation and 710 for red light activation).
+</P><P>On the inside the tubes with the bacteria need to be adequatly bound to the box such that they dont damage anything.
+</P><P>To do the dimming and on and off switching of LEDs we used a Arduino board with the following setup and code: 
+</P><H2><SPAN class="mw-headline" id="Setup">Setup</SPAN></H2><H2><SPAN class="mw-headline" id="Code">Code</SPAN></H2><PRE>
+int inPinmod = 2;
+int inPindim = 4;// the number of the input pin
+int redoffPin = 11;       // the number of the output pin
+int redonPin = 9;
+int blueonPin = 10;
+
+int state = 0;      // the current state of the output pin
+int readingmod;  
+int readingdim;  // the current reading from the input pin
+int previousmod = LOW; 
+int previousdim = LOW; // the previous reading from the input pin
+int intensity = 255;
+
+// the follow variables are long's because the time, measured in miliseconds,
+// will quickly become a bigger number than can be stored in an int.
+long modtime = 0;
+long dimtime = 0; // the last time the output pin was toggled
+long debounce = 200;   // the debounce time, increase if the output flickers
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(inPinmod, INPUT);
+  pinMode(inPindim, INPUT);
+  pinMode(redoffPin, OUTPUT);
+  pinMode(redonPin, OUTPUT);
+  pinMode(blueonPin, OUTPUT);
+}
+
+void loop()
+{
+  readingmod = digitalRead(inPinmod);
+  readingdim = digitalRead(inPindim);
+
+  // if the input just went from LOW and HIGH and we've waited long enough
+  // to ignore any noise on the circuit, toggle the output pin and remember
+  // the time
+  if (readingmod == HIGH &amp;&amp; previousmod == LOW &amp;&amp; millis() - modtime &gt; debounce) {
+    if (state &lt; 5)
+      state = state + 1;
+    else
+      state = 0;
+    modtime = millis();    
+    Serial.println(state);
+  }
+  if (readingdim == HIGH &amp;&amp; previousdim == LOW &amp;&amp; millis() - dimtime &gt; debounce) {
+    if (intensity &lt; 255) {
+      intensity = intensity + 64;
+      if (intensity == 64 ) {
+       intensity = 63;
+      }
+    }
+    else {
+      intensity = 0;
+    }
+    dimtime = millis();    
+    Serial.println(intensity);
+  }
+
+
+  switch (state) {
+    case 0:
+      analogWrite(redoffPin,  0);
+      analogWrite(redonPin, 0);  
+      analogWrite(blueonPin, 0);
+      break;    
+    case 1:
+      analogWrite(redoffPin, intensity);
+      analogWrite(redonPin, 0);  
+      analogWrite(blueonPin, 0);
+      break;
+    case 2:
+      analogWrite(redoffPin, 0);
+      analogWrite(redonPin, intensity);  
+      analogWrite(blueonPin, 0);
+      break;
+    case 3:
+      analogWrite(redoffPin, 0);
+      analogWrite(redonPin, 0);  
+      analogWrite(blueonPin, intensity);
+      break;
+    case 4:
+      analogWrite(redoffPin, 0);
+      analogWrite(redonPin, intensity);  
+      analogWrite(blueonPin, intensity);
+      break;
+    case 5:
+      analogWrite(redoffPin, intensity);
+      analogWrite(redonPin, 0);  
+      analogWrite(blueonPin, intensity);
+      break;
+    default: 
+      analogWrite(redoffPin, 0);
+      analogWrite(redonPin, 0);  
+      analogWrite(blueonPin, 0);
+      break;
+  }
+
+  previousmod = readingmod;
+  previousdim = readingdim;
+}
+
+
+
+</PRE></DIV></DIV><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2011.igem.org/Team:TU_Munich/lab/notebook/lightbox">http://2011.igem.org/Team:TU_Munich/lab/notebook/lightbox</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:TU_Munich/lab/notebook/lightbox" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:TU_Munich/lab/notebook/lightbox" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:TU_Munich/lab/notebook/lightbox&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:TU_Munich/lab/notebook/lightbox&amp;oldid=163282" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2011.igem.org:Privacy_policy" title="2011.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2011.igem.org:General_disclaimer" title="2011.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></BODY></HTML>

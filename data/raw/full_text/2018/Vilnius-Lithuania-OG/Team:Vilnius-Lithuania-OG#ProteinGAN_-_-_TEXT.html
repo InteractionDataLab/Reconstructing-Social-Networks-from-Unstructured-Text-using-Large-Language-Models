@@ -1,0 +1,171 @@
+Team:Vilnius-Lithuania-OG/ProteinGAN
+Collaborations
+Home
+Project
+Overview
+Design
+Design for Regulatory Parts
+Modelling
+Results
+Proof of Concept
+Measurement
+Improve
+Substrate Design Prospects
+Entrepreneurship
+Software
+Motivation
+Generative Adversarial Network – GAN
+Protein GAN
+Reaction GAN
+Parts
+Overview
+Basic Parts
+Composite Parts
+Collection
+Notebook
+Using the CAT-Seq
+Lab Journal
+Interlab
+Safety
+Human practices
+Human Practices
+Education and Public Engagement
+Collaborations
+People
+Team
+Attributions
+Sponsors
+Protein GAN
+Explore ProteinGAN
+Introduction
+Data gathering
+Building ProteinGAN
+Results
+Deeper look at ProteinGAN
+Introducton
+After seeing multiple successful applications of GAN (generative adversarial networks) in numerous of fields, we have decided to apply them to the field of synthetic biology for the creation of novel biological parts with useful functions. More specifically, we were interest in world’s cleanest and environmentally friendly catalyzers - enzymes. For many important reactions used in research or industry we don’t have the appropriate enzymes to catalyze them, and have not other option but to use chemical catalyzers.
+Thus, we have decided to build the world’s first Protein sequence Generative Adversarial Network (ProteinGAN) which would be capable to learn “what makes protein a protein”. We have started by acquiring and standardizing large number of protein sequences from public databases, which all had a specific class attributed to them.
+After in-depth literature analysis and a large number of in-silico prototypes we have built the appropriate GAN architecture for protein work. Finally - we have trained the neural networks with specific classes of enzymes. We have hoped they would learn how to generate the class of enzymes they were trained for, yet also deliver unique protein sequences for that class.
+All important technical details, architectural choices and detailed explanation of how ProteinGAN works can be found at the end of the page.
+In addition to that, we also provided a short guide on how to build and train your own ProteinGAN !
+Gathering the Protein Sequence data
+As an initial sequence database we used the full (reviewed + unreviewed) UniProtKB database. We selected the sequences which had a full EC number associated and filtered out the sequences which had been known to form heteromeric complexes. The resulting dataset was relatively sparse for our purpose, therefore we decided to upsample using the NCBI RefSeq non-redundant protein database (nrDB). We used MMseqs2 (Steinegger et al. 2017) to cluster our selected enzyme database using 90% sequence identity threshold and over 80% sequence coverage, which resulted in a total of 77,686 representative sequences. This step was taken to reduce the redundancy of sequence database which was used as a query database for the MMseqs2 search workflow. To upsample, we searched our clustered database against nrDB using these parameters: 30% sequence identity threshold, 80% sequence coverage, 7.5 sensitivity level; and afterwards extracted 98% identity representatives. The resulting database consisted of 409900 sequences, which were used to assemble training and test sets for ProteinGAN.
+Building the ProteinGAN
+ProteinGAN - generative adversarial network architecture that we developed and optimized to generate de novo proteins. Once trained, it outputs a desirable amount of proteins with the confidence level of sequences belonging to a functional class it was trained for.
+A Sub-neural network called discriminator learns how proteins look like by trying to distinguish between real and fake (generated) sequences. At the same time, another Sub-neural network called generator tries to fool it, by providing realistically looking generated protein sequences. Yet, the generator never actually sees any of the protein sequences.
+Over time, generator becomes so good that generated examples satisfy rules by which discriminator currently judges proteins. In order to, keep up with generator, discriminator needs to discover more sophisticated patterns in real data to able to distinguish real from fake. In turn, the generator will adjust generation of sequences to match those patterns in order to stay in competition with the discriminator.
+By the end of this competition, the generator will have learned how to generate proteins that share same patterns as real ones.
+Figure 1: High-level design of ProteinGAN. Generator learns to create realistic sequence embeddings (digital sequence representations) from random noise, which then are compared to real sequence embedding by the Discriminator. The learning process of such a neural network is a never-ending competition between the Generator and Discriminator.
+ProteinGAN results
+Using the architecture described below, we have successfully trained a generative network to create enzyme sequences belonging to the DNA helicase class. After the training we asked the ProteinGAN to generate us a DNA helicase enzyme and that is what we got:
+Seq1:
+MIGRILGGLLEKNPPHLIVDCHGVGYEVDVPQSTFYNLPQTGEKVVLLTQQIVREDAHLLYGFGTVEERSTFRELLKISGIGARQALAVLSGMSVPELAQAVTLQDAGRLTRVPGIGKKTAERLLLELKGKLGADLGDLAGAASYSDHAIDILNALLALGYNEKEALAAIKNVPAGTGVSEGIKLALKALSKG
+Remember, our ProteinGAN has never seen a protein sequence. This is the network’s interpretation of how an DNA helicase should look. Right of the bat, we saw that it successfully learnt that a protein sequence should start with Methionine - and that alone was outstanding, as it learned some rules of nature already!
+The networks have also captured that enzymes can have different sequence lengths - as GAN generates all of the outputs of the same length by default, some of the generated examples had a variable number of 0's attached after sequence of amino acids. For example, these two sequences have different lengths:
+1. Amino acid sequence of length 172 MHIIGINPGQAIVGYGIIEFQRSRVFGISYGFITTEHETANEERLRVIYNRLNEIVRHYDPDAIAVEELFFNKNVTTAYNVGHKAGVELLAALTQGLNIGEYTPMQLKQAVCGYGNANKKNVQEMVRLILGLEGIPKPDDAADAVALAICHQNTFLSELTKNIGKVRYCIGG00000000000000000000000000000000000000000000000000000000000000000000000000000000000
+2. Amino acid sequence of length 192 MIGRNHGVLIEKNPPRQLVDCHPVGYELDVPMSTFYTLPSLGERRSNLTQIMVREDAQILYGFATAAERQAFRMLVKISGIGARTALAVLSGMSVNEIANAVSKQDARLTRVPGVGKKTANRLLIELKGKLGADLGQAAAGNAPSDASVDILNALLALGYSEREPAEAIKLVPAGTGVSDGIKLALKTLSKG000000000000000000000000000000000000000000000000000000000000000
+Furthermore, by simply inspecting the sequence, we saw that it did not contain any strange patterns, like multiple repeats of the same amino-acid.
+Some more examples of what has the ProteinGAN created
+1. MIGRITGILLEKNPPHVELDVSGVGYEIEVPMSTFYNPPLTGERVSLQTHINVNEDAHLLYGFGTAQERQAQRQLTKVGGVGPRTALGVLSGMSVNELAEAIANQEANRLIHVPGIGKKTAERILLELRGKLGADVGVTPHVVADTSADLLNALLALGYNDREAGAALKSIPQSVGVSDGIKIALKALAR
+2. MLTHLKGKLVEKNPTEVVIDCQGVGYFVNLSLHTFSKIGDEESIQLFTHFNIKEDAYTLYGFNEKSERKLGRNLVGVSGIGQSTARTQLSSLTPDQIMQAIQSGDVAAVNAIKGIGARTAQRVIIDLKDKLIRLYSNDNVSTQKNNTHKEEALSALEVLGYVRKEAEKVITAIIRDQPEASVEDLLKTALKQL
+3. MRLIGIEPGQANTGRSIIEVQGSRFKIVEYSAITTEANTDIPTRLLHIYNEIECLNEKYHPEEQAYEELFFNKNQKTALSVGQRRIVLLLAAKQRGIAIIERTPKQVLQAVLGYGKAQKVNVQDMVKALLSLKEIPKPDDIADALAVALYHARGSSSDSMNKG
+4. MITNLRGHLVEKEPTDMVIDCHGVGYLVNISLHTFGLIPNSENVKLFTHLHVREDSHTLFGFVEATARAMFRLLIGVSGIGASTAQTMLSSIDPKILPNAIASDDVG
+TIQSIKGIGIKTAQRVIIDLKDKILKTYSLDEISFSNNNTNKDEALSALEVLGFVRKQSEKVVEKILKENPDASVESIIKLALKNL
+5. MIRHLNGKLVLKNPNHVVIHAGGVGYHINISLSTFSQLPDMDHLKLYTYLQVKEDAHTLYGFVEKNERELFRQLLSVSGVGASLARTMLSSLDPAELMGAIAQGDVR
+TIQSVKGIGTKTAQRIILDLKDKVVKLNGNDDNSIGSQTNNKEDKLSALEVLGFNKKKAEKAVDKILKEEGEATVETLIKMALKRI
+6. MVAHLQGKVVEKTPTQVVIESSGIGYNVNLSLHTYSLIPSMDNIKLYTKLQVREDSQTLYGFVEKSERELFHKLISVSGIGCSLARTMLSSLDPKQIIDAIASGDVG
+TIQSRKGIGTKTAQRVIIDLKDKVLKVYEIDEVSKQDNNTRRDDALSALEVLGFTKKTSEKVGDKIVKKNPEATVEALIKTALKHLG
+We have then compared generated sequence with sequences from dataset which we used for training - the generated sequence was not in the dataset!
+We used BLAST (Basic Local Alignment Search Tool) to compare generated protein with the rest of known proteins. Results were astonishing: generated sequence was not only similar to DNA Helicase enzymes, but also had identity score which ranged from 89% to 86% (Table 1).
+Blast hit number
+Identity
+e.value
+Enzyme Class
+1
+89%
+2e-117
+DNA Helicase
+2
+89%
+2e-117
+DNA Helicase
+3
+89%
+1e-116
+DNA Helicase
+Table 2: Top three hits from BLAST for Seq1 (see above)
+Sequences of the three first blast hits
+Blast Hit 1: MIGRIAGVLLEKNPPHLLVDCNGVGYEVDVPMSTFYNLPSTGERVVLLTQMIVREDAHLLYGFGTAEERSTFRELLKISGIGARMALAVLSGMSVHELAQTVTMQDAARLTRVPGIGKKTAERLLLELKGKIGADLGAMAGAASASDHASDILNALLALGYSEKEALAAVKNVPAGTGVSEGIKLALKALSKG
+Blast Hit 2: MIGRIAGVLLEKNPPHLLIDCNGVGYEVDVPMSTFYNLPSTGERVVLLTQMIVREDAHLLYGFGTAEERSTFRELLKISGIGARMALAVLSGMSVHELAQTVTMQDAARLTRVPGIGKKTAERLLLELKGKIGADLGAMAGAASASDHASDILNALLALGYSEKEALAAVKNVPAGTGVSEGIKLALKALSKG
+Blast Hit 3: MIGRIAGVLLEKNPPHLLVDCNGVGYEVDVPMSTFYNLPSTGERVVLLTQMIVREDAHLLYGFGTAEERSTFRELLKITGIGARMALAVLSGMSVHELAQTVTMQDAARLTRVPGIGKKTAERLLLELKGKIGADLGALAGAASASDHASDILNALIALGYSEKEALAAIKNVPAGTGVSEGIKLALKALSKG
+This is how generated sequence looks like compared with the first BLAST hits:
+Figure 3. Generated sequence and top three BLAST hits alignment. Matching amino acids highlighted in red, synonymous - in yellow. Figure generated using ESPript 3.0 (Robert and Gouet, 2014).
+This amount of similarity gives us confidence that generated protein could perform same function as proteins from the training set.
+Conclusions
+We have successfully built a novel Generative Adversarial Network for novel Protein generation and then showed that our ProteinGAN is capable of learning the rules and patterns of protein sequences without ever seeing one. To our surprise - the ProteinGAN generated sequences that were not only unique compared to the dataset the networks were trained with, but at the same time being similar to the members of the same enzyme class from public databases.
+Therefore, we can confidently say that ProteinGAN is a fully functional neural network that has the proven potential of creating novel and useful synthetic biological parts.
+Deeper look at ProteinGAN
+Data preprocessing
+In order to use collected data we had to transformed it in a way that is suitable for neural networks. That meant that letters representing amino acids had to be translated to numeric representation. As a result, each amino acid has been encoded into embedding vector of 8 physicochemical attributes (Kawashima, Ogata and Kanehisa, 1998). We opted for using embedding vector due to its memory efficiency in comparison to one-hot encoding technique. In one-hot encoding, the amino acid would be turned in the vector of length 20 with 19 zeros and single 1, whereas with embedding vector, we can use vector which is 2.5 times smaller (See Figure 4). What is more, neural network also received experimentally gathered properties about each individual amino acid.
+One-hot encoding:
+A
+1
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+Embedding:
+Figure 4
+Training process of ProteinGAN
+Generator receives a set of numbers from random gaussian distribution called noise which is passed through pre-defined number of filters that contain trainable parameters. These filters are arranged in blocks called residual blocks. After each block the length of the input increases until it matches the length of a real protein (analogy to increasing resolution in image generation) (Figure 2). The last layer ensures that the range of values and shape matches original data.
+Figure 5. Visualization of protein generation
+Discriminator receives generated and real sequences and passes them through the network containing same size filters stacked in reversed order compared to generator (in order to not overpower one over another). At the end, discriminator arrives to a single number for each sequence that corresponds to the confidence level of discriminator that a particular resembles natural protein sequences.
+Using the scores from discriminator, each part of the GAN is evaluated using loss function.
+Hinge loss where D - function of discriminator that returns a single number for each sequence, G - a function of generator that takes noise as an input and returns sequence of amino acids. N - the number of examples looked in one step.
+Intuitively, this means that discriminator will do well if it assigns low scores to generated examples and high to real ones. On the other hand, generator is penalized if generated examples are scored low. These scores drive the direction of how parameters are being tweaked to improve the scores of discriminator and generator separately.
+As generator and discriminator have opposite goals, they compete against each other in so called mini-max game. Forward pass and backpropagation is repeated until the generated sequences are not improving further or is hardly distinguishable from real ones.
+To train ProteinGAN we used Google cloud instance with NVIDIA Tesla P100 GPU (16GB). Training took approximately 60h for each class which contained at least 20000 unique proteins. Entire network contained ~4M trainable parameters. For optimization Adam optimizer has been chosen with learning rates of 0,0001 for discriminator and generator (β1 = 0, β2 = 0,9). Both discriminator and generator were trained the same amount of steps.
+ProteinGAN Architecture details
+ProteinGAN networks are comprised of residual blocks that showed the best performance in ImageNet challenges. They are also a widely adopted in various implementation of GANs. Each block in discriminator contains 3 convolution layers with filter size of 3x3. The generator residual blocks consist of two deconvolution layers (transposed convolution) and one convolution block with the same filter size of 3x3 (see Figure 6).
+Figure 6. Residual Blocks
+We have experimented with 3 up-sampling techniques: Nearest Neighbor, Transposed Convolutions (deconvolutions)  and Sub-Pixel Convolutions (Shi et al., 2016). After conducting numerous experiments, we have chosen Transposed Convolutions as the best suited for dealing with proteins.
+Figure 7: Architecture of generator and discriminator
+The addition of Dilation into ProteinGAN
+Convolution filters are very good at detecting local features, but it has limitations when it comes to long distance relationship. As a result, a lot of deep learning algorithms uses RNN (Recurrent Neural Network) approach when it comes to sequences. However, it has been showed that convolution filters with dilation outperforms RNN (Bai, Kolter and Koltun, 2018). The idea of dilation is to increase receptive field without increasing the number of parameters by introducing gaps into convolution kernels (Figure 8). Dilation rate was applied to one convolution filter in each residual block. The dilation rate was increased by 2 in each consecutive block. In this way by the last layer of the network, filters had large enough receptive field to learn long-distance relationships.
+Figure 8: (a) dilation rate equals 1 (standard convolution), (b) dilation rate equals 2, (c) dilation rate equals 4. Red dots are where 3x3 filter is applied, colored squares show receptive field given previous convolutions. Source: (Yu and Koltun, 2016)
+Self-Attention
+Different areas of protein have different responsibilities in overall protein behaviour. In order to for network to capture this, self-attention mechanism (Zhang et al., 2018) has been implemented. To put it simply, it is a number of layers that highlights different areas of importance across the entire sequence. There are 64 such filters in ProteinGAN and ReactionGAN implementations.
+Figure 9: Source: (Zhang et al., 2018)
+Spectrum normalization
+One of the biggest issue then implementing GAN is the stability of the training. In practise a lot of GAN implementations suffer from diminishing (very small) or exploding (enormously big) gradients. In both cases GANs are not capable to learn patterns in data successfully. To mitigate this issue,  spectrum normalization technique  (Miyato et al., 2018) was used. It is regularization method to constrain the Lipschitz constant of the weights. It has been shown that it works successfully even for a large and complex datasets such as ImageNet (Brock, Donahue and Simonyan, 2018).
+Mode collapse
+Given original GAN formulation, there is nothing to prevent generator from generating a single, very realistic example to fool the discriminator. Such scenario is known as mode collapse. It happens when generator learns to ignore the input (random numbers). Logically, it is an efficient way for generator to start generating examples that could fool discriminator. However, it is not desirable behaviour and it eventually cripples the training as discriminator can easily remember generated examples. While working with proteins, we observed that this issue is even more severe in comparison to images. In scientific community, a lot of different approaches were proposed to address the mode collapse issue: Unrolled GAN (Metz et al., 2017), Dual Discriminator (Nguyen et al., 2017), Mini batch Discriminator (Salimans et al., 2016) to name a few. We preferred Mini Batch Discriminator approach due to its simplicity and minimal overhead. Mini Batch Discriminator works an extra layer in the network that computes the standard deviation across the batch of examples (batch contains only real, or only fake sequences). If the batch contains a small variety of examples standard deviation will be low and discriminator will be able to use this information to lower the final score for each example in the batch. ProteinGAN follows the approach proposed by authors of Progressively growing GAN (Karras et al., 2018).
+Click here to find what we did next
+References
+Bai, S., Kolter, J. and Koltun, V. (2018). An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling. [online] Arxiv.org. Available at:
+Brock, A., Donahue, J. and Simonyan, K. (2018). Large Scale GAN Training for High Fidelity Natural Image Synthesis. [online] Arxiv.org. Available at: https://arxiv.org/abs/1809.11096 [Accessed 14 Oct. 2018].
+Karras, T., Aila, T., Laine, S. and Lehtinen, J. (2018). Progressive Growing of GANs for Improved Quality, Stability, and Variation. [online] Arxiv.org. Available at: https://arxiv.org/abs/1710.10196 [Accessed 14 Oct. 2018].
+Kawashima, S., Ogata, H., & Kanehisa, M. (1999). AAindex: Amino acid index database. Nucleic Acids Research, 27(1), 368–369. http://doi.org/10.1093/nar/27.1.368
+https://arxiv.org/abs/1803.01271 [Accessed 13 Oct. 2018].
+Metz, L., Poole, B., Pfau, D. and Sohl-Dickstein, J. (2017). Unrolled Generative Adversarial Networks. [online] Arxiv.org. Available at: https://arxiv.org/abs/1611.02163 [Accessed 14 Oct. 2018].
+Miyato, T., Kataoka, T., Koyama, M. and Yoshida, Y. (2018). Spectral Normalization for Generative Adversarial Networks. [online] Arxiv.org. Available at: https://arxiv.org/abs/1802.05957 [Accessed 14 Oct. 2018].
+Nguyen, T., Le, T., Vu, H. and Phung, D. (2017). Dual Discriminator Generative Adversarial Nets. [online] Arxiv.org. Available at: https://arxiv.org/abs/1709.03831 [Accessed 14 Oct. 2018].
+Robert, X., & Gouet, P. (2014). Deciphering key features in protein structures with the new ENDscript server. Nucleic Acids Research, 42(W1), 320–324. http://doi.org/10.1093/nar/gku316
+Salimans, T., Goodfellow, I., Zaremba, W., Cheung, V., Radford, A. and Chen, X. (2016). Improved Techniques for Training GANs. [online] Arxiv.org. Available at: https://arxiv.org/abs/1606.03498 [Accessed 14 Oct. 2018].
+Yu, F. and Koltun, V. (2016). Multi-Scale Context Aggregation by Dilated Convolutions. [online] Arxiv.org. Available at: https://arxiv.org/abs/1511.07122 [Accessed 14 Oct. 2018].
+Zhang, H., Goodfellow, I., Metaxas, D. and Odena, A. (2018). Self-Attention Generative Adversarial Networks. [online] Arxiv.org. Available at: https://arxiv.org/abs/1805.08318 [Accessed 14 Oct. 2018].

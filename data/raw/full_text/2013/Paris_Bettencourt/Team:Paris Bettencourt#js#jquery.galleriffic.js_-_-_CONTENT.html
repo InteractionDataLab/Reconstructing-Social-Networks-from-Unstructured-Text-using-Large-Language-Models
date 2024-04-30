@@ -1,0 +1,820 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Paris_Bettencourt_js_jquery_galleriffic_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Paris_Bettencourt/js/jquery.galleriffic.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Paris_Bettencourt/js/jquery.galleriffic.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Bettencourt/js/jquery.galleriffic.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Bettencourt/js/jquery.galleriffic.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Paris_Bettencourt/js/jquery.galleriffic.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Paris Bettencourt/js/jquery.galleriffic.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>/**
+</P><PRE>* jQuery Galleriffic plugin
+*
+* Copyright (c) 2008 Trent Foley (<A href="http://trentacular.com" class="external free" rel="nofollow">http://trentacular.com</A>)
+* Licensed under the MIT License:
+*   <A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>
+*
+* Much thanks to primary contributer Ponticlaro (<A href="http://www.ponticlaro.com" class="external free" rel="nofollow">http://www.ponticlaro.com</A>)
+*/
+</PRE><DL><DT>(function($) {
+</DT></DL><P>	// Globally keep track of all images by their unique hash.  Each item is an image data object.
+	var allImages = {};
+	var imageCounter = 0;
+</P><P>	// Galleriffic static class
+	$.galleriffic = {
+		version: '2.0.1',
+</P><P>		// Strips invalid characters and any leading # characters
+		normalizeHash: function(hash) {
+			return hash.replace(/^.*#/, <I>).replace(/\?.*$/, </I>);
+		},
+</P><P>		getImage: function(hash) {
+			if (!hash)
+				return undefined;
+</P><P>			hash = $.galleriffic.normalizeHash(hash);
+			return allImages[hash];
+		},
+</P><P>		// Global function that looks up an image by its hash and displays the image.
+		// Returns false when an image is not found for the specified hash.
+		// @param {String} hash This is the unique hash value assigned to an image.
+		gotoImage: function(hash) {
+			var imageData = $.galleriffic.getImage(hash);
+			if (!imageData)
+				return false;
+</P><P>			var gallery = imageData.gallery;
+			gallery.gotoImage(imageData);
+</P><P>			return true;
+		},
+</P><P>		// Removes an image from its respective gallery by its hash.
+		// Returns false when an image is not found for the specified hash or the
+		// specified owner gallery does match the located images gallery.
+		// @param {String} hash This is the unique hash value assigned to an image.
+		// @param {Object} ownerGallery (Optional) When supplied, the located images
+		// gallery is verified to be the same as the specified owning gallery before
+		// performing the remove operation.
+		removeImageByHash: function(hash, ownerGallery) {
+			var imageData = $.galleriffic.getImage(hash);
+			if (!imageData)
+				return false;
+</P><P>			var gallery = imageData.gallery;
+			if (ownerGallery &amp;&amp; ownerGallery != gallery)
+				return false;
+</P><P>			return gallery.removeImageByIndex(imageData.index);
+		}
+	};
+</P><P>	var defaults = {
+		delay:                     3000,
+		numThumbs:                 20,
+		preloadAhead:              40, // Set to -1 to preload all images
+		enableTopPager:            false,
+		enableBottomPager:         true,
+		maxPagesToShow:            7,
+		imageContainerSel:         <I>,</I>
+		captionContainerSel:       <I>,</I>
+		controlsContainerSel:      <I>,</I>
+		loadingContainerSel:    <I>,</I>
+		renderSSControls:          true,
+		renderNavControls:         true,
+		playLinkText:              'Play',
+		pauseLinkText:             'Pause',
+		prevLinkText:              'Previous',
+		nextLinkText:              'Next',
+		nextPageLinkText:          'Next ›',
+		prevPageLinkText:          '‹ Prev',
+		enableHistory:             false,
+		enableKeyboardNavigation:  true,
+		autoStart:                 false,
+		syncTransitions:           false,
+		defaultTransitionDuration: 1000,
+		onSlideChange:             undefined, // accepts a delegate like such: function(prevIndex, nextIndex) { ... }
+		onTransitionOut:           undefined, // accepts a delegate like such: function(slide, caption, isSync, callback) { ... }
+		onTransitionIn:            undefined, // accepts a delegate like such: function(slide, caption, isSync) { ... }
+		onPageTransitionOut:       undefined, // accepts a delegate like such: function(callback) { ... }
+		onPageTransitionIn:        undefined, // accepts a delegate like such: function() { ... }
+		onImageAdded:              undefined, // accepts a delegate like such: function(imageData, $li) { ... }
+		onImageRemoved:            undefined  // accepts a delegate like such: function(imageData, $li) { ... }
+	};
+</P><P>	// Primary Galleriffic initialization function that should be called on the thumbnail container.
+	$.fn.galleriffic = function(settings) {
+		//  Extend Gallery Object
+		$.extend(this, {
+			// Returns the version of the script
+			version: $.galleriffic.version,
+</P><P>			// Current state of the slideshow
+			isSlideshowRunning: false,
+			slideshowTimeout: undefined,
+</P><P>			// This function is attached to the click event of generated hyperlinks within the gallery
+			clickHandler: function(e, link) {
+				this.pause();
+</P><P>				if (!this.enableHistory) {
+					// The href attribute holds the unique hash for an image
+					var hash = $.galleriffic.normalizeHash($(link).attr('href'));
+					$.galleriffic.gotoImage(hash);
+					e.preventDefault();
+				}
+			},
+</P><P>			// Appends an image to the end of the set of images.  Argument listItem can be either a jQuery DOM element or arbitrary html.
+			// @param listItem Either a jQuery object or a string of html of the list item that is to be added to the gallery.
+			appendImage: function(listItem) {
+				this.addImage(listItem, false, false);
+				return this;
+			},
+</P><P>			// Inserts an image into the set of images.  Argument listItem can be either a jQuery DOM element or arbitrary html.
+			// @param listItem Either a jQuery object or a string of html of the list item that is to be added to the gallery.
+			// @param {Integer} position The index within the gallery where the item shouold be added.
+			insertImage: function(listItem, position) {
+				this.addImage(listItem, false, true, position);
+				return this;
+			},
+</P><P>			// Adds an image to the gallery and optionally inserts/appends it to the DOM (thumbExists)
+			// @param listItem Either a jQuery object or a string of html of the list item that is to be added to the gallery.
+			// @param {Boolean} thumbExists Specifies whether the thumbnail already exists in the DOM or if it needs to be added.
+			// @param {Boolean} insert Specifies whether the the image is appended to the end or inserted into the gallery.
+			// @param {Integer} position The index within the gallery where the item shouold be added.
+			addImage: function(listItem, thumbExists, insert, position) {
+				var $li = ( typeof listItem === &quot;string&quot; ) ? $(listItem) : listItem;				
+				var $aThumb = $li.find('a.thumb');
+				var slideUrl = $aThumb.attr('href');
+				var title = $aThumb.attr('title');
+				var $caption = $li.find('.caption').remove();
+				var hash = $aThumb.attr('name');
+</P><P>				// Increment the image counter
+				imageCounter++;
+</P><P>				// Autogenerate a hash value if none is present or if it is a duplicate
+				if (!hash || allImages[<I>+hash]) {</I>
+					hash = imageCounter;
+				}
+</P><P>				// Set position to end when not specified
+				if (!insert)
+					position = this.data.length;
+</P><P>				var imageData = {
+					title:title,
+					slideUrl:slideUrl,
+					caption:$caption,
+					hash:hash,
+					gallery:this,
+					index:position
+				};
+</P><P>				// Add the imageData to this gallery's array of images
+				if (insert) {
+					this.data.splice(position, 0, imageData);
+</P><P>					// Reset index value on all imageData objects
+					this.updateIndices(position);
+				}
+				else {
+					this.data.push(imageData);
+				}
+</P><P>				var gallery = this;
+</P><P>				// Add the element to the DOM
+				if (!thumbExists) {
+					// Update thumbs passing in addition post transition out handler
+					this.updateThumbs(function() {
+						var $thumbsUl = gallery.find('ul.thumbs');
+						if (insert)
+							$thumbsUl.children(':eq('+position+')').before($li);
+						else
+							$thumbsUl.append($li);
+</P><P>						if (gallery.onImageAdded)
+							gallery.onImageAdded(imageData, $li);
+					});
+				}
+</P><P>				// Register the image globally
+				allImages[<I>+hash] = imageData;</I></P><P>				// Setup attributes and click handler
+				$aThumb.attr('rel', 'history')
+					.attr('href', '#'+hash)
+					.removeAttr('name')
+					.click(function(e) {
+						gallery.clickHandler(e, this);
+					});
+</P><P>				return this;
+			},
+</P><P>			// Removes an image from the gallery based on its index.
+			// Returns false when the index is out of range.
+			removeImageByIndex: function(index) {
+				if (index &lt; 0 || index &gt;= this.data.length)
+					return false;
+</P><P>				var imageData = this.data[index];
+				if (!imageData)
+					return false;
+</P><P>				this.removeImage(imageData);
+</P><P>				return true;
+			},
+</P><P>			// Convenience method that simply calls the global removeImageByHash method.
+			removeImageByHash: function(hash) {
+				return $.galleriffic.removeImageByHash(hash, this);
+			},
+</P><P>			// Removes an image from the gallery.
+			removeImage: function(imageData) {
+				var index = imageData.index;
+</P><P>				// Remove the image from the gallery data array
+				this.data.splice(index, 1);
+</P><P>				// Remove the global registration
+				delete allImages[<I>+imageData.hash];</I></P><P>				// Remove the image's list item from the DOM
+				this.updateThumbs(function() {
+					var $li = gallery.find('ul.thumbs')
+						.children(':eq('+index+')')
+						.remove();
+</P><P>					if (gallery.onImageRemoved)
+						gallery.onImageRemoved(imageData, $li);
+				});
+</P><P>				// Update each image objects index value
+				this.updateIndices(index);
+</P><P>				return this;
+			},
+</P><P>			// Updates the index values of the each of the images in the gallery after the specified index
+			updateIndices: function(startIndex) {
+				for (i = startIndex; i &lt; this.data.length; i++) {
+					this.data[i].index = i;
+				}
+</P><P>				return this;
+			},
+</P><P>			// Scraped the thumbnail container for thumbs and adds each to the gallery
+			initializeThumbs: function() {
+				this.data = [];
+				var gallery = this;
+</P><P>				this.find('ul.thumbs &gt; li').each(function(i) {
+					gallery.addImage($(this), true, false);
+				});
+</P><P>				return this;
+			},
+</P><P>			isPreloadComplete: false,
+</P><P>			// Initalizes the image preloader
+			preloadInit: function() {
+				if (this.preloadAhead == 0) return this;
+</P><P>				this.preloadStartIndex = this.currentImage.index;
+				var nextIndex = this.getNextIndex(this.preloadStartIndex);
+				return this.preloadRecursive(this.preloadStartIndex, nextIndex);
+			},
+</P><P>			// Changes the location in the gallery the preloader should work
+			// @param {Integer} index The index of the image where the preloader should restart at.
+			preloadRelocate: function(index) {
+				// By changing this startIndex, the current preload script will restart
+				this.preloadStartIndex = index;
+				return this;
+			},
+</P><P>			// Recursive function that performs the image preloading
+			// @param {Integer} startIndex The index of the first image the current preloader started on.
+			// @param {Integer} currentIndex The index of the current image to preload.
+			preloadRecursive: function(startIndex, currentIndex) {
+				// Check if startIndex has been relocated
+				if (startIndex != this.preloadStartIndex) {
+					var nextIndex = this.getNextIndex(this.preloadStartIndex);
+					return this.preloadRecursive(this.preloadStartIndex, nextIndex);
+				}
+</P><P>				var gallery = this;
+</P><P>				// Now check for preloadAhead count
+				var preloadCount = currentIndex - startIndex;
+				if (preloadCount &lt; 0)
+					preloadCount = this.data.length-1-startIndex+currentIndex;
+				if (this.preloadAhead &gt;= 0 &amp;&amp; preloadCount &gt; this.preloadAhead) {
+					// Do this in order to keep checking for relocated start index
+					setTimeout(function() { gallery.preloadRecursive(startIndex, currentIndex); }, 500);
+					return this;
+				}
+</P><P>				var imageData = this.data[currentIndex];
+				if (!imageData)
+					return this;
+</P><P>				// If already loaded, continue
+				if (imageData.image)
+					return this.preloadNext(startIndex, currentIndex); 
+</P><P>				// Preload the image
+				var image = new Image();
+</P><P>				image.onload = function() {
+					imageData.image = this;
+					gallery.preloadNext(startIndex, currentIndex);
+				};
+</P><P>				image.alt = imageData.title;
+				image.src = imageData.slideUrl;
+</P><P>				return this;
+			},
+</P><P>			// Called by preloadRecursive in order to preload the next image after the previous has loaded.
+			// @param {Integer} startIndex The index of the first image the current preloader started on.
+			// @param {Integer} currentIndex The index of the current image to preload.
+			preloadNext: function(startIndex, currentIndex) {
+				var nextIndex = this.getNextIndex(currentIndex);
+				if (nextIndex == startIndex) {
+					this.isPreloadComplete = true;
+				} else {
+					// Use setTimeout to free up thread
+					var gallery = this;
+					setTimeout(function() { gallery.preloadRecursive(startIndex, nextIndex); }, 100);
+				}
+</P><P>				return this;
+			},
+</P><P>			// Safe way to get the next image index relative to the current image.
+			// If the current image is the last, returns 0
+			getNextIndex: function(index) {
+				var nextIndex = index+1;
+				if (nextIndex &gt;= this.data.length)
+					nextIndex = 0;
+				return nextIndex;
+			},
+</P><P>			// Safe way to get the previous image index relative to the current image.
+			// If the current image is the first, return the index of the last image in the gallery.
+			getPrevIndex: function(index) {
+				var prevIndex = index-1;
+				if (prevIndex &lt; 0)
+					prevIndex = this.data.length-1;
+				return prevIndex;
+			},
+</P><P>			// Pauses the slideshow
+			pause: function() {
+				this.isSlideshowRunning = false;
+				if (this.slideshowTimeout) {
+					clearTimeout(this.slideshowTimeout);
+					this.slideshowTimeout = undefined;
+				}
+</P><P>				if (this.$controlsContainer) {
+					this.$controlsContainer
+						.find('div.ss-controls a').removeClass().addClass('play')
+						.attr('title', this.playLinkText)
+						.attr('href', '#play')
+						.html(this.playLinkText);
+				}
+</P><P>				return this;
+			},
+</P><P>			// Plays the slideshow
+			play: function() {
+				this.isSlideshowRunning = true;
+</P><P>				if (this.$controlsContainer) {
+					this.$controlsContainer
+						.find('div.ss-controls a').removeClass().addClass('pause')
+						.attr('title', this.pauseLinkText)
+						.attr('href', '#pause')
+						.html(this.pauseLinkText);
+				}
+</P><P>				if (!this.slideshowTimeout) {
+					var gallery = this;
+					this.slideshowTimeout = setTimeout(function() { gallery.ssAdvance(); }, this.delay);
+				}
+</P><P>				return this;
+			},
+</P><P>			// Toggles the state of the slideshow (playing/paused)
+			toggleSlideshow: function() {
+				if (this.isSlideshowRunning)
+					this.pause();
+				else
+					this.play();
+</P><P>				return this;
+			},
+</P><P>			// Advances the slideshow to the next image and delegates navigation to the
+			// history plugin when history is enabled
+			// enableHistory is true
+			ssAdvance: function() {
+				if (this.isSlideshowRunning)
+					this.next(true);
+</P><P>				return this;
+			},
+</P><P>			// Advances the gallery to the next image.
+			// @param {Boolean} dontPause Specifies whether to pause the slideshow.
+			// @param {Boolean} bypassHistory Specifies whether to delegate navigation to the history plugin when history is enabled.  
+			next: function(dontPause, bypassHistory) {
+				this.gotoIndex(this.getNextIndex(this.currentImage.index), dontPause, bypassHistory);
+				return this;
+			},
+</P><P>			// Navigates to the previous image in the gallery.
+			// @param {Boolean} dontPause Specifies whether to pause the slideshow.
+			// @param {Boolean} bypassHistory Specifies whether to delegate navigation to the history plugin when history is enabled.
+			previous: function(dontPause, bypassHistory) {
+				this.gotoIndex(this.getPrevIndex(this.currentImage.index), dontPause, bypassHistory);
+				return this;
+			},
+</P><P>			// Navigates to the next page in the gallery.
+			// @param {Boolean} dontPause Specifies whether to pause the slideshow.
+			// @param {Boolean} bypassHistory Specifies whether to delegate navigation to the history plugin when history is enabled.
+			nextPage: function(dontPause, bypassHistory) {
+				var page = this.getCurrentPage();
+				var lastPage = this.getNumPages() - 1;
+				if (page &lt; lastPage) {
+					var startIndex = page * this.numThumbs;
+					var nextPage = startIndex + this.numThumbs;
+					this.gotoIndex(nextPage, dontPause, bypassHistory);
+				}
+</P><P>				return this;
+			},
+</P><P>			// Navigates to the previous page in the gallery.
+			// @param {Boolean} dontPause Specifies whether to pause the slideshow.
+			// @param {Boolean} bypassHistory Specifies whether to delegate navigation to the history plugin when history is enabled.
+			previousPage: function(dontPause, bypassHistory) {
+				var page = this.getCurrentPage();
+				if (page &gt; 0) {
+					var startIndex = page * this.numThumbs;
+					var prevPage = startIndex - this.numThumbs;				
+					this.gotoIndex(prevPage, dontPause, bypassHistory);
+				}
+</P><P>				return this;
+			},
+</P><P>			// Navigates to the image at the specified index in the gallery
+			// @param {Integer} index The index of the image in the gallery to display.
+			// @param {Boolean} dontPause Specifies whether to pause the slideshow.
+			// @param {Boolean} bypassHistory Specifies whether to delegate navigation to the history plugin when history is enabled.
+			gotoIndex: function(index, dontPause, bypassHistory) {
+				if (!dontPause)
+					this.pause();
+</P><P>				if (index &lt; 0) index = 0;
+				else if (index &gt;= this.data.length) index = this.data.length-1;
+</P><P>				var imageData = this.data[index];
+</P><P>				if (!bypassHistory &amp;&amp; this.enableHistory)
+					$.historyLoad(String(imageData.hash));  // At the moment, historyLoad only accepts string arguments
+				else
+					this.gotoImage(imageData);
+</P><P>				return this;
+			},
+</P><P>			// This function is garaunteed to be called anytime a gallery slide changes.
+			// @param {Object} imageData An object holding the image metadata of the image to navigate to.
+			gotoImage: function(imageData) {
+				var index = imageData.index;
+</P><P>				if (this.onSlideChange)
+					this.onSlideChange(this.currentImage.index, index);
+</P><P>				this.currentImage = imageData;
+				this.preloadRelocate(index);
+</P><P>				this.refresh();
+</P><P>				return this;
+			},
+</P><P>			// Returns the default transition duration value.  The value is halved when not
+			// performing a synchronized transition.
+			// @param {Boolean} isSync Specifies whether the transitions are synchronized.
+			getDefaultTransitionDuration: function(isSync) {
+				if (isSync)
+					return this.defaultTransitionDuration;
+				return this.defaultTransitionDuration / 2;
+			},
+</P><P>			// Rebuilds the slideshow image and controls and performs transitions
+			refresh: function() {
+				var imageData = this.currentImage;
+				if (!imageData)
+					return this;
+</P><P>				var index = imageData.index;
+</P><P>				// Update Controls
+				if (this.$controlsContainer) {
+					this.$controlsContainer
+						.find('div.nav-controls a.prev').attr('href', '#'+this.data[this.getPrevIndex(index)].hash).end()
+						.find('div.nav-controls a.next').attr('href', '#'+this.data[this.getNextIndex(index)].hash);
+				}</P><P>				var previousSlide = this.$imageContainer.find('span.current').addClass('previous').removeClass('current');
+				var previousCaption = 0;
+</P><P>				if (this.$captionContainer) {
+					previousCaption = this.$captionContainer.find('span.current').addClass('previous').removeClass('current');
+				}
+</P><P>				// Perform transitions simultaneously if syncTransitions is true and the next image is already preloaded
+				var isSync = this.syncTransitions &amp;&amp; imageData.image;
+</P><P>				// Flag we are transitioning
+				var isTransitioning = true;
+				var gallery = this;
+</P><P>				var transitionOutCallback = function() {
+					// Flag that the transition has completed
+					isTransitioning = false;
+</P><P>					// Remove the old slide
+					previousSlide.remove();
+</P><P>					// Remove old caption
+					if (previousCaption)
+						previousCaption.remove();
+</P><P>					if (!isSync) {
+						if (imageData.image &amp;&amp; imageData.hash == gallery.data[gallery.currentImage.index].hash) {
+							gallery.buildImage(imageData, isSync);
+						} else {
+							// Show loading container
+							if (gallery.$loadingContainer) {
+								gallery.$loadingContainer.show();
+							}
+						}
+					}
+				};
+</P><P>				if (previousSlide.length == 0) {
+					// For the first slide, the previous slide will be empty, so we will call the callback immediately
+					transitionOutCallback();
+				} else {
+					if (this.onTransitionOut) {
+						this.onTransitionOut(previousSlide, previousCaption, isSync, transitionOutCallback);
+					} else {
+						previousSlide.fadeTo(this.getDefaultTransitionDuration(isSync), 0.0, transitionOutCallback);
+						if (previousCaption)
+							previousCaption.fadeTo(this.getDefaultTransitionDuration(isSync), 0.0);
+					}
+				}
+</P><P>				// Go ahead and begin transitioning in of next image
+				if (isSync)
+					this.buildImage(imageData, isSync);
+</P><P>				if (!imageData.image) {
+					var image = new Image();
+</P><P>					// Wire up mainImage onload event
+					image.onload = function() {
+						imageData.image = this;
+</P><P>						// Only build image if the out transition has completed and we are still on the same image hash
+						if (!isTransitioning &amp;&amp; imageData.hash == gallery.data[gallery.currentImage.index].hash) {
+							gallery.buildImage(imageData, isSync);
+						}
+					};
+</P><P>					// set alt and src
+					image.alt = imageData.title;
+					image.src = imageData.slideUrl;
+				}
+</P><P>				// This causes the preloader (if still running) to relocate out from the currentIndex
+				this.relocatePreload = true;
+</P><P>				return this.syncThumbs();
+			},
+</P><P>			// Called by the refresh method after the previous image has been transitioned out or at the same time
+			// as the out transition when performing a synchronous transition.
+			// @param {Object} imageData An object holding the image metadata of the image to build.
+			// @param {Boolean} isSync Specifies whether the transitions are synchronized.
+			buildImage: function(imageData, isSync) {
+				var gallery = this;
+				var nextIndex = this.getNextIndex(imageData.index);
+</P><P>				// Construct new hidden span for the image
+				var newSlide = this.$imageContainer
+					.append('<SPAN class="image-wrapper current">&lt;a class=&quot;advance-link&quot; rel=&quot;history&quot; href=&quot;#'+this.data[nextIndex].hash+'&quot; title=&quot;'+imageData.title+'&quot;&gt; &lt;/a&gt;</SPAN>')
+					.find('span.current').css('opacity', '0');
+</P><P>				newSlide.find('a')
+					.append(imageData.image)
+					.click(function(e) {
+						gallery.clickHandler(e, this);
+					});
+</P><P>				var newCaption = 0;
+				if (this.$captionContainer) {
+					// Construct new hidden caption for the image
+					newCaption = this.$captionContainer
+						.append('')
+						.find('span.current').css('opacity', '0')
+						.append(imageData.caption);
+				}
+</P><P>				// Hide the loading conatiner
+				if (this.$loadingContainer) {
+					this.$loadingContainer.hide();
+				}
+</P><P>				// Transition in the new image
+				if (this.onTransitionIn) {
+					this.onTransitionIn(newSlide, newCaption, isSync);
+				} else {
+					newSlide.fadeTo(this.getDefaultTransitionDuration(isSync), 1.0);
+					if (newCaption)
+						newCaption.fadeTo(this.getDefaultTransitionDuration(isSync), 1.0);
+				}
+</P><P>				if (this.isSlideshowRunning) {
+					if (this.slideshowTimeout)
+						clearTimeout(this.slideshowTimeout);
+</P><P>					this.slideshowTimeout = setTimeout(function() { gallery.ssAdvance(); }, this.delay);
+				}
+</P><P>				return this;
+			},
+</P><P>			// Returns the current page index that should be shown for the currentImage
+			getCurrentPage: function() {
+				return Math.floor(this.currentImage.index / this.numThumbs);
+			},
+</P><P>			// Applies the selected class to the current image's corresponding thumbnail.
+			// Also checks if the current page has changed and updates the displayed page of thumbnails if necessary.
+			syncThumbs: function() {
+				var page = this.getCurrentPage();
+				if (page != this.displayedPage)
+					this.updateThumbs();
+</P><P>				// Remove existing selected class and add selected class to new thumb
+				var $thumbs = this.find('ul.thumbs').children();
+				$thumbs.filter('.selected').removeClass('selected');
+				$thumbs.eq(this.currentImage.index).addClass('selected');
+</P><P>				return this;
+			},
+</P><P>			// Performs transitions on the thumbnails container and updates the set of
+			// thumbnails that are to be displayed and the navigation controls.
+			// @param {Delegate} postTransitionOutHandler An optional delegate that is called after
+			// the thumbnails container has transitioned out and before the thumbnails are rebuilt.
+			updateThumbs: function(postTransitionOutHandler) {
+				var gallery = this;
+				var transitionOutCallback = function() {
+					// Call the Post-transition Out Handler
+					if (postTransitionOutHandler)
+						postTransitionOutHandler();
+</P><P>					gallery.rebuildThumbs();
+</P><P>					// Transition In the thumbsContainer
+					if (gallery.onPageTransitionIn)
+						gallery.onPageTransitionIn();
+					else
+						gallery.show();
+				};
+</P><P>				// Transition Out the thumbsContainer
+				if (this.onPageTransitionOut) {
+					this.onPageTransitionOut(transitionOutCallback);
+				} else {
+					this.hide();
+					transitionOutCallback();
+				}
+</P><P>				return this;
+			},
+</P><P>			// Updates the set of thumbnails that are to be displayed and the navigation controls.
+			rebuildThumbs: function() {
+				var needsPagination = this.data.length &gt; this.numThumbs;
+</P><P>				// Rebuild top pager
+				if (this.enableTopPager) {
+					var $topPager = this.find('div.top');
+					if ($topPager.length == 0)
+</P>
+						$topPager = this.prepend('').find('div.top');
+<P>					else
+						$topPager.empty();
+</P><P>					if (needsPagination)
+						this.buildPager($topPager);
+				}
+</P><P>				// Rebuild bottom pager
+				if (this.enableBottomPager) {
+					var $bottomPager = this.find('div.bottom');
+					if ($bottomPager.length == 0)
+</P>
+						$bottomPager = this.append('').find('div.bottom');
+<P>					else
+						$bottomPager.empty();
+</P><P>					if (needsPagination)
+						this.buildPager($bottomPager);
+				}
+</P><P>				var page = this.getCurrentPage();
+				var startIndex = page*this.numThumbs;
+				var stopIndex = startIndex+this.numThumbs-1;
+				if (stopIndex &gt;= this.data.length)
+					stopIndex = this.data.length-1;
+</P><P>				// Show/Hide thumbs
+				var $thumbsUl = this.find('ul.thumbs');
+				$thumbsUl.find('li').each(function(i) {
+					var $li = $(this);
+					if (i &gt;= startIndex &amp;&amp; i &lt;= stopIndex) {
+						$li.show();
+					} else {
+						$li.hide();
+					}
+				});
+</P><P>				this.displayedPage = page;
+</P><P>				// Remove the noscript class from the thumbs container ul
+				$thumbsUl.removeClass('noscript');
+</P><P>				return this;
+			},
+</P><P>			// Returns the total number of pages required to display all the thumbnails.
+			getNumPages: function() {
+				return Math.ceil(this.data.length/this.numThumbs);
+			},
+</P><P>			// Rebuilds the pager control in the specified matched element.
+			// @param {jQuery} pager A jQuery element set matching the particular pager to be rebuilt.
+			buildPager: function(pager) {
+				var gallery = this;
+				var numPages = this.getNumPages();
+				var page = this.getCurrentPage();
+				var startIndex = page * this.numThumbs;
+				var pagesRemaining = this.maxPagesToShow - 1;
+</P><P>				var pageNum = page - Math.floor((this.maxPagesToShow - 1) / 2) + 1;
+				if (pageNum &gt; 0) {
+					var remainingPageCount = numPages - pageNum;
+					if (remainingPageCount &lt; pagesRemaining) {
+						pageNum = pageNum - (pagesRemaining - remainingPageCount);
+					}
+				}
+</P><P>				if (pageNum &lt; 0) {
+					pageNum = 0;
+				}
+</P><P>				// Prev Page Link
+				if (page &gt; 0) {
+					var prevPage = startIndex - this.numThumbs;
+					pager.append('&lt;a rel=&quot;history&quot; href=&quot;#'+this.data[prevPage].hash+'&quot; title=&quot;'+this.prevPageLinkText+'&quot;&gt;'+this.prevPageLinkText+'&lt;/a&gt;');
+				}
+</P><P>				// Create First Page link if needed
+				if (pageNum &gt; 0) {
+					this.buildPageLink(pager, 0, numPages);
+					if (pageNum &gt; 1)
+						pager.append('<SPAN class="ellipsis">…</SPAN>');
+</P><P>					pagesRemaining--;
+				}
+</P><P>				// Page Index Links
+				while (pagesRemaining &gt; 0) {
+					this.buildPageLink(pager, pageNum, numPages);
+					pagesRemaining--;
+					pageNum++;
+				}
+</P><P>				// Create Last Page link if needed
+				if (pageNum &lt; numPages) {
+					var lastPageNum = numPages - 1;
+					if (pageNum &lt; lastPageNum)
+						pager.append('<SPAN class="ellipsis">…</SPAN>');
+</P><P>					this.buildPageLink(pager, lastPageNum, numPages);
+				}
+</P><P>				// Next Page Link
+				var nextPage = startIndex + this.numThumbs;
+				if (nextPage &lt; this.data.length) {
+					pager.append('&lt;a rel=&quot;history&quot; href=&quot;#'+this.data[nextPage].hash+'&quot; title=&quot;'+this.nextPageLinkText+'&quot;&gt;'+this.nextPageLinkText+'&lt;/a&gt;');
+				}
+</P><P>				pager.find('a').click(function(e) {
+					gallery.clickHandler(e, this);
+				});
+</P><P>				return this;
+			},
+</P><P>			// Builds a single page link within a pager.  This function is called by buildPager
+			// @param {jQuery} pager A jQuery element set matching the particular pager to be rebuilt.
+			// @param {Integer} pageNum The page number of the page link to build.
+			// @param {Integer} numPages The total number of pages required to display all thumbnails.
+			buildPageLink: function(pager, pageNum, numPages) {
+				var pageLabel = pageNum + 1;
+				var currentPage = this.getCurrentPage();
+				if (pageNum == currentPage)
+					pager.append('<SPAN class="current">'+pageLabel+'</SPAN>');
+				else if (pageNum &lt; numPages) {
+					var imageIndex = pageNum*this.numThumbs;
+					pager.append('&lt;a rel=&quot;history&quot; href=&quot;#'+this.data[imageIndex].hash+'&quot; title=&quot;'+pageLabel+'&quot;&gt;'+pageLabel+'&lt;/a&gt;');
+				}
+</P><P>				return this;
+			}
+		});
+</P><P>		// Now initialize the gallery
+		$.extend(this, defaults, settings);
+</P><P>		// Verify the history plugin is available
+		if (this.enableHistory &amp;&amp; !$.historyInit)
+			this.enableHistory = false;
+</P><P>		// Select containers
+		if (this.imageContainerSel) this.$imageContainer = $(this.imageContainerSel);
+		if (this.captionContainerSel) this.$captionContainer = $(this.captionContainerSel);
+		if (this.loadingContainerSel) this.$loadingContainer = $(this.loadingContainerSel);
+</P><P>		// Initialize the thumbails
+		this.initializeThumbs();
+</P><P>		if (this.maxPagesToShow &lt; 3)
+			this.maxPagesToShow = 3;
+</P><P>		this.displayedPage = -1;
+		this.currentImage = this.data[0];
+		var gallery = this;
+</P><P>		// Hide the loadingContainer
+		if (this.$loadingContainer)
+			this.$loadingContainer.hide();
+</P><P>		// Setup controls
+		if (this.controlsContainerSel) {
+			this.$controlsContainer = $(this.controlsContainerSel).empty();
+</P><P>			if (this.renderSSControls) {
+				if (this.autoStart) {
+					this.$controlsContainer
+</P>
+						.append('<DIV class="ss-controls">&lt;a href=&quot;#pause&quot; class=&quot;pause&quot; title=&quot;'+this.pauseLinkText+'&quot;&gt;'+this.pauseLinkText+'&lt;/a&gt;</DIV>');
+<P>				} else {
+					this.$controlsContainer
+</P>
+						.append('<DIV class="ss-controls">&lt;a href=&quot;#play&quot; class=&quot;play&quot; title=&quot;'+this.playLinkText+'&quot;&gt;'+this.playLinkText+'&lt;/a&gt;</DIV>');
+<P>				}
+</P><P>				this.$controlsContainer.find('div.ss-controls a')
+					.click(function(e) {
+						gallery.toggleSlideshow();
+						e.preventDefault();
+						return false;
+					});
+			}
+</P><P>			if (this.renderNavControls) {
+				this.$controlsContainer
+</P>
+					.append('<DIV class="nav-controls">&lt;a class=&quot;prev&quot; rel=&quot;history&quot; title=&quot;'+this.prevLinkText+'&quot;&gt;'+this.prevLinkText+'&lt;/a&gt;&lt;a class=&quot;next&quot; rel=&quot;history&quot; title=&quot;'+this.nextLinkText+'&quot;&gt;'+this.nextLinkText+'&lt;/a&gt;</DIV>')
+<P>					.find('div.nav-controls a')
+					.click(function(e) {
+						gallery.clickHandler(e, this);
+					});
+			}
+		}
+</P><P>		var initFirstImage = !this.enableHistory || !location.hash;
+		if (this.enableHistory &amp;&amp; location.hash) {
+			var hash = $.galleriffic.normalizeHash(location.hash);
+			var imageData = allImages[hash];
+			if (!imageData)
+				initFirstImage = true;
+		}
+</P><P>		// Setup gallery to show the first image
+		if (initFirstImage)
+			this.gotoIndex(0, false, true);
+</P><P>		// Setup Keyboard Navigation
+		if (this.enableKeyboardNavigation) {
+			$(document).keydown(function(e) {
+				var key = e.charCode ? e.charCode : e.keyCode ? e.keyCode : 0;
+				switch(key) {
+					case 32: // space
+						gallery.next();
+						e.preventDefault();
+						break;
+					case 33: // Page Up
+						gallery.previousPage();
+						e.preventDefault();
+						break;
+					case 34: // Page Down
+						gallery.nextPage();
+						e.preventDefault();
+						break;
+					case 35: // End
+						gallery.gotoIndex(gallery.data.length-1);
+						e.preventDefault();
+						break;
+					case 36: // Home
+						gallery.gotoIndex(0);
+						e.preventDefault();
+						break;
+					case 37: // left arrow
+						gallery.previous();
+						e.preventDefault();
+						break;
+					case 39: // right arrow
+						gallery.next();
+						e.preventDefault();
+						break;
+				}
+			});
+		}
+</P><P>		// Auto start the slideshow
+		if (this.autoStart)
+			this.play();
+</P><P>		// Kickoff Image Preloader after 1 second
+		setTimeout(function() { gallery.preloadInit(); }, 1000);
+</P><P>		return this;
+	};
+})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:Paris_Bettencourt/js/jquery.galleriffic.js">http://2013.igem.org/Team:Paris_Bettencourt/js/jquery.galleriffic.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Paris_Bettencourt/js/jquery.galleriffic.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Paris_Bettencourt/js/jquery.galleriffic.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Paris_Bettencourt/js/jquery.galleriffic.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Paris_Bettencourt/js/jquery.galleriffic.js&amp;oldid=60246" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

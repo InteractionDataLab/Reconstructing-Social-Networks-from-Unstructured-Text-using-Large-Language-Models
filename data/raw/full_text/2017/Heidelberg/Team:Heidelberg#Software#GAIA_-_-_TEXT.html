@@ -1,0 +1,208 @@
+Team:Heidelberg/Software/GAIA
+NAVIGATION
+People
+Team
+Attributions
+Sponsoring
+For Judges
+Giant Jamboree
+Project
+Overview
+Background & Design
+PACE
+PREDCEL
+Results Summary
+Software Validation
+Organosilicons
+Protein Interaction
+Cytochrome Engineering
+Optogenetics
+CRISPR Cas9
+InterLab Study
+Achievements
+Parts
+Overview
+Basic Parts
+Composite Parts
+Improved Part
+Parts Collection
+Part List
+RFC
+Modeling
+Overview
+Phage Titer
+Mutagenesis Induction
+Mutation Rate Estimation
+Lagoon Contamination
+Medium Consumption
+Interactive Web Tools
+Software
+AiGEM Overview
+DeeProtein
+GAIA
+SafetyNet
+MAWS 2.0
+Human Practices
+Overview
+Integrated Human Practices
+Expert Interviews
+Safety & Security
+Public Engagement
+Education
+Collaborations
+Notebook
+Overview
+Methods
+Materials
+Notebook Database
+Toolbox Guide
+iGEM TEAM HEIDELBERG 2017
+COLLAPSE NAVIGATION
+People
+Team
+Attributions
+Sponsoring
+For Judges
+Giant Jamboree
+Project
+Overview
+Background & Design
+PACE
+PREDCEL
+Results Summary
+Software Validation
+Organosilicons
+Protein Interaction
+Cytochrome Engineering
+Optogenetics
+CRISPR Cas9
+InterLab Study
+Achievements
+Parts
+Overview
+Basic Parts
+Composite Parts
+Improved Part
+Parts Collection
+Part List
+RFC
+Modeling
+Overview
+Phage Titer
+Mutagenesis Induction
+Mutation Rate Estimation
+Lagoon Contamination
+Medium Consumption
+Interactive Web Tools
+Software
+AiGEM Overview
+DeeProtein
+GAIA
+SafetyNet
+MAWS 2.0
+Human Practices
+Overview
+Integrated Human Practices
+Expert Interviews
+Safety & Security
+Public Engagement
+Education
+Collaborations
+Notebook
+Overview
+Methods
+Materials
+Notebook Database
+Toolbox Guide
+GAIA
+Genetic artificially intelligent algorithm
+Directed evolution of protein sequences is an arduous task often requiring multiple rounds of library generation and selection and the application of different surrogate objective functionalities as evolutionary stepping stones. To this day there is no universal computational tool available that is able to reduce the number of required cycles of exploration and selection, to minimize the required library complexity and increase the possible stepsize of one round of directed evolution.
+Here we present GAIA (Genetic Aritficially Intelligent Algorithm) an innovative software able to fast-forward the directed evolution of protein sequences in silico. GAIA is a genetic algorithm responsible for sequence mutation and selection, which is interfaced with DeeProtein, a pretrained deep neural network providing functional protein sequence classification. GAIA achieves in silico directed evolution of proteins by iterative random amino acid substitution followed by selection via maximization of the DeeProtein classification score for the desired target functionality. By finetuning DeeProtein to the specific evolutionary task, GAIA can be optimized to facilitate virtually any functionality transfer on a given input protein sequence. Thereby, GAIA provides the required evolutionary stepping stones critical to success of directed evolution experiments by means of pure computation.
+Fork us on GitHub!
+Introduction
+Directed evolution of protein sequences is a field of increasing importance. Especially with the exploitation of enzymes in the chemical and biotechnological industry, evolved enzymes, tailored to certain reactions or environments became highly sought after. Despite conventional directed protein evolution experiments are an arduous, time consuming task, consisting of multiple rounds of library generation (exploration) with subsequent selection of the fittest candidates (exploitation). Unlike for other similarly expensive experiments, to this day there is no computational tool available dedicated to the a priori simplification and speedup of directed evolution apporaches.
+That is because from a computational perspective the task of directed evolution is more than complex: An average protein has a length of 350 Amino acid residues, considering an alphabet of 20 amino acids the combinatory options (\(20^{350}\)) exceeds the number of particles in the universe (estimated on \(10^{89}\)) by far. Thus simple brute force algorithms do not succeed here, in fact a certain knowledge, an intelligent feature selection and dimensionality reduction is crucial to focus on the profitable mutations. Handcrafted features however would be tailored to a partiular directed evolution task and thus need to be fitted and tuned before they could be applied on other directed evolution experiments. A more convenient solution could be provided by deep learning, allowing to learn the properties of the manifold of the functional sequence space. With that knowledge, the tremendous combinatory space is reduced to a processable size.
+Generative Modeling
+As we demonstrated with DeeProtein we were able to learn an abstract protein representation, encoding sequence and features. Generative modeling exploits learned data distributions to sample new artificial datapoints from that distribution (figure 1). Sampling from trained representations is possible through calculation of the gradients with respect to the inputs, leaving the weights untouched. While this form of generative modelling is applied in style transfers
+Gatys2016Image
+and googles deep dream generator
+google2015deep
+, it has strong limitations as the results stringly depend on the distribution of the input. More elaborated models have been described in forms of generative adversarial networks
+goodfellow2014generative
+and variational autoencoders
+kingma2013auto
+. While these models have been applied on image
+goodfellow2014generative
+and sound
+Li2017Midi
+data, their output is often noisy, blurred and distorted. For functional protein sequence generation, noisy or distorted outputs would be fatal. Further the training of such complex models like GANs and VAEs is rather difficult and conversion in case of GANs not even guaranteed.
+To circumvent these obstacles by mimicking nature's concept of evolution, we decided to implement a genetic algorithm for sequence generation and attach a deep neural network model as a scoring function to control sequence selection. For this task we exploited our learned protein representation in form of a deep residual neural network.
+Figure 1: The idea of generative modeling.
+Generative modeling exploits the learned distribution of proteins of a certain class in the protein space (left) to generate artificial samples from that distribution (right). This can be achieved by various techniques such as generative adversarial networks
+goodfellow2014generative
+, variational autoencoders
+kingma2013auto
+and simple inversion of the gradients. However the learned distribution can also be used to categorize a given, perturbated sample, returning its class probability. With its interface between deep learning model, holding the latent data representation and its genetic algorithm, GAIA performs generative modelling by perturbating an input sequence towards the distribution of the goal functionality.
+Algorithm
+Figure 2: The architecture of the GAIA algorithm.
+An input sequence is passed to the algorithm and mutations are introduced, based on a user defined mutation rate, to expand sequence to a library of 100 mutation variants. Subsequently the variants are passed to the interfaced deep neural network. The obtained scores are used to compute the GAIA score of the variants and rank them. The top 5 sequences are kept and stored to rebuild the library by mutagenesis, while the rest of the library is discarded. This cycle is repeated until convergence of the GAIA score.
+Genetic Component
+For sequence generation we implemented a genetic algorithm, as it is inspired by the biological principle of evolution. The algorithm starts from an entry sequence, introduces mutations and scores the sequences by a deep neural network. High scoring sequences are retained and used as starting points for the next generation. Within one generation a pool of 100 amino acids is considered. To commence the input sequence is duplicated to fill the generation pool and on each copy a user defined number of initial mutations is introduced. Additionally the last highest scoring sequence is kept as reference in the pool. The mutation rate decreases with increasing generation numbers to facilitate conversion. In order to introduce a mutation, position and the introduced amino acid are determined randomly. The position to be mutated is drawn from a uniformal distribution over the sequence (either the complete sequence or a subset of interest). The new amino acid is drawn from a distribution considering the E.Coli codon usage to mimic the biological environment and optimize expression. This has the addidional benefit that rare amino acids, which tend to affect the DeeProtein score to greater extent due to their higher information content, do not get artificially overrepresented.
+Subsequently each sequence in the generation pool is scored by the deep learning classification model for protein functionality. Depending on the classification scores a GAIA internal score (see below) is calculated, considering the goal functionality and eventual undesireable functionalities. Further a term is added accounting for the BLOSSUM62 distance between the sequence and the original entry sequence. The generation is then ranked by scores and the top 5 candidates are retained to build the next generation, all other sequences are discarded. The next generation is constructed from the retained candidates in a 50:20:20:10 ratio depending on the sequence rank. This cycle is repeated until convergence of the GAIA-scores. An overview on the GAIA algorithm is provided in figure 2.
+GAIA-Score
+The GAIA score is calculated as: $$ S = (\sum_{g}^G g_{weight} \cdot g_{logit} - \sigma (g_{variance}) - \sum_{a}^A a_{weight} \cdot a_{logit} + \sigma (a_{variance})) \cdot \frac{1}{\sum_{g}^G} - b_{weight} \cdot b_{score} $$ where \( G \) is the specified set of goal terms and \( A \) the specified terms to avoid.
+The blossum weight is determined as: $$ \frac{2}{11 \cdot l} $$ with sequence length \(l\) and the blossum score respectively as: $$ \sum_{i}^l B_{62}(m_{i}, r_{i}) $$ with \(B_{62}\) is the BLOSSUM62 matrix, \(r\) the residue in the original sequence, and \(m\) the same position on the mutated sequence.
+Deep Learning Model
+As the scoring function for the genetic algorithm we apply a DeeProtein model (in its ResNet30 architecture) as described here . In order to better capture the sequence space of the evolutionary task we recommend to fine tune the pretrained, broad network to a more narrow sequence space. In our case we fine tuned the model applied in the validation process on the narrow space of beta-glucuronidase related functions and beta-lactamase related sequences respectively. Fine tuning a pretrained model to a specific task is a common technique in deep learning is it is much easier to carry out than training a new network for the specific task from scratch.  Furthermore it is reasonable to add additional data obtained from wet lab experiments to this fine scale training to improve classification performance and force the model to recognize the relevant positions or features in greater detail. Therefore the proposed GAIA system can be improved by this recursive engineering cycle.
+Objectives
+To verify the concept of GAIA and to demonstrate that a deep learning-driven genetic algorithm is capable of helping synthetic biologists in the context of protein engineering and directed we focused on two model proteins to evaluate key properties.  Beta-lactamase, mediating the resistance against beta-lactame antibiotics, was selected as a model protein as its activity can easily be determined experimentally in a semi-quantitative. Of further advantage is the high number of identified sequence variants in the UniProt database. Therefore we chose it to evaluate, whether we can use GAIA to increase or decrease the activity of a given protein and to which extent the DeeProtein score correlates with the protein activity. Therefore we created and measured a broad spectrum of GAIA generated variants . To also demonstrate the possibility to generate and increase a different protein activity in a related protein by applying GAIA in silico evolution we relied on altering the activity of a beta-glucuronidase to obtain beta-galactosidase activity. The feasibility of such a function transfer has already been demonstrated by conventional experimental methods
+matsumura2001vitro
+.
+in silico Results
+Selectivity in mutationsites
+Before we set out to the in silico evolution of beta-lactamases we asserted the performance of GAIA by comprehensive metrics. The distribution of mutation rates over the residues is an important factor in directed evolution experiments, both determining the output and driving the evolution process. As this distribution is unknown and context specific it can not be approximated universally by computational tools. In GAIA the DeeProtein component is deployed to score the candidates naively generated by the genetic algorithm. Thus the latent knowledge in the deep neural network mimics the hidden distribution of mutation rates. As neural networks are a black box method, where the reasons for the internal states are extremely complex and very hard to disentangle, we performed comprehensive tests to shed light on the hidden distribution by asserting the effect of each mutation position-wise.
+Figure 3: The effect of mutations is not uniformal throughout the sequence.
+The heatmap shows the impact on the GAIA score for every possible amino acid substitution in the beta-lactamase sequence. The sequence position is depicted on the x-axis, while the y-axis displays the performed substitution. The impact is color coded from yellow for positive to red for negative impacts. While positive impact is made on small patches across the whole sequence, a cluster of positively impacting residues can be observed for residues 242 to 246. In contrast strong negative impact for all kind of substitutions is detected for the residues 255-263. Interestingly these residues form a beta-sheet through the center of the protein. Negative impact is also detected selectively for the introduction of Aspartic acid and glutamic acid at the sequence patches from 68-81 and from 180-200.
+Figure 3: The effect of mutations is not uniformal throughout the sequence.
+For better visibility this figure is scrollable.
+Impact of Mutagenesis on GAIA-Score
+To investigate the relation between GAIA score and the number of introduced mutations, we performed random mutagenesis studies and plotted the resulting scores of the candidates. The score decreases sigmoidal with the number of introduced mutations. This suggests our model to be tolerant to up to 20 mutations before a strong decrease in scores. The mark of positive predictions is crossed at about 50 mutations. For the generation of this plot GAIA was run in complete random mode introducing a new mutation ever generation until saturation. In every generation the scores were averaged over a set of 100 candidates.
+Figure 4: The GAIA score decreases linearly with the number of introduced mutations.
+The random mutagenesis of the beta-lactamase sequence, shows diminishing scores with increasing mutation numbers. The decrease in scores is sigmoidal and falls below the threshold of positive prediciton after about 50 mutations. Initially the model however tolerates up to 20 mutations before the score starts to decrease.
+Experimental results
+See the comprehensive report here .
+Key Finding - GAIA enables Functionality Transfer
+To assert the in silico evolution capabilities of GAIA in a real world application, we set out to reprogram the E. coli beta-glucuronidase to beta-galactosidase activity.
+We initiallly evaluated the in silico evolution by performing equilibration molecular dynamics simulations on the wildtype GUS and the GUS variant suggested by Matsumura et al.
+matsumura2001vitro
+to determine the effect of the introduced mutations on the protein fold. As no significant change in protein fold was observable we proceeded by liberately defining three mutative fragments on the GUS sequence, displayed in table 1. The limitation of mutagenesis to defined sequence regions was required to ensure the cloneability of the resulting constructs in the wet lab.
+Table 1: Defined sequence patches open for mutagenesis. The three defined sequence patches for the functionality transfer in beta glucuronidase. Fragments were determined after equilibration MD simulations and structure assertion in pyMOL.
+Fragment
+Positions
+Constant Residue
+A
+351-371
+G362
+B
+506-512
+None
+C
+548-568
+G559
+Subsequently we ran GAIA on the determined fragments, with the objective to maximize the term for Galactosidase activity for up to 1000 generations. The mutation rate was thereby limited to 9 amino acid substituions per generation and reduced by one mutation every 300 generations.
+After cloning the activity of the variants was determined in in vitro assays. We thereby identified a GAIA predicted beta-glucuronidase variant carrying a single amino-acid (T509L) mutation with a beta-galactosidase activity comparable to the wild type.
+Figure 5: Comparison Between the Wildtype Proteins and GUS_T509L
+Our assay demonstrated that the wildtype GUS shows no catlytic activity on a GAL substrate. The mutant predicted by GAIA however, exhibits extraordinary enzymatic activity on the GAL substrate. While the \(k_{cat}\) is lower compared to the wild type beta galactosidase the estimated \(K_M\) is approx. two-fold higher.
+References
+Quote
+“”
+Useful Links
+Special pages
+Main Page
+Follow us on
+&
+Contact us
+iGEM-Heidelberg2017
+@bioquant.uni-heidelberg.de
+Im Neuenheimer Feld 267
+69120 Heidelberg

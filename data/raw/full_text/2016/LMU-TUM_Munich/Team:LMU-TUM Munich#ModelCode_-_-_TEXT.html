@@ -1,0 +1,77 @@
+Team:LMU-TUM Munich/ModelCode
+<!DOCTYPE html>
+simulation
+In [1]:
+import numpy as np import matplotlib.pylab as plt %matplotlib inline
+In [2]:
+from monomers import *
+In [3]:
+def init_monomers(n_cells, n_proteins, n_cell_binding = 30, n_protein_binding = 4): Cell.n_cells=0 cells=[] for i in range(n_cells): cells.append(Cell(n_cell_binding)) Protein.n_proteins=0 proteins=[] for i in range(n_proteins): proteins.append(Protein(n_protein_binding)) return cells, proteins
+In [4]:
+def polymerize(cells, proteins): free_cell_bindings = [] for c in cells: free_cell_bindings += c.free_bindings free_protein_bindings = [] for p in proteins: free_protein_bindings += p.free_bindings while len(free_protein_bindings)>0 and len(free_cell_bindings)>0: p_binding_idx = np.random.randint(len(free_protein_bindings)) p_binding = free_protein_bindings.pop(p_binding_idx) c_binding_idx = np.random.randint(len(free_cell_bindings)) c_binding = free_cell_bindings.pop(c_binding_idx) #print c_binding.parent.id, p_binding.parent.id p_binding.bind(c_binding) return len(free_protein_bindings) , len(free_cell_bindings)
+In [49]:
+def polymerize_spacial(cells, proteins, n_protein_binding, concentration=0.01, reactivity=0.2, mobility=0.05, max_time=10.): time = 0. position_variance = 1. distance_binding_probability = lambda x: np.exp(-x ** 2 / position_variance ** 2) / ( 2 * np.pi * position_variance ** 2) free_protein_bindings = [] for p in proteins: free_protein_bindings += p.free_bindings while (time < max_time): for i in range(int(np.ceil(reactivity * len(free_protein_bindings)))): # choose a random PBS p_binding_idx = np.random.randint(len(free_protein_bindings)) p_binding = free_protein_bindings[p_binding_idx] # do tests on parent protein p = p_binding.parent # position: the liwer to concentration, the higher the distance p_pos = float(p.id) / (len(proteins) * concentration) # (float) idx of nearest cell c_id_mean = p_pos * len(cells) * concentration # max distance of reachable cells from nearest cell max_range = position_variance * 3.2 c_id_range = max_range * len(cells) * concentration c_id_min = max(int(c_id_mean - c_id_range), 0) c_id_max = min(int(c_id_mean + c_id_range), len(cells)) candidate_cells = cells[c_id_min:c_id_max] # each has a probability according to the distance if len(candidate_cells) == 0: continue min_distance = max(p_pos - position_variance * 3.2, 0) - p_pos max_distance = min(-p_pos + position_variance * 3.2, len(proteins) - 1 / len(proteins) / concentration) + p_pos probabilities = np.arange(min_distance, max_distance, (max_distance - min_distance) / len(candidate_cells))[:len(candidate_cells)] probabilities = distance_binding_probability(probabilities) probabilities /= sum(probabilities) # pick one cell = np.random.choice(candidate_cells, p=probabilities) try: cell.free_bindings.next() except StopIteration: # no free bindings left in this cell continue # let react with probability respective to free bindings protein_partners = list(set([b.partner.parent for b in p.bindings if b.partner is not None])) if len(protein_partners) == 1: # if a protein is already attatched to a cell it will most likely not bind to other cells if cell not in protein_partners and np.random.rand()<0.9: continue if len(protein_partners)>1 and cell not in protein_partners: # if a protein was binding to two cells already, it will not bind to any other continue #            if np.random.rand() < float(4 - len(list(p.free_bindings))) / 3.: #                # can only bind to cells it's already bound to #                if cell not in [b.partner.parent for b in p.bindings if b.partner is not None]: #                    continue cell.free_bindings.next().bind(p_binding) free_protein_bindings.pop(p_binding_idx) position_variance += mobility time += 0.01 free_cell_bindings = [] for c in cells: free_cell_bindings += c.free_bindings return len(free_protein_bindings), len(free_cell_bindings)
+In [89]:
+draw = True
+In [ ]:
+_,_,_=random_graph(cell_graph, 30, 120, n_cell_binding=400, n_protein_binding=4, concentration=0.02, reactivity=0.1, mobility=0.05, max_time=5.0)
+In [ ]:
+Analysis ¶
+In [ ]:
+draw = False
+In [11]:
+from graph_tool.all import * from graph_tool import clustering,stats
+In [16]:
+def cell_graph(cells,proteins,draw=False): '''vertices are cells, cells connected via a protein are connected in the graph with an edge''' g = Graph(directed=False) vertices = list(g.add_vertex(len(cells))) for c_id in range(len(cells)): for c_b in cells[c_id].bindings: try: for p_b in c_b.partner.parent.bindings: try: c2_id = p_b.partner.parent.id if not c_id==c2_id: g.add_edge(vertices[c_id],vertices[c2_id]) except AttributeError: pass except AttributeError: pass if draw: graph_draw(g, vertex_text=g.vertex_index, edge_pen_width=2 , vertex_font_size=30, output="/tmp/graph.png", output_size=(2000, 2000)) return g #graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18, output="/tmp/graph.png", #            output_size=(2000, 2000))
+In [29]:
+def random_graph(graph_method, n_cells, n_proteins, n_cell_binding = 30, n_protein_binding = 4,concentration=0.02,reactivity=0.01,mobility=0.1,max_time=2.): #    cells,proteins=init_monomers(n_cells, n_proteins, n_cell_binding, n_protein_binding) #    polymerize(cells,proteins) cells,proteins=init_monomers(n_cells, n_proteins, n_cell_binding = 30, n_protein_binding = 4) polymerize_spacial(cells, proteins, n_protein_binding=n_protein_binding, concentration=concentration, reactivity=reactivity, mobility=mobility, max_time=max_time) return graph_method(cells,proteins,draw),cells,proteins
+In [83]:
+results=[] draw=False for n_proteins in np.arange(-1.5,1.5,0.1): n_proteins = int(len(cells)*10**n_proteins) g,cells,proteins = random_graph(cell_graph, 30, n_proteins, n_cell_binding=400, n_protein_binding=4, concentration=0.02, reactivity=0.1, mobility=0.05, max_time=5.0) global_clustering = clustering.global_clustering(g)[0] tmp=graph_tool.topology.max_cardinality_matching(g) n_max_matching = tmp.count(tmp) max_shortest_path = graph_tool.topology.pseudo_diameter(g)[0] tmp=graph_tool.topology.label_largest_component(g) biggest_cluster = tmp.get_array().shape[0] tmp = graph_tool.topology.label_components(g)[1] tmp = np.sort(tmp)[::-1] n_clusters = len(tmp) biggest_cluster = tmp[0] mean_cluster = np.mean(tmp) n_free_protein_bindings = 0 n_free_proteins = 0 for p in proteins: p_free = len(list(p.free_bindings)) n_free_protein_bindings += p_free if p_free == len(p.bindings): n_free_proteins += 1 n_free_cell_bindings = 0 n_free_cells = 0 for c in cells: c_free = len(list(c.free_bindings)) n_free_cell_bindings += c_free if c_free == len(c.bindings): n_free_cells += 1 print n_proteins, n_free_cells, n_free_cell_bindings, n_free_proteins, n_free_protein_bindings, n_clusters, mean_cluster, biggest_cluster, global_clustering, max_shortest_path#, n_max_matching, biggest_cluster results.append([n_proteins, n_free_cells, n_free_cell_bindings, n_free_proteins, n_free_protein_bindings, n_clusters, mean_cluster, biggest_cluster, global_clustering, max_shortest_path])
+0 30 900 0 0 30 1.0 1 nan 0 1 29 896 0 0 30 1.0 1 nan 0 1 29 896 0 0 30 1.0 1 nan 0 1 29 896 0 0 30 1.0 1 nan 0 2 27 892 0 0 29 1.03448275862 2 0.0 1.0 3 27 888 0 0 30 1.0 1 nan 0 3 27 888 0 0 30 1.0 1 nan 0 4 25 884 0 0 29 1.03448275862 2 0.0 0 5 23 880 0 0 28 1.07142857143 2 0.0 0 7 21 872 0 0 28 1.07142857143 2 0.0 0 9 17 864 0 0 26 1.15384615385 2 0.0 0 11 18 856 0 0 29 1.03448275862 2 0.0 0 15 11 840 0 0 24 1.25 2 0.0 0 18 7 828 0 0 22 1.36363636364 3 0.0 0 23 7 808 0 0 25 1.2 3 0.0 0 30 7 780 0 0 21 1.42857142857 4 0.0 3.0 37 4 752 0 0 23 1.30434782609 3 0.0 1.0 47 0 712 0 0 14 2.14285714286 6 0.0 0 59 1 664 0 0 13 2.30769230769 5 0.0 0 75 0 600 0 0 12 2.5 10 0.0 3.0 94 0 524 0 0 9 3.33333333333 8 0.164890633763 1.0 119 0 424 0 0 7 4.28571428571 9 0.165856155618 1.0 150 0 304 0 4 2 15.0 17 0.229697260932 8.0 189 0 150 0 6 2 15.0 28 0.238134206219 1.0 238 0 24 0 76 1 30.0 30 0.273657289003 15.0 300 0 22 1 322 4 7.5 14 0.215702479339 8.0 377 0 11 4 619 6 5.0 16 0.0472049689441 3.0 475 0 0 17 1000 11 2.72727272727 7 0.0336605890603 1.0 598 0 9 61 1501 16 1.875 4 0.0 2.0 753 0 0 152 2112 22 1.36363636364 3 0.0 0
+In [84]:
+tmp_res=results
+In [85]:
+results=np.asarray(results).T n_proteins=results[0]
+In [86]:
+results=results[1:]
+In [ ]:
+titles=["n_free_cells", "n_free_cell_bindings", "n_free_proteins", "n_free_protein_bindings", "n_clusters", "mean_cluster", "biggest_cluster", "global_clustering", "max_shortest_path"] f, axes = plt.subplots(len(titles)/2+1,2, figsize=(16,8*(len(titles)/2+1))) for i,result in enumerate(results): ax = axes[i/2,i%2] ax.set_title(titles[i]) ax.plot(n_proteins,result.T,"-x") ax.set_xscale("log")
+In [26]:
+clustering.global_clustering(g)
+Out[26]:
+(0.4555753617923612, 0.0034127709652872246)
+In [37]:
+stats.distance_histogram(g)
+Out[37]:
+[array([    0.,  4534.,  5366.]), array([0, 1, 2, 3], dtype=uint64)]
+In [46]:
+tmp=graph_tool.topology.max_cardinality_matching(g) tmp.count(tmp)
+Out[46]:
+0
+In [48]:
+graph_tool.topology.max_independent_vertex_set(g)
+Out[48]:
+<PropertyMap object with key type 'Vertex' and value type 'bool', for Graph 0x7f5770624b10, at 0x7f5775aac210>
+In [49]:
+graph_tool.topology.pseudo_diameter(g)
+Out[49]:
+(2.0,  (<Vertex object with index '0' at 0x7f577062e250>, <Vertex object with index '56' at 0x7f577062e3d0>))
+In [54]:
+tmp=graph_tool.topology.label_largest_component(g) tmp.get_array().shape[0]
+Out[54]:
+(100,)
+Cells and Protein bindings vertices ¶
+In [ ]:
+g = Graph(directed=False) v_size = g.new_vertex_property("int",val=20) v_group = g.new_vertex_property("int32_t") #v_color = vprop_vint = g.new_vertex_property("vector<int>", vals=[]) #cell_vertices = list(g.add_vertex(n_cells)) for cell in cells: cell.vertex = g.add_vertex() v_size[cell.vertex] = 100 for p in proteins: last_vertex = None for b in p.bindings: b.vertex=g.add_vertex() v_size[b.vertex] = 10 v_group[cell.vertex] = p.id #intraprotein connections if last_vertex is not None: g.add_edge(b.vertex,last_vertex) last_vertex=b.vertex #cell connections if b.partner is not None: cell_vertex = b.partner.parent.vertex g.add_edge(b.vertex,cell_vertex) pos=sfdp_layout(g,groups=v_group) #graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18, output="/tmp/graph.png", #            output_size=(2000, 2000)) graph_draw(g, pos=pos,edge_pen_width=2, vertex_text=g.vertex_index, vertex_size=v_size, vertex_font_size=0, output_size=(2000, 2000)) #graphviz_draw(g, elen=100, vsize=v_size, size=(2000, 2000))
+protein vertices and cell vertices ¶
+In [48]:
+def pc_graph(cells, proteins, draw=False): g = Graph(directed=False) v_size = g.new_vertex_property("int") #v_group = g.new_vertex_property("i'nt32_t") #v_color = vprop_vint = g.new_vertex_property("vector<int>", vals=[]) for cell in cells: cell.vertex = g.add_vertex() v_size[cell.vertex] = 120 for p in proteins: p.vertex=g.add_vertex() v_size[p.vertex] = 40 for b in p.bindings: #cell connections if b.partner is not None: cell_vertex = b.partner.parent.vertex if g.edge(p.vertex,cell_vertex) is None: #only one connection per pair g.add_edge(p.vertex,cell_vertex) pos=fruchterman_reingold_layout(g) #graph_draw(g, vertex_text=g.vertex_index, vertex_font_size=18, output="/tmp/graph.png", #            output_size=(2000, 2000)) if draw: graph_draw(g, edge_pen_width=2, vertex_text=g.vertex_index, vertex_size=v_size, vertex_font_size=15, output_size=(2000, 2000)) return g
+In [18]:
+g.vertex_index[vertices[1]]
+Out[18]:
+1
+In [29]:
+cells[23].bindings[5].partner.parent.bindings[0].partner.parent
+Out[29]:
+<__main__.Cell instance at 0x7f05b3f2a7e8>
+In [ ]:

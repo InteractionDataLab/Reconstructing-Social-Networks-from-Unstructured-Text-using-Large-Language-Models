@@ -1,0 +1,174 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Leiden_javascript_crowdfunding skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Leiden/javascript/crowdfunding</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>var fits = {
+</P><PRE> xs: 1,
+ s: 1,
+ m: 1,
+ l: 1,
+ xl: 1
+</PRE><P>};
+var sizes = ['xs', 's', 'm', 'l', 'xl']
+var order = new Object;
+var resizeId;
+// var state = 'static';
+</P><P>$(document).ready(function() {
+</P><PRE> if ($('#screenIndicator').is(':visible')) {
+   $('div.StatDynSwitch').css('display', 'none');
+   RunStatic();
+ } else {
+   DynamicCircles();
+ }
+</PRE><PRE> $(window).resize(function() { // check when resizing is finished, then recalculate positions of circles
+   clearTimeout(resizeId);
+   resizeId = setTimeout(function() {
+</PRE><PRE>     if ($('#screenIndicator').is(':visible')) {
+       RunStatic();
+       $('div.StatDynSwitch').css('display', 'none');
+</PRE><PRE>     } else if (order['xl'] == undefined) { // from small to large, has to initiate everything
+       // console.log('xl undefined, so complete run of dynamic circles');
+       DynamicCircles();
+       $('div.StatDynSwitch').css('display', 'block');
+     } else if ($('div.StatDynSwitch input').is(':checked')) { //by default switch is checked + has been initiated earlier
+       $('div.StatDynSwitch').css('display', 'block');
+       $.each(sizes, function(index, value) {
+         CheckRecalculate(value);
+       });
+     } else { //only the case when was previously on large screen and the switch unchecked
+       RunStatic();
+       $('div.StatDynSwitch').css('display', 'block');
+     }
+   }, 500);
+ });
+ $('div.StatDynSwitch input').on('click', function() {
+   if ($('div.StatDynSwitch input').is(':checked')) {
+     DynamicCircles();
+   } else {
+     RunStatic();
+   }
+ });
+</PRE><P>});
+</P><P>function DynamicCircles() {
+</P><PRE> $.each(sizes, function(index, value) {
+   //Set animation delay to spread all circles across the height of the screen
+   delayDynamic(value);
+</PRE><PRE>   //run position function, initialising order-Array and fits_old - followed by running posX function, vertically spacing circles;
+   position(value);
+ });
+</PRE><P>}
+</P><P>function delayDynamic(circlesize) {
+</P><PRE> var selectedcircles = $('.donors div.circle.' + circlesize);
+ // console.log(circlesize, selectedcircles.length);
+ var duration = selectedcircles.eq(0).css('animation-duration').match(/[+-]?\d+(?:\.\d+)?/g).map(Number);
+ // console.log('duration:', duration);
+ selectedcircles.each(function(index) {
+   var delay = (-index * duration / selectedcircles.length) - 0.3 * duration;
+   selectedcircles.eq(index).css({
+     'animation-delay': delay + 's',
+   });
+</PRE><PRE>   // Randomize animation (normal vs reverse):
+   var normal_reverse = function() {
+     return Math.floor(Math.random() * 2)
+   };
+</PRE><PRE>   if (normal_reverse()) {
+     selectedcircles.eq(index).css({
+       'animation-name': 'donor_bubbles_reverse',
+       // 'animation-play-state': 'paused'
+     });
+   } else {
+     selectedcircles.eq(index).css({
+       'animation-name': 'donor_bubbles',
+       // 'animation-play-state': 'paused'
+     });
+   };
+ });
+</PRE><P>};
+</P><P>
+function NewArray(length) {
+</P><PRE> // create an array of specified length, randomized sequence
+ var foo = new Array(length);
+ for (var i = 0; i &lt; length; i++) {
+   foo[i] = i + 1;
+ };
+ foo.sort(function(a, b) {
+   return 0.5 - Math.random()
+ });
+ return foo;
+</PRE><P>}
+</P><P>
+function position(circlesize) {
+</P><PRE> // Check how many circles fit the screen
+ var selectedcircles = $('.donors div.circle.' + circlesize);
+ var scrWidth = $(window).width();
+ var bolWidth = selectedcircles.eq(0).width();
+ var unitWidth = 3 * bolWidth;
+ var fits_new = Math.floor(scrWidth / unitWidth) + (Math.floor(scrWidth / unitWidth) - 1);
+ if (fits_new &lt; 0) {
+   fits_new = 1;
+ }
+ order[circlesize] = NewArray(fits_new); // Create new randomized array
+ fits[circlesize] = fits_new;
+</PRE><PRE> posX(circlesize, fits[circlesize]); //control the horizontal position of appearance
+</PRE><P>}
+</P><P>
+function posX(circlesize, CircleCount) {
+</P><PRE> // correction for switching between static and dynamic circles:
+ if ($('.donors').hasClass('static')) {
+   $('.donors div.circle, .donors, .verticalspan').removeClass('static');
+ }
+ $('div.StatDynSwitch').css('display', 'block');
+</PRE><PRE> // actual positioning:
+ var selectedcircles = $('.donors div.circle.' + circlesize);
+ var scrWidth = $(window).width();
+ var bolWidth = selectedcircles.eq(0).width();
+ var unitWidth = 3 * bolWidth;
+ var FitNr_adjusted = Math.floor(scrWidth / unitWidth);
+ if (FitNr_adjusted == 0) {
+   FitNr_adjusted = 1;
+ }
+ var blockWidth = scrWidth / FitNr_adjusted
+ var diffWidth = blockWidth - unitWidth;
+ var specificOrder = order[circlesize];
+</PRE><PRE> selectedcircles.each(function(index) {
+   var position = (0.5 * diffWidth) + bolWidth + ((specificOrder[index % (CircleCount)] - 1) * 0.5 * blockWidth);
+   $(this).css({
+     'left': position + 'px',
+   });
+ });
+</PRE><P>}
+</P><P>
+function CheckRecalculate(circlesize) { //Check whether recalculation of position is needed
+</P><PRE> if ($('.donors').hasClass('static')) {
+   $.each(sizes, function(index, value) {
+     delayDynamic(value)
+   });
+ }
+ var selectedcircles = $('.donors div.circle.' + circlesize);
+ var scrWidth = $(window).width();
+ var bolWidth = selectedcircles.eq(0).width();
+ var unitWidth = 3 * bolWidth;
+ var fits_new = Math.floor(scrWidth / unitWidth) + (Math.floor(scrWidth / unitWidth) - 1);
+ if (fits_new != fits[circlesize]) {
+   if (fits_new &lt; 0) {
+     fits_new = 1;
+   }
+   fits[circlesize] = fits_new;
+   order[circlesize] = NewArray(fits_new); // Create new randomized array
+ }
+ posX(circlesize, fits[circlesize])
+</PRE><P>}
+</P><P>function RunStatic() {
+</P><PRE> if ($('.donors').hasClass('static')) {} else {
+   $('.donors div.circle, .donors, .verticalspan').addClass('static');
+   $('.donors div.circle').css({
+     'left': <I>,</I>
+     'animation-name': 'none',
+     'animation-delay': 
+   })
+ }
+</PRE><P>}
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

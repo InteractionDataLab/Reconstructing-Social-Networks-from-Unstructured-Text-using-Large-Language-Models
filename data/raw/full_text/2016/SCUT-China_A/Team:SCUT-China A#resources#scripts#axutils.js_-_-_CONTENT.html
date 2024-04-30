@@ -1,0 +1,206 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_axutils_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/axutils.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><PRE>(function() {
+    // define the root namespace object
+    if(!window.$axure) window.$axure = {};
+</PRE><PRE>    $axure.utils = {};
+</PRE><PRE>    // ------------------------------------------------------------------------
+    // Makes an object bindable
+    // ------------------------------------------------------------------------
+    $axure.utils.makeBindable = function(obj, events) {
+        if(obj.registeredBindings != null) return;
+</PRE><PRE>        // copy the events
+        obj.bindableEvents = events.slice();
+        obj.registeredBindings = {};
+</PRE><PRE>        obj.bind = function(eventName, fn) {
+            var binding = {};
+            binding.eventName = eventName;
+            binding.action = fn;
+</PRE><PRE>            var bindingList = this.registeredBindings[eventName];
+            if(bindingList == null) {
+                bindingList = [];
+                this.registeredBindings[eventName] = bindingList;
+            }
+            bindingList[bindingList.length] = binding;
+        };
+</PRE><PRE>        obj.unbind = function(eventName) {
+            if(eventName.indexOf('.') &gt;= 0) {
+                this.registeredBindings[eventName] = null;
+            } else {
+                var event = eventName.split('.')[0];
+                for(var bindingKey in this.registeredBindings) {
+                    if(bindingKey.split('.')[0] == event) {
+                        this.registeredBindings[bindingKey] = null;
+                    }
+                }
+            }
+        };
+</PRE><PRE>        obj.triggerEvent = function(eventName, arg) {
+            for(var bindingKey in this.registeredBindings) {
+                if(bindingKey.split('.')[0] == eventName) {
+                    var bindings = this.registeredBindings[bindingKey];
+                    for(var i = 0; i &lt; bindings.length; i++) {
+                        if(arg == null) {
+                            bindings[i].action();
+                        } else {
+                            bindings[i].action(arg);
+                        }
+                    }
+                }
+            }
+        };
+    };
+</PRE><PRE>    $axure.utils.loadCSS = function(url) {
+        $('head').append('&lt;link text=&quot;text/css&quot; href=&quot;' + url + '&quot; rel=&quot;Stylesheet&quot; /&gt;');
+    };
+</PRE><PRE>    $axure.utils.loadJS = function(url) {
+        $('head').append('&lt;script text=&quot;text/javascript&quot; language=&quot;JavaScript&quot; src=&quot;' + url + '&quot;&gt;&lt;/script&gt;');
+    };
+</PRE><PRE>    $axure.utils.curry = function(fn) {
+        var curriedArgs = Array.prototype.slice.call(arguments, [1]);
+        return function() {
+            fn.apply(this, curriedArgs.concat(Array.prototype.slice.call(arguments)));
+        };
+    };
+</PRE><PRE>    $axure.utils.succeeded = function(result) {
+        return result &amp;&amp; result.success;
+    };
+</PRE><PRE>    $axure.utils.createUniqueTag = function() {
+        return Math.random().toString().substring(2) +
+            Math.random().toString().substring(2) +
+                Math.random().toString().substring(2) +
+                    Math.random().toString().substring(2);
+    };
+</PRE><PRE>    $axure.utils.formatDate = function(date) {
+        var months = [
+            &quot;Jan&quot;, &quot;Feb&quot;, &quot;Mar&quot;, &quot;Apr&quot;, &quot;May&quot;, &quot;Jun&quot;,
+            &quot;Jul&quot;, &quot;Aug&quot;, &quot;Sep&quot;, &quot;Oct&quot;, &quot;Nov&quot;, &quot;Dec&quot;];
+        var hours = date.getHours();
+        var amPm = (hours &gt; 11 ? 'PM' : 'AM');
+        hours = hours % 12;
+        if(hours == '0') hours = '12';
+        var minutes = date.getMinutes() + <I>;</I>
+        if(minutes.length == 1) {
+            minutes = '0' + minutes;
+        }
+        return [
+            months[date.getMonth()], ' ', date.getDate(), ' ', date.getFullYear(), ' ',
+            hours, ':', minutes, ' ', amPm].join(<I>);</I></PRE><PRE>    };
+</PRE><PRE>    $axure.utils.quickObject = function() {
+        var returnVal = {};
+        for(var i = 0; i &lt; arguments.length; i += 2) {
+            returnVal[arguments[i]] = arguments[i + 1];
+        }
+        return returnVal;
+    };
+</PRE><PRE>    var matrixBase = {
+        mul: function(val) {
+            if(val.x !== undefined) {
+                return $axure.utils.Vector2D(
+                    this.m11 * val.x + this.m12 * val.y + this.tx,
+                    this.m21 * val.x + this.m22 * val.y + this.ty);
+            } else if(val.m11) {
+                return $axure.utils.Matrix2D(
+                    this.m11 * val.m11 + this.m12 * val.m21,
+                    this.m11 * val.m12 + this.m12 * val.m22,
+                    this.m21 * val.m11 + this.m22 * val.m21,
+                    this.m21 * val.m12 + this.m22 * val.m22,
+                    val.tx + this.tx * val.m11 + this.ty * val.m21,
+                    val.ty + this.tx * val.m12 + this.ty * val.m22
+                );
+            } else if(Number(val)) {
+                var num = Number(val);
+                return $axure.utils.Matrix2D(this.m11 * num, this.m12 * num,
+                    this.m21 * num, this.m22 * num,
+                    this.tx * num, this.ty * num);
+            } else return undefined;
+        },
+        rotate: function(angle) {
+            var angleRad = angle * Math.PI / 180;
+            var c = Math.cos(angleRad);
+            var s = Math.sin(angleRad);
+</PRE><PRE>            return this.mul($axure.utils.Matrix2D(c, -s, s, c));
+        },
+        translate: function(tx, ty) {
+            return this.mul($axure.utils.Matrix2D(1, 0, 0, 1, tx, ty));
+        }
+    };
+</PRE><PRE>    $axure.utils.Matrix2D = function(m11, m12, m21, m22, tx, ty) {
+        return $.extend({
+            m11: m11 || 0,
+            m12: m12 || 0,
+            m21: m21 || 0,
+            m22: m22 || 0,
+            tx: tx || 0,
+            ty: ty || 0
+        }, matrixBase);
+    };
+</PRE><PRE>    $axure.utils.Vector2D = function(x, y) {
+        return { x: x || 0, y: y || 0 };
+    };
+</PRE><PRE>    $axure.utils.Matrix2D.identity = function() {
+        return $axure.utils.Matrix2D(1, 0, 0, 1, 0, 0);
+    };
+</PRE><PRE>    $axure.utils.fixPng = function(png) {
+        if(!(/MSIE ((5\.5)|6)/.test(navigator.userAgent) &amp;&amp; navigator.platform == &quot;Win32&quot;)) return;
+</PRE><PRE>        var src = png.src;
+        if(!png.style.width) { png.style.width = $(png).width(); }
+        if(!png.style.height) { png.style.height = $(png).height(); }
+        png.onload = function() { };
+        png.src = $axure.utils.getTransparentGifPath();
+        png.runtimeStyle.filter = &quot;progid:DXImageTransform.Microsoft.AlphaImageLoader(src='&quot; + src + &quot;',sizingMethod='scale')&quot;;
+    };
+})();
+</PRE><PRE>// TODO: [mas] simplify this
+if(window.$axure &amp;&amp; window.$axure.internal) {
+    $axure.internal(function($ax) { $ax.utils = $axure.utils; });
+}
+</PRE><PRE>// Its too much of a pain to escape everything and use regular expresions, just replace manually
+(function () {
+    var original = String.prototype.replace;
+    // TODO: maybe use flags or object instead to pass options in
+    String.prototype.replace = function (search, newVal, replaceFirst, ignoreCase) {
+        // Use original is some cases
+        if (search instanceof RegExp) return original.apply(this, arguments);
+</PRE><PRE>        search = String(search);
+        var searchCompare = ignoreCase ? this.toLowerCase() : this;
+        if (ignoreCase) search = search.toLowerCase();
+</PRE><PRE>        var searchLength = search.length;
+        var thisLength = this.length;
+</PRE><PRE>        var index = 0;
+        var retVal = <I>;</I>
+        while (index != -1) {
+            var nextIndex = searchCompare.indexOf(search, index);
+            if (nextIndex != -1) {
+                retVal += this.substring(index, nextIndex) + newVal;
+                index = nextIndex + searchLength;
+                if (index &gt;= thisLength) index = -1;
+            } else {
+                retVal += this.substring(index);
+                index = -1;
+            }
+            if (replaceFirst) break;
+        }
+</PRE><PRE>        return retVal;
+    };
+</PRE><PRE>    if (!Array.prototype.indexOf) {
+        Array.prototype.indexOf = function (elt /*, from*/) {
+            var len = this.length &gt;&gt;&gt; 0;
+</PRE><PRE>            var from = trunc(Number(arguments[1]) || 0);
+            if(from &lt; 0) from += len;
+</PRE><PRE>            for(; from &lt; len; from++) {
+                if(from in this &amp;&amp; this[from] === elt) return from;
+            }
+            return -1;
+        };
+    }
+</PRE><PRE>    var trunc = function(num) {
+        return num &lt; 0 ? Math.ceil(num) : Math.floor(num);
+    };
+</PRE><PRE>})();
+</PRE></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

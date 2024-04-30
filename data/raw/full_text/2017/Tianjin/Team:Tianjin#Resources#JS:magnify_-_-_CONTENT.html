@@ -1,0 +1,207 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tianjin_Resources_JS_magnify skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tianjin/Resources/JS:magnify</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>(function ($) {
+</P><PRE>       $.fn.zoombieLens = function (options) {
+</PRE><PRE>               var defaults = {
+                       Size: 100,
+                       borderSize: 4,
+                       borderColor: &quot;#888&quot;
+               };
+               var options = $.extend(defaults, options);
+               var lensType = &quot;background-position: 0px 0px;width: &quot; + String(options.Size) + &quot;px;height: &quot; + String(options.Size) + &quot;px;float: left;display: none;border-radius: &quot; + String(options.Size / 2 + options.borderSize) + &quot;px;border: &quot; + String(options.borderSize) + &quot;px solid &quot; + options.borderColor + &quot;;background-repeat: no-repeat;position: absolute;&quot;;
+</PRE><PRE>               return this.each(function () {
+                       obj = $(this);
+</PRE><PRE>                       var offset = $(this).offset();
+</PRE><PRE>                       // Creating lens
+</PRE>
+                        var target = $(&quot;<DIV style="&quot; + lensType + &quot;" class="&quot; + options.lensCss + &quot;"> </DIV>&quot;).appendTo($(this).parent());
+<PRE>                       var targetSize = target.size();
+</PRE><PRE>                       // Calculating actual size of image
+                       var imageSrc = options.imageSrc ? options.imageSrc : $(this).attr(&quot;src&quot;);
+                       var imageTag = &quot;&lt;img style='display:none;' src='&quot; + imageSrc + &quot;' /&gt;&quot;;
+</PRE><PRE>                       var widthRatio = 0;
+                       var heightRatio = 0;
+</PRE><PRE>                       $(imageTag).load(function () {
+                               widthRatio = $(this).width() / obj.width();
+                               heightRatio = $(this).height() / obj.height();
+                       }).appendTo($(this).parent());
+</PRE><PRE>                       target.css({
+                               backgroundImage: &quot;url('&quot; + imageSrc + &quot;')&quot;
+                       });
+</PRE><PRE>                       target.mousemove(setImage);
+                       $(this).mousemove(setImage);
+</PRE><PRE>                       function setImage(e) {
+</PRE><PRE>                               var leftPos = parseInt(e.pageX - offset.left);
+                               var topPos = parseInt(e.pageY - offset.top);
+</PRE><PRE>                               if (leftPos &lt; 0 || topPos &lt; 0 || leftPos &gt; obj.width() || topPos &gt; obj.height()) {
+                                       target.hide();
+                               } else {
+                                       target.show();
+</PRE><PRE>                                       leftPos = String(((e.pageX - offset.left) * widthRatio - target.width() / 2) * (-1));
+                                       topPos = String(((e.pageY - offset.top) * heightRatio - target.height() / 2) * (-1));
+                                       target.css({
+                                               backgroundPosition: leftPos + 'px ' + topPos + 'px'
+                                       });
+</PRE><PRE>                                       leftPos = String(e.pageX - target.width() / 2);
+                                       topPos = String(e.pageY - target.height() / 2);
+                                       target.css({
+                                               left: leftPos + 'px',
+                                               top: topPos + 'px'
+                                       });
+                               }
+                       }
+               });
+       };
+</PRE><P>})(jQuery);
+</P><P>
+(function ($) {
+</P><PRE>       var defaults = {
+               url: false,
+               callback: false,
+               target: false,
+               duration: 120,
+               on: 'mouseover' // other options: 'grab', 'click', 'toggle'
+       };
+</PRE><PRE>       $.zoombie = function (target, source, img) {
+               var outerWidth,
+                       outerHeight,
+                       xRatio,
+                       yRatio,
+                       offset,
+                       position = $(target).css('position');
+</PRE><PRE>               $(target).css({
+                       position: /(absolute|fixed)/.test() ? position : 'relative',
+                       overflow: 'hidden'
+               });
+</PRE><PRE>               $(img)
+                       .addClass('zoomImg')
+                       .css({
+                               position: 'absolute',
+                               top: 0,
+                               left: 0,
+                               opacity: 0,
+                               width: img.width,
+                               height: img.height,
+                               border: 'none',
+                               maxWidth: 'none'
+                       })
+                       .appendTo(target);
+</PRE><PRE>               return {
+                       init: function () {
+                                       outerWidth = $(target).outerWidth();
+                                       outerHeight = $(target).outerHeight();
+                                       xRatio = (img.width - outerWidth) / $(source).outerWidth();
+                                       yRatio = (img.height - outerHeight) / $(source).outerHeight();
+                                       offset = $(source).offset();
+                               },
+                               move: function (e) {
+                                       var left = (e.pageX - offset.left),
+                                               top = (e.pageY - offset.top);
+</PRE><PRE>                                       top = Math.max(Math.min(top, outerHeight), 0);
+                                       left = Math.max(Math.min(left, outerWidth), 0);
+</PRE><PRE>                                       img.style.left = (left * -xRatio) + 'px';
+                                       img.style.top = (top * -yRatio) + 'px';
+                               }
+               };
+       };
+</PRE><PRE>       $.fn.zoombie = function (options) {
+               return this.each(function () {
+                       var
+                               settings = $.extend({}, defaults, options || {}),
+                               //target will display the zoomed iamge
+                               target = settings.target || this,
+                               //source will provide zoom location info (thumbnail)
+                               source = this,
+                               img = new Image(),
+                               $img = $(img),
+                               mousemove = 'mousemove',
+                               clicked = false;
+</PRE><PRE>                       // If a url wasn't specified, look for an image element.
+                       if (!settings.url) {
+                               settings.url = $(source).find('img').attr('src');
+                               if (!settings.url) {
+                                       return;
+                               }
+                       }
+</PRE><PRE>                       img.onload = function () {
+                               var zoombie = $.zoombie(target, source, img);
+</PRE><PRE>                               function start(e) {
+                                       zoombie.init();
+                                       zoombie.move(e);
+</PRE><PRE>                                       // Skip the fade-in for IE8 and lower since it chokes on fading-in
+                                       // and changing position based on mousemovement at the same time.
+                                       $img.stop()
+                                               .fadeTo($.support.opacity ? settings.duration : 0, 1);
+                               }
+</PRE><PRE>                               function stop() {
+                                       $img.stop()
+                                               .fadeTo(settings.duration, 0);
+                               }
+</PRE><PRE>                               if (settings.on === 'grab') {
+                                       $(source).mousedown(
+                                               function (e) {
+                                                       $(document).one('mouseup',
+                                                               function () {
+                                                                       stop();
+</PRE><PRE>                                                                       $(document).unbind(mousemove, zoombie.move);
+                                                               }
+                                                       );
+</PRE><PRE>                                                       start(e);
+</PRE><PRE>                                                       $(document)[mousemove](zoombie.move);
+</PRE><PRE>                                                       e.preventDefault();
+                                               }
+                                       );
+                               } else if (settings.on === 'click') {
+                                       $(source).click(
+                                               function (e) {
+                                                       if (clicked) {
+                                                               // bubble the event up to the document to trigger the unbind.
+                                                               return;
+                                                       } else {
+                                                               clicked = true;
+                                                               start(e);
+                                                               $(document)[mousemove](zoombie.move);
+                                                               $(document).one('click',
+                                                                       function () {
+                                                                               stop();
+                                                                               clicked = false;
+                                                                               $(document).unbind(mousemove, zoombie.move);
+                                                                       }
+                                                               );
+                                                               return false;
+                                                       }
+                                               }
+                                       );
+                               } else if (settings.on === 'toggle') {
+                                       $(source).click(
+                                               function (e) {
+                                                       if (clicked) {
+                                                               stop();
+                                                       } else {
+                                                               start(e);
+                                                       }
+                                                       clicked = !clicked;
+                                               }
+                                       );
+                               } else {
+                                       zoombie.init();
+</PRE><PRE>                                       $(source).hover(
+                                               start,
+                                               stop
+                                       )[mousemove](zoombie.move);
+                               }
+</PRE><PRE>                               if ($.isFunction(settings.callback)) {
+                                       settings.callback.call(img);
+                               }
+                       };
+</PRE><PRE>                       img.src = settings.url;
+               });
+       };
+</PRE><PRE>       $.fn.zoombie.defaults = defaults;
+</PRE><P>}(window.jQuery));
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

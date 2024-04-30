@@ -1,0 +1,816 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Comparing GPT with Waterloo
+
+```{r, warning=FALSE, message=FALSE}
+
+load("../data/processed/networks/inter-team/2015_simplified_networks_two-step_gpt-3.5-turbo-16k_10_0-3_0-3.RData")
+
+library(igraph)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(wesanderson)
+library(harrypotter)
+
+source("custom_functions.R")
+
+meta = read.csv("../data/raw/team_meta.csv", stringsAsFactors = FALSE)
+
+#interactions = read.csv("../data/processed/curated/fuzzy_select_inter_team_raw/interactions_curated_filtered.csv", stringsAsFactors = FALSE)
+#interactions = interactions %>% select(-c("category")) %>% group_by(team_matched, target_matched, year) %>% summarise(count = n())
+
+#collab_gpt = interactions[, c("team_matched", "target_matched", "year", "count")]
+#colnames(collab_gpt) = c("Source", "Target", "Year", "NbOfMention")
+
+#collab_fuzzy = read.csv("../data/processed/collab_final.csv", stringsAsFactors = FALSE)
+#collab_fuzzy = collab_fuzzy[, c("Source", "Target", "Year", "NbOfMention", "SourceID", "TargetID")]
+
+#collab_waterloo_15 = read.csv("../data/raw/waterloo_2015_collaboration_dataset.csv", stringsAsFactors = FALSE)
+#collab_waterloo_15 = collab_waterloo_15[,c("Donor", "Recipient")]
+#colnames(collab_waterloo_15) = c("Source", "Target")
+#collab_waterloo_15$Year = 2015
+
+meta$Track[is.na(meta$Track)] = "Not specified"
+
+gbh_palette = wes_palette("GrandBudapest2")
+vir = viridis::viridis(6)
+
+color_palette = c("grey", vir[2:6])
+
+```
+
+Network approach to evaluate precision/recall
+
+```{r}
+
+eval_precision_recall = function(predicted_edges, actual_edges)
+{
+  
+  g1 = graph_from_data_frame(predicted_edges, directed = FALSE)
+  g1 = simplify(g1)
+  
+  g2 = graph_from_data_frame(actual_edges, directed = FALSE)
+  g2 = simplify(g2)
+  
+  g_diff = graph.difference(g1,g2)
+  
+  pr = (ecount(g1)-ecount(g_diff))/ecount(g1)
+  rc = (ecount(g1)-ecount(g_diff))/ecount(g2)
+  
+  return(data.frame(precision = pr, recall = rc))
+  
+}
+
+```
+
+
+```{r}
+
+teams_15 = meta$Team[meta$Year == "2015"]
+
+g_gpt_15 = g_list_gpt[["2015"]]
+g_fuzzy_15 = g_list_fuzzy[["2015"]]
+g_waterloo_15 = g_waterloo_15
+
+g_diff_gpt_waterloo = difference(g_gpt_15, g_waterloo_15)
+precision_gw = (ecount(g_gpt_15) - ecount(g_diff_gpt_waterloo))/ecount(g_gpt_15)
+recall_gw = (ecount(g_gpt_15) - ecount(g_diff_gpt_waterloo))/ecount(g_waterloo_15)
+
+g_diff_fuzzy_waterloo = difference(g_fuzzy_15, g_waterloo_15)
+precision_fw = (ecount(g_fuzzy_15) - ecount(g_diff_fuzzy_waterloo))/ecount(g_fuzzy_15)
+recall_fw = (ecount(g_fuzzy_15) - ecount(g_diff_fuzzy_waterloo))/ecount(g_waterloo_15)
+
+```
+
+Jackknife Estimates
+
+```{r}
+
+df_gpt = as_long_data_frame(g_gpt_15)[,c("from_name", "to_name")]
+df_fuzzy = as_long_data_frame(g_fuzzy_15)[,c("from_name", "to_name")]
+df_waterloo = as_long_data_frame(g_waterloo_15)[,c("from_name", "to_name")]
+
+df_jkn_values = data.frame()
+ 
+#Jackknife method - each 'i' is a node in the waterloo network. Removing all edges of said node from waterloo, gpt and fuzzy networks, creating a subsample
+
+for (name in V(g_waterloo_15)$name)
+{
+   waterloo_jkn = df_waterloo[!df_waterloo$from_name %in% name & !df_waterloo$to_name %in% name,]
+  
+   df1 = eval_precision_recall(df_gpt[!df_gpt$from_name %in% name & !df_gpt$to_name %in% name,], waterloo_jkn)
+   df1$type = "gpt"
+   df1$node_removed = name
+   df2 = eval_precision_recall(df_fuzzy[!df_fuzzy$from_name %in% name & !df_fuzzy$to_name %in% name,], waterloo_jkn)
+   df2$type = "fuzzy"
+   df2$node_removed = name
+   
+   df_jkn_values = rbind(df_jkn_values, df1)
+   df_jkn_values = rbind(df_jkn_values, df2)
+   
+}
+
+
+```
+
+```{r}
+
+jackknife_se = function(estimates, actual)
+{
+  se = sqrt(sum((estimates-actual)**2)*((length(estimates)-1)/length(estimates)))
+  return(se)
+}
+
+df_errb = data.frame()
+
+r1 = jackknife_se(df_jkn_values$recall[df_jkn_values$type == "gpt"], recall_gw)
+r2 = jackknife_se(df_jkn_values$recall[df_jkn_values$type == "fuzzy"], recall_fw)
+
+df_errb = rbind(df_errb, data.frame(model = "gpt-3.5-turbo-16k", comparison_against = "waterloo", measure = "recall", value = recall_gw, se = r1))
+
+df_errb = rbind(df_errb, data.frame(model = "fuzzy-matching", comparison_against = "waterloo", measure = "recall", value = recall_fw, se = r2))
+
+
+df_errb$model = factor(df_errb$model, levels = c("fuzzy-matching", "gpt-3.5-turbo-16k"))
+
+plt = ggplot(df_errb) + 
+    geom_bar(aes(fill = model, y=value, x= measure), position="dodge", stat="identity") +
+    scale_fill_manual(breaks = c("fuzzy-matching", "gpt-3.5-turbo-16k"), values = c(color_palette[c(1,3)])) +
+    geom_errorbar(aes(fill = model, ymin = value-se, ymax = value+se, x = measure), width = 0.1, position = position_dodge(0.9)) +
+    ggtitle("") +
+    theme_bw(base_size = 25) + coord_cartesian(ylim = c(0.5, 1)) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank())
+
+ggsave(plt, filename = "../figures/precision_recall_waterloo.png", width = 6, height = 3)
+```
+
+ROC Curves
+
+```{r}
+
+A_gpt <- as_adjacency_matrix(g_gpt_15, attr = "weight", sparse = FALSE)
+A_fuzzy <- as_adjacency_matrix(g_fuzzy_15, attr = "weight", sparse = FALSE)
+A_waterloo <- as_adjacency_matrix(g_waterloo_15, sparse = FALSE)
+  
+x_gpt <- as.numeric(A_gpt[upper.tri(A_gpt)])
+x_fuzzy = as.numeric(A_fuzzy[upper.tri(A_fuzzy)])
+y <- as.numeric(A_waterloo[upper.tri(A_waterloo)])
+  
+#x_gpt <- as.numeric(A_gpt)
+#x_fuzzy = as.numeric(A_fuzzy)
+#y <- as.numeric(A_waterloo)
+
+r_gpt <- roc(y ~ x_gpt)
+r_fuzzy <- roc(y ~ x_fuzzy)
+  
+#print(r)
+
+df = data.frame(specificity = 1-r_gpt$specificities, sensitivity = r_gpt$sensitivities, type = "gpt-3.5-turbo-16k", thresholds = r_gpt$thresholds)
+df = rbind(df, data.frame(specificity = 1-r_fuzzy$specificities, sensitivity = r_fuzzy$sensitivities, type = "fuzzy-matching", thresholds = r_fuzzy$thresholds))
+  
+df$sum =df$specificity + df$sensitivity
+
+plt = ggplot(df, aes(x = specificity, y = sensitivity, group = type, color = type)) + geom_line() + geom_point() + geom_abline(linetype = "dashed", color = "black", alpha = 1) + xlab("") + ylab("") + xlim(c(0,1)) +  scale_color_manual(breaks = c("fuzzy-matching", "gpt-3.5-turbo-16k"), values = color_palette[c(1,3)]) + theme_bw(base_size = 20)  + ggtitle("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none")
+#+ scale_x_log10()
+
+ggplotly(plt)
+
+ggsave(plt, filename = "../figures/ROC_gpt_fuzzy_waterloo.png", width = 5, height = 5)
+
+```
+
+PR Curves
+
+(Marc's version)
+
+```{r}
+
+library(ROCR)
+
+pred_fuzzy <- prediction(log10(x_fuzzy+1), y >0)
+pred_gpt <- prediction(log10(x_gpt+1), y >0)
+
+perf_fuzzy <- performance(pred_fuzzy, "f")
+perf_gpt <- performance(pred_gpt, "f")
+
+# x <- log10(perf_fuzzy@x.values+1)
+
+plot(perf_fuzzy, col=3, lwd=2)
+plot(perf_gpt, add = TRUE, col=2,lwd=2)
+legend('topright',
+       c('Fuzzy','GPT'),
+         col=c(3,2),
+       lwd=3,
+       bty='n',  
+       lty=1)
+
+# abline(h=0.5,lty=2)
+
+# abline(0,1,lty=2)
+
+```
+
+```{r}
+
+pred_fuzzy <- prediction(log10(x_fuzzy+1), y >0)
+pred_gpt <- prediction(log10(x_gpt+1), y >0)
+
+perf_fuzzy <- performance(pred_fuzzy, "prec", "rec" )
+perf_gpt <- performance(pred_gpt, "prec", "rec")
+
+plot(perf_fuzzy, col=3, lwd=2)
+plot(perf_gpt, add = TRUE, col=2,lwd=2)
+legend('topright',
+       c('Fuzzy','GPT'),
+         col=c(3,2),
+       lwd=3,
+       bty='n',  
+       lty=1)
+
+hr <- mean(y>0)
+abline(h=hr,lty=2)
+
+```
+
+
+
+```{r}
+
+pr_gpt = PRROC::pr.curve(scores.class0 = x_gpt, weights.class0 = y, curve = TRUE)$curve
+pr_gpt = data.frame(pr_gpt)
+
+pr_fuzzy = PRROC::pr.curve(scores.class0 = x_fuzzy, weights.class0 = y, curve = TRUE)$curve
+pr_fuzzy = data.frame(pr_fuzzy)
+
+#plt = ggplot() + geom_line(data = pr_gpt, aes(x = X1, y = X2), color = gbh_palette[1]) + theme_bw(base_size = 20)  + geom_line(data = pr_fuzzy, aes(x = X1, y = X2), color = gbh_palette[2]) + xlab("") + ylab("")
+
+plt = ggplot() + geom_line(data = pr_gpt, aes(x = X1, y = X2), color = color_palette[3]) + geom_line(data = pr_fuzzy, aes(x = X1, y = X2), color = color_palette[1])  + xlab("") + ylab("") + xlim(c(0,1)) + theme_bw(base_size = 20)  + ggtitle("") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(legend.position="none")
+#+ scale_x_log10()
+#+ geom_point(data = pr_gpt, aes(x = X1, y = X2), color = color_palette[3]) + geom_point(data = pr_fuzzy, aes(x = X1, y = X2), color = color_palette[1])
+
+#ggplotly(plt)
+
+ggsave(plt, filename = "../figures/pr_curve_gpt_fuzzy_waterloo.png", height = 5, width = 5)
+
+```
+
+Network Properties - GPT v Fuzzy v Waterloo
+
+
+```{r}
+
+populate_local_network_props = function(g)
+{
+  deg = log(degree(g, mode = "all"), 10)
+  deg[is.infinite(deg)] = NA#min(deg[!is.infinite(deg)])
+  
+  bet = log(betweenness(g, directed = FALSE),10)
+  bet[is.infinite(bet)] = NA#min(bet[!is.infinite(bet)])
+  
+  eig = log(eigen_centrality(g, directed = FALSE)$vector,10)
+  eig[is.infinite(eig)] = NA#min(eig[!is.infinite(eig)])
+  
+  clo = closeness(g, mode = "all")
+  clo[is.infinite(clo)] = NA#min(clo[!is.infinite(clo)])
+  
+  core = coreness(g)
+  core[is.infinite((core))] = NA#min(core[!is.infinite(core)])
+  
+  trans = transitivity(g, type = "local") 
+  trans[is.infinite((trans))] = NA#min(trans[!is.infinite(trans)])
+  
+  df = data.frame(user = V(g)$name, 
+                  deg = deg,
+                  deg_Z = (deg-mean(deg, na.rm = TRUE))/sd(deg, na.rm = TRUE),
+                  bet = bet,
+                  bet_Z = (bet-mean(bet, na.rm = TRUE))/sd(bet, na.rm = TRUE), 
+                  clo = clo,
+                  clo_Z = (clo-mean(clo, na.rm = TRUE))/sd(clo, na.rm = TRUE), 
+                  eig = eig,
+                  eig_Z = (eig-mean(eig, na.rm = TRUE))/sd(eig, na.rm = TRUE), 
+                  core = core,
+                  core_Z = (core-mean(core, na.rm = TRUE))/sd(core, na.rm = TRUE),
+                  trans = trans,
+                  trans_Z = (trans-mean(trans, na.rm = TRUE))/sd(trans, na.rm = TRUE))
+  
+  return(df)
+}
+
+populate_global_network_props = function(g)
+{
+
+  df = data.frame()
+  #web = as_adjacency_matrix(g, type = "both", sparse = FALSE)
+  #country = assortment.discrete(graph = web, types = as.factor(V(g)$Country), SE = TRUE)
+  
+  df = rbind(df, data.frame(type = "edges", score = ecount(g)))
+  df = rbind(df, data.frame(type = "density", score = edge_density(g)))
+  df = rbind(df, data.frame(type = "triangles", score = length(triangles(g))))
+  df = rbind(df, data.frame(type = "connected components", score = components(g)$no))
+  df = rbind(df, data.frame(type = "assortativity_region", score = assortativity_nominal(g, directed = FALSE, types = as.factor(V(g)$Region))))
+  df = rbind(df, data.frame(type = "assortativity_country", score = assortativity_nominal(g, directed = FALSE, types = as.factor(V(g)$Country))))
+  #df = rbind(df, data.frame(type = "assortativity_track", score = assortativity_nominal(g, directed = FALSE, types = as.factor(V(g)$Track))))
+  df = rbind(df, data.frame(type = "assortativity_section", score = assortativity_nominal(g, directed = FALSE, types = as.factor(V(g)$Section))))
+  df = rbind(df, data.frame(type = "assortativity_size", score = assortativity(g, directed = FALSE, types1 = V(g)$Size)))
+  df = rbind(df, data.frame(type = "assortativity_degree", score = assortativity(g, directed = FALSE, types1 = degree(g))))
+  df = rbind(df, data.frame(type = "assortativity_prior success", score = assortativity_nominal(g, directed = FALSE, types = as.factor(V(g)$gold_prev_year))))
+  df = rbind(df, data.frame(type = "assortativity_prior experience", score = assortativity(g, directed = FALSE, types1 = V(g)$nb_participation)))
+  
+  return(df)
+  
+}
+
+
+```
+
+Local Network Properties
+
+```{r}
+
+df_lnp = data.frame()
+
+df = populate_local_network_props(g_waterloo_15)
+df = reshape2::melt(df, id.var = "user")
+df$year = 2015
+df$type = "waterloo"
+
+df_lnp = rbind(df_lnp, df)
+
+df = populate_local_network_props(g_gpt_15)
+df = reshape2::melt(df, id.var = "user")
+df$year = 2015
+df$type = "gpt-3.5-turbo-16k"
+
+df_lnp = rbind(df_lnp, df)
+
+df = populate_local_network_props(g_fuzzy_15)
+df = reshape2::melt(df, id.var = "user")
+df$year = 2015
+df$type = "fuzzy-matching"
+
+df_lnp = rbind(df_lnp, df)
+
+
+```
+
+Scatterplots 
+
+```{r}
+
+renames = list("deg" = "Log10 Degree", "deg_Z" = "Log10 Degree Z-scored", "clo" = "Closeness", "clo_Z" = "Closeness Z-scored", "bet" = "Log10 Betweenness", "bet_Z" = "Log10 Betweenness Z-scored", "eig" = "Log10 Eigen Centrality", "eig_Z" = "Log10 Eigen Cent. Z-scored", "trans" = "Local Clustering", "trans_Z" = "Local Clustering Z-scored", "core" = "Coreness", "core_Z" = "Core Z-scored")
+
+pdf("../figures/scatterplots_gpt_fuzzy_waterloo.pdf", height = 7, width = 7)
+
+for (i in unique(df_lnp$variable))
+{
+  temp = df_lnp[df_lnp$variable == i,]
+  temp = reshape2::dcast(temp, formula = user+year~type, value.var = "value")
+  
+  
+  plt = ggplot(temp) + 
+    geom_point(aes(x = waterloo, y = `gpt-3.5-turbo-16k`), alpha = 0.8, color = color_palette[3]) + geom_abline(color = "black", alpha = 1) + 
+    geom_point(aes(x = waterloo, y = `fuzzy-matching`), alpha = 0.8, color = color_palette[1]) +
+    ggtitle("") + 
+     theme_bw(base_size = 20) + 
+    xlab("Waterloo") + ylab("Predicted") + ggtitle(paste(renames[i], sep = "")) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+  
+  print(plt)
+
+}
+
+dev.off()
+
+```
+
+Clustered Scatterplots (TODO)
+
+```{r}
+
+pdf("../figures/interval_scatterplots_gpt_fuzzy_waterloo.pdf", height = 7, width = 7)
+
+for (i in unique(df_lnp$variable))
+{
+  temp = df_lnp[df_lnp$variable == i,]
+  breaks <- seq(min(temp$value[!is.na(temp$value)]), max(temp$value[!is.na(temp$value)]), length.out = 10)
+  classes <- cut(temp$value, breaks=breaks, include.lowest = TRUE)
+  
+  temp$class = classes
+
+  #temp = reshape2::dcast(temp, formula = class~type, value.var = "value")
+  temp = temp %>% group_by(class, type) %>% summarise(mean = mean(value), se = se(value))
+  temp = reshape2::dcast(temp, formula = class~type, value.vars = c("mean"))
+  
+ plt = ggplot(temp) + 
+    geom_point(aes(x = waterloo, y = `gpt-3.5-turbo-16k`), alpha = 0.8, color = color_palette[3]) + geom_abline(color = "red", alpha = 0.3) + 
+    geom_point(aes(x = waterloo, y = `fuzzy-matching`), alpha = 0.8, color = color_palette[1]) +
+    ggtitle("") + 
+     theme_bw(base_size = 20) + 
+    xlab("Waterloo") + ylab("Predicted") + ggtitle(paste(renames[i], sep = "")) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+  
+  
+  print(plt)
+
+}
+
+dev.off()
+
+```
+
+Facet Wrap scatterplot
+
+```{r}
+
+temp = reshape2::dcast(df_lnp[df_lnp$variable %in% c("deg_Z", "bet_Z", "eig_Z", "core_Z", "trans_Z"),], formula = variable+user+year~type, value.var = "value")
+
+temp = temp %>% rowwise() %>% mutate(renamed_variable = renames[as.character(variable)][[1]])
+
+plt = ggplot(temp) + 
+    geom_point(aes(x = waterloo, y = `gpt-3.5-turbo-16k`), alpha = 0.6, color = color_palette[3]) + geom_abline(color = "red", alpha = 0.1) + 
+    geom_point(aes(x = waterloo, y = `fuzzy-matching`), alpha = 0.3, color = color_palette[1]) +
+    ggtitle("") + 
+facet_wrap(~renamed_variable) +
+       theme_bw(base_size = 20) + 
+    xlab("") + ylab("") + ggtitle("") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+
+ggsave(plt, filename = "../figures/facet_wrap_scatterplot.png", width = 10, height = 8)
+
+```
+
+
+
+Density Plot (TO edit)
+
+```{r}
+
+pdf("../figures/local_props_density_2015.pdf", height = 7, width = 7)
+
+for (i in unique(df_lnp$variable))
+{
+  temp = df_lnp[df_lnp$variable == i,]
+  #temp = reshape2::dcast(temp, formula = user+year~type, value.var = "value")
+  #temp = reshape2::dcast(temp, formula = user+year~type, value.var = "value")
+  
+  #plt = ggplot(temp) +
+  #geom_histogram(aes(x = `gpt-3.5-turbo-16k`, y = ..density..), fill=gbh_palette[1]) +
+  #geom_label(aes(x=4.5, y=0.25, label="GPT"), color=gbh_palette[1]) +
+  #geom_histogram( aes(x = `fuzzy-matching`, y = -..density..), fill= gbh_palette[2]) +
+  #geom_label(aes(x=4.5, y=-0.25, label="Fuzzy"), color=gbh_palette[2]) + theme_bw(base_size = 20) + 
+  #xlab(renames[i])
+  
+   plt = ggplot(temp) + geom_density(aes(x = value, group = type, fill = type, color = type), alpha = 0.8) +
+    ggtitle("") + scale_fill_manual(breaks = c("gpt-3.5-turbo-16k", "fuzzy-matching", "waterloo"), values = color_palette[c(1,4,6)]) +
+     scale_color_manual(breaks = c("gpt-3.5-turbo-16k", "fuzzy-matching", "waterloo"), values = color_palette[c(1,4,6)]) +
+     theme_bw(base_size = 20) + 
+    xlab("") + ylab("") + ggtitle(paste(renames[i], sep = "")) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+  
+  print(plt)
+
+}
+
+dev.off()
+
+```
+
+Degree Distribution
+
+
+2015: GPT v Fuzzy v Waterloo
+
+```{r}
+
+degree_distribution_normalised = function (graph, cumulative = FALSE) 
+{
+  if (!is_igraph(graph)) {
+    stop("Not a graph object")
+  }
+  cs <- degree(graph)
+  cs = (cs)/max(cs)
+  
+  hi <- hist(cs, plot = FALSE)$density
+  if (!cumulative) {
+    res <- hi
+  }
+  else {
+    res <- rev(cumsum(rev(hi)))
+  }
+  return(res)
+}
+
+
+```
+
+
+```{r}
+
+df_cum = data.frame()
+
+g_gpt = g_gpt_15
+g_fuzzy = g_fuzzy_15
+  
+dist = log(degree_distribution_normalised(g_gpt, cumulative = TRUE), base= 10)
+df_cum = rbind(df_cum, data.frame(network = "gpt-3.5-turbo-16k", degree = 1:length(dist), degree_log = log(1:length(dist), base = 10), prob = dist, year = i))
+
+dist = log(degree_distribution_normalised(g_fuzzy, cumulative = TRUE), base= 10)
+df_cum = rbind(df_cum, data.frame(network = "fuzzy-matching", degree = 1:length(dist), degree_log = log(1:length(dist), base = 10), prob = dist, year = i))
+  
+dist = log(degree_distribution_normalised(g_waterloo_15, cumulative = TRUE), base= 10)
+df_cum = rbind(df_cum, data.frame(network = "waterloo", degree = 1:length(dist), degree_log = log(1:length(dist), base = 10), prob = dist, year = i))
+  
+plt = ggplot(df_cum, aes(color = network, y=prob, x= degree_log)) + 
+    geom_line(size = 1.2) +
+    scale_color_manual(breaks = c("gpt-3.5-turbo-16k", "fuzzy-matching", "waterloo"), values = color_palette[c(1,3,6)]) +
+    ggtitle("") +
+      facet_wrap(~"2015") + theme_bw(base_size = 20) + 
+    xlab("") + ylab("") + ggtitle("")
+
+#theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank())
+
+ggsave(plt, filename = "../figures/cumulative_dd_2015.png", width = 10, height = 8)
+
+```
+
+Correlations Boxplots
+
+Correlations 2015 - GPT v Waterloo & Fuzzy v Waterloo
+
+```{r, warning=FALSE, message=FALSE}
+
+df_lnp_correlations = data.frame()
+
+for (i in unique(df_lnp$variable))
+{
+  temp = df_lnp[df_lnp$variable == i,]
+  temp = reshape2::dcast(temp, formula = user+year~type, value.var = "value")
+
+  cor = cor.test(temp$`gpt-3.5-turbo-16k`, temp$waterloo, method = "spearman")
+  df_lnp_correlations = rbind(df_lnp_correlations, data.frame(type = "gpt-3.5-turbo-16k", variable = i, cor = cor$estimate, p_val = cor$p.value))
+  
+  cor = cor.test(temp$`fuzzy-matching`, temp$waterloo, method = "spearman")  
+  df_lnp_correlations = rbind(df_lnp_correlations, data.frame(type = "fuzzy-matching", variable = i, cor = cor$estimate, p_val = cor$p.value))
+}
+
+```
+
+
+
+Boxplots (TO CHECK)
+
+```{r}
+
+plt = ggplot(df_lnp_correlations, aes(x = cor, y = variable)) + 
+    geom_bar(stat = "identity") + scale_y_discrete(labels = renames) + 
+    ggtitle("") + 
+ theme_bw(base_size = 20) +
+    xlab("Spearman Correlations") + ylab("") + ggtitle("") 
+
+#ggsave(plt, filename = "../figures/correlations_years.png", height = 7, width = 9)
+
+```
+
+Global Network Properties
+
+```{r}
+
+df_gnp = data.frame()
+
+#GPT
+df = populate_global_network_props(g_gpt_15)
+df$model = "gpt-3.5-turbo-16k"
+df_gnp = rbind(df_gnp, df)
+
+#fuzzy
+df = populate_global_network_props(g_fuzzy_15)
+df$model = "fuzzy-matching"
+df_gnp = rbind(df_gnp, df)
+
+#waterloo
+df = populate_global_network_props(g_waterloo_15)
+df$model = "waterloo"
+df_gnp = rbind(df_gnp, df)
+
+
+```
+
+Bar Plot (minus jackknife)
+
+```{r}
+
+plt = ggplot(df_gnp[!df_gnp$type %in% c("edges", "triangles", "connected components"),]) + geom_bar(aes(x = type, y = score, fill = model), stat = "identity", position = position_dodge()) + theme_bw(base_size = 25) + scale_fill_manual(breaks = c("gpt-3.5-turbo-16k", "fuzzy-matching", "waterloo"), values = color_palette[c(1,4,6)]) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+```
+
+***
+
+Correlations with Jackknifes
+
+(LOCAL)
+
+```{r}
+# 
+# df_lcor_jkn = data.frame()
+# 
+# for (name in V(g_waterloo_15)$name)
+# {
+#   temp = data.frame()
+#   
+#   g_gpt = delete.vertices(g_gpt_15, v = name)
+#   g_fuzzy = delete.vertices(g_fuzzy_15, v = name)
+#   g_waterloo = delete.vertices(g_waterloo_15, v = name)
+#   
+#   df = populate_local_network_props(g_gpt)
+#   df = reshape2::melt(df, id.var = "user")
+#   df$model = "gpt-3.5-turbo-16k"
+#   temp = rbind(temp, df)
+# 
+#   df = populate_local_network_props(g_fuzzy)
+#   df = reshape2::melt(df, id.var = "user")
+#   df$model = "fuzzy-matching"
+#   temp = rbind(temp, df)
+# 
+#   df = populate_local_network_props(g_waterloo)
+#   df = reshape2::melt(df, id.var = "user")
+#   df$model = "waterloo"
+#   temp = rbind(temp, df)
+#   
+#   temp$removed = name
+#   
+#   df_lcor_jkn = rbind(df_lcor_jkn, temp)
+#   
+# }
+
+```
+
+
+Compute Errorbars with Jackknife
+
+```{r, warning=FALSE}
+
+# temp = df_lcor_jkn
+# temp = reshape2::dcast(temp, formula = user+removed+variable~model, value.var = "value")
+#   
+# t = temp %>% group_by(removed, variable) %>% summarise(cor_gpt = cor.test(waterloo, `gpt-3.5-turbo-16k`, method = "spearman")$estimate, cor_fuzzy = cor.test(waterloo, `fuzzy-matching`, method = "spearman")$estimate)
+
+df_cor_jkn = data.frame()
+
+for (i in unique(df_lnp$variable))
+{
+  
+  temp = df_lnp[df_lnp$variable == i,]
+  temp = reshape2::dcast(temp, formula = user+year~type, value.var = "value")
+  
+  jkn = data.frame()
+  
+  for (j in 1:nrow(temp))
+  {
+    t = temp[-c(j),]
+    
+    jkn = rbind(jkn, data.frame(id = j, cor_gpt = cor.test(t$`gpt-3.5-turbo-16k`, t$waterloo, method = "spearman")$estimate, cor_fuzzy = cor.test(t$`fuzzy-matching`, t$waterloo, method = "spearman")$estimate))
+  
+  }
+  
+  actual = cor.test(temp$`gpt-3.5-turbo-16k`, temp$waterloo, method = "spearman")$estimate
+  estimates = jkn$cor_gpt
+  
+  df_cor_jkn = rbind(df_cor_jkn, data.frame(variable = i, value = actual, se = jackknife_se(estimates, actual), type = "gpt-3.5-turbo-16k"))
+  
+  actual = cor.test(temp$`fuzzy-matching`, temp$waterloo, method = "spearman")$estimate
+  estimates = jkn$cor_fuzzy
+  
+  df_cor_jkn = rbind(df_cor_jkn, data.frame(variable = i, value = actual, se = jackknife_se(estimates, actual), type = "fuzzy-matching"))
+  
+}
+
+```
+
+Make the bar plots
+
+```{r}
+#[df_cor_jkn$variable %in% c("deg", "core", "bet", "clo", "eig"),]
+
+
+renames = c("core" = "Coreness", "bet" = "Betweenness", "clo" = "Closeness", "trans" = "Clustering")
+
+plt = ggplot(df_cor_jkn[df_cor_jkn$variable %in% c("core", "bet", "clo", "trans"),]) + 
+    geom_bar(aes(fill = type, y=value, x=variable), position="dodge", stat="identity") +
+    scale_fill_manual(breaks =  c("fuzzy-matching",  "gpt-3.5-turbo-16k"), values = (color_palette[c(1,3)])) +
+    geom_errorbar(aes(fill = type, ymin = value-se, ymax = value+se, x = variable), width = 0.1, position = position_dodge(0.9)) +
+    ggtitle("") +
+    theme_bw(base_size = 25) + coord_cartesian(ylim = c(-0.25, 1)) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none") + scale_x_discrete(labels = renames) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+#ggplotly(plt)
+
+ggsave(plt, filename = "../figures/local_net_props_gpt_fuzzy_waterloo.png", width = 4, height = 6)
+
+```
+
+(GLOBAL NETWORK PROPERTIES)
+
+```{r}
+
+df_jkn_gnp = data.frame()
+
+for (name in V(g_waterloo_15)$name)
+{
+  df_gnp = data.frame()
+ 
+  g_gpt = delete.vertices(g_gpt_15, v = name)
+  g_fuzzy = delete.vertices(g_fuzzy_15, v = name)
+  g_waterloo = delete.vertices(g_waterloo_15, v = name)
+
+  #GPT
+  df = populate_global_network_props(g_gpt)
+  df$model = "gpt-3.5-turbo-16k"
+  df_gnp = rbind(df_gnp, df)
+
+#fuzzy
+  df = populate_global_network_props(g_fuzzy)
+  df$model = "fuzzy-matching"
+  df_gnp = rbind(df_gnp, df)
+
+#waterloo
+  df = populate_global_network_props(g_waterloo)
+  df$model = "waterloo"
+  df_gnp = rbind(df_gnp, df)
+  
+  df_gnp$removed = name
+  
+  df_jkn_gnp = rbind(df_jkn_gnp, df_gnp)
+}
+
+df_gnp = data.frame()
+#GPT
+df = populate_global_network_props(g_gpt_15)
+df$model = "gpt-3.5-turbo-16k"
+df_gnp = rbind(df_gnp, df)
+
+#fuzzy
+df = populate_global_network_props(g_fuzzy_15)
+df$model = "fuzzy-matching"
+df_gnp = rbind(df_gnp, df)
+
+#waterloo
+df = populate_global_network_props(g_waterloo_15)
+df$model = "waterloo"
+df_gnp = rbind(df_gnp, df)
+
+```
+
+Assortativity 
+
+```{r}
+
+df_gnp_assort = data.frame()
+
+for (i in unique(df_gnp$type))
+{
+  temp = df_gnp[df_gnp$type == i,]
+  
+  
+  #temp = reshape2::dcast(temp, formula = model~score, value.var = "score")
+  val = temp$score[temp$model == "gpt-3.5-turbo-16k"]
+  
+  df_gnp_assort = rbind(df_gnp_assort, data.frame(type = "gpt-3.5-turbo-16k", variable = i, val = val, se = jackknife_se(df_jkn_gnp$score[df_jkn_gnp$model == "gpt-3.5-turbo-16k" & df_jkn_gnp$type == i], val)))
+  
+  #cor = cor.test(temp$`fuzzy-matching`, temp$waterloo, method = "spearman")  
+  
+  val = temp$score[temp$model == "fuzzy-matching"]
+  
+  df_gnp_assort = rbind(df_gnp_assort, data.frame(type = "fuzzy-matching", variable = i, val = val, se = jackknife_se(df_jkn_gnp$score[df_jkn_gnp$model == "fuzzy-matching" & df_jkn_gnp$type == i], val)))
+  
+  
+  val = temp$score[temp$model == "waterloo"]
+  
+  df_gnp_assort = rbind(df_gnp_assort, data.frame(type = "waterloo", variable = i, val = val, se = jackknife_se(df_jkn_gnp$score[df_jkn_gnp$model == "waterloo" & df_jkn_gnp$type == i], val)))
+  
+}
+
+```
+
+Plot
+
+```{r}
+
+renames = list("assortativity_country" = "Country", "assortativity_region" = "Region", "assortativity_degree" = "Degree", "assortativity_prior experience" = "Prior Experience", "assortativity_prior success" = "Success", "assortativity_size" = "Size", "connected components" = "Components", "triangles" = "Triangles", "density" = "Density", "edges" = "Edges", "assortativity_section" = "Section")
+
+plt = ggplot(df_gnp_assort[df_gnp_assort$variable %in% c("assortativity_country", "assortativity_region", "assortativity_section", "assortativity_degree"),]) + 
+    geom_bar(aes(fill = type, y=val, x=variable), position="dodge", stat="identity") +
+    scale_fill_manual(breaks =  c("fuzzy-matching",  "gpt-3.5-turbo-16k", "waterloo"), values = c(color_palette[c(1,3)], "yellow3")) +
+    geom_errorbar(aes(fill = type, ymin = val-se, ymax = val+se, x = variable), width = 0.1, position = position_dodge(0.9)) +
+    ggtitle("") +
+    theme_bw(base_size = 25) + coord_cartesian(ylim = c(-0.25, 1)) + 
+    xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none") + scale_x_discrete(labels = renames) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + ggtitle("")
+
+ggsave(plt, filename = "../figures/assortativity_2015.png", width = 5, height = 6)
+
+
+```
+

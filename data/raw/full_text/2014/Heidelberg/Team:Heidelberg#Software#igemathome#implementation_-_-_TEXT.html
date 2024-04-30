@@ -1,0 +1,137 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Heidelberg/Software/igemathome/implementation
+From 2014.igem.org
+Toggle navigation
+Team
+Members
+Collaborations
+Attributions
+Sponsoring
+Project
+Overview
+Background
+Toolbox
+Toolbox: Circularization
+PCR 2.0
+Xylanase
+Linker Screening
+Fluorescence Assembly
+Light-Induction
+Achievements
+Parts
+RFC Heidelberg 2014
+Favorite Parts
+Sample Data Page
+Biobricks
+Backbones
+Intein Library
+Part Improvement
+Software
+iGEM@home
+Linker Software
+MidnightDoc
+Modeling
+Linker Modeling
+Enzyme Kinetics Modeling
+Toolbox Guide
+Human Practice
+iGEM@home
+Religion & Synthetic Biology
+Education
+Public Relations
+Experts
+Notebook
+Notebook
+Database for Notebook
+Materials
+Methods
+Safety
+iGEM@home
+– Implementation
+Introduction General Concepts Bundling References
+ABSTRACT
+When deploying applications for distributed calculation, the main aim is to reach as many platforms as possible to maximize the possible computation power. As a tool for the iGEM-Community we wrote different applications enabling the portable distribution of Java as well as Python code via the BOINC Platform to multiple Operating Systems, without requiring any rewriting of the application. This enables iGEM-Teams to create and distribute platform independent Applications reaching as many volunteers as possible. By providing access to these resources iGEM Teams do not have to spend their exhaustingly gathered sponsorship funds for the rental of computation clusters to accomplish extensive modeling tasks.
+Contents
+1 Introduction
+2 General Concepts of the Boinc Platform
+2.1 Encapsulating multiple processes via Slots
+2.2 Resolving file names [BOINC Resolving Files]
+3 Bundling
+3.1 Java Applications
+3.1.1 JNI (Java Native Interface)
+3.1.2 BoincAPIWrapper
+3.1.3 Problems
+3.1.4 Compilation
+3.1.4.1 Windows
+3.1.4.2 Linux
+3.1.5 Packaging the Java Runtime
+3.2 Python Applications
+3.2.1 The Python Loader
+3.2.2 Nuitka
+3.2.3 Static linking
+3.3 Creating portable executables for Linux
+4 References
+Introduction
+Most widely used programming languages in science often have the flaw of dependencies to runtime components that have to be installed on the executing system. For example Python, one of the most prominent programing languages in science, requires the installation of the Python runtime containing all standard functions and the Python interpreter which reads the actual program source code and executes the instructions defined. Without these components a python program cannot be run. Our aim being to enable the distributed execution of our software, these requirements represent a serious flaw. It was required to add components to the software that automatically extract runtime dependencies and pass through the access to essential functions of the BOINC API. As an additional layer of complexity independent from the scientific computation application is added, we decided to implement the functionality enabling portability of applications in a dedicated peace of software, the loader application. This application takes care of solving all dependencies required for the scientific application to run, allowing the simple distribution of python and java applications without having to bother about structural program-language dependencies. As both programing languages are designed for platform independency, the source code written can be used for all main target platforms of the BOINC platform without adaptation.
+General Concepts of the Boinc Platform
+Figure 2) File references in the BOINC storage modal
+Diagram of the directory structure used by the BOINC Platform
+Source: BOINC Wiki
+BOINC applications are run via the BOINC client, which takes care of the communication with the server, the execution and monitoring of the distributed applications, resource requirement checks for the scientific application and the management of completed jobs. It also offers access to a few of these functions via the BOINC Application Programming Interface, which can be called by scientific applications by compiling against the BOINC API library. The most important concepts when programing BOINC applications are described in detail in the following sections.
+Encapsulating multiple processes via Slots
+The BOINC client builds up a file structure, which saves the executables, input files and result files into a project directory, separating them from temporary files of the application which are saved in slot directories. The working directory of the application is set to a slot directory, so that files written by relative path do not get overwritten by multiple instances of an application running at the same time. To allow access to the project files, these must be described in templates files of the BOINC system associating the with a logical filename BOINC Input and output templates
+Resolving file names [BOINC Resolving Files]
+The storage model of the BOINC Platform is based on the requirement of immutable files that are downloaded/uploaded from/to the server. To allow applications to access different input files without requiring a change in the program code, files can be resolved via a logical name. For demonstration, one can imagine an application that takes 2 input files, ‘’input1.txt’’ and ‘’input2.txt’’ and generates an output file, ‘’output.txt’’ from these two. As the input files are different for each job, they cannot be saved under the same filename, because of the BOINC Platform requirements. By defining these files in the BOINC Platform, they can be associated with a logical name (input1.txt, input2.txt and output.txt) while in reality a different filename is accessed after resolving the logical file name to a  value completely independent of the logical filename. This functionality is enabled via the boinc_resolve_filename API function, which will generate output similar to ../../projects/igemathome/name_used_for_staging referring to corresponding input files in the project directory (see Figure 2).
+Bundling
+This section explains different concepts used and steps required to enable the bundling of a scientific application written in Java or Python with the corresponding runtime dependencies.
+Java Applications
+Java applications require the installation of the Java Virtual Machine, which interprets the byte-code created by the Java compiler and executes the appropriate functions. It also delivers the Java Class Library, which enables access to the Standard Library of Java, implementing platform abstraction. To allow these applications to run we wrote a java application launcher based on the javafxpackager. It extracts the Java runtime into the Project folder of the BOINC Application, initializes the Java Virtual Machine and launchers the specified jar containing the scientific application. As Java offers methods for calling native C and C++ code via the Java Native Interface, we utilized this functionality to allow access to the Application Programming Interface of the BOINC Platform.
+JNI (Java Native Interface)
+The Java Native Interface allow the execution of Java code initiated from a native application as well as the execution of native code called from Java applications. The former is called the Invocation API and was used to allow the loader to set up a complete Java Virtual Machine. To access the invocation API, the main library (jvm.dll on Windows or jvm.so on Linux) is dynamically loaded in the loader application, allowing to change the Java Runtime version without requiring recompilation of the loader application, making the process more flexible and modularized. The parameters required for the initialization and launch of the JVM are read from a file called package.cfg. The syntax and parameters of this file may be viewed in the provided package.example.cfg file in the deploy folder of the source code. The latter ability to run native C/C++ code called by Java applications was used to implement an interface to the BOINC Platform API, allowing the use of functions to ease integration into the distributed computation system. To accomplish this, it is required to compile the native program components as shared libraries which then are dynamically loaded by the JVM on the use of native code functions. The source code of these files has to follow a specific structure generated by the program ‘’javah’’, based on a defined Java class containing function definitions prefixed by the ‘’native’’ keyword. These generated header files, can then be used to write implementations of the functions in C/C++ and converting objects to/from Java via access to the JNIEnv structure [JNI Design overview] .
+BoincAPIWrapper
+The BoincAPIWrapper allows the most important BOINC API functions to be called from Java applications, translating the calls directly into C/C++ applications. The Boinc API functions can be accessed via the class org.igemathome.wrapper.BoincApiWrapper which contains methods named exactly the same as the C/C++ BOINC Api and thus can be accessed and simply be reading the BOINC API documentation.
+Problems
+After implementing the main methods of the BOINC API via the Java Native Interface we encountered some serious problems. Mainly the applications segfaulted inside the JVM after initializing the BOINC API. After multiple days of searching we realized, that the problem was caused by the redirection of standard Output and standard Error by the boinc_init_diagnostics() function with rewrote the file descriptor for these outputs. As the JVM did not realize the descriptors were rewritten, it tried to access the old address of the file descriptor resulting in access to memory regions not allocated for the program, thus resulting in Segmentation Faults. We were able to work around these errors by removing all calls to the freopen() function, yet realized later on that this problem only accrued if the BoincAPIWrapper was called outside of the launcher context via the classic java launcher using the command java –jar FILENAME. It seems, that the standard Output and standard Error streams are handled differently when using the embedded version of the JVM.
+Compilation
+This section explains how to compile your own version of the Java launcher and package it to a portable binary. The Build system of the Java Launcher is implemented as Makefiles for the compilation under UNIX like operating systems and as Microsoft Visual Studio Project files for Windows Operating Systems. The BOINC source code and an installed Java Development Kit are required for the compilation of the software. For the generation of portable binaries under Linux the usage of the provided change root is recommended (for further information read the section Linux Binary Compatability ).
+Windows
+The project files for the Windows version of the launcher and BoincAPIWrapper can be found in the path src/cpp/launcher/win and src/cpp/libboincAPIWrapper/win in the BOINC Java Wrapper source code. Probably one must change the paths of the referencing project files in Visual Studio to point to the path of the BOINC source code and edit the include path of the Project to refer to the installation path of the JDK subfolders include and include/win32. The Java component of the BoincApiWrapper, can be compiled into a Java Archive (jar) by using standard build instructions for the Java compiler: TODO
+Linux
+On Linux the process of compiling is a bit more complex, as a change root should be used for building the program to get portable binaries that run on multiple Linux distributions. Please download the change root appropriate for your platform (32bit or 64bit) via the download link below , extract it and follow these instructions, yet skipping the steps including deboostrap and using the provided chroot instead. The Makefile in the project root will automatically compile the native library, compile the Java component of the BoincAPIWrapper and insert them into the Java runtime provided in the runtime folder. For the Makefiles to run correctly it is required to set two environment variables, then the script may be run:
+export BOINC_HOME=PATH_TO_BOINC_SOURCE_CODE export JAVA_HOME=PATH_TO_JAVA_DEVELOPMENT_KIT make deploy
+This will create the files launcher and runtime.zip in the deploy folder of the source code. In the deploy folder, a example package.cfg is provided. By changing the parameters in the package.cfg, the launcher can then be used to extract the JRE and fire up the provided jar for calculation.
+Packaging the Java Runtime
+runtime.zip     └── runtime         └── jre             ├── bin             │   ├── attach.dll             │   ├── awt.dll             │   ├── boincAPIWrapper.dll │  ...             ├── COPYRIGHT             ├── lib             │   ├── accessibility.properties             │   ├── applet             │  ...             │   ├── ext             │   │   ├── access-bridge-32.jar             │   │   ├── cldrdata.jar             │   │   ├── dnsns.jar             │   │   ├── igemathome.jar │  ... ...                ├── LICENSE             ├── README.txt             ├── THIRDPARTYLICENSEREADME.txt             ├── THIRDPARTYLICENSEREADME-JAVAFX.txt             └── Welcome.html
+Figure 3) Directory structure of the Java runtime packaged into a zip file.
+Output shortened, added files for the BoincAPIWrapper highlighted in red
+The loader expects the Java Runtime to be located inside a zip file named runtime.zip, this file is resolved via boinc_resolve_filename, to enable the distribution of multiple runtime version. The directory structure of such a zip file is visible in Figure 3, which simply represents a full copy of the jre folder. As highlighted, the compiled files of the BoincAPIWrapper have to be integrated into the right directories for correct functionality. The compiled jar of the BOINC API should be placed into the path runtime/jre/lib/ext whereas the corresponding native library should be placed at runtime/jre/bin
+Python Applications
+Python applications normally require an installed version of the Python runtime. This requirement can be avoided, by either packaging a complete version of the python runtime with the executable or by using the method of "freezing" python files into binary code, and including these files into the executable at compile time. We decided to use the latter method, because of the availability of a tool named Nuitka which automatically recuses through the dependencies of a python application and saves all required files for an application to run into a specified directory and accelerates the execution by 2 folds. After successfully packaging the super secondary structure modelling software Modeller, we later noticed that this process does not work correctly when trying to package applications containing NumPy, a python module required by our linker software CRAUT. For this reason we had to fallback to two different ways of packaging python applications for the distribution via iGEM@home: Packaging via Nuitka and statically linking the python runtime into a loader executable. The following sections explain the principles behind both methods and how we utilized these to enable python application distribution.
+The Python Loader
+The python loader is written completely from scratch in pure C code, allowing access to the python embedded API. Dependent on the application we bundled the python loader additionally implements a file signature check on files delivered via the BOINC platform. This was required to avoid licensing issue with the Modeller software, as it is only free for academic use. By verifying the files added distributed, we can guarantee that the calculations made are submitted to the application only if the input files are verified by the loader application.
+Nuitka
+Nuitka uses a special method to create applications that are independent from the python runtime. The python code is first rewritten into C++ code, implementing large portions of python code directly and thus allowing higher execution speeds. Only functions that cannot be executed in C++ are actually run by the python interpreter. For higher modularization, we extended Nuitka to allow the creation of standalone shared python libraries which then can be loaded via a python loader application. The python loader application still requires a minimal set of available python files to start the embedded python interpreter, yet as soon as the shared library is loaded all no additional dependencies are required independent of the modules used by the python application. This allows stronger separation between the python loader and the scientific calculation application.
+Static linking
+To make linker generator CRAUT portable for the BOINC platform, we utilized principles used by a Github project called NumpyBuiltinExample, which provides a script for Linux operating systems that compiles python, numpy and an example application, in the end linking them all together into a single statically linked executable.
+Creating portable executables for Linux
+As there are very many different Linux distributions available, the profile of installed libraries on Linux systems is very inhomogeneous. Thus, relying on the existence of libraries on a Linux system will not result in an application that runs on the many different flavors of Linux installations. The dependency to libraries can be prohibited by linking the applications statically, thus copying all relevant parts of code into the executable itself. Yet, there are some libraries that cannot be included in this fashion. Statically linking to the standard C Library for instance, will result in unstable applications, as the C Runtime relies heavily on partly distribution specific file structures. But also linking dynamically to the C-runtime does not solve the issue, as this requires the same or a newer version of the Standard C Library to be installed on the System executing the program. The only way to work around all the above issues, enabling the creation of portable applications is to compile the program against an old version of the Standard C Library and relying on the backwards compatibility of the installed libraries on newer systems. For this reason we provide a package containing Debian squeeze, which uses a relatively old C Library so that portable applications can be compiled in this environment by simply using the Linux command chroot.
+References
+[JNI Design Overview]  [ [1] ]
+[BOINC Resolving Files] [ [2] ]
+Retrieved from " http://2014.igem.org/Team:Heidelberg/Software/igemathome/implementation "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

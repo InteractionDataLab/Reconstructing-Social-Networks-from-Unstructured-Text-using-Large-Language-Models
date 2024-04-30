@@ -1,0 +1,128 @@
+Team:NUS Singapore-Sci/enzyme kinetics
+Project
+Project Overview
+Reporter System
+Reporter Overview
+Dual Reporter - Demonstration
+Dual Reporter - Improvement
+GLB1 Reporter
+Editor System
+Editor Overview
+Editor Results
+Modelling
+Modelling Overview
+Kalman Filter Ensemble
+Molecular Dynamics
+Enzyme Kinetics
+gRNA Design
+InterLab
+Human Practice
+Overview of Human Practice
+Public Engagement
+#CasAsks
+#CasAsks: Survey
+#CasAsks: Interview
+#CasTalks
+#CasTeaches
+#CasWrites
+#CasWrites: Discussion
+#CasWrites: Collaboration
+#CasWrites: BioEthics
+Collaborations
+Notebook
+Reporter Logbooks
+Dual Reporter Logbook
+GLB1 Reporter Logbook
+Editor Logbook
+Primers and Protocols
+People
+Team
+Attributions
+Admin
+Safety
+Medals
+Parts
+NUS Singapore Science: InterLab
+Enzyme
+Kinetics
+Enzyme Kinetics and Least Squares Regression
+The efficiency of our RESCUE system is likely to be dependent on multiple factors such as mismatch distance, length of spacer regions as with ADAR-dCas13b constructs (Cox et al., 2016), as well as the relative concentrations of the substrates/enzymes. The concept of regression models can be utilized to identify and evaluate the significance of these factors from experimental results. As such, a early build of an enzyme kinetics regression model on dCas13b-APOBEC editing efficiency may help us to gain further insights of the RESCUE system.
+Goal
+1. Simulate the RESCUE system under different relative concentrations of substrates and enzymes to determine the concentrations that might yield maximum efficiency.
+2. Determine the change in the binding and catalytic efficiency when spacer length and mismatch distance is varied, which will help in the design of gRNA for more efficient base editing.
+Our assumptions of the model are as follows:
+1. Association between dCas13b and gRNA is reversible and precedes enzyme-gRNA complex association with substrate mRNA. This is because dCas13b requires the gRNA to bind to the correct target sequence.
+2. Once the Enzyme-gRNA-Substrate-mRNA trinity complex (ERS) is formed, the reaction will proceed in a single direction to produce the cleaved product.
+First, we build upon a kinetics model for our fusion protein product.
+Figure 1. Overall biochemical kinetics equation of the RESCUE system. The coefficients (parameters) of the various reaction rates are denoted as k, where i represents the differing stages. The growth rates of each biological substrates are denoted by \(G_{i}\), and while the decay rates are denoted as \(D_{i}\).  In particular, \(k_{2}\)/\(k_{-2}\) denotes the binding efficiency (dissociation constant) and \(k_{3}\) denotes catalytic efficiency.
+Where:
+S -  Unedited Substrate mRNA
+R -  Guide RNA
+E - Enzyme for C to U editing
+ER - Enzyme-gRNA complex
+ERS - Enzyme-gRNA-Substrate complex
+P -  Edited Product mRNA
+F -  Green Fluorescent protein produced
+Given the set of kinetic equation as defined above, the rate of change of each protein/RNA can then be described in the following differential equations as follow:
+$$\delta_{t}S = G_{s} - D_{s\cdot}S -k_{2}\cdot ER\cdot S +k{-2}\cdot ERS \quad \textrm{(Equation 1)}$$
+$$\delta_{t}ER = k_{1}\cdot E\cdot R - k{-1}\cdot ER - k_{2}\cdot ERS +k_{-2}\cdot ERS \quad \textrm{(Equation 2)}$$
+$$\delta_{t}ERS = k_{2}\cdot ER\cdot S - k_{3}\cdot ERS - k_{-2}\cdot ERS \quad \textrm{(Equation 3)} $$
+$$\delta_{t}P = k_{3}\cdot ERS - D_{s}\cdot P \quad \textrm{(Equation 4)} $$
+$$\delta_{t}F = k_{4}\cdot P - D_{f}\cdot F \quad \textrm{(Equation 5)} $$
+where Equation 4 assumes that ERS to ER + P is an non-energetically favourable step, and hence is unlikely to occur.
+The differential equations, when plotted, yield a complex, non-linear kinetic curve that can be comparable to the standard Komod kinetics curve. But unlike Komod kinetics, logarithmic conversion of the axes may not always result in a linear plot. Non-linear least-square regression (LSR) is thus an alternative strategy that can be used to obtain a best fit curve for enzymatic assays, capable of generating a set of possible values for the coefficients within the differential equations.
+Figure 2. Least-squared regression started off with a set of initial coefficients (parameters), provided by the user. (Left) The parameters are updated, through increasing and decreasing the different parameters by a small value until the parameter set that provides the lowest squared differences is obtained. (Right) A 2D ball on a slope analogy to the gradient descent method used for the least-squared regression. Ball will continue to travel downslope until the minimum point (minima). Gradient descent method is used to determine the lowest sum of squared differences value (local minima), which can indicate correct readings for the various parameters.
+The sum of squared differences is the sum of the computed y-axis differences of each readings to their respective points on the current curve. Mathematically, the squared differences (abbreviated as D) can be expressed through Equation 6 below.
+$$D = \sum_{i=1}^{n} (y_{i}-p_{i})^2 \quad \textrm{(Equation 6)} $$
+where \(y_{i}\) is the observed data and \(p_{i}\) is the predicted data.
+Subsequently, each coefficients are increased by a small interval of 0.005 A.U. and also decreased by the same interval to check for the lower D value. The lowest D value will be selected for and the coefficients will be updated as accordingly. The simulations will continue to run until no further decrease to the D can be found (localised to a minima). To perform the simulation, we hard-coded the entire regression script in Python, which is shown in the document below.
+As a proof-of-concept, we ran a simulation for a likely positive control experiment that may occur during EGFP reporter construct testing, where cells will be transfected with functional EGFP instead of the mutant EGFP. This thought experiment assumes that the enzyme (E) is absent and the substrate (S) produces functional fluorescent protein product (F). As such, the model is simplified to contain only 2 equations, with only 4 coefficients to tune.
+$$ S \rightarrow F$$
+$$ \delta_{t}S = G_{S} - D_{S}\cdot S $$
+$$ \delta_{t}F = k_{4}\cdot S - D_{f}\cdot F $$
+We started off defining an initial set of coefficients for the simulation. A time-dependent graph is plotted for the fluorescent concentrations obtained using defined “actual” coefficients (experimental fluo). Guess coefficients (1st guess fluo) were randomly assigned, and derived coefficients (theoretical fluo) were calculated using the Python script. The plots were shown in Table 1 and Figure 3 (left). To test our script in a more realistic situation, we introduced some noise (assumed to follow Gaussian distribution with standard deviation of 0.5) to our simulation. The results were shown in Table 2 and Figure 3 (right). In general, the generated parameters are found to be a good fit to each of our initial input values.
+Table 1.  Actual coefficients and coefficients derived from the Least Square Regression, without Gaussian Noise
+Without  Gaussian Noise
+$$G_{s}$$
+$$D_{s}$$
+$$k_{4}$$
+$$D_{f}$$
+Actual (Theoretical)
+20.00
+0.10
+15.00
+0.25
+Guess (1st Guess)
+10.00
+0.05
+12.50
+0.25
+Derived (Experimental)
+15.04
+0.15
+16.80
+0.15
+Table 2.  Actual coefficients and coefficients derived from the Least Square Regression, with Gaussian Noise
+With  Gaussian Noise
+$$G_{s}$$
+$$D_{s}$$
+$$k_{4}$$
+$$D_{f}$$
+Actual (Theoretical)
+2.00
+0.10
+2.50
+0.05
+Guess (1st Guess)
+0.50
+0.15
+0.75
+0.15
+Derived (Experimental)
+1.45
+0.05
+1.55
+0.05
+Figure 3. Simulated and derived fluorescence level over time, without Gaussian noise (left) and with Gaussian noise (right).
+This experiment has also benefits us to reduce the number of coefficients required for subsequent test, if time dependent results can be obtained from laboratory experiments. The construction of a positive control experiment also allowed us to immediately obtain a gauge of the \(G_{s}, D_{s}, k_{4}\) and \(D_{f}\), thereby reducing the total number of coefficients we need to test for the final fusion protein experiment by 4.
+In general, we have shown that the LSR method may be used to derive approximate set of coefficients for dCas13-APOBEC mediated editing on EGFP mRNA and therefore fluorescence. More experimental data will be needed for better optimization of model. In addition, our preliminary investigation suggested that  coefficients with smaller contribution to the system overall, such as \(D_{s}\) and \(D_{f}\) cannot be determined with a good certainty. We hope to further improve the LSR by adding in further algorithms like basin hopping for better optimization.

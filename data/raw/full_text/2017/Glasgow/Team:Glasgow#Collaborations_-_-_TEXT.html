@@ -1,0 +1,322 @@
+Team:Glasgow/Collaborations
+Glasgow iGEM 2017
+Project
+Project Background
+Demonstrate
+Exploiting the Mannitol regulator MtlR
+Mutagenesis of AraC
+Quorum Sensing
+AND Gate testing
+Xylulose Biosynthesis
+InterLab study
+Measurement
+Parts List
+Engineering
+Designing the Biosensor Device
+Hardware
+Additional Work
+Hydrogel Strip Experiments
+Bacillus subtilis Experiments
+Collaborations
+Practices
+Silver
+Gold and                                                   Integrated
+Education and Public                                                  Outreach
+Policy Brief
+Notebook
+Protocols
+Weekly Journal
+People
+Team Members
+Attributions
+Accomplishments
+Accomplishments
+Collaborations
+Collaboration with Edinburgh iGEM
+In August, Edinburgh iGEM approached us asking if we were able to assist them with programming the function of stepper drivers which they used to operate syringe drives. They required the stepper motor to adjust pace based on a number of parameters to give a desired flow rate.
+Figure 1: Collaboration with Edinburgh iGEM
+A day was arranged when the two teams should meet mid-August. When we met, we first spoke to one of our advisors, Julien Reboud . Following an hour long meeting with Dr. Reboud, we proceeded to discuss the part Edinburgh iGEM hoped Glasgow iGEM could help them with. Their design consisted of two microfluidic flows that would be able to sort cells depending on their fluorescent output when observed underneath a fluorescent microscope. When the threshold level of fluorescence was reached, one of the microfluidic flows, controlled by the stepper motor, would increase in flow rate such that the cell would be “pushed” to a different output due to the shear forces imparted on it. As none of the Edinburgh iGEM team had any experience of programming, we offered our assistance in this area.
+Our initial focus was to produce a code that would be able to produce a desired flow rate over a total distance, based on the following parameters:
+User’s Desired Flow Rate
+Syringe Inner Lumen Diameter
+Total Distance of Syringe Travel
+Having established these input conditions, we set to work for the next 3 days to write code which would be able to perform as desired. This code is shown below.
+//This code should give you the flow rate you enter into the code for a threaded rod of pitch 0.8mm
+//
+// The limits in flow rate [FOR A SYRINGE OF 4.73mm INNER LUMEN DIAMETER] you can use (due to the limitations of the microsecond delay function and/or the stepper driver) are:
+// Max Flow rate ~32 microlitres per second
+// Min Flow rate ~0.4 microlitres per second
+// These limits are due to the fact that the stepper motor becomes unstable when the time between a step is less than ~ 1000 microseconds and when the delay is greater than ~10000 microseconds
+// To account for this we've designed the code so that it will compute the delay time necessary for a given flow rate,
+// select from 4 stepping modes (Full-Stepping, Half-Stepping, Quarter-Stepping, Eigth-Stepping), and display an error if the flow rate is unsuitable.
+//
+// The parameters which you can control are as follows:
+// 1) Flow Rate
+// 2) Syringe Inner Lumen Diameter
+// 3) Total Distance you want the syringe to be driven
+//
+//From iGEM Glasgow with love.
+//Declare pin functions on Redboard [Set pins up as follows on microcontroller]
+int stp = 2;
+int dir = 3;
+int MS1 = 4;
+int MS2 = 5;
+int EN = 6;
+//Declare variables for functions
+char user_input;
+float dt;
+int x;
+int y;
+int state;
+float delay_time; //The total time taken for one step
+float step_dist = 25; //Distance pushed by one microstep (mm)
+float syringe_x_section; //Cross Sectional area of syringe (mm2)
+float final_step_no; //final number of steps (based on totalDist)
+float flow_rate = 0.46; //in microliters per second.
+float syringe_diam = 4.73; //diameter of the syringe inner lumen (mm)
+float totalDist = 2; //total distance user wants syringe to travel (mm)
+float delayLimit = 20000; //The upper limit of delay time
+//Reset Easy Driver pins to default states
+void resetEDPins(){
+digitalWrite(stp, LOW);
+digitalWrite(dir, LOW);
+digitalWrite(MS1, LOW);
+digitalWrite(MS2, LOW);
+digitalWrite(EN, HIGH);
+Serial.println("ED pins reset");
+delay(10);
+}
+//Reverse default microstep mode function
+void ReverseStepMode(){
+Serial.println("Reversing in full step mode");
+digitalWrite(dir, HIGH); //Pull direction pin low to move "forward"
+digitalWrite(MS1, LOW); //Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
+digitalWrite(MS2, LOW);
+for(x= 1; x<final_step_no; x++)  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+delay(100000000);
+}
+//Reverse default microstep mode function
+void ReverseHalfStepMode(){
+Serial.println("Reversing in Half-Step Mode");
+digitalWrite(dir, HIGH); //Pull direction pin low to move "forward"
+digitalWrite(MS1, HIGH); //Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
+digitalWrite(MS2, LOW);
+for(x= 1; x<final_step_no; x++)  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+delay(100000000);
+}
+//Reverse default microstep mode function
+void ReverseQuarterStepMode(){
+Serial.println("Reversing in 1/4 Step Mode");
+digitalWrite(dir, HIGH); //Pull direction pin low to move "forward"
+digitalWrite(MS1, LOW); //Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
+digitalWrite(MS2, HIGH);
+for(x= 1; x<final_step_no; x++)  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+delay(100000000);
+}
+//Reverse default microstep mode function
+void ReverseEighthStepMode(){
+Serial.println("Reversing in 1/8 Step Mode");
+digitalWrite(dir, HIGH); //Pull direction pin low to move "forward"
+digitalWrite(MS1, HIGH); //Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
+digitalWrite(MS2, HIGH);
+for(x= 1; x<final_step_no; x++)  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+delay(100000000);
+}
+//Calculate Variables for Chosen Flow Rate
+void CalculateVariables(){
+Serial.println("Calculating Variables");
+Serial.println(" ");
+float step_dist = 25;
+int i = 1;
+float delay_time=0;
+while ( delay_time < 2180 || delay_time > delayLimit ) {
+step_dist = step_dist*2;
+final_step_no=totalDist*100000/(step_dist); // Calculates the Final Steps required for the Total Distance specified
+final_step_no = round(final_step_no);
+syringe_x_section=PI*(syringe_diam*syringe_diam)/4; // Calculates Cross-Sectional Area of Syringe
+delay_time = (step_dist*syringe_x_section*10)/flow_rate; // Calculates Delay Time Required for Specified Flow Rate
+delay_time = round(delay_time);
+if (i == 5) {
+if (delay_time > delayLimit) {
+Serial.println("The delay time for the flow rate that you have specified is unsuitable with the syringe you have chosen.");
+Serial.println("Please use a syringe with a SMALLER inner lumen diameter.");
+delay(100000000);
+}
+else {
+Serial.println("The delay time for the flow rate that you have specified is unsuitable with the syringe you have chosen.");
+Serial.println("Please use a syringe with a LARGER inner lumen diameter.");
+delay(100000000);
+}
+}
+else{
+i=i+1;
+delay(100);
+}
+}
+float (half_delay_time);
+half_delay_time = delay_time/2;
+dt = round(half_delay_time);
+Serial.println("Delay Time (microseconds) =");
+Serial.println(delay_time);
+Serial.println("Half of delay time =");
+Serial.println(half_delay_time);
+Serial.println("Rounded Delay Time (microseconds) =");
+Serial.println(dt);
+Serial.println("Step Distance (microns) =");
+Serial.println(step_dist/100);
+Serial.println("total distance =");
+Serial.println(totalDist);
+Serial.println("Final Step no =");
+Serial.println(final_step_no);
+if (step_dist == 50) {
+EighthStepMode();
+}
+else if (step_dist == 100) {
+QuarterStepMode();
+}
+else if (step_dist == 200) {
+HalfStepMode();
+}
+else if (step_dist == 400) {
+FullStepMode();
+}
+}
+//Default microstep mode function
+void FullStepMode(){
+Serial.println("Moving forward at default step mode.");
+digitalWrite(dir, LOW); //Pull direction pin low to move "forward"
+for(x= 1; x<final_step_no; x++){  //Loop the forward stepping enough times for motion to be visible
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+Serial.println("Enter '1' into the serial port to begin reversing");
+while (user_input != 1){
+delay(500);
+user_input = Serial.parseInt();
+}
+ReverseStepMode();
+}
+// 1/2 microstep foward mode function
+void HalfStepMode() {
+Serial.println("Stepping at 1/2 microstep mode.");
+digitalWrite(dir, LOW); //Pull direction pin low to move "forward"
+digitalWrite(MS1, HIGH); //Pull MS1 high, MS2 low to set logic to 1/2th microstep resolution
+digitalWrite(MS2, LOW);
+for(x= 1; x < final_step_no; )  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+x++;
+}
+Serial.println("Enter '1' into the serial port to begin reversing");
+while (user_input != 1)
+{
+delay(500);
+user_input = Serial.parseInt();
+}
+ReverseHalfStepMode();
+}
+// 1/4 microstep foward mode function
+void QuarterStepMode()
+{
+Serial.println("Stepping at 1/4 step mode");
+digitalWrite(dir, LOW); //Pull direction pin low to move "forward"
+digitalWrite(MS1, LOW); //Pull MS1 low, MS2 high to set logic to 1/4 microstep resolution
+digitalWrite(MS2, HIGH);
+for(x= 1; x<final_step_no; x++)  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+Serial.println("Enter '1' into the serial port to begin reversing");
+while (user_input != 1)
+{
+delay(500);
+user_input = Serial.parseInt();
+}
+ReverseQuarterStepMode();
+}
+// 1/8th microstep foward mode function
+void EighthStepMode()
+{
+Serial.println("Stepping at 1/8th microstep mode.");
+digitalWrite(dir, LOW); //Pull direction pin low to move "forward"
+digitalWrite(MS1, HIGH); //Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
+digitalWrite(MS2, HIGH);
+for(x= 1; x<final_step_no; x++)  //Loop the forward stepping enough times for motion to be visible
+{
+digitalWrite(stp,HIGH); //Trigger one step forward
+delayMicroseconds(dt);
+digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+delayMicroseconds(dt);
+}
+Serial.println("Enter '1' into the serial port to begin reversing");
+while (user_input != 1)
+{
+delay(500);
+user_input = Serial.parseInt();
+}
+ReverseEighthStepMode();
+}
+// INITIALISATION
+void setup() {
+pinMode(stp, OUTPUT);
+pinMode(dir, OUTPUT);
+pinMode(MS1, OUTPUT);
+pinMode(MS2, OUTPUT);
+pinMode(EN, OUTPUT);
+resetEDPins(); //Set step, direction, microstep and enable pins to default states
+Serial.begin(9600); //Open Serial connection for debugging
+Serial.println("Begin motor control");
+Serial.println();
+}
+// RUNNING OF PROGRAM
+void loop()
+{
+Serial.println("Starting Main Loop");
+digitalWrite(EN, LOW); //Pull enable pin low to allow motor control
+resetEDPins();
+CalculateVariables();
+}
+Due to limitations of the arduino microcontroller, it was found that there were lower and upper limits to the delay times between each execution of a step by the stepper motor. The suitable range of delay times was found to be between 2180 and 20000 milliseconds. Thus, in order to obtain a desired flow rate, it would be necessary to use different sized syringes for different flow rates.
+Due to time restrictions, we did not did not have any more time to work on the stepper motor code which, ideally, we would have done to assist the Edinburgh iGEM team further. If we had sufficient time, we would have liked to develop the code to a point where multiple syringes would be controlled by the same code and where one of them would be able to switch between flow rates in response to a user input such as the press of a button. Additionally, it would have been useful if the system had been more autonomous and had a way of detecting the fluorescent intensity of cells and responding appropriately.
+iGEM 2017 Glasgow
+Using synthetic biology to create a biosensor for detection of Campylobacter jejuni, a bacteria linked to food poisoning.
+Contact Info
+iGEM 2017 Glasgow
+Wilkins Teaching Laboratory
+Bower Building
+University of Glasgow
+igem.glasgow2017@gmail.com
+Sponsors
+Home

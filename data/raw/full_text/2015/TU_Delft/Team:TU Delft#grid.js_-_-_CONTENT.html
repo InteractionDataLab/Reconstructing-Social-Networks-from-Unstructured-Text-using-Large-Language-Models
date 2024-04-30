@@ -1,0 +1,427 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_TU_Delft_grid_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:TU Delft/grid.js</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><UL><LI> debouncedresize: special jQuery event that happens once after a window resize</LI><LI> latest version and complete README available on Github:</LI><LI><A rel="nofollow" class="external free" href="https://github.com/louisremi/jquery-smartresize/blob/master/jquery.debouncedresize.js">https://github.com/louisremi/jquery-smartresize/blob/master/jquery.debouncedresize.js</A></LI><LI> Copyright 2011 @louis_remi</LI><LI> Licensed under the MIT license.</LI><LI>/</LI></UL><P>var $event = $.event,
+$special,
+resizeTimeout;
+</P><P>$special = $event.special.debouncedresize = {
+	setup: function() {
+		$( this ).on( &quot;resize&quot;, $special.handler );
+	},
+	teardown: function() {
+		$( this ).off( &quot;resize&quot;, $special.handler );
+	},
+	handler: function( event, execAsap ) {
+		// Save the context
+		var context = this,
+			args = arguments,
+			dispatch = function() {
+				// set correct event type
+				event.type = &quot;debouncedresize&quot;;
+				$event.dispatch.apply( context, args );
+			};
+</P><P>		if ( resizeTimeout ) {
+			clearTimeout( resizeTimeout );
+		}
+</P><P>		execAsap ?
+			dispatch() :
+			resizeTimeout = setTimeout( dispatch, $special.threshold );
+	},
+	threshold: 250
+};
+</P><P>// ======================= imagesLoaded Plugin ===============================
+// <A rel="nofollow" class="external free" href="https://github.com/desandro/imagesloaded">https://github.com/desandro/imagesloaded</A></P><P>// $('#my-container').imagesLoaded(myFunction)
+// execute a callback when all images have loaded.
+// needed because .load() doesn't work on cached images
+</P><P>// callback function gets image collection as argument
+//  this is the container
+</P><P>// original: MIT license. Paul Irish. 2010.
+// contributors: Oren Solomianik, David DeSandro, Yiannis Chatzikonstantinou
+</P><P>// blank image data-uri bypasses webkit log warning (thx doug jones)
+var BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+</P><P>$.fn.imagesLoaded = function( callback ) {
+	var $this = this,
+		deferred = $.isFunction($.Deferred) ? $.Deferred() : 0,
+		hasNotify = $.isFunction(deferred.notify),
+		$images = $this.find('img').add( $this.filter('img') ),
+		loaded = [],
+		proper = [],
+		broken = [];
+</P><P>	// Register deferred callbacks
+	if ($.isPlainObject(callback)) {
+		$.each(callback, function (key, value) {
+			if (key === 'callback') {
+				callback = value;
+			} else if (deferred) {
+				deferred[key](value);
+			}
+		});
+	}
+</P><P>	function doneLoading() {
+		var $proper = $(proper),
+			$broken = $(broken);
+</P><P>		if ( deferred ) {
+			if ( broken.length ) {
+				deferred.reject( $images, $proper, $broken );
+			} else {
+				deferred.resolve( $images );
+			}
+		}
+</P><P>		if ( $.isFunction( callback ) ) {
+			callback.call( $this, $images, $proper, $broken );
+		}
+	}
+</P><P>	function imgLoaded( img, isBroken ) {
+		// don't proceed if BLANK image, or image is already loaded
+		if ( img.src === BLANK || $.inArray( img, loaded ) !== -1 ) {
+			return;
+		}
+</P><P>		// store element in loaded images array
+		loaded.push( img );
+</P><P>		// keep track of broken and properly loaded images
+		if ( isBroken ) {
+			broken.push( img );
+		} else {
+			proper.push( img );
+		}
+</P><P>		// cache image and its state for future calls
+		$.data( img, 'imagesLoaded', { isBroken: isBroken, src: img.src } );
+</P><P>		// trigger deferred progress method if present
+		if ( hasNotify ) {
+			deferred.notifyWith( $(img), [ isBroken, $images, $(proper), $(broken) ] );
+		}
+</P><P>		// call doneLoading and clean listeners if all images are loaded
+		if ( $images.length === loaded.length ){
+			setTimeout( doneLoading );
+			$images.unbind( '.imagesLoaded' );
+		}
+	}
+</P><P>	// if no images, trigger immediately
+	if ( !$images.length ) {
+		doneLoading();
+	} else {
+		$images.bind( 'load.imagesLoaded error.imagesLoaded', function( event ){
+			// trigger imgLoaded
+			imgLoaded( event.target, event.type === 'error' );
+		}).each( function( i, el ) {
+			var src = el.src;
+</P><P>			// find out if this image has been already checked for status
+			// if it was, and src has not changed, call imgLoaded on it
+			var cached = $.data( el, 'imagesLoaded' );
+			if ( cached &amp;&amp; cached.src === src ) {
+				imgLoaded( el, cached.isBroken );
+				return;
+			}
+</P><P>			// if complete is true and browser supports natural sizes, try
+			// to check for image status manually
+			if ( el.complete &amp;&amp; el.naturalWidth !== undefined ) {
+				imgLoaded( el, el.naturalWidth === 0 || el.naturalHeight === 0 );
+				return;
+			}
+</P><P>			// cached images don't fire load sometimes, so we reset src, but only when
+			// dealing with IE, or image is complete (loaded) and failed manual check
+			// webkit hack from <A rel="nofollow" class="external free" href="http://groups.google.com/group/jquery-dev/browse_thread/thread/eee6ab7b2da50e1f">http://groups.google.com/group/jquery-dev/browse_thread/thread/eee6ab7b2da50e1f</A>
+			if ( el.readyState || el.complete ) {
+				el.src = BLANK;
+				el.src = src;
+			}
+		});
+	}
+</P><P>	return deferred ? deferred.promise( $this ) : $this;
+};
+</P><P>var Grid = (function() {
+</P><P>		// list of items
+	var $grid = $( '#og-grid' ),
+		// the items
+		$items = $grid.children( 'li' ),
+		// current expanded item's index
+		current = -1,
+		// position (top) of the expanded item
+		// used to know if the preview will expand in a different row
+		previewPos = -1,
+		// extra amount of pixels to scroll the window
+		scrollExtra = 0,
+		// extra margin when expanded (between preview overlay and the next items)
+		marginExpanded = 10,
+		$window = $( window ), winsize,
+		$body = $( 'html, body' ),
+		// transitionend events
+		transEndEventNames = {
+			'WebkitTransition' : 'webkitTransitionEnd',
+			'MozTransition' : 'transitionend',
+			'OTransition' : 'oTransitionEnd',
+			'msTransition' : 'MSTransitionEnd',
+			'transition' : 'transitionend'
+		},
+		transEndEventName = transEndEventNames[ Modernizr.prefixed( 'transition' ) ],
+		// support for csstransitions
+		support = Modernizr.csstransitions,
+		// default settings
+		settings = {
+			minHeight : 500,
+			speed : 350,
+			easing : 'ease'
+		};
+</P><P>	function init( config ) {
+</P><P>		// the settings..
+		settings = $.extend( true, {}, settings, config );
+</P><P>		// preload all images
+		$grid.imagesLoaded( function() {
+</P><P>			// save itemÂ´s size and offset
+			saveItemInfo( true );
+			// get windowÂ´s size
+			getWinSize();
+			// initialize some events
+			initEvents();
+</P><P>		} );
+</P><P>	}
+</P><P>	// add more items to the grid.
+	// the new items need to appended to the grid.
+	// after that call Grid.addItems(theItems);
+	function addItems( $newitems ) {
+</P><P>		$items = $items.add( $newitems );
+</P><P>		$newitems.each( function() {
+			var $item = $( this );
+			$item.data( {
+				offsetTop : $item.offset().top,
+				height : $item.height()
+			} );
+		} );
+</P><P>		initItemsEvents( $newitems );
+</P><P>	}
+</P><P>	// saves the itemÂ´s offset top and height (if saveheight is true)
+	function saveItemInfo( saveheight ) {
+		$items.each( function() {
+			var $item = $( this );
+			$item.data( 'offsetTop', $item.offset().top );
+			if( saveheight ) {
+				$item.data( 'height', $item.height() );
+			}
+		} );
+	}
+</P><P>	function initEvents() {
+</P><P>		// when clicking an item, show the preview with the itemÂ´s info and large image.
+		// close the item if already expanded.
+		// also close if clicking on the itemÂ´s cross
+		initItemsEvents( $items );
+</P><P>		// on window resize get the windowÂ´s size again
+		// reset some values..
+		$window.on( 'debouncedresize', function() {
+</P><P>			scrollExtra = 0;
+			previewPos = -1;
+			// save itemÂ´s offset
+			saveItemInfo();
+			getWinSize();
+			var preview = $.data( this, 'preview' );
+			if( typeof preview != 'undefined' ) {
+				hidePreview();
+			}
+</P><P>		} );
+</P><P>	}
+</P><P>	function initItemsEvents( $items ) {
+		$items.on( 'click', 'span.og-close', function() {
+			hidePreview();
+			return false;
+		} ).children( 'a' ).on( 'click', function(e) {
+</P><P>			var $item = $( this ).parent();
+			// check if item already opened
+			current === $item.index() ? hidePreview() : showPreview( $item );
+			return false;
+</P><P>		} );
+	}
+</P><P>	function getWinSize() {
+		winsize = { width : $window.width(), height : $window.height() };
+	}
+</P><P>	function showPreview( $item ) {
+</P><P>		var preview = $.data( this, 'preview' ),
+			// itemÂ´s offset top
+			position = $item.data( 'offsetTop' );
+</P><P>		scrollExtra = 0;
+</P><P>		// if a preview exists and previewPos is different (different row) from itemÂ´s top then close it
+		if( typeof preview != 'undefined' ) {
+</P><P>			// not in the same row
+			if( previewPos !== position ) {
+				// if position &gt; previewPos then we need to take te current previewÂ´s height in consideration when scrolling the window
+				if( position &gt; previewPos ) {
+					scrollExtra = preview.height;
+				}
+				hidePreview();
+			}
+			// same row
+			else {
+				preview.update( $item );
+				return false;
+			}
+</P><P>		}
+</P><P>		// update previewPos
+		previewPos = position;
+		// initialize new preview for the clicked item
+		preview = $.data( this, 'preview', new Preview( $item ) );
+		// expand preview overlay
+		preview.open();
+</P><P>	}
+</P><P>	function hidePreview() {
+		current = -1;
+		var preview = $.data( this, 'preview' );
+		preview.close();
+		$.removeData( this, 'preview' );
+	}
+</P><P>	// the preview obj / overlay
+	function Preview( $item ) {
+		this.$item = $item;
+		this.expandedIdx = this.$item.index();
+		this.create();
+		this.update();
+	}
+</P><P>	Preview.prototype = {
+		create : function() {
+			// create Preview structure:
+</P>
+			this.$title = $( '' );
+			this.$description = $( '' );
+<P>			this.$href = $( '&lt;a href=&quot;#&quot; rel=&quot;nofollow&gt;Visit website&lt;/a&gt;' );
+</P>
+			this.$details = $( '' ).append( this.$title, this.$description, this.$href );
+			this.$loading = $( '' );
+			this.$fullimage = $( '' ).append( this.$loading );
+<P>			this.$closePreview = $( '' );
+</P>
+			this.$previewInner = $( '' ).append( this.$closePreview, this.$fullimage, this.$details );
+			this.$previewEl = $( '' ).append( this.$previewInner );
+<P>			// append preview element to the item
+			this.$item.append( this.getEl() );
+			// set the transitions for the preview and the item
+			if( support ) {
+				this.setTransition();
+			}
+		},
+		update : function( $item ) {
+</P><P>			if( $item ) {
+				this.$item = $item;
+			}
+</P><P>			// if already expanded remove class &quot;og-expanded&quot; from current item and add it to new item
+			if( current !== -1 ) {
+				var $currentItem = $items.eq( current );
+				$currentItem.removeClass( 'og-expanded' );
+				this.$item.addClass( 'og-expanded' );
+				// position the preview correctly
+				this.positionPreview();
+			}
+</P><P>			// update current value
+			current = this.$item.index();
+</P><P>			// update previewÂ´s content
+			var $itemEl = this.$item.children( 'a' ),
+				eldata = {
+					href : $itemEl.attr( 'href' ),
+					largesrc : $itemEl.data( 'largesrc' ),
+					title : $itemEl.data( 'title' ),
+					description : $itemEl.data( 'description' )
+				};
+</P><P>			this.$title.html( eldata.title );
+			this.$description.html( eldata.description );
+			this.$href.attr( 'href', eldata.href );
+</P><P>			var self = this;
+</P><P>			// remove the current image in the preview
+			if( typeof self.$largeImg != 'undefined' ) {
+				self.$largeImg.remove();
+			}
+</P><P>			// preload large image and add it to the preview
+			// for smaller screens we donÂ´t display the large image (the media query will hide the fullimage wrapper)
+			if( self.$fullimage.is( ':visible' ) ) {
+				this.$loading.show();
+				$( '&lt;img/&gt;' ).load( function() {
+					var $img = $( this );
+					if( $img.attr( 'src' ) === self.$item.children('a').data( 'largesrc' ) ) {
+						self.$loading.hide();
+						self.$fullimage.find( 'img' ).remove();
+						self.$largeImg = $img.fadeIn( 350 );
+						self.$fullimage.append( self.$largeImg );
+					}
+				} ).attr( 'src', eldata.largesrc );	
+			}
+</P><P>		},
+		open : function() {
+</P><P>			setTimeout( $.proxy( function() {	
+				// set the height for the preview and the item
+				this.setHeights();
+				// scroll to position the preview in the right place
+				this.positionPreview();
+			}, this ), 25 );
+</P><P>		},
+		close : function() {
+</P><P>			var self = this,
+				onEndFn = function() {
+					if( support ) {
+						$( this ).off( transEndEventName );
+					}
+					self.$item.removeClass( 'og-expanded' );
+					self.$previewEl.remove();
+				};
+</P><P>			setTimeout( $.proxy( function() {
+</P><P>				if( typeof this.$largeImg !== 'undefined' ) {
+					this.$largeImg.fadeOut( 'fast' );
+				}
+				this.$previewEl.css( 'height', 0 );
+				// the current expanded item (might be different from this.$item)
+				var $expandedItem = $items.eq( this.expandedIdx );
+				$expandedItem.css( 'height', $expandedItem.data( 'height' ) ).on( transEndEventName, onEndFn );
+</P><P>				if( !support ) {
+					onEndFn.call();
+				}
+</P><P>			}, this ), 25 );
+</P><P>			return false;
+</P><P>		},
+		calcHeight : function() {
+</P><P>			var heightPreview = winsize.height - this.$item.data( 'height' ) - marginExpanded,
+				itemHeight = winsize.height;
+</P><P>			if( heightPreview &lt; settings.minHeight ) {
+				heightPreview = settings.minHeight;
+				itemHeight = settings.minHeight + this.$item.data( 'height' ) + marginExpanded;
+			}
+</P><P>			this.height = heightPreview;
+			this.itemHeight = itemHeight;
+</P><P>		},
+		setHeights : function() {
+</P><P>			var self = this,
+				onEndFn = function() {
+					if( support ) {
+						self.$item.off( transEndEventName );
+					}
+					self.$item.addClass( 'og-expanded' );
+				};
+</P><P>			this.calcHeight();
+			this.$previewEl.css( 'height', this.height );
+			this.$item.css( 'height', this.itemHeight ).on( transEndEventName, onEndFn );
+</P><P>			if( !support ) {
+				onEndFn.call();
+			}
+</P><P>		},
+		positionPreview : function() {
+</P><P>			// scroll page
+			// case 1 : preview height + item height fits in windowÂ´s height
+			// case 2 : preview height + item height does not fit in windowÂ´s height and preview height is smaller than windowÂ´s height
+			// case 3 : preview height + item height does not fit in windowÂ´s height and preview height is bigger than windowÂ´s height
+			var position = this.$item.data( 'offsetTop' ),
+				previewOffsetT = this.$previewEl.offset().top - scrollExtra,
+				scrollVal = this.height + this.$item.data( 'height' ) + marginExpanded &lt;= winsize.height ? position : this.height &lt; winsize.height ? previewOffsetT - ( winsize.height - this.height ) : previewOffsetT;
+</P><P>			$body.animate( { scrollTop : scrollVal }, settings.speed );
+</P><P>		},
+		setTransition  : function() {
+			this.$previewEl.css( 'transition', 'height ' + settings.speed + 'ms ' + settings.easing );
+			this.$item.css( 'transition', 'height ' + settings.speed + 'ms ' + settings.easing );
+		},
+		getEl : function() {
+			return this.$previewEl;
+		}
+	}
+</P><P>	return { 
+		init : init,
+		addItems : addItems
+	};
+</P><P>})();
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

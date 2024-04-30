@@ -1,0 +1,260 @@
+Team:Cambridge-JIC/Model
+Cambridge-JIC
+Toggle navigation
+Project
+Description
+Design
+Motivation
+Modelling
+Biolistics
+Growth Facility
+Homoplasmy Strategy
+Proof Of Concept
+Demonstration
+Parts
+Experiment
+Results
+Notebook
+Team
+Team Members
+Advisors
+Collaborations
+Awards
+Hardware
+Model
+Medals
+Human Practices
+Human Practices
+Silver
+Gold
+Integrated Practices
+Engagement
+Safety
+Attributions
+MODELLING
+Model Formulation
+Paramterising the Model
+Practical Implementation
+Results & Discussions
+References
+Download
+INTRODUCTION
+The aim of the modelling section was to create an integrated, kinetic model of our Cas9-guided chloroplast transformation mechanism. This model can be used to understand the internal workings of our proposed transformation method, and to determine whether it is viable and genuinely superior to existing methods. It also has practical use, in determining the expected timescales for homoplasmy (and thus when re-plating and selection could plausibly begin). The model is fully documented, and the code is available online and thoroughly commented. It could also be adapted not just to predict homoplasmy times in the chloroplasts of other organisms, but to yield useful information about the kinetics of Cas9-driven genetic transformation in any organism, encompassing the kinetics of:
+Cas9-gRNA active complex formation
+Cas9 cleavage on the chloroplast genome (for both on- and off-target sites)
+integration of the gene of interest, via homologous recombination
+PREVIOUS MODELS
+Kinetic modelling of CRISPR/Cas9 action has been attempted by several iGEM teams in the past. However, past iGEM models have largely been geared towards using dCas9, a modified Cas9 molecule with no cleavage activity, to form genetic circuits. To the best of our knowledge, no past iGEM project has included a freely available, integrated model of Cas9-induced cleavage or homologous recombination. The Salis lab at Penn State University, however, have recently published a complete, biophysical model of CRISPR/Cas9 cleavage activity [1], which was a major point of reference for our modelling.
+MODEL FORMULATION
+1. Gene expression
+For active Cas9 cleavage, a gRNA template must be transcribed, the Cas9 protein transcribed and translated, and a gRNA-Cas9 complex formed. In our proposed chloroplast transformation method, these are both expressed from the same “driver” cassette, introduced into the chloroplast by a transformation method such as biolistic transformation with a gene gun, but under individual promoters (the psaA promoter for the gRNA, and atpA promoter for Cas9). The Cas9 and gRNA then diffuse randomly through the chloroplast until they encounter one another, at which point they form a Cas9:gRNA complex. A further isomerisation reaction must then take place for this complex to become capable of cleavage. This process is modelled in the following 5 equations:
+Eqn. 1
+Where:
+NgRNA is the number of gRNA strands in a single chloroplast
+NCas9 mRNA is the number of mRNA strands coding for Cas9 in a single chloroplast
+NCas9 is the number of Cas9 molecules in a single chloroplast
+Nintermediate is the number of inactive, pre-isomerisation, Cas9:gRNA complexes in a single chloroplast
+NCas9:gRNA is the number of active Cas9:gRNA complexes in a single chloroplast
+Ndriver is the number of driver cassettes introduced into the chloroplast by a given transformation method
+The various k values represent first or second order rate constants
+The various δ values represent degradation rates
+rc[i] represents the cleavage rate of the ith target site on the chloroplast genome
+2. Cleavage rates
+Once the Cas9:gRNA active complex has been formed, it is free to diffuse through the chloroplast until it finds a site on the genome. Cas9 uses no external energy source for binding, relying solely on the bound state being an energetically favourable configuration. It will only bind to the site if it “recognises” the PAM – i.e., if the binding of Cas9 to the PAM is energetically favourable (notably, this does not require a perfect match).
+Once the site has been “recognised”, Cas9 moves down the genome, unwinding it nucleotide by nucleotide, displacing the complementary DNA strand, and allowing the gRNA to bind in its place (by Watson-Crick base pairing). This is known as R-loop formation. Each mismatch between the gRNA and genome carries an energy penalty. Enough mismatches will make the interaction energetically unfavourable, causing Cas9 to dissociate from the genome and diffuse freely, until it finds another site. If the interaction is still energetically favourable once the R-loop has been formed along the full length of the gRNA, Cas9 will cause a double stranded break in the DNA, 3-4 base pairs from the PAM [1], and dissociate, losing its efficacy (as a single-turnover enzyme) [2].
+The kinetics used to model this process are very heavily influenced by the work of the Salis Lab, although similar work was done by the 2013 iGEM team from Wuhan University in China [3]. From its site of production, the Cas9:gRNA complex can be taken to undergo molecular diffusion in the form of an isotropic, 3-dimensional random walk. This leads to the following equation to describe the rate of contact of the Cas9:gRNA complex with all possible sites on the genome:
+Eqn 2
+Where:
+rRW is the rate of DNA site contact
+D is Cas9’s diffusivity
+λ is the characteristic length between the site of Cas9:gRNA complex production and binding site
+V is the chloroplast volume
+As mentioned previously, Cas9 binding is governed by the sum of the free energy changes involved. Three energy exchanges are involved in this process. The first energy exchange results from binding of the PAM, ΔGPAM.
+A second energy exchange, ΔΔGexchange, comes from R-loop formation. Using a nucleic acid nearest neighbour model, this can be considered a weighted sum of the energy exchanges involved in binding each gRNA duplex to its corresponding DNA duplex. 256 of these energy exchange parameters exist (for all existing RNA duplex combinations, binding to all possible DNA duplex combinations) and are expected to be near 0 for a match (e.g. rCG/dGC) and to carry a positive energy penalty for a mismatch (e.g. rCG/dAC). Mismatches occurring nearer to the PAM have been shown to carry more of an energy penalty than those further away. Thus, the equation for ΔΔGexchange for a 20 nucleotide gRNA is given by
+Eqn 3
+Where dk is the weight of a mismatch k nucleotides from the PAM, and ΔΔGgRNA:Cas9[k,k+1] is the free energy change from binding of the duplex formed by nucleotides at the kth and k+1th positions.
+A final energy consideration proposed by the Salis lab is that which results from the supercoiling which is induced by Cas9’s binding to other, nearby sites. When Cas9 binds to a site, the uncoiling (negative supercoiling) of the genome which is necessary to form an R-loop is likely to further coil (positive supercoiling) all adjacent sites within a certain distance, as DNA’s linking number is conserved. This carries a positive energy penalty, making the nearby sites harder to uncoil. Discrepancies in the degree of supercoiling across the genome will result in a similar effect. However, due to the fact that most Cas9 binding will occur at a single site (the on-target site) in the regime we are considering, we were able to neglect the first effect. We also neglected the second, as there is only evidence of small variations in supercoiling across the C. reinhardtii genome [4].
+The probability of the Cas9:gRNA complex binding to a potential DNA site is governed by a Boltzmann function, taking into account all of the potential Gibbs free energy
+Eqn 4
+Where:
+Ntarget[i] is the ith potential DNA binding site
+ΔGtarget[i] is the free energy change associated with Cas9 binding to the ith potential site
+kB is the Boltzmann constant
+T is the temperature (taken here as 25°C)
+N is the length of the genome
+It follows that the rate of Cas9 binding to a given site is give as the rate of contact with the site (rRW) multiplied by the probability of binding. Once Cas9 has bound, it may cause a double stranded break in the site, usually around 3 base pairs from the PAM. However, there is still a chance that it will dissociate from the site before it has the chance to cleave, leading to the equation
+Eqn 5
+Where kc is the cleavage rate constant, and kd the dissociation rate constant.
+3. Homologous recombination
+Once a site has been cleaved by Cas9, the site will either be repaired by homologous recombination, or its lack of stability will degrade this copy of the chloroplast genome until it is unable to be repaired. In the C. reinhardtii chloroplast, there is no evidence of non-homologous end joining, and thus repair seems to happen exclusively through homologous recombination [5]. Homology-directed repair requires another, un-cleaved copy of the broken site, to act as a template for repair of the cleaved one. We thus model it as a second order process, dependent on both the number of cleaved and uncleaved sites. The rate of degradation is considerably less than the rate of recombination [6], and so here we neglect it, leading to the following expression for a given target site:
+Eqn 6
+Where:
+Ntarget[i] is the number of un-cleaved copies of the Cas9 binding site
+Ntotal[i] is the total number of both cleaved and un-cleaved copies of the binding site, such that Ntotal[i]-Ntarget[i] is the number of cleaved copies of the binding site
+kh is the homologous recombination rate parameter
+As we are neglecting the possibility of degradation of the cut site, Ntotal[i] will be equal to the chloroplast’s copy number, Ncopy, for all sites but the on-target site (i.e., the site which exactly matches the gRNA). However, for the on-target site, Ntotal[i] will steadily decrease, as these sites are converted to containing the gene of interest, and are no longer viable Cas9 binding sites. Here, we assume perfect selection pressure – i.e. that once the on-target site has been cut, there is 100% chance of it being repaired using the gene of interest, and once it is converted to containing the gene of interest (and the antibiotic resistance which is found on the same cassette), there is 0 probability of it being converted back. The first assumption was somewhat validated by our sensitivity analysis (see below), and the second seems reasonable considering that once the site is converted, it is no longer a target for Cas9 cleavage. This leads to the expression
+Eqn 7
+Here, NGOI is the number of copies of the gene of interest present in the chloroplast, with flanking homology regions. This will initially be the number of “gene of interest” cassettes inserted via the transformation method (e.g. biolistics), but will increase as more copies of the genome contain the gene of interest, following the expression
+Eqn 8
+PARAMETERISING THE MODEL
+1. Gene expression
+As with all chloroplasts, regulation of gene expression in the C. reinhardtii chloroplast is a complex process. The majority of gene regulation happens at the post-transcriptional level, with factors changing the shape of mRNA’s 3’ and 5’ untranslated regions (UTRs) in response to a range of factors including light conditions, and nuclear signals indicating conditions such as the point in a C. reinhardtii cell’s circadian rhythm [7]. This results in extremely dynamic mRNA degradation and translation rates, making gene expression very hard to model accurately. Further complicating the matter is a reasonably noticeable lack of data on absolute gene expression levels in the C. reinhardtii chloroplast.
+After a considerable literature review, no absolute, dynamic data on mRNA levels in C. reinhardtii chloroplasts was found. This meant that the only way to accurately parameterise the gene expression portion of the model would be to perform wet lab experiments – however, our part library took sufficiently long to assemble to prohibit the running of these experiments in the allotted time. Thus, our parameters are likely to only give rough, order of magnitude solutions.
+The transcription rates, katpA and kpsaA (for genes expressed under the atpA and psaA promoters respectively), are likely to be tied to be strongly tied to promoter strength. However, in lieu of any data on the strength of these two promoters, we used the simple order-of-magnitude transcription rate formula proposed by the NTU-Singapore iGEM team in 2008 [8]:
+Eqn 9
+This formula has been used by several iGEM teams since, with reasonable accuracy reflected in the results. The psaA promoter is used to express the 20 nucleotide gRNA + 455 nucleotide gRNA scaffold (for 475 nucleotides total), and the atpA promoter used to express the 4196 nucleotide Cas9 mRNA. It should also be noted that these promoters were chosen based on personal correspondence with Prof. Saul Purton, and could be changed to different promoters if experiments show them to be superior, further validating our decision to use a more general estimate of transcription rates.
+RNA degradation rates vary considerably throughout the C. reinhardtii cell cycle, responding to factors mentioned above. Regulation happens primarily through formation of stem loop structures, mediated by the UTRs which are attached to the promoters, altering the RNA stability [9]. However, while the mRNA for Cas9 is expressed with the 3’ and 5’ UTRs for the atpA gene cluster, gRNA is not expressed with any UTRs for proper interaction with Cas9. This leads to a large number of unknown factors in determining these degradation parameters. We decided to just use the average mRNA half-life for C. reinhardtii chloroplasts, and then convert it to the same degradation rate for each chloroplast by the formula
+Eqn 10
+However, no data on RNA half-lives in C. reinhardtii was found, so we used a value of t1/2 = 5.352 hours, taken by averaging the data for half-lives of several different RNA strands in Arabidopsis thaliana chloroplasts [10], leading to an average RNA degradation rate of 0.129hr-1.
+Cas9 translation rate was again very hard to parameterise without wet lab experiments. Translation rate is a highly variable parameter in C. reinhardtii chloroplasts, acting as a hotspot for gene regulation. Translation is mediated by factors in the 5’ and 3’ UTRs of C. reinhardtii chloroplasts, however, experiment shows that steady state protein levels for the atpA gene are invariant of mRNA levels, suggesting that only a small portion of mRNA is actually transcribed at any given time [12].
+Data exists on steady-state levels of VFP expressed under the atpA promoter (and associated UTRs) in C. reinhardtii chloroplasts [13], and we attempted to use this data, with the previously calculated degradation and transcription rates (VFP is also a highly stable protein in C. reinhardtii chloroplasts, likely to “degrade by dilution”), to work backwards and calculate the translation rate. However, this yielded a value 0.00027 min-1, 1-2 orders of magnitude lower than translation rates we had seen elsewhere. This yielded unexpectedly long timescales for homoplasmy (see results section). Because of this, we instead used a value of 0.0057min-1, used by the 2014 Waterloo team for Cas9 production in Streptococcus aureus [14]. This is hopefully a more accurate estimation (having been calculated from peptide elongation and ribosome binding data) given that translational control in chloroplasts bears considerable similarity to its prokaryotic origins.
+Based on personal correspondence with Prof. Howard Salis suggesting that Cas9 is a very stable molecule, the Cas9 degradation rate was taken to be the same as the C. reinhardtii cell division rate (“degradation by dilution”), for which we used the fastest plausible C. reinhardtii cell division rate of 12 hours [11] (as a "worst case scenario" situation). Cas9:gRNA complex degradation rates was taken as the quicker of the gRNA and Cas9 degradation rates. All other parameters involving Cas9 formation were taken directly from the Salis Lab’s paper, which were fitted from the results of in vitro Cas9 cleavage experiments in a cytoplasm-like buffer.
+2. Cleavage rates
+All values from this section were taken directly from the paper by the Salis Lab, except for the volume of the C. reinhardtii chloroplast, which was taken to be 25µm3, half of the median Chlamydomanas cell volume of 50µm3 [15]. Cas9’s diffusivity and characteristic length were estimated from its structure, while the other values were fitted from in vitro experiments in a cytoplasm-like buffer.
+3. Homologous recombination
+Chloroplast copy number was held constant, at C. reinhardtii’s average copy number of 80 [16]. The only other relevant parameter in this section is the homologous recombination rate constant, kh. Here, we used a value of kh = 0.43 min-1, lifted directly from a paper which measured this directly in E. coli [6]. Two issues about this parameter must be addressed – firstly, that it is a parameter for E. coli, and not C. reinhardtii, and secondly, that homologous recombination was modelled in the paper as a first order reaction, while we model it as a second order one.
+The literature seems to suggest that the first issue is not a problem. Chloroplasts are hypothesised to have originated as prokaryotic organisms, and behave similarly to them. In fact, the gene encoding the recA enzyme, which plays an enormous part in mediating homologous recombination, exhibits 53% similarity in E. coli and C. reinhardtii chloroplasts [17]. The second should not be a problem either, as we can safely assume that while recombination in E. coli, as with C. reinhardtii, is in fact a second order reaction - dependent on both the number of broken sites, and the number of available repair templates - there will always only be one repair template (the sister chromosome), allowing it to appear as though it is a first order reaction.
+4. Final table of parameters
+Reference
+Parameters
+Value
+Calculated from
+[8]
+katpA
+1.05 min-1
+Generalised formula
+[8]
+kpsaA
+8.84 min-1
+Generalised formula
+[10]
+δatpA/psaA
+1.05 min-1
+A. thaliana
+Personal correspondence with Prof. Howard Salis
+δCas9
+1.39e-3 min-1
+“Degradation by dilution”
+[14]
+kCas9
+0.0057 min-1
+S. aureus
+[6]
+kh
+0.43 min-1
+E. Coli
+[16]
+Ncopy
+80
+C. reinhardtii
+[1]
+kc/kd
+0.0016
+Fitted to data taken in cytoplasm-like buffer
+[1]
+kl
+60 min-1
+Fitted to data taken in cytoplasm-like buffer
+[1]
+kf
+4.8 min-1
+Fitted to data taken in cytoplasm-like buffer
+[1]
+D
+45 µm3s-1
+Cas9 protein structure
+[1]
+λ
+0.015 µm
+Cas9 protein structure
+PRACTICAL IMPLEMENTATION
+The model was implemented in MATLAB, due to its efficient functioning in solving systems of ordinary differential equations. The script “Cas9.m” reads in the C. reinhardtii genome from a text file, and generates a copy of the reverse strand of the genome. It then checks if all potential DNA sites on both the forward and reverse genome have a PAM which could bind to Cas9 in an energetically advantageous way (although Cas9’s PAM is NGG, several other PAMs are still capable of binding Cas9). For the circular, 203 828 base pair C. reinhardtii genome, this means scanning 407 656 different sites, yielding 88 740 potential binding sites.
+The script then calculates the free energy change which would be involved in Cas9’s binding to all potential target sites. However, here an issue was encountered with the ΔΔGCas9:gRNA values which we were using. Theory suggests that perfect matches will have a ΔΔGCas9:gRNA value of 0, while mismatches will have a positive ΔΔGCas9:gRNA value. However, many perfect matches had positive ΔΔGCas9:gRNA values, and some mismatches had negative ones, leading to imperfect identification of the on-target site. We solved this problem in the same way as the Salis lab – by calculating the average mismatch free energy for the C. reinhardtii genome using the given data set (yielding a value of 0.9039 kcal/mol), and simply using this value for ΔΔGCas9:gRNA for all duplex mismatches, and a value of 0 for all duplex matches.
+Graph 1
+88 740 target sites should yield 88 747 differential equations (5 for Cas9:gRNA active complex formation, 88 740 for the cleavage/repair of each site, and 2 for the evolution of Ntotal[on-target site] and NGOI). This can be simplified by assuming that there is 0 binding probability if ΔGtarget is greater than 0, however, this only narrows it down to 29 146 target sites – still too many for MATLAB to deal with in any reasonable amount of time.
+Graph 2
+The final simplification in our model stems from the Salis lab’s observation that 87% of significant Cas9 binding activity occurs at target sites with at most 1 mismatch in the first 8 nucleotides proximal to the PAM. Only 84 of the aforementioned 29 146 sites in the C. reinhardtii chloroplast genome meet this specification, and so we made the simplification of only considering these 84 sites (including the on-target site) with individual differential equations. While the other sites may not have significant binding activity by themselves, the activities of all of them together are likely to make a noticeable impact on the system. However, as their binding rates are likely to be small (particularly in early time periods such as those considered in our model, where there is still a multitude of on-target DNA sites which Cas9 is attracted to far more strongly), we were able to make the simplification of combining all of their action together into one differential equation, representing the average cleavage rate of a site with more than 1 mismatch in the first 8 PAM-proximal nucleotides.
+Graph 3
+This results in a system of 92 ODEs (5 for Cas9:gRNA active complex formation, 84 for the cleavage/repair of each site with 0-1 mismatches in the first 8 PAM-proximal nucleotides, 1 for the average cleavage repair of the other 29 062 sites, and 2 for the evolution of Ntotal[on-target site] and NGOI), easily solvable by MATLAB’s ode15s function. The form of the ODEs is set up in the “CRISPRsim.m” file. Another file, “stopevent.m”, allows the simulation to be ended when all copies of the chloroplast genome have been transformed. The completed code can be found in the download link at the top of the page, including a sample file “tests.m” for running the sensitivity analyses mentioned in the next section.
+RESULTS & DISCUSSIONS
+Initial simulations were run assuming that precisely 1 copy of each cassette (the “driver” and gene of interest) had been inserted into the chloroplast. The number of plasmids inserted into the chloroplast will vary, and future teams may want to build on this section by describing the numbers of cassettes likely to enter the cell by various transformation methods probabilistically. However, if one of the cassettes does not enter the chloroplast at all, a homoplasmic transformation will never occur, so one of each plasmid represents a “worst case scenario” situation for homoplasmy timescales in a cell which will eventually transform.
+As mentioned above, initial simulation used a parameter of 0.00027 min-1 for Cas9 translation rate, yielding an estimate of 36h15m for homoplasmy. This was out of line with our estimates based on personal correspondence with several sources for Cas9 cleavage timescales, and so we updated this parameter to 0.0057min-1, which decreased the expected time to 7h5m, more in line with our expectations. This is less than even C. reinhardtii’s shortest possible cell division time, showing homoplasmy to be achievable in a single generation using Cas9. This is a significant improvement on current chloroplast transformation methods, which can take months to reliably achieve homoplasmy.
+Graph 4
+Graph 5
+The graphs of on-target sites over time show the expected. For early time periods, the cleavage of the on-target site (which has around 7X higher probability of cleavage than the next most likely site) dwarfs all other sites, and untransformed genome copies tail off rapidly. Around 4 hours in, the rate of transformation begins to tail off, as less on-target sites exist and the probability of being “found” by Cas9 is lower. In response, cleavage rates of off-target sites increase, due to decreased competition, but quickly regain steady state levels due to the speed of homologous recombination.
+Graph 6
+Plots of gRNA and Cas9 over time show the gRNA to be the limiting factor in Cas9:gRNA active complex formation, due to its higher degradation rate. Plots of off-target sites over time show very few of them to be cleaved at any given time, due to the high probability of homology-directed repair. This is encouraging, as it shows our assumption of being able to combine Cas9 activity at several thousand other sites into a single differential equation due to very low rates of change to be valid. Only one site (shown on the graph in purple) – which has a free energy change of only around 1 kcal.mol-1 less than the on-target site – shows any significant activity at steady state.
+Graph 7
+2. Sensitivity analysis
+The Salis lab have already done sensitivity tests for their own model parameters, however, we thought it pertinent to check our own model’s sensitivity to our own parameters. Without experimental data to check our model against, we chose instead to measure how the model’s expected time to homoplasmy varies with each parameter across one order of magnitude difference (centred around our final value), if all other parameters are held constant. This would also allow us to validate several assumptions about the model.
+First, we checked the effect of the assumption of “perfect selection pressure”, by varying the percentage of the time in which the on-target site is transformed by homology-directed repair, rather than being repaired back to its original state. The results were encouraging – even when the cut site used the gene of interest as its template for homology-directed repair a mere 10% of the time (with it using another genome copy the other 90% and reverting to its original form), the time to homoplasmy was only increased by 50 minutes (a 12% increase), with very little change in the homoplasmy time observed from about a 50-50 chance of template choice onwards.
+We next checked the effect of increasing the number of “driver” and “gene of interest” cassettes. The number of “gene of interest” cassettes inserted into the chloroplast had no effect at all on the timescales to homoplasmy, as the information on this cassette is rapidly duplicated during the transformation. However, increasing the number of “driver” cassettes greatly decreased the timescale to homoplasmy, with an order of magnitude increase (from 1 to 10) more than halving the timescale.
+Graph 8
+Finally, we varied our values for kpsaA, katpA, δpsaA/δatpA, δCas9, kCas9, and kh. Varying kpsaA and kh had negligible effect on homoplasmy timescales and is not graphed here. The results show the model to be highly sensitive to varying Cas9’s transcription and translation rates in either direction, and to increasing RNA degradation rates, yet reasonably insensitive to all other parameter changes. Encouragingly, the maximum plausible timescale for homoplasmy which results from parameter variation across two orders of magnitude is 1345 minutes (22.45 hours), still within a single day.
+Parameter
+Lower bound
+Upper bound
+Sensitivity (as percentage of final value)
+Value (min-1)
+Homoplasmy time (min)
+Value (min-1)
+Homoplasmy time (min)
+katpA
+0.105
+1345
+10.5
+167
+271.18
+-60.52
+δpsaA/δatpA
+2.16e-4
+379
+2.16e-2
+970
+-10.40
+129.3
+δCas9
+1.39e-4
+408
+1.39e-2
+431
+-3.55
+1.89
+kCas9
+0.00057
+1345
+0.057
+167
+217.18
+-60.52
+Graph 9
+REFERENCES
+[1] Farasat I, Salis HM (2016). “A Biophysical Model of CRISPR/Cas9 Activity for Rational Design of Genome Editing and Gene Regulation”. PLoS Comput Biol 12(1): e1004724.
+[2] Sternberg SH, Redding S, Jinek M, Greene EC, Doudna JA (2014). “DNA interrogation by the CRISPR RNA-guided endonuclease Cas9”. Nature 507(7490): 62-67.
+[3] WHU China iGEM team 2013
+[4] Thompson RJ, Mosig G (1990). “Light affects the structure of Chlamydomonas chloroplast chromosomes”. Nucleic Acids Res 18(9): 2625-31
+[5] Odom Odom OW, Baek KH, Dani RN, Herrin DL (2008). “Chlamydomonas chloroplasts can use short dispersed repeats and multiple pathways to repair a double-strand break in the genome”. Plant J 53(5): 842-53.
+[6] Sinden RR, Cole RS (1978). “Topography and kinetics of genetic recombination in Escherichia coli treated with psoralen and light”. Proc Natl Acad Sci USA 75(5): 2373–2377.
+[7] Herrin DL, Nickelsen J (2004). “Chloroplast RNA processing and stability”. Photosynthesis Research 82: 301–31.
+[8] NTU Singapore iGEM team 2008
+[9] Stern DB, Radwanski ER, Kindle KL (1991). “A 3' stem/loop structure of the Chlamydomonas chloroplast atpB gene regulates mRNA accumulation in vivo”. Plant Cell 3(3):285-97
+[10] Sidaway-Lee K, Costa MJ, Rand DA, Finkenstadt B, Penfield S (2014). “Direct measurement of transcription rates reveals multiple mechanisms for configuration of the Arabidopsis ambient temperature response”. Genome Biology 15(R45)
+[11] Vítová, M., Bišová, K., Umysová, D. et al. (2011). “Chlamydomonas reinhardtii: duration of its cell cycle and phases at growth rates affected by light intensity”. Planta 233: 75.
+[12] Drapier D, Girard-Bascou J, Wollman FA (1992). “Evidence for Nuclear Control of the Expression of the atpA and atpB Chloroplast Genes in Chlamydomonas”. Plant Cell 4(3): 283–295.
+[13] Braun-Galleani S, Baganz F, Purton S (2015). “Improving recombinant protein production in the Chlamydomonas reinhardtii chloroplast using vivid Verde Fluorescent Protein as a reporter”. Biotechnology Journal, 10: 1289–1297
+[14] 2014 Waterloo iGEM team
+[15] Craigie RA, Cavalier-Smith T (1982). “Cell Volume and the Control of the Chlamydomonas Cell Cycle”. Journal of Cell Science 54: 173-191.
+[16] Misumi O, Suzuki L, Nishimura Y, Sakai A, Kawano S, Kuroiwa H, Kuroiwa T (1999). “Isolation and phenotypic characterization of Chlamydomonas reinhardtii mutants defective in chloroplast DNA segregation”. Protoplasma 209: 273–282.
+[17] Cerutti H, Johnson AM, Boynton JE, Gillham NW (1995). “Inhibition of chloroplast DNA recombination and repair by dominant negative mutants of Escherichia coli RecA”. Mol Cell Biol 15(6): 3003-11
+ABOUT US
+We are a team of Cambridge undergraduates, competing for the plant synthetic biology prize in iGEM 2016.
+read more
+FOLLOW US ON
+LOCATION
+Department of Plant Sciences,
+University of Cambridge
+Downing Street
+CB2 3EA
+CONTACT US
+Email: cambridgeigem@hotmail.com
+Tel: +447827442925

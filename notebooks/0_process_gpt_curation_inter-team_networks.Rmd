@@ -1,0 +1,355 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Process the complete dataframes generated with GPT into cleaner (matched) dataframes and create iGraph objects for future analysis
+
+1. Load the necessary libraries and dataframes
+
+```{r, warning=FALSE, message=FALSE}
+
+library(igraph)
+library(dplyr)
+
+#Parameters of the GPT curation
+
+version = "two-step" #Prompt type - specific indicates prompts with explicit instructions and examples (one/two shot)
+output_format = "lol" #Output in a list of list format
+temperature = "0-3" #Temperature used in the first extraction step of the pipeline
+temperature_matching = "0-3" #Temperature used in the second matching step of the pipeline
+breaks = 10 #How many names are grouped together into one GPT request in the matching step
+model = "gpt-3.5-turbo-16k"
+
+```
+
+```{r}
+
+#For year 2015 (Toggle with other folders to run for all years)
+
+meta = read.csv("../data/raw/team_meta.csv", stringsAsFactors = FALSE) #iGEM team metadata
+
+team_matchings = read.csv(paste("../data/processed/gpt_curated/inter-team_filtered/processed_team_name_matchings_", breaks, "_", version, "_", model, "_", temperature_matching, "_", temperature, ".csv", sep = ""), stringsAsFactors = FALSE) #Team name matching 
+
+df_curated = read.csv(paste("../data/processed/gpt_curated/inter-team_filtered/processed_", version, "_", model, "_", temperature, ".csv", sep = ""), stringsAsFactors = FALSE) #Curated relationships 
+df_curated$id = paste(df_curated$batch_id, df_curated$chunk_id, sep = "-")
+
+#fuzzy_matching = read.csv("../data/processed/fuzzy_curated/inter-team_test_batches_fuzzy_curated.csv", stringsAsFactors = FALSE)
+
+```
+
+
+2. Match team/targets from the GPT curated interactions dataframe
+
+To consider: Teams reparticipate over time - but do not necessarily use the same team name. TeamIDs or (Teamname, year) uniquely identify teams across years. 
+
+When matching the names pulled by gpt with actual team names, it is easier to do so with a 'cleaned' version of team names. This cleaning makes team names into lowercase and removes hyphens '-' and underscore '_'. This cleaning does not eliminate the unique identifiability of teams - but helps drastically as gpt matching misidentifies underscore and hyphens
+
+eg. team FAFU China is matched by gpt to FAFU_China, while the actual team name is FAFU-China. This hallucination is hard to avoid with GPT, but easy to edit in post processing.
+
+Function to process team names
+
+```{r}
+
+process_team_names = function(team_name)
+{
+  t = trimws(team_name) #Removes trailing whitespaces
+  t = tolower(team_name) #Makes lowercase
+  t = gsub("_", " ", t) #Substitutes underscore with space
+  t = gsub("-", " ", t) #Substitutes hyphen with space
+  t = gsub(",", " ", t) #Substitutes comma with space
+ 
+   #t = gsub("team", " ", t)
+  #t = gsub("igem", " ", t)
+  
+  return(trimws(t)) #Returns removing trailing whitespaces 
+}
+
+#Create a processed version of team names in the meta and the df_curated dataframes
+
+#df_curated = df_curated %>% rowwise() %>% mutate(team = strsplit(team, ","), target = strsplit(target, ","))
+#df_curated = tidyr::unnest(df_curated, cols = c("team", "target"))
+
+meta$team_processed = process_team_names(meta$Team)
+df_curated$team_processed = process_team_names(df_curated$team)
+df_curated$target_processed = process_team_names(df_curated$target)
+team_matchings$team = process_team_names(team_matchings$team)
+
+
+```
+
+
+
+
+Now - to match team and target names in df_curated
+
+```{r}
+
+#Create a dummy dataframe with (processed team names, actual team names, year). This is because team names which exist in the actual list of teams already are not passed to match with gpt and hence are not present in the team_matchings dataframe 
+
+t1 = meta[,c("team_processed", "Team", "Year")]
+colnames(t1) = c("team", "matching", "year")
+
+team_matchings = rbind(team_matchings, t1)
+team_matchings = team_matchings[!duplicated(team_matchings),]
+
+#Merge team name to actual team name and rename columns
+
+df_curated = merge(df_curated, team_matchings[,c("team", "year", "matching")], by.x = c("team_processed", "year"), by.y = c("team", "year"), all.x = TRUE)
+colnames(df_curated)[colnames(df_curated) == "matching"] = "team_matched"
+
+#Merge target name to actual target name and rename columns
+
+df_curated = merge(df_curated, team_matchings[,c("team", "year", "matching")], by.x = c("target_processed", "year"), by.y = c("team", "year"), all.x = TRUE)
+colnames(df_curated)[colnames(df_curated) == "matching"] = "target_matched"
+
+#Filter out matched names which are NA or 'other' or aren't present in the list of actual names (gpt hallucination)
+#TO ADD - fuzzy matching layer
+
+df_curated_filtered = df_curated[!is.na(df_curated$team_matched) & (!is.na(df_curated$target_matched)) & !df_curated$team_matched == "other" & !df_curated$target_matched == "other",]# & df_curated$team_matched %in% meta$Team[meta$Status == "Accepted"] & df_curated$target_matched %in% meta$Team[meta$Status == "Accepted"],]
+
+#Remove rows where the team and target names are the same
+
+df_curated_filtered = df_curated_filtered[!df_curated_filtered$team_matched == df_curated_filtered$target_matched,]
+
+```
+
+Match contexts
+
+```{r}
+
+context_matchings = read.csv("../data/processed/gpt_curated/inter-team_filtered/processed_context_matching_two-step_gpt-3.5-turbo-16k_0-3_0-3.csv", stringsAsFactors = FALSE)
+
+context_matchings = context_matchings[!duplicated(context_matchings),]
+
+df_curated_filtered_ca = merge(df_curated_filtered, context_matchings, by.x = c("context"), by.y = c("context"), all.x = TRUE)
+
+write.csv(df_curated_filtered_ca, file = "../data/processed/gpt_curated/inter-team/2015_interactions_curated_filtered.csv", row.names = FALSE)
+
+```
+
+2. Create the networks from the curated dataframe of interactions
+
+a. yearly networks 2008-2018
+
+First - add extra node properties
+
+-> gold_prev_year = did the team win a gold medal the year before
+-> nb_participation = how many times did the team participate in iGEM before
+
+```{r, warning=FALSE, message=FALSE}
+
+meta$gold_prev_year = 0
+meta$nb_participation = 0
+
+for (i in 1:nrow(meta))
+{
+  id = meta$matching_ids[i]
+  year = meta$Year[i]
+   
+  temp = meta[meta$matching_ids == id & meta$Year < year,]
+  
+  if (nrow(temp) > 0)
+  {
+    temp = temp[order(temp$Year),]
+    meta$nb_participation[i] = length(unique(temp$Year))
+    meta$gold_prev_year[i] = (temp$num_team_gold_prevyr[temp$Year == max(temp$Year)] > 0) + 0
+  }
+  
+}
+
+```
+
+Identify the chunks with collab/HP pages - for fair comparison with Waterloo?
+
+```{r}
+
+batches = list.files("../data/processed/text_batches_inter-team_filtered/")
+batches = gsub(".csv", "", batches)
+
+dict = c("Collaboration", "collaboration", "human practices", "human practice", "HP", "hp", "Human Practices", "Human practices", "Hp", "collab", "Collab", "outreach", "Outreach")
+
+ids = list()
+
+for (batch in batches)
+{
+  temp = read.csv(paste("../data/processed/text_batches_inter-team_filtered/", batch, ".csv", sep = ""), stringsAsFactors = FALSE)
+
+  temp$id = rownames(temp)
+
+  correct = temp %>% group_by(id) %>% summarise(flag = if (TRUE %in% stringr::str_detect(page, dict)) TRUE else FALSE)
+  
+  ids = c(ids, list(paste(batch, correct$id[correct$flag == TRUE], sep = "-")))
+  
+}
+
+ids = unlist(ids)
+
+```
+
+
+Create simplified networks for gpt and fuzzy cases and store into lists (RData files)
+
+```{r}
+
+#interactions = read.csv("../data/processed/curated/fuzzy_select_inter_team_raw/interactions_curated_filtered.csv", stringsAsFactors = FALSE)
+
+interactions = df_curated_filtered_ca %>% select(-c("category")) %>% group_by(team_matched, target_matched, year) %>% summarise(count = n())
+
+collab_gpt = interactions[, c("team_matched", "target_matched", "year", "count")]
+colnames(collab_gpt) = c("Source", "Target", "Year", "NbOfMention")
+
+collab_fuzzy = read.csv("../data/processed/fuzzy_curated/inter-team_all_batches_fuzzy_curation.csv", stringsAsFactors = FALSE)
+collab_fuzzy$id = paste(collab_fuzzy$chunk_id, collab_fuzzy$batch_id, sep = "-")
+collab_fuzzy = collab_fuzzy[, c("Team", "Target", "year", "page", "id")]
+collab_fuzzy = collab_fuzzy %>% group_by(Team, Target, year) %>% summarise(count = length(unique(id)))
+
+g_list_gpt = list()
+g_list_fuzzy = list()
+
+#years = as.character(sort(unique(meta$Year[meta$Year > 2007 & meta$Year < 2019])))
+years = as.character(sort(unique(df_curated_filtered_ca$year)))
+
+for (i in years)
+{
+  teams = c(meta$Team[meta$Year == i])
+  vertices = meta[meta$Year == i, c(2,1,3,4:15)]
+  
+  temp_gpt = collab_gpt[collab_gpt$Year == i,]
+  temp_fuzzy = collab_fuzzy[collab_fuzzy$year == i,] 
+  
+  g_fuzzy = graph_from_data_frame(temp_fuzzy[temp_fuzzy$Team %in% teams & temp_fuzzy$Target %in% teams,], vertices = vertices, directed = FALSE)
+  E(g_fuzzy)$weight = E(g_fuzzy)$count
+  g_fuzzy = simplify(g_fuzzy)
+
+  g_list_fuzzy[[i]] = g_fuzzy
+  
+  g_gpt = graph_from_data_frame(temp_gpt[temp_gpt$Source %in% teams & temp_gpt$Target %in% teams,], vertices = vertices, directed = FALSE)
+  E(g_gpt)$weight = E(g_gpt)$NbOfMention
+  g_gpt = simplify(g_gpt)
+  
+  g_list_gpt[[i]] =  g_gpt
+}
+
+
+```
+
+
+Create the waterloo network (and save into RData file)
+
+```{r}
+
+collab_waterloo_15 = read.csv("../data/raw/waterloo_2015_collaboration_dataset.csv", stringsAsFactors = FALSE)
+collab_waterloo_15 = collab_waterloo_15[,c("Donor", "Recipient")]
+colnames(collab_waterloo_15) = c("Source", "Target")
+collab_waterloo_15$Year = 2015
+
+collab_waterloo_15[collab_waterloo_15 == "AUC_Turkey"] = "AUC_TURKEY"
+collab_waterloo_15[collab_waterloo_15 == "FAFU-China"] = "FAFU-CHINA"
+collab_waterloo_15[collab_waterloo_15 == "BNU-China"] = "BNU-CHINA"
+collab_waterloo_15[collab_waterloo_15 == "BIT-CHINA"] = "BIT"
+collab_waterloo_15[collab_waterloo_15 == "NJU-CHINA"] = "NJU-China"
+collab_waterloo_15[collab_waterloo_15 == "NYMU-TAIPEI"] = "NYMU-Taipei"
+collab_waterloo_15[collab_waterloo_15 == "Ubonn"] = "UBonn"
+collab_waterloo_15[collab_waterloo_15 == "USTC-software"] = "USTC-Software"
+collab_waterloo_15[collab_waterloo_15 == "Sheffield (2014)"] = "Sheffield"
+collab_waterloo_15[collab_waterloo_15 == "HFUT-CHINA"] = "HFUT-China"
+collab_waterloo_15[collab_waterloo_15 == "London_BioHackspace"] = "London_Biohackspace"
+collab_waterloo_15[collab_waterloo_15 == "London_BioHackSpace"] = "London_Biohackspace"
+collab_waterloo_15[collab_waterloo_15 == "Nanjing-CHINA"] = "Nanjing-China"
+collab_waterloo_15[collab_waterloo_15 == "TEcCEM"] = "TecCEM"
+collab_waterloo_15[collab_waterloo_15 == "TecCem"] = "TecCEM"
+collab_waterloo_15[collab_waterloo_15 == "Umaryland"] = "UMaryland"
+
+teams_15 = meta$Team[meta$Year == "2015"]
+
+g_waterloo_15 = graph_from_data_frame(collab_waterloo_15[collab_waterloo_15$Source %in% teams_15 & collab_waterloo_15$Target %in% teams_15,], vertices = meta[meta$Year == "2015", c(2,1,3,4:15)], directed = FALSE)
+E(g_waterloo_15)$weight = 1
+g_waterloo_15 = simplify(g_waterloo_15)
+
+#Directed Waterloo
+
+g_waterloo_15_dir = graph_from_data_frame(collab_waterloo_15[collab_waterloo_15$Source %in% teams_15 & collab_waterloo_15$Target %in% teams_15,], vertices = meta[meta$Year == "2015", c(2,1,3,4:15)], directed = TRUE)
+E(g_waterloo_15_dir)$weight = 1
+g_waterloo_15_dir = simplify(g_waterloo_15_dir)
+
+
+save(g_list_fuzzy, g_list_gpt, g_waterloo_15, file = paste("../data/processed/networks/inter-team/2015_simplified_networks_", version, "_", model, "_", breaks, "_", temperature_matching, "_", temperature, ".RData", sep = ""))
+
+
+```
+
+Process special 2015 case (rerun)
+
+```{r, eval = FALSE}
+
+version = "two-step" #Prompt type - specific indicates prompts with explicit instructions and examples (one/two shot)
+model = "gpt-3.5-turbo-16k" #Output in a list of list format
+temperature = "0-3" #Temperature used in the first extraction step of the pipeline
+temperature_matching = "0-3" #Temperature used in the second matching step of the pipeline
+breaks = 10 #How many names are grouped together into one GPT request in the matching step
+
+team_matchings = read.csv(paste("../data/processed/curated/inter-team_2015/processed_team_name_matchings_", breaks, "_", version, "_", model, 
+"_", temperature_matching, "_", temperature, ".csv", sep = ""), stringsAsFactors = FALSE) #Team name matching 
+
+df_curated = read.csv(paste("../data/processed/curated/inter-team_2015/processed_", version, "_", model, "_", temperature, ".csv", sep = ""), stringsAsFactors = FALSE) #Curated relationships 
+df_curated$id = paste(df_curated$batch_id, df_curated$chunk_id, sep = "-")
+
+df_curated$team_processed = process_team_names(df_curated$team)
+df_curated$target_processed = process_team_names(df_curated$target)
+team_matchings$team = process_team_names(team_matchings$team)
+
+t1 = meta[,c("team_processed", "Team", "Year")]
+colnames(t1) = c("team", "matching", "year")
+
+team_matchings = rbind(team_matchings, t1)
+team_matchings = team_matchings[!duplicated(team_matchings),]
+
+#Merge team name to actual team name and rename columns
+
+df_curated = merge(df_curated, team_matchings[,c("team", "year", "matching")], by.x = c("team_processed", "year"), by.y = c("team", "year"), all.x = TRUE)
+colnames(df_curated)[colnames(df_curated) == "matching"] = "team_matched"
+
+#Merge target name to actual target name and rename columns
+
+df_curated = merge(df_curated, team_matchings[,c("team", "year", "matching")], by.x = c("target_processed", "year"), by.y = c("team", "year"), all.x = TRUE)
+colnames(df_curated)[colnames(df_curated) == "matching"] = "target_matched"
+
+#Filter out matched names which are NA or 'other' or aren't present in the list of actual names (gpt hallucination)
+#TO ADD - fuzzy matching layer
+
+df_curated_filtered = df_curated[!is.na(df_curated$team_matched) & (!is.na(df_curated$target_matched)) & !df_curated$team_matched == "other" & !df_curated$target_matched == "other",]# & df_curated$team_matched %in% meta$Team[meta$Status == "Accepted"] & df_curated$target_matched %in% meta$Team[meta$Status == "Accepted"],]
+
+#Remove rows where the team and target names are the same
+
+df_curated_filtered = df_curated_filtered[!df_curated_filtered$team_matched == df_curated_filtered$target_matched,]
+
+interactions = df_curated_filtered
+
+interactions = interactions %>%  group_by(team_matched, target_matched, year) %>% summarise(count = n())
+
+collab_gpt = interactions[, c("team_matched", "target_matched", "year", "count")]
+colnames(collab_gpt) = c("Source", "Target", "Year", "NbOfMention")
+
+collab_fuzzy = read.csv("../data/processed/collab_final.csv", stringsAsFactors = FALSE)
+collab_fuzzy = collab_fuzzy[, c("Source", "Target", "Year", "NbOfMention", "SourceID", "TargetID")]
+
+teams = c(meta$Team[meta$Year == 2015])
+vertices = meta[meta$Year == 2015, c(2,1,3,4:15)]
+  
+temp_gpt = collab_gpt[collab_gpt$Year == 2015,]
+temp_fuzzy = collab_fuzzy[collab_fuzzy$Year == 2015,] 
+  
+g_fuzzy = graph_from_data_frame(temp_fuzzy[temp_fuzzy$Source %in% teams & temp_fuzzy$Target %in% teams,], vertices = vertices, directed = FALSE)
+E(g_fuzzy)$weight = E(g_fuzzy)$NbOfMention
+g_fuzzy_15 = simplify(g_fuzzy)
+
+g_gpt = graph_from_data_frame(temp_gpt[temp_gpt$Source %in% teams & temp_gpt$Target %in% teams,], vertices = vertices, directed = FALSE)
+E(g_gpt)$weight = E(g_gpt)$NbOfMention
+g_gpt_15 = simplify(g_gpt)
+  
+
+save(g_gpt_15, g_fuzzy_15, g_waterloo_15, file = "../data/processed/networks/inter-team/specific_lol_0-3_0-3_10/2015_networks.RData")
+
+```
+

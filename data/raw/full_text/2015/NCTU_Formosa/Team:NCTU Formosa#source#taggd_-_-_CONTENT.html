@@ -1,0 +1,337 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_NCTU_Formosa_source_taggd skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:NCTU Formosa/source/taggd</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* jQuery Taggd
+* A helpful plugin that helps you adding 'tags' on images.
+*
+* License: MIT
+*/
+</PRE><P>(function($) {
+	'use strict';
+</P><P>	var defaults = {
+		edit: false,
+</P><P>		align: {
+			x: 'center',
+			y: 'center'
+		},
+</P><P>		handlers: {},
+</P><P>		offset: {
+			left: 0,
+			top: 0
+		},
+</P><P>		strings: {
+			save: '✓',
+			delete: '×'
+		}
+	};
+</P><P>	var methods = {
+		show: function() {
+			var $this = $(this),
+				$label = $this.next();
+</P><P>			$this.addClass('active');
+			$label.addClass('show').find('input').focus();
+		},
+</P><P>		hide: function() {
+			var $this = $(this);
+</P><P>			$this.removeClass('active');
+			$this.next().removeClass('show');
+		},
+</P><P>		toggle: function() {
+			var $hover = $(this).next();
+</P><P>			if($hover.hasClass('show')) {
+				methods.hide.call(this);
+			} else {
+				methods.show.call(this);
+			}
+		}
+	};
+</P><P>	
+	/****************************************************************
+	 * TAGGD
+	 ****************************************************************/
+</P><P>	var Taggd = function(element, options, data) {
+		var _this = this;
+</P><P>		if(options.edit) {
+			options.handlers = {
+				click: function() {
+					_this.hide();
+					methods.show.call(this);
+				}
+			};
+		}
+</P><P>		this.element = $(element);
+		this.options = $.extend(true, {}, defaults, options);
+		this.data = data;
+		this.initialized = false;
+</P><P>		if(!this.element.height() || !this.element.width()) {
+			this.element.on('load', _this.initialize.bind(this));
+		} else this.initialize();
+	};
+</P><P>	
+	/****************************************************************
+	 * INITIALISATION
+	 ****************************************************************/
+</P><P>	Taggd.prototype.initialize = function() {
+		var _this = this;
+</P><P>		this.initialized = true;
+</P><P>		this.initWrapper();
+		this.addDOM();
+</P><P>		if(this.options.edit) {
+			this.element.on('click', function(e) {
+				var poffset = $(this).parent().offset(),
+					x = (e.pageX - poffset.left) / _this.element.width(),
+					y = (e.pageY - poffset.top) / _this.element.height();
+</P><P>				_this.addData({
+					x: x,
+					y: y,
+					text: 
+				});
+</P><P>				_this.show(_this.data.length - 1);
+			});
+		}
+</P><P>		$(window).resize(function() {
+			_this.updateDOM();
+		});
+	};
+</P><P>	Taggd.prototype.initWrapper = function() {
+		var wrapper = $('&lt;div class=&quot;taggd-wrapper&quot; /&gt;');
+		this.element.wrap(wrapper);
+</P><P>		this.wrapper = this.element.parent('.taggd-wrapper');
+	};
+</P><P>	Taggd.prototype.alterDOM = function() {
+		var _this = this;
+</P><P>		this.wrapper.find('.taggd-item-hover').each(function() {
+			var $e = $(this),
+</P><P>				$input = $('&lt;input type=&quot;text&quot; size=&quot;16&quot; /&gt;')
+					.val($e.text()),
+				$button_ok = $('&lt;button /&gt;')
+					.html(_this.options.strings.save),
+				$button_delete = $('&lt;button /&gt;')
+					.html(_this.options.strings.delete);
+</P><P>			$button_ok.on('click', function() {
+				_this.hide();
+			});
+</P><P>			$button_delete.on('click', function() {
+				var x = $e.attr('data-x'),
+					y = $e.attr('data-y');
+</P><P>				_this.data = $.grep(_this.data, function(v) {
+					return v.x != x || v.y != y;
+				});
+</P><P>				_this.addDOM();
+				_this.element.triggerHandler('change');
+			});
+</P><P>			$input.on('change', function() {
+				var x = $e.attr('data-x'),
+					y = $e.attr('data-y'),
+					item = $.grep(_this.data, function(v) {
+						return v.x == x &amp;&amp; v.y == y;
+					}).pop();
+</P><P>				if(item) item.text = $input.val();
+</P><P>				_this.addDOM();
+				_this.element.triggerHandler('change');
+			});
+</P><P>			$e.empty().append($input, $button_ok, $button_delete);
+		});
+</P><P>		_this.updateDOM();
+	};
+</P><P>	/****************************************************************
+	 * DATA MANAGEMENT
+	 ****************************************************************/
+</P><P>	Taggd.prototype.addData = function(data) {
+		if($.isArray(data)) {
+			this.data = $.merge(this.data, data);
+		} else {
+			this.data.push(data);
+		}
+</P><P>		if(this.initialized) {
+			this.addDOM();
+			this.element.triggerHandler('change');
+		}
+	};
+</P><P>	Taggd.prototype.setData = function(data) {
+		this.data = data;
+</P><P>		if(this.initialized) {
+			this.addDOM();
+		}
+	};
+</P><P>	Taggd.prototype.clear = function() {
+		if(!this.initialized) return;
+		this.wrapper.find('.taggd-item, .taggd-item-hover').remove();
+	};
+</P><P>	
+	/****************************************************************
+	 * EVENTS
+	 ****************************************************************/
+</P><P>	Taggd.prototype.on = function(event, handler) {
+		if(
+			typeof event !== 'string' ||
+			typeof handler !== 'function'
+		) return;
+</P><P>		this.element.on(event, handler);
+	};
+</P><P>	
+	/****************************************************************
+	 * TAGS MANAGEMENT
+	 ****************************************************************/
+</P><P>	Taggd.prototype.iterateTags = function(a, yep) {
+		var func;
+</P><P>		if($.isNumeric(a)) {
+			func = function(i, e) { return a === i; };
+		} else if(typeof a === 'string') {
+			func = function(i, e) { return $(e).is(a); }
+		} else if($.isArray(a)) {
+			func = function(i, e) {
+				var $e = $(e);
+				var result = false;
+</P><P>				$.each(a, function(ai, ae) {
+					if(
+						i === ai ||
+						e === ae ||
+						$e.is(ae)
+					) {
+						result = true;
+						return false;
+					}
+				});
+</P><P>				return result;
+			}
+		} else if(typeof a === 'object') {
+			func = function(i, e) {
+				var $e = $(e);
+				return $e.is(a);
+			};
+		} else if($.isFunction(a)) {
+			func = a;
+		} else if(!a) {
+			func = function() { return true; }
+		} else return this;
+</P><P>		this.wrapper.find('.taggd-item').each(function(i, e) {
+			if(typeof yep === 'function' &amp;&amp; func.call(this, i, e)) {
+				yep.call(this, i, e);
+			}
+		});
+</P><P>		return this;
+	};
+</P><P>	Taggd.prototype.show = function(a) {
+		return this.iterateTags(a, methods.show);
+	};
+</P><P>	Taggd.prototype.hide = function(a) {
+		return this.iterateTags(a, methods.hide);
+	};
+</P><P>	Taggd.prototype.toggle = function(a) {
+		return this.iterateTags(a, methods.toggle);
+	};
+</P><P>	/****************************************************************
+	 * CLEANING UP
+	 ****************************************************************/
+</P><P>	Taggd.prototype.dispose = function() {
+		this.clear();
+		this.element.unwrap(this.wrapper);
+	};
+</P><P>	
+	/****************************************************************
+	 * SEMI-PRIVATE
+	 ****************************************************************/
+</P><P>	Taggd.prototype.addDOM = function() {
+		var _this = this;
+</P><P>		this.clear();
+		this.element.css({ height: 'auto', width: 'auto' });
+</P><P>		var height = this.element.height();
+		var width = this.element.width();
+</P><P>		$.each(this.data, function(i, v) {
+			var $item = $('&lt;span /&gt;');
+			var $hover;
+</P><P>			if(
+				v.x &gt; 1 &amp;&amp; v.x % 1 === 0 &amp;&amp;
+				v.y &gt; 1 &amp;&amp; v.y % 1 === 0
+			) {
+				v.x = v.x / width;
+				v.y = v.y / height;
+			}
+</P><P>			if(typeof v.attributes === 'object') {
+				$item.attr(v.attributes);
+			}
+</P><P>			$item.attr({
+				'data-x': v.x,
+				'data-y': v.y
+			});
+</P><P>			$item.css('position', 'absolute');
+			$item.addClass('taggd-item');
+</P><P>			_this.wrapper.append($item);
+</P><P>			if(typeof v.text === 'string' &amp;&amp; (v.text.length &gt; 0 || _this.options.edit)) {
+				$hover = $('&lt;span class=&quot;taggd-item-hover&quot; style=&quot;position: absolute;&quot; /&gt;').html(v.text);
+</P><P>				$hover.attr({
+					'data-x': v.x,
+					'data-y': v.y
+				});
+</P><P>				_this.wrapper.append($hover);
+			}
+</P><P>			if(typeof _this.options.handlers === 'object') {
+				$.each(_this.options.handlers, function(event, func) {
+					var handler;
+</P><P>					if(typeof func === 'string' &amp;&amp; methods[func]) {
+						handler = methods[func];
+					} else if(typeof func === 'function') {
+						handler = func;
+					}
+</P><P>					$item.on(event, function(e) {
+						if(!handler) return;
+						handler.call($item, e, _this.data[i]);
+					});
+				});
+			}
+		});
+</P><P>		this.element.removeAttr('style');
+</P><P>		if(this.options.edit) {
+			this.alterDOM();
+		}
+</P><P>		this.updateDOM();
+	};
+</P><P>	Taggd.prototype.updateDOM = function() {
+		var _this = this;
+</P><P>		this.wrapper.removeAttr('style').css({
+			height: this.element.height(),
+			width: this.element.width()
+		});
+</P><P>		this.wrapper.find('span').each(function(i, e) {
+			var $el = $(e);
+</P><P>			var left = $el.attr('data-x') * _this.element.width();
+			var top = $el.attr('data-y') * _this.element.height();
+</P><P>			if($el.hasClass('taggd-item')) {
+				$el.css({
+					left: left - $el.outerWidth(true) / 2,
+					top: top - $el.outerHeight(true) / 2
+				});
+			} else if($el.hasClass('taggd-item-hover')) {
+				if(_this.options.align.x === 'center') {
+					left -= $el.outerWidth(true) / 2;
+				} else if(_this.options.align.x === 'right') {
+					left -= $el.outerWidth(true);
+				}
+</P><P>				if(_this.options.align.y === 'center') {
+					top -= $el.outerHeight(true) / 2;
+				} else if(_this.options.align.y === 'bottom') {
+					top -= $el.outerHeight(true);
+				}
+</P><P>				$el.attr('data-align', $el.outerWidth(true));
+</P><P>				$el.css({
+					left: left + _this.options.offset.left,
+					top: top + _this.options.offset.top
+				});
+			}
+		});
+	};
+</P><P>	
+	/****************************************************************
+	 * JQUERY LINK
+	 ****************************************************************/
+</P><P>	$.fn.taggd = function(options, data) {
+		return new Taggd(this, options, data);
+	};
+})(jQuery);
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,125 @@
+Team:Aachen/Software
+Project
+Interactive Journey
+Overview
+Background
+Outlook
+Lab
+Overview
+Modeling
+Methanol
+Biobricks
+Polycistronic Expression Plasmid
+Monocistronic Diversity Library
+Characterization
+Glycogen
+Synthesis
+Knockouts
+Characterization
+Libraries
+Bioreactor
+Hardware
+Software
+Characterization
+Notebook
+Protocols
+Documentation
+Construction Manuals
+Human Practice
+Overview
+Maker Faire
+Community Labs
+tubefront
+Safety
+Collaborations
+Achievements
+Judging
+Parts
+Team
+Members
+Partners
+Attributions
+The Challenge
+The Team
+The Strategy
+Biological Approach
+The Bioreactor
+The People
+Maker Faire
+Community Labs
+tubefront
+The Solution
+Engineering
+Biology
+The Future
+Introduction
+Every bioreactor comes with control software. But how can you interface with something that is completely DIY? To test and run our bioreactor, we have developed suite of calibration and control software. We call it the "Master Control Program" or simply MCP.
+Workflow and Compontent of the MCP Platform
+Calibration of pump and biosensor devices is done with their respective calibration programs. The calibration results are then fed into the Master Control Program where reactors, experiments and cultivations are set up and controlled.
+Key Achievements
+fully-featured MCP for running multiple small scale reactors at the same time
+reliable data acquisition and configurable live plots
+easy-to-use calibration programs for pumps and biomass sensors
+We are providing ready-to-use zip files with the MCP, Pump Calibrator and OD Calibrator in our Download Library . The Source code of the whole Master Control Program software suite is available in the igemsoftware GitHub repository under the GNU GENERAL PUBLIC LICENSE Version 3.0.
+Challenges
+Developing a control software that is intuitive and responsive was not trivial. Translating the abstract idea of an experiment and the respective cultivation parameters into data structures and communication messages led to many challenges that are not apparent to the end user.
+motors and sensory devices have to be calibrated in order to respond as expected
+online data comes in at high rates
+the software has to remain stable independent of the number of accumulated data points
+plots have to be combined dynamically and still show online data
+communication is conflicting with high-frequency stepping of the aeration pump
+All of these difficulties were addressed and now we can present a fully integrated package that handles everything from calibration to cultivation. There is no more need for the researcher to do pump calibrations or setpoint calculations by hand.
+Architecture
+Control Software
+The MCP and its accompanying programs are written using C# and the .NET Framework 4.5. This makes them backwards-compatible to Windows 7 and gave us the advantage of asynchronous operations using async/await. All components of the control software are written following the MVVM design pattern [1] to keep things manageable.
+The software suite is divided into several libraries to allow for independent implementation and development of certain features:
+MCP.Protocol implements a serial communication interface and the bioreactor communication protocol
+MCP.Measurement contains classes for live-logging and processing of incoming measurements
+MCP.Curves harbors regression- and transformation functions that are used to map calibration profiles
+MCP.Equipment implements pumps, sensors and reactors and their respective calibration and configuration information
+MCP.Cultivation implements controlling of cultivations, process parameters and their organization in an experiment library
+Upon these libraries, three applications were developed:
+the OD Calibrator application makes it easy to gather a high-resolution calibration profile and export it to a calibration file.
+using the Pump Calibrator, newly assembled pumps can be tested and calibrated
+the Master Control Program integrates calibration files, experiement management and data logging with controlling the slave units via a serial communication protocol
+For the different features within the MCP, we rely on multiple external libraries. This includes a custom build of DynamicDataDisplay version 4.0 [2] , the machine learning and statistics framework Accord.NET [3] and the UI and helper libraries Extended WPF Toolkit [4] and TCD.Controls [5] .
+Microcontroller Firmware
+In contrast to the control software that is running on the computer, the microcontroller firmware is written in the C programming language and underlies completely different constraints. With the ATmega328, only 8 bit of 16 Mhz processing power are available and the whole reactor control is implemented on a much lower abstraction level.
+To integrate pumps, stirrer, biomass sensor and the communication protocol, we wrote several functions that are called in every iteration of the loop. A ReadIncoming function reads and interprets or forwards protocol messages that are coming from either up or down in the hierachy. When commands are coming in, the global variables for the respective setpoints are updated.
+Outlook
+The integration with all relevant online parameters makes it possible to integrate more advanced process automation parameters. The interfaces for postprocessing of gas and biomass online data exist and function reliably. The MCP also supports dynamic switching of offgas sensors between different reactors using magnetic valves. This can reduce the material cost and still provide semi-continuous offgas data for multiple reactors.
+Due to the integration of OD-measurement with reactor control a turbidostat mode can easily be implemented into the software.
+Usage
+Step 1 - Pump Calibration
+A dedicated calibrator app, the Pump Calibrator is provided as a component of our software package. It communicates with the microcontroller via the bioreactor communication protocol to to drive the pump at different steps-per-hour-setpoints and receive data from a laboratory fine scale. After selecting a calibration mode (Debug, Quick, Standard, Precise and Precise Aeration) the calibration is started via the "Start Calibration" button. A progress bar indicates how long the fully automatized calibration will take.
+All response points are accumulated into a response-curve which is exported to a file. This calibration file is later used by the MCP to calculate accurate setpoints for a given pumping rate using linear regression.
+Pump Calibration
+After setting up the hardware, only two steps remain before starting the calibration: Selection of the COM port and a calibration mode.
+Over the past months we have used the Pump Calibrator to test countless pump prototypes. Not only the hardware, but also the software was optimized over time. The calibrator uses a triplicate linear regression to determine the pumping rate for a given setpoint. We found this to be much more reliable than taking the difference between the first and last point.
+Step 2 - Biomass Sensor Calibration
+Our biomass sensor uses an optical measurement principle and has to be calibrated against OD600, cell dry weight (CDW) or both. This task can be completed with minimal effort using the OD Calibrator app.
+The resulting calibration file is later imported into the Master Control Program.
+Calibration Curve of Biosensor 4
+The 3rd-degree polynomial regression has the formula OD(x)=-4.02x3+6.97x2-0.004737x+12.03. Horizontal error bars indicate the standard deviation over the measurement interval.
+The sensor is well capable of measuring OD values smaller than 0.1. Last year we showed this for the cuvette-based device [6] and also the online OD sensor can probably achieve a comparable performance. In our calibration run we observed that sensor values at ODs below 0.1 are still around 20 times greater than the standard deviations over a 15-second calibration interval. The limitation for these low OD values and also the greater source of variation was the sensitivity range of the reference photometer.
+Step 3 - Configuring the Reactors
+After the calibrations were imported, new reactors are configured in the "Reactors" tab of the MCP.
+Reactor Configuration
+By clicking "Create New Reactor" (1), a popup window opens for configuring the new device. A ReactorID must be selected (2) and then calibration files are selected from dropdown menus (3). Pump or sensor calibration assignments can be changed later on.
+Only pumps and sensors with existing calibration file mapping can be used in the cultivation. This is simply because without a calibration file, no accurate setpoint can be calculated for a given pumping rate.
+Step 4 - Starting a Cultivation
+Experiment Setup
+When new experiments are created, the involved reactors have to be selected. Process parameters of each cultivation can then be edited and the cultivations are started individually.
+Process parameters are edited in the Setpoint Window that is shown below. For a list of parameter symbols, please see the communication protocol specification .
+Setpoint Window
+All cultivation parameters can be changed independently for each reactor. The stirring speed (n) has a dynamic range of 150-1300 rpm and for most cultivations we recommend a gas flow rate (q_g) of 2 vvm. Setpoints for feed and harvest pump are automatically calculated from the culture volume V_L and the dilution rate D.
+References
+↑ https://en.wikipedia.org/wiki/Model_View_ViewModel
+↑ http://d3future.codeplex.com/
+↑ http://accord-framework.net/
+↑ http://wpftoolkit.codeplex.com/
+↑ http://www.nuget.org/packages/TCD.Controls/
+↑ https://2014.igem.org/Team:Aachen/OD/F_device#odfachievements
+▲
+Contact
+CC-BY-SA iGEM Aachen 2015

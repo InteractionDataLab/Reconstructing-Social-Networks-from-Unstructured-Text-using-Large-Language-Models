@@ -1,0 +1,128 @@
+Team:ETH Zurich/Motility Readout
+Project
+Description
+Applied Design
+Team Members
+Attributions
+Sponsoring
+Notebook
+Safety
+Downloads
+Wet Lab
+Tar Receptor Evolution
+Approach A
+Approach B
+Experiments
+InterLab
+Hardware
+Hardware Overview
+Microscope
+Mechanics
+Syringe Pump
+Microfluidic Chip
+Bubbling
+Software
+Software Overview
+Motility Readout
+Luminescence Algorithm
+Robot Controls
+Path Planning
+Logo Website
+Model
+Model Overview
+Integrated Models
+Motility Model
+Split Luciferase Model
+Diffusion Model
+Bubbling Model
+Holographic Imaging Model
+Screening Assay Model
+Model Parameters
+Human Practices
+Human Practices
+Education & Engagement
+Achievements
+Results
+Parts Overview
+Demonstrate
+Collaborations
+Content
+Introduction Table
+Home
+A.R.O.M.A.
+Logo Website
+Project
+Description
+Applied Design
+Team Members
+Attributions
+Sponsoring
+Notebook
+Safety
+Downloads
+Wet Lab
+Tar Receptor Evolution
+Approach A
+Approach B
+Experiments
+InterLab
+Hardware
+Hardware Overview
+Microscope
+Mechanics
+Syringe Pump
+Microfluidic Chip
+Bubbling
+Software
+Software Overview
+Motility Readout
+Luminescence Algorithm
+Robot Controls
+Path Planning
+Model
+Model Overview
+Integrated Models
+Motility Model
+Split Luciferase Model
+Diffusion Model
+Bubbling Model
+Screening Assay Model
+Holographic Imaging Model
+Human Practices
+Human Practices
+Education & Engagement
+Achievements
+Results
+Parts Overview
+Demonstrate
+Collaborations
+Motility Readout.
+Scroll
+For our Motility approach we developed an advanced image analysis software. We detect the spinning bacteria and read out their rotation. From this data we can reconstruct the concentration of the molecule in our solution. Read more about the approach here. Approach A This section focuses on the software responsible for image analysis.
+Software Implementation
+1. Preprocessing
+The first step when it comes to our image processing pipeline is to apply preprocessing. In our case this consists of applying a strong contrast and then using the gaussian filter to reduce the noise. To implement this in a fast and efficient way we used the opencv library.
+The raw data from the camera
+After applying the preprocessing
+Before and After preprocessing comparison
+2. Blob detection
+Our initial Blob detection detects all the bacteria visible in the frame. In opencv there is a built-in function we made use of. One can tweak the different parameters to fit our setup. These parameters include the blob size, circularity and intensity. Thanks to the previous preprocessing the algorithm reliably detected all bacteria while ignoring most pieces of dirt.
+3. Blob refinement
+When only looking at a single frame and applying a blob detection the algorithm finds all E. coli cells, regardless of whether they are moving through the frame, stuck to the surface or rotating as desired. Only the blobs rotating are of interest to us, as they are the only one providing a signal. Therefore we need to filter them out. Additionally, what is crucial in order to determine the turning behavior of the cells is to find the center of rotation. All of our Rotation analysis approaches use the center of rotation and could otherwise become significantly less accurate. The solution we came up with is to average the position of the E. coli over the next few frames.
+Red: First basic blob detection, White: Refined points
+We implement that by cropping into a small window for each blob. Ideally only the blob detected with our initial blob detection should still be visible. We then run the same blob detection on that small window over next few frames. If the blob       leaves the window, we remove the point, and should it stay roughly inside the frame we take the mean of its position over all the frames. This enables us to receive a precise center position to do our rotation analysis on.
+4. Rotation analysis
+Rotation of a single E Coli in a cropped view
+The goal of the rotation analysis part is to identify the angular velocity of the E. Coli. In other words we would like to find out how fast and in which direction the E. Coli are turning. There are several ways how this can be approached and       we will show the 3 most promising ways. For all of the approaches one first crops the image down to a size where one can only see one blob. The image we are then working with is shown below.
+First we can continue applying a blob detection. The algorithm returns the center of the blob in each frame and we compare this with the center of rotation. Out of those two positions we can evaluate a vector. When transforming this into a radial coordinate system we obtain an angle and a radius. By comparing the subsequent frames we receive a angular velocity as desired. The benefit of using this method is to gain an additional feature: the radius. One can use this information to determine, whether our difference in angle only comes from noise and the E. Coli is not actually moving or if we actually have a spinning bacteria. Unfortunately even the spinning bacteria don’t turn with a significant radius, which makes this method quite inaccurate.
+Inspired by a matlab script we received by [TODO: !!!] we determined the center of mass. The center of mass is calculated like an expectation value we multiply the coordinate value with the weight of the pixel. This results in one point. From here on we do the same steps as already described in approach one. On the microscopy data this method turned out to work very well. Because of that we used this method to analyse our imaging data of the microscope.
+The most robust solution, which yielded the best results for our own imaging setup was the third approach. Here we divide the small frame around the blob into four corners (see picture below). For each section we evaluate average pixel intensity.  Out of these four intensities (see second picture) we would like to determine the angular position of the blob. An easy arppoach would be to simply take the corner with the lowest average value, but this would not only be inaccurate but also very artefact and noise sensitive. The idea we came up with is to compare the opposing corners of our divided frame. This way we know the bias of the blob in the axis connecting the opposing corners. So we subtract the opposing corners from each other. These bias can be illustrated as the two black vectors in the third graphic. We essentially created to vectors in a coordinate system shifted by 45 degrees. When adding these vectors we obtain a final vector. It can now be transformed into the polar coordinate system and we can determine the angular velocity, the speed of the bacteria. The benefit of using this approach is the fact that it is very robust to picture artefacts and yields an accurate angle.
+Processed
+Four Corners Rotation analysis approach
+5. Data processing
+The final step of our algorithm is to interpret this data. We calculate the angle difference from each step by always taking the smaller angle between the next and current frame. This results in an angle speed which we can threshold to conclude whether the bacterium is not moving at all (very low), slowly moving or tumbling (medium) or turning very fast after receiving aspartate.
+Conclusion
+We believe this is a very solid foundation one can base their rotation tracking analysis on. We implementing the algorithm into ROS and made it run in real time. This yealded great results enabling us to detect the rotational movement of E. Coli. The video below shows a Live software analysis of the picture recorded on Aroma. To see the full demonstration of AROMA driving around and applying the live image analysis please see the following Link:
+See the Demonstration of AROMA
+Sponsors
+Contact Us

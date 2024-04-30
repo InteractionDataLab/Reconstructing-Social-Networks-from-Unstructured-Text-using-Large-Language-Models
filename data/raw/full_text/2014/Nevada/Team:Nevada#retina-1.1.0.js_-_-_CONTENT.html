@@ -1,0 +1,128 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Nevada_retina-1_1_0_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Nevada/retina-1.1.0.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Nevada/retina-1.1.0.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Nevada/retina-1.1.0.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Nevada/retina-1.1.0.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Nevada/retina-1.1.0.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Nevada/retina-1.1.0.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/*!
+</P><PRE>* Retina.js v1.1.0
+*
+* Copyright 2013 Imulus, LLC
+* Released under the MIT license
+*
+* Retina.js is an open source script that makes it easy to serve
+* high-resolution images to devices with retina displays.
+*/
+</PRE><P>(function() {
+</P><PRE> var root = (typeof exports == 'undefined' ? window : exports);
+</PRE><PRE> var config = {
+   // Ensure Content-Type is an image before trying to load @2x image
+   // <A href="https://github.com/imulus/retinajs/pull/45" class="external free" rel="nofollow">https://github.com/imulus/retinajs/pull/45</A>)
+   check_mime_type: true
+ };
+</PRE><PRE> root.Retina = Retina;
+</PRE><PRE> function Retina() {}
+</PRE><PRE> Retina.configure = function(options) {
+   if (options == null) options = {};
+   for (var prop in options) config[prop] = options[prop];
+ };
+</PRE><PRE> Retina.init = function(context) {
+   if (context == null) context = root;
+</PRE><PRE>   var existing_onload = context.onload || new Function;
+</PRE><PRE>   context.onload = function() {
+     var images = document.getElementsByTagName(&quot;img&quot;), retinaImages = [], i, image;
+     for (i = 0; i &lt; images.length; i++) {
+       image = images[i];
+       retinaImages.push(new RetinaImage(image));
+     }
+     existing_onload();
+   }
+ };
+</PRE><PRE> Retina.isRetina = function(){
+   var mediaQuery = &quot;(-webkit-min-device-pixel-ratio: 1.5),\
+                     (min--moz-device-pixel-ratio: 1.5),\
+                     (-o-min-device-pixel-ratio: 3/2),\
+                     (min-resolution: 1.5dppx)&quot;;
+</PRE><PRE>   if (root.devicePixelRatio &gt; 1)
+     return true;
+</PRE><PRE>   if (root.matchMedia &amp;&amp; root.matchMedia(mediaQuery).matches)
+     return true;
+</PRE><PRE>   return false;
+ };
+</PRE><PRE> root.RetinaImagePath = RetinaImagePath;
+</PRE><PRE> function RetinaImagePath(path, at_2x_path) {
+   this.path = path;
+   if (typeof at_2x_path !== &quot;undefined&quot; &amp;&amp; at_2x_path !== null) {
+     this.at_2x_path = at_2x_path;
+     this.perform_check = false;
+   } else {
+     this.at_2x_path = path.replace(/\.\w+$/, function(match) { return &quot;@2x&quot; + match; });
+     this.perform_check = true;
+   }
+ }
+</PRE><PRE> RetinaImagePath.confirmed_paths = [];
+</PRE><PRE> RetinaImagePath.prototype.is_external = function() {
+   return !!(this.path.match(/^https?\:/i) &amp;&amp; !this.path.match('//' + document.domain) )
+ }
+</PRE><PRE> RetinaImagePath.prototype.check_2x_variant = function(callback) {
+   var http, that = this;
+   if (this.is_external()) {
+     return callback(false);
+   } else if (!this.perform_check &amp;&amp; typeof this.at_2x_path !== &quot;undefined&quot; &amp;&amp; this.at_2x_path !== null) {
+     return callback(true);
+   } else if (this.at_2x_path in RetinaImagePath.confirmed_paths) {
+     return callback(true);
+   } else {
+     http = new XMLHttpRequest;
+     http.open('HEAD', this.at_2x_path);
+     http.onreadystatechange = function() {
+       if (http.readyState != 4) {
+         return callback(false);
+       }
+</PRE><PRE>       if (http.status &gt;= 200 &amp;&amp; http.status &lt;= 399) {
+         if (config.check_mime_type) {
+           var type = http.getResponseHeader('Content-Type');
+           if (type == null || !type.match(/^image/i)) {
+             return callback(false);
+           }
+         }
+</PRE><PRE>         RetinaImagePath.confirmed_paths.push(that.at_2x_path);
+         return callback(true);
+       } else {
+         return callback(false);
+       }
+     }
+     http.send();
+   }
+ }
+</PRE><PRE> function RetinaImage(el) {
+   this.el = el;
+   this.path = new RetinaImagePath(this.el.getAttribute('src'), this.el.getAttribute('data-at2x'));
+   var that = this;
+   this.path.check_2x_variant(function(hasVariant) {
+     if (hasVariant) that.swap();
+   });
+ }
+</PRE><PRE> root.RetinaImage = RetinaImage;
+</PRE><PRE> RetinaImage.prototype.swap = function(path) {
+   if (typeof path == 'undefined') path = this.path.at_2x_path;
+</PRE><PRE>   var that = this;
+   function load() {
+     if (! that.el.complete) {
+       setTimeout(load, 5);
+     } else {
+       that.el.setAttribute('width', that.el.offsetWidth);
+       that.el.setAttribute('height', that.el.offsetHeight);
+       that.el.setAttribute('src', path);
+     }
+   }
+   load();
+ }
+</PRE><PRE> if (Retina.isRetina()) {
+   Retina.init(root);
+ }
+</PRE><P>})();
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:Nevada/retina-1.1.0.js">http://2014.igem.org/Team:Nevada/retina-1.1.0.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Nevada/retina-1.1.0.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Nevada/retina-1.1.0.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Nevada/retina-1.1.0.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Nevada/retina-1.1.0.js&amp;oldid=263722" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

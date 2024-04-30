@@ -1,0 +1,299 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Exeter_Modelling_BM09 skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Exeter/Modelling BM09</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P><TITLE>BM_09_07</TITLE></P><DIV class="content"><H1>BM_09_07</H1><P>Our code before a fundamental restructure which was started as a result of a meeting with a computer scientist, Jonathan Fieldsend. See associated notes on the wiki <A href="https://2015.igem.org/Team:Exeter/Modeling">https://2015.igem.org/Team:Exeter/Modeling</A>. This is a simulation of the cell free kit, we hoped building this would aid the lab team in their design.</P><H2>Contents</H2><DIV><UL><LI><A href="#1">Setting our toehold/trigger ratio</A></LI><LI><A href="#2">Setting our deafault parameters</A></LI><LI><A href="#3">Generating the matrices needed for plotting</A></LI><LI><A href="#4">Confinement</A></LI><LI><A href="#5">Checking and Preparation</A></LI><LI><A href="#6">The Main Loop</A></LI><LI><A href="#8">Code needed to produce a .gif file of the simulation output</A></LI><LI><A href="#10">End Of The Code</A></LI></UL></DIV><H2>Setting our toehold/trigger ratio</H2><P>t = toehold number r = trigger (RNA) number N = number of time steps</P><PRE class="codeinput">    t=10; <SPAN class="comment">%Toeholds</SPAN>
+    r=10; <SPAN class="comment">%RNA's</SPAN>
+    N=50; <SPAN class="comment">%Time steps</SPAN></PRE><H2>Setting our deafault parameters</H2><P>These are the parameters used for the basic setup of Brownian motion as well as the contianment to a tube. Containment is in a 1.5mm Eppendorf tube. All units are SI units unless otherwise stated.</P><PRE class="codeinput">    rng(<SPAN class="string">'shuffle'</SPAN>);
+    d_t=5.1e-8; <SPAN class="comment">% diameter in meters of toehold</SPAN>
+    d_r=1.7e-8; <SPAN class="comment">% of RNA</SPAN>
+    d_c=5.1e-8; <SPAN class="comment">% of toehold-RNA complex</SPAN>
+    eta = 1.0e-3; <SPAN class="comment">% viscosity of water in SI units (Pascal-seconds)</SPAN>
+    kB = 1.38e-23; <SPAN class="comment">% Boltzmann constant</SPAN>
+    T = 293; <SPAN class="comment">% Temperature in degrees Kelvin</SPAN>
+    D_t = kB * T / (3 * pi * eta * d_t); <SPAN class="comment">%diffusion coefficient toehold</SPAN>
+    D_r = kB * T / (3 * pi * eta * d_r); <SPAN class="comment">%diffusion coefficient RNA</SPAN>
+    D_c = kB * T / (3 * pi * eta * d_c); <SPAN class="comment">%diffusion coefficient complex</SPAN>
+    tau = .1; <SPAN class="comment">% time interval in seconds</SPAN>
+    p_t = sqrt(2*D_t*tau);
+    p_r = sqrt(2*D_r*tau);
+    p_c = sqrt(2*D_c*tau);
+    A = 2.5e-10; <SPAN class="comment">%binding distance, default at 1e-7</SPAN>
+    styles=[<SPAN class="string">'r'</SPAN>, <SPAN class="string">'b'</SPAN>, <SPAN class="string">'g'</SPAN>]; <SPAN class="comment">%line styles</SPAN>
+    theta = 0; <SPAN class="comment">% changes the viewing angle</SPAN>
+    change = 360/N; <SPAN class="comment">% the size of the angle change</SPAN>
+    cylinder_radius=3.64e-3; <SPAN class="comment">%radius of 1.5mm eppendorf in metres</SPAN>
+    cylinder_height=18e-3; <SPAN class="comment">%height of 1.5mm eppendorf</SPAN><SPAN class="comment">%height can be changed depending on the volume of the solution (rather</SPAN><SPAN class="comment">%than the total possible volume of the eppendorf)</SPAN></PRE><H2>Generating the matrices needed for plotting</H2><P>The matrices needed for plotting are all randomly generated before any code is run. Here the matrices are initalised to zero and then movements are randomly generated. Displacement matrices are also made to prevent the toeholds and trigger from all forming in the same place. This is added to the movement matrix.</P><PRE class="codeinput"><SPAN class="comment">%Make empty matrices the size needed:</SPAN>
+    tx=zeros(N,t); <SPAN class="comment">%toehold</SPAN>
+    ty=zeros(N,t);
+    tz=zeros(N,t);
+    rx=zeros(N,r); <SPAN class="comment">%RNA</SPAN>
+    ry=zeros(N,r);
+    rz=zeros(N,r);
+
+    <SPAN class="keyword">if</SPAN> t&gt;=r        <SPAN class="comment">%complexes, limited by the smaller of t or r.</SPAN>
+        c=r;
+    <SPAN class="keyword">else</SPAN>
+        c=t;
+    <SPAN class="keyword">end</SPAN>
+    cx=zeros(N,c);
+    cy=zeros(N,c);
+    cz=zeros(N,c);
+
+    <SPAN class="comment">%Create random data movements:</SPAN><SPAN class="keyword">for</SPAN> i=1:t                          <SPAN class="comment">%toehold</SPAN>
+        tx(:,i)=cumsum(p_t*randn(N,1));
+        ty(:,i)=cumsum(p_t*randn(N,1));
+        tz(:,i)=cumsum(p_t*randn(N,1));
+    <SPAN class="keyword">end</SPAN><SPAN class="keyword">for</SPAN> i=1:r                          <SPAN class="comment">%RNA</SPAN>
+        rx(:,i)=cumsum(p_r*randn(N,1));
+        ry(:,i)=cumsum(p_r*randn(N,1));
+        rz(:,i)=cumsum(p_r*randn(N,1));
+    <SPAN class="keyword">end</SPAN><SPAN class="keyword">for</SPAN> i=1:c                          <SPAN class="comment">%Complex</SPAN>
+        cx(:,i)=cumsum(p_c*randn(N,1));
+        cy(:,i)=cumsum(p_c*randn(N,1));
+        cz(:,i)=cumsum(p_c*randn(N,1));
+    <SPAN class="keyword">end</SPAN><SPAN class="comment">%displacement is added after binding of lines occurs.</SPAN><SPAN class="comment">%initial displacement values:</SPAN>
+    min=0; <SPAN class="comment">%default at 1e-4</SPAN>
+    max=3.64e-3;
+
+    <SPAN class="comment">%displacement martices</SPAN>
+    disp_tx=(min+(max-min))*randn(t,1);
+    disp_ty=(min+(max-min))*randn(t,1);
+    disp_tz=(min+(max-min))*randn(t,1);
+
+    disp_rx=(min+(max-min))*randn(r,1);
+    disp_ry=(min+(max-min))*randn(r,1);
+    disp_rz=(min+(max-min))*randn(r,1);
+</PRE><H2>Confinement</H2><P>Here all of the randomly generated coordinate points are checked against the cylinder they are contained in. If they are outside the cylinder they are moved back in. They are moved back to the edge of the cylinder.</P><PRE class="codeinput"><SPAN class="comment">%shift by inital displacement values:</SPAN><SPAN class="keyword">for</SPAN> i=1:t
+        <SPAN class="keyword">for</SPAN> j=1:N
+            co_x=tx(j,i)+disp_tx(i,1);
+            co_y=ty(j,i)+disp_ty(i,1);
+            <SPAN class="comment">% Checking whether the toehold is in the cylinder</SPAN><SPAN class="keyword">if</SPAN> (co_x^2)+(co_y^2)&gt;=(cylinder_radius^2)
+                <SPAN class="comment">%both x and y lie outisde the cylinder // x inside and y</SPAN><SPAN class="comment">%ouside // x outside and y inside</SPAN>
+                grad=co_y/co_x;
+                grad=abs(grad);
+                <SPAN class="keyword">if</SPAN> co_x&lt;0
+                   tx(j,i)=-(((cylinder_radius^2)/((grad^2)+1))^0.5);
+                <SPAN class="keyword">else</SPAN>
+                   tx(j,i)=(((cylinder_radius^2)/((grad^2)+1))^0.5);
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> co_y&lt;0
+                   ty(j,i)=-(grad*(((cylinder_radius^2)/ <SPAN class="keyword">...</SPAN>
+                       ((grad^2)+1))^0.5));
+                <SPAN class="keyword">else</SPAN>
+                   ty(j,i)=grad*(((cylinder_radius^2)/((grad^2)+1))^0.5);
+                <SPAN class="keyword">end</SPAN><SPAN class="comment">%otherwise add normal displacement:</SPAN><SPAN class="keyword">else</SPAN>
+                tx(j,i)=tx(j,i)+disp_tx(i,1);
+                ty(j,i)=ty(j,i)+disp_ty(i,1);
+            <SPAN class="keyword">end</SPAN><SPAN class="comment">%Z-coordinate confinement to height of the cylinder</SPAN><SPAN class="keyword">if</SPAN> (tz(j,i)+disp_tz(i,1))&gt;=cylinder_height
+                tz(j,i)=cylinder_height;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> (tz(j,i)+disp_tz(i,1))&lt;=-cylinder_height
+                tz(j,i)=-cylinder_height;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> (tz(j,i)+disp_tz(i,1))&lt;=cylinder_height &amp;&amp;<SPAN class="keyword">...</SPAN>
+                    (tz(j,i)+disp_tz(i,1))&gt;=-cylinder_height
+                tz(j,i)=tz(j,i)+disp_tz(i,1);
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">for</SPAN> i=1:r
+        <SPAN class="keyword">for</SPAN> j=1:N
+            co_x=rx(j,i)+disp_rx(i,1);
+            co_y=ry(j,i)+disp_ry(i,1);
+            <SPAN class="comment">% Checking whether the RNA is in the cylinder</SPAN><SPAN class="keyword">if</SPAN> (co_x^2)+(co_y^2)&gt;=(cylinder_radius^2)
+                <SPAN class="comment">%both x and y lie outisde the cylinder // x inside and y</SPAN><SPAN class="comment">%ouside // x outside and y inside</SPAN>
+                grad=co_y/co_x;
+                grad=abs(grad);
+                <SPAN class="keyword">if</SPAN> co_x&lt;0
+                   rx(j,i)=-(((cylinder_radius^2)/((grad^2)+1))^0.5);
+                <SPAN class="keyword">else</SPAN>
+                   rx(j,i)=(((cylinder_radius^2)/((grad^2)+1))^0.5);
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> co_y&lt;0
+                   ry(j,i)=-(grad*(((cylinder_radius^2)/ <SPAN class="keyword">...</SPAN>
+                       ((grad^2)+1))^0.5));
+                <SPAN class="keyword">else</SPAN>
+                   ry(j,i)=grad*(((cylinder_radius^2)/((grad^2)+1))^0.5);
+                <SPAN class="keyword">end</SPAN><SPAN class="comment">%otherwise add normal displacement:</SPAN><SPAN class="keyword">else</SPAN>
+                rx(j,i)=rx(j,i)+disp_rx(i,1);
+                ry(j,i)=ry(j,i)+disp_ry(i,1);
+            <SPAN class="keyword">end</SPAN><SPAN class="comment">%Z-coordinate confinement to height of the cylinder</SPAN><SPAN class="keyword">if</SPAN> (rz(j,i)+disp_rz(i,1))&gt;=cylinder_height
+                rz(j,i)=cylinder_height;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> (rz(j,i)+disp_rz(i,1))&lt;=-cylinder_height
+                rz(j,i)=-cylinder_height;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> (rz(j,i)+disp_rz(i,1))&lt;=cylinder_height &amp;&amp;<SPAN class="keyword">...</SPAN>
+                    (rz(j,i)+disp_rz(i,1))&gt;=-cylinder_height
+                rz(j,i)=rz(j,i)+disp_rz(i,1);
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Checking and Preparation</H2><P>Here is were some checking variables are initalised, and the gird for the simulation is set up.</P><PRE class="codeinput"><SPAN class="comment">%checkpoints</SPAN>
+    check_r=zeros(1,r); <SPAN class="comment">%records identities of joined RNA</SPAN>
+    check_t=zeros(1,t); <SPAN class="comment">%records identities of joined toeholds</SPAN>
+    joinlock=zeros(1,c); <SPAN class="comment">%records joined lines</SPAN>
+    delay=zeros(1,c); <SPAN class="comment">%Delay for after splitting</SPAN>
+    splitpoint=zeros(1,c); <SPAN class="comment">%timestep when split</SPAN>
+    split = zeros(1,c);
+
+    <SPAN class="comment">%Setting up the grid</SPAN>
+    figure()
+    axis([-0.00364 0.00364 -0.00364 0.00364 -0.018 0.018])
+    grid <SPAN class="string">on</SPAN>
+    grid <SPAN class="string">MINOR</SPAN>
+    set(gcf, <SPAN class="string">'Position'</SPAN>, [100 10 600 600])
+    xlabel(<SPAN class="string">'Diameter (mm)'</SPAN>)
+    ylabel(<SPAN class="string">'Diameter (mm)'</SPAN>)
+    zlabel(<SPAN class="string">'Height (mm)'</SPAN>)
+</PRE><H2>The Main Loop</H2><P>This is the main loop of the code were the majority of the simulation is undetaken.</P><PRE class="codeinput"><SPAN class="keyword">for</SPAN> j=1:N <SPAN class="comment">%timesteps</SPAN></PRE><PRE class="codeinput"><SPAN class="keyword">if</SPAN> j == N
+           <SPAN class="keyword">break</SPAN><SPAN class="keyword">else</SPAN>
+       hold <SPAN class="string">on</SPAN><SPAN class="keyword">if</SPAN> j==1
+           <SPAN class="comment">% Plotting starting points</SPAN>
+           plot3(rx(1,:),ry(1,:),rz(1,:),<SPAN class="string">'kx'</SPAN>); <SPAN class="comment">%starting point for RNA</SPAN>
+           plot3(tx(1,:),ty(1,:),tz(1,:),<SPAN class="string">'kx'</SPAN>) <SPAN class="comment">%starting point for toehold</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%Generates the random number for joining probability</SPAN>
+       join = randi([1 10],1);
+
+           <SPAN class="keyword">for</SPAN> k=1:t
+               <SPAN class="keyword">if</SPAN> check_t(1,k)==0
+                   <SPAN class="comment">%plots toehold path</SPAN>
+                   plot3([tx(j,k) tx(j+1,k)],[ty(j,k) ty(j+1,k)], <SPAN class="keyword">...</SPAN>
+                       [tz(j,k) tz(j+1,k)], styles(2)); <SPAN class="comment">%toehold path</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">% Sets the number of complexes based on the lower of</SPAN><SPAN class="comment">% toeholds and RNA's</SPAN><SPAN class="keyword">for</SPAN> m=1:r
+                  <SPAN class="keyword">if</SPAN> t&gt;=r
+                      n=m;
+                  <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> t&lt;=r
+                      n=k;
+                  <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> check_r(1,m)==0
+                      <SPAN class="comment">%plots RNA path</SPAN>
+                      plot3([rx(j,m) rx(j+1,m)],[ry(j,m) ry(j+1,m)], <SPAN class="keyword">...</SPAN>
+                          [rz(j,m) rz(j+1,m)], styles(1)); <SPAN class="comment">%RNA path</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> join&gt;3   <SPAN class="comment">%threshold probability for joining</SPAN>
+                     joinlock(1,n)=1;
+                  <SPAN class="keyword">end</SPAN><SPAN class="comment">%define complex loop variable based limiting component</SPAN><SPAN class="keyword">if</SPAN> joinlock(1,n)==1
+                   <SPAN class="keyword">if</SPAN> ((((tx(j,k)-rx(j,m))^2)+((ty(j,k)-ry(j,m))^2)+ <SPAN class="keyword">...</SPAN>
+                      ((tz(j,k)-rz(j,m))^2))&lt;=(A^2) || (check_r(1,m)~=0 <SPAN class="keyword">...</SPAN>&amp;&amp; check_t(1,k)~=0)) &amp;&amp; (j~=1) &amp;&amp; delay(1,n)==0
+                       <SPAN class="keyword">if</SPAN> (check_r(1,m)==0 &amp;&amp; check_t(1,k)==0)
+                           <SPAN class="comment">%ensure a connecting line between new and old:</SPAN>
+                           temprx=(rx(j+1,m));
+                           temptx=(tx(j+1,k));
+                           tempry=(ry(j+1,m));
+                           tempty=(ty(j+1,k));
+                           temprz=(rz(j+1,m));
+                           temptz=(tz(j+1,k));
+                           <SPAN class="comment">%midpoint between the joining lines</SPAN>
+                           cx(j,n)=((rx(j,m)+tx(j,k))/2);
+                           cy(j,n)=((ry(j,m)+ty(j,k))/2);
+                           cz(j,n)=((rz(j,m)+tz(j,k))/2);
+                           rx(j,m)=temprx;
+                           rx(j+1,m)=cx(j,n);
+                           ry(j,m)=tempry;
+                           ry(j+1,m)=cy(j,n);
+                           rz(j,m)=temprz;
+                           rz(j+1,m)=cz(j,n);
+                           tx(j,k)=temptx;
+                           tx(j+1,k)=cx(j,n);
+                           ty(j,k)=tempty;
+                           ty(j+1,k)=cy(j,n);
+                           tz(j,k)=temptz;
+                           tz(j+1,k)=cz(j,n);
+
+                           <SPAN class="comment">%copies the toehold line to complex line</SPAN><SPAN class="keyword">for</SPAN> b=(j+1):N
+                             <SPAN class="keyword">if</SPAN> b==N
+                                 cx(b,n)=tx(b,k);
+                                 cy(b,n)=ty(b,k);
+                                 cz(b,n)=tz(b,k);
+                             <SPAN class="keyword">end</SPAN>
+                             cx(b-1,n)=tx(b,k);
+                             cy(b-1,n)=ty(b,k);
+                             cz(b-1,n)=tz(b,k);
+                           <SPAN class="keyword">end</SPAN><SPAN class="comment">%plots a circle at the joining point</SPAN>
+                           plot3(tx(j+1,k),ty(j+1,k),tz(j+1,k),<SPAN class="string">'ko'</SPAN>);
+                           <SPAN class="comment">%connector lines</SPAN>
+                           plot3([rx(j,m) rx(j+1,m)],[ry(j,m) <SPAN class="keyword">...</SPAN>
+                               ry(j+1,m)],[rz(j,m) rz(j+1,m)], styles(1))
+                           plot3([tx(j,k) tx(j+1,k)],[ty(j,k) <SPAN class="keyword">...</SPAN>
+                               ty(j+1,k)],[tz(j,k) tz(j+1,k)], styles(2))
+
+                           <SPAN class="comment">%makes check equal 1 to indicate a complex</SPAN>
+                           check_r(1,m)=check_r(1,m)+1;
+                           check_t(1,k)=check_t(1,k)+1;
+                           <SPAN class="comment">%plots first section of the complex line</SPAN>
+                           plot3([cx(j,n) cx(j+1,n)],[cy(j,n) <SPAN class="keyword">...</SPAN>
+                               cy(j+1,n)],[cz(j,n) cz(j+1,n)], styles(3))
+
+                           split(1,n) = randi([1 N],1);
+                           <SPAN class="comment">%randon number for truncating limit</SPAN><SPAN class="comment">%Range of the random number needs to be changed</SPAN><SPAN class="comment">%depending on the statistical probability of</SPAN><SPAN class="comment">%(e.g.) 95% of complexes split after a certain</SPAN><SPAN class="comment">%time scale.</SPAN><SPAN class="comment">%makes sure split point is in the maximum time step</SPAN><SPAN class="keyword">if</SPAN> (j+split(1,n))&gt;=N
+                               splittime=j;
+                               splitpoint(1,n)=N;
+                           <SPAN class="keyword">end</SPAN><SPAN class="comment">%sets the split point</SPAN><SPAN class="keyword">if</SPAN> (j+split(1,n))&lt;=N &amp;&amp; splitpoint(1,n)==0
+                               splittime=j;
+                               splitpoint(1,n)=(j+split(1,n));
+                           <SPAN class="keyword">end</SPAN><SPAN class="keyword">continue</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of check==0 statement</SPAN><SPAN class="comment">%at split point sets check equal to zero to indicate separate lines</SPAN><SPAN class="keyword">if</SPAN> j==splitpoint(1,n)
+                           check_t(1,k)=0;
+                           check_r(1,m)=0;
+                           tx(j,k)=cx(j,n);
+                           ty(j,k)=cy(j,n);
+                           tz(j,k)=cz(j,n);
+                           rx(j,m)=cx(j,n);
+                           ry(j,m)=cy(j,n);
+                           rz(j,m)=cz(j,n);
+                           <SPAN class="comment">%plots the split point</SPAN>
+                           plot3(cx(j,n), cy(j,n), cz(j,n), <SPAN class="string">'k*'</SPAN>);
+
+                           delay(1,n)=(5*t*r); <SPAN class="comment">%binding delay</SPAN><SPAN class="comment">%Generate new directions from the last point of</SPAN><SPAN class="comment">%the green line for the red line</SPAN>
+
+                           rx_temp=zeros(1,N-splitpoint(1,n));
+                           ry_temp=zeros(1,N-splitpoint(1,n));
+                           rz_temp=zeros(1,N-splitpoint(1,n));
+                           rx_temp(1,1)=cx(j,n);
+                           ry_temp(1,1)=cy(j,n);
+                           rz_temp(1,1)=cz(j,n);
+
+                           <SPAN class="comment">%regenerating random numbers to plot the RNA</SPAN><SPAN class="comment">%line</SPAN><SPAN class="keyword">for</SPAN> z=2:N-splitpoint(1,n)
+                               rx_temp(1,z)=p_r*randn(1,1);
+                               ry_temp(1,z)=p_r*randn(1,1);
+                               rz_temp(1,z)=p_r*randn(1,1);
+                           <SPAN class="keyword">end</SPAN>
+                           rx2=cumsum(rx_temp)';
+                           ry2=cumsum(ry_temp)';
+                           rz2=cumsum(rz_temp)';
+
+                           <SPAN class="keyword">for</SPAN> z=1:length(rx2)
+                                   rx(splitpoint(1,n)+z,m)=rx2(z,1);
+                                   ry(splitpoint(1,n)+z,m)=ry2(z,1);
+                                   rz(splitpoint(1,n)+z,m)=rz2(z,1);
+                           <SPAN class="keyword">end</SPAN>
+
+                           tx_temp=zeros(1,N-splitpoint(1,n));
+                           ty_temp=zeros(1,N-splitpoint(1,n));
+                           tz_temp=zeros(1,N-splitpoint(1,n));
+                           tx_temp(1,1)=cx(j,n);
+                           ty_temp(1,1)=cy(j,n);
+                           tz_temp(1,1)=cz(j,n);
+
+                           <SPAN class="comment">%regenerating random numbers to plot the toehold</SPAN><SPAN class="comment">%line</SPAN><SPAN class="keyword">for</SPAN> z=2:N-splitpoint(1,n)
+                               tx_temp(1,z)=p_t*randn(1,1);
+                               ty_temp(1,z)=p_t*randn(1,1);
+                               tz_temp(1,z)=p_t*randn(1,1);
+                           <SPAN class="keyword">end</SPAN>
+                           tx2=cumsum(tx_temp)';
+                           ty2=cumsum(ty_temp)';
+                           tz2=cumsum(tz_temp)';
+
+                           <SPAN class="keyword">for</SPAN> z=1:length(tx2)
+                                   tx(splitpoint(1,n)+z,k)=tx2(z,1);
+                                   ty(splitpoint(1,n)+z,k)=ty2(z,1);
+                                   tz(splitpoint(1,n)+z,k)=tz2(z,1);
+                           <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of  if j==splitpoint statement</SPAN><SPAN class="keyword">if</SPAN> (check_r(1,m)~=0 &amp;&amp; check_t(1,k)~=0)
+                           <SPAN class="comment">%plots complex line:</SPAN>                          plot3([cx(j,n) cx(j+1,n)],[cy(j,n)<SPAN class="keyword">...</SPAN>
+                               cy(j+1,n)],[cz(j,n) cz(j+1,n)], styles(3));
+                       <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of if statement</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of joinlock==1 statement</SPAN><SPAN class="comment">%delay countdown</SPAN><SPAN class="keyword">if</SPAN> delay(1,n)~=0
+        	         delay(1,n)=delay(1,n)-1;
+                  <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of m for loop</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of k for loop</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of if j==N statement</SPAN><SPAN class="comment">%drawnow</SPAN></PRE><H2>Code needed to produce a .gif file of the simulation output</H2><PRE class="codeinput"><SPAN class="comment">% gif utilities</SPAN>
+       set(gcf,<SPAN class="string">'color'</SPAN>,<SPAN class="string">'w'</SPAN>); <SPAN class="comment">% set figure background to white</SPAN>
+       drawnow;
+       frame = getframe(gcf);
+       im = frame2im(frame);
+       [imind,cm] = rgb2ind(im,256);
+       outfile = <SPAN class="string">'Ribonostics9.gif'</SPAN>;
+
+       <SPAN class="comment">% adjusting the viewing the angle</SPAN>
+       view(theta,45);
+       theta = theta + change;
+
+       <SPAN class="comment">% On the first loop, create the file. In subsequent loops, append.</SPAN><SPAN class="keyword">if</SPAN> j==1
+          imwrite(imind,cm,outfile,<SPAN class="string">'gif'</SPAN>,<SPAN class="string">'DelayTime'</SPAN>,0,<SPAN class="string">'loopcount'</SPAN>,inf);
+       <SPAN class="keyword">else</SPAN>
+          imwrite(imind,cm,outfile,<SPAN class="string">'gif'</SPAN>,<SPAN class="string">'DelayTime'</SPAN>,0,<SPAN class="string">'writemode'</SPAN>, <SPAN class="keyword">...</SPAN><SPAN class="string">'append'</SPAN>);
+       <SPAN class="keyword">end</SPAN></PRE><PRE class="codeinput"><SPAN class="keyword">end</SPAN><SPAN class="comment">%end of j for loop</SPAN></PRE><H2>End Of The Code</H2><P>This is preliminary simulation developed by the Univeristy Of Exeter iGEM team 2015. Developed mainly by Amy, Dan and Todd.</P><P class="footer"><A href="http://www.mathworks.com/products/matlab/">Published with MATLAB® R2015a</A></P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

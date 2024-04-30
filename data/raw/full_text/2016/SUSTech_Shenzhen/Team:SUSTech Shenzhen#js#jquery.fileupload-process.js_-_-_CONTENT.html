@@ -1,0 +1,168 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SUSTech_Shenzhen_js_jquery_fileupload-process_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SUSTech Shenzhen/js/jquery.fileupload-process.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* jQuery File Upload Processing Plugin
+* <A rel="nofollow" class="external free" href="https://github.com/blueimp/jQuery-File-Upload">https://github.com/blueimp/jQuery-File-Upload</A>
+*
+* Copyright 2012, Sebastian Tschan
+* <A rel="nofollow" class="external free" href="https://blueimp.net">https://blueimp.net</A>
+*
+* Licensed under the MIT license:
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/MIT">http://www.opensource.org/licenses/MIT</A>
+*/
+</PRE><P>/* jshint nomen:false */
+/* global define, require, window */
+</P><DL><DT>(function (factory) {</DT></DL><PRE>   'use strict';
+   if (typeof define === 'function' &amp;&amp; define.amd) {
+       // Register as an anonymous AMD module:
+       define([
+           'jquery',
+           './jquery.fileupload'
+       ], factory);
+   } else if (typeof exports === 'object') {
+       // Node/CommonJS:
+       factory(require('jquery'));
+   } else {
+       // Browser globals:
+       factory(
+           window.jQuery
+       );
+   }
+</PRE><P>}(function ($) {
+</P><PRE>   'use strict';
+</PRE><PRE>   var originalAdd = $.blueimp.fileupload.prototype.options.add;
+</PRE><PRE>   // The File Upload Processing plugin extends the fileupload widget
+   // with file processing functionality:
+   $.widget('blueimp.fileupload', $.blueimp.fileupload, {
+</PRE><PRE>       options: {
+           // The list of processing actions:
+           processQueue: [
+               /*
+               {
+                   action: 'log',
+                   type: 'debug'
+               }
+               */
+           ],
+           add: function (e, data) {
+               var $this = $(this);
+               data.process(function () {
+                   return $this.fileupload('process', data);
+               });
+               originalAdd.call(this, e, data);
+           }
+       },
+</PRE><PRE>       processActions: {
+           /*
+           log: function (data, options) {
+               console[options.type](
+                   'Processing &quot;' + data.files[data.index].name + '&quot;'
+               );
+           }
+           */
+       },
+</PRE><PRE>       _processFile: function (data, originalData) {
+           var that = this,
+               dfd = $.Deferred().resolveWith(that, [data]),
+               chain = dfd.promise();
+           this._trigger('process', null, data);
+           $.each(data.processQueue, function (i, settings) {
+               var func = function (data) {
+                   if (originalData.errorThrown) {
+                       return $.Deferred()
+                               .rejectWith(that, [originalData]).promise();
+                   }
+                   return that.processActions[settings.action].call(
+                       that,
+                       data,
+                       settings
+                   );
+               };
+               chain = chain.then(func, settings.always &amp;&amp; func);
+           });
+           chain
+               .done(function () {
+                   that._trigger('processdone', null, data);
+                   that._trigger('processalways', null, data);
+               })
+               .fail(function () {
+                   that._trigger('processfail', null, data);
+                   that._trigger('processalways', null, data);
+               });
+           return chain;
+       },
+</PRE><PRE>       // Replaces the settings of each processQueue item that
+       // are strings starting with an &quot;@&quot;, using the remaining
+       // substring as key for the option map,
+       // e.g. &quot;@autoUpload&quot; is replaced with options.autoUpload:
+       _transformProcessQueue: function (options) {
+           var processQueue = [];
+           $.each(options.processQueue, function () {
+               var settings = {},
+                   action = this.action,
+                   prefix = this.prefix === true ? action : this.prefix;
+               $.each(this, function (key, value) {
+                   if ($.type(value) === 'string' &amp;&amp;
+                           value.charAt(0) === '@') {
+                       settings[key] = options[
+                           value.slice(1) || (prefix ? prefix +
+                               key.charAt(0).toUpperCase() + key.slice(1) : key)
+                       ];
+                   } else {
+                       settings[key] = value;
+                   }
+</PRE><PRE>               });
+               processQueue.push(settings);
+           });
+           options.processQueue = processQueue;
+       },
+</PRE><PRE>       // Returns the number of files currently in the processsing queue:
+       processing: function () {
+           return this._processing;
+       },
+</PRE><PRE>       // Processes the files given as files property of the data parameter,
+       // returns a Promise object that allows to bind callbacks:
+       process: function (data) {
+           var that = this,
+               options = $.extend({}, this.options, data);
+           if (options.processQueue &amp;&amp; options.processQueue.length) {
+               this._transformProcessQueue(options);
+               if (this._processing === 0) {
+                   this._trigger('processstart');
+               }
+               $.each(data.files, function (index) {
+                   var opts = index ? $.extend({}, options) : options,
+                       func = function () {
+                           if (data.errorThrown) {
+                               return $.Deferred()
+                                       .rejectWith(that, [data]).promise();
+                           }
+                           return that._processFile(opts, data);
+                       };
+                   opts.index = index;
+                   that._processing += 1;
+                   that._processingQueue = that._processingQueue.then(func, func)
+                       .always(function () {
+                           that._processing -= 1;
+                           if (that._processing === 0) {
+                               that._trigger('processstop');
+                           }
+                       });
+               });
+           }
+           return this._processingQueue;
+       },
+</PRE><PRE>       _create: function () {
+           this._super();
+           this._processing = 0;
+           this._processingQueue = $.Deferred().resolveWith(this)
+               .promise();
+       }
+</PRE><PRE>   });
+</PRE><P>}));
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,189 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_UST_Beijing_js_jquery_nav skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:UST Beijing/js/jquery.nav</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* jQuery One Page Nav Plugin
+* <A rel="nofollow" class="external free" href="http://github.com/davist11/jQuery-One-Page-Nav">http://github.com/davist11/jQuery-One-Page-Nav</A>
+*
+* Copyright (c) 2010 Trevor Davis (<A rel="nofollow" class="external free" href="http://trevordavis.net">http://trevordavis.net</A>)
+* Dual licensed under the MIT and GPL licenses.
+* Uses the same license as jQuery, see:
+* <A rel="nofollow" class="external free" href="http://jquery.org/license">http://jquery.org/license</A>
+*
+* @version 3.0.0
+*
+* Example usage:
+* $('#nav').onePageNav({
+*   currentClass: 'current',
+*   changeHash: false,
+*   scrollSpeed: 750
+* });
+*/
+</PRE><DL><DT> (function ($, window, document, undefined) {</DT></DL><PRE>   // our plugin constructor
+   var OnePageNav = function (elem, options) {
+       this.elem = elem;
+       this.$elem = $(elem);
+       this.options = options;
+       this.metadata = this.$elem.data('plugin-options');
+       this.$win = $(window);
+       this.sections = {};
+       this.didScroll = false;
+       this.$doc = $(document);
+       this.docHeight = this.$doc.height();
+   };
+</PRE><PRE>   // the plugin prototype
+   OnePageNav.prototype = {
+       defaults: {
+           navItems: 'a',
+           currentClass: 'current',
+           changeHash: false,
+           easing: 'swing',
+           filter: <I>,</I></PRE><P>			navHeight: 70,
+</P><PRE>           scrollSpeed: 750,
+           scrollThreshold: 0.5,
+           begin: false,
+           end: false,
+           scrollChange: false
+       },
+</PRE><PRE>       init: function () {
+           // Introduce defaults that can be extended either
+           // globally or using an object literal.
+           this.config = $.extend({}, this.defaults, this.options, this.metadata);
+</PRE><PRE>           this.$nav = this.$elem.find(this.config.navItems);
+</PRE><PRE>           //Filter any links out of the nav
+           if (this.config.filter !== <I>) {</I>
+               this.$nav = this.$nav.filter(this.config.filter);
+           }
+</PRE><PRE>           //Handle clicks on the nav
+           this.$nav.on('click.onePageNav', $.proxy(this.handleClick, this));
+</PRE><PRE>           //Get the section positions
+           this.getPositions();
+</PRE><PRE>           //Handle scroll changes
+           this.bindInterval();
+</PRE><PRE>           //Update the positions on resize too
+           this.$win.on('resize.onePageNav', $.proxy(this.getPositions, this));
+</PRE><PRE>           return this;
+       },
+</PRE><PRE>       adjustNav: function (self, $parent) {
+           self.$elem.find('.' + self.config.currentClass).removeClass(self.config.currentClass);
+           $parent.addClass(self.config.currentClass);
+       },
+</PRE><PRE>       bindInterval: function () {
+           var self = this;
+           var docHeight;
+</PRE><PRE>           self.$win.on('scroll.onePageNav', function () {
+               self.didScroll = true;
+           });
+</PRE><PRE>           self.t = setInterval(function () {
+               docHeight = self.$doc.height();
+</PRE><PRE>               //If it was scrolled
+               if (self.didScroll) {
+                   self.didScroll = false;
+                   self.scrollChange();
+               }
+</PRE><PRE>               //If the document height changes
+               if (docHeight !== self.docHeight) {
+                   self.docHeight = docHeight;
+                   self.getPositions();
+               }
+           }, 250);
+       },
+</PRE><PRE>       getHash: function ($link) {
+           return $link.attr('href').split('#')[1];
+       },
+</PRE><PRE>       getPositions: function () {
+           var self = this;
+           var linkHref;
+           var topPos;
+           var $target;
+</PRE><PRE>           self.$nav.each(function () {
+               linkHref = self.getHash($(this));
+               $target = $('#' + linkHref);
+</PRE><PRE>               if ($target.length) {
+                   topPos = $target.offset().top;
+</PRE><PRE>                   self.sections[linkHref] = Math.round(topPos);
+               }
+           });
+       },
+</PRE><PRE>       getSection: function (windowPos) {
+           var returnValue = null;
+           var windowHeight = Math.round(this.$win.height() * this.config.scrollThreshold);
+</PRE><PRE>           for (var section in this.sections) {
+               if ((this.sections[section] - windowHeight) &lt; windowPos) {
+                   returnValue = section;
+</PRE><PRE>               }
+           }
+</PRE><PRE>           return returnValue;
+       },
+</PRE><PRE>       handleClick: function (e) {
+           var self = this;
+           var $link = $(e.currentTarget);
+           var $parent = $link.parent();
+           var newLoc = '#' + self.getHash($link);
+</PRE><PRE>           if (!$parent.hasClass(self.config.currentClass)) {
+               //Start callback
+               if (self.config.begin) {
+                   self.config.begin();
+               }
+</PRE><PRE>               //Change the highlighted nav item
+               self.adjustNav(self, $parent);
+</PRE><PRE>               //Removing the auto-adjust on scroll
+               self.unbindInterval();
+</PRE><PRE>               //Scroll to the correct position
+               self.scrollTo(newLoc, function () {
+                   //Do we need to change the hash?
+                   if (self.config.changeHash) {
+                       window.location.hash = newLoc;
+                   }
+</PRE><P>//				$('#aboutUs').offset({'top':'60'});
+</P><PRE>                   //Add the auto-adjust on scroll back in
+                   self.bindInterval();
+</PRE><PRE>                   //End callback
+                   if (self.config.end) {
+                       self.config.end();
+                   }
+               });
+           }
+</PRE><PRE>           e.preventDefault();
+       },
+</PRE><PRE>       scrollChange: function () {
+           var windowTop = this.$win.scrollTop();
+           var position = this.getSection(windowTop);
+           var $parent;
+</PRE><PRE>           //If the position is set
+           if (position !== null) {
+               $parent = this.$elem.find('a[href$=&quot;#' + position + '&quot;]').parent();
+</PRE><PRE>               //If it's not already the current section
+               if (!$parent.hasClass(this.config.currentClass)) {
+                   //Change the highlighted nav item
+                   this.adjustNav(this, $parent);
+</PRE><PRE>                   //If there is a scrollChange callback
+                   if (this.config.scrollChange) {
+                       this.config.scrollChange($parent);
+                   }
+               }
+           }
+       },
+</PRE><PRE>       scrollTo: function (target, callback) {
+           var offset = $(target).offset().top - this.config.navHeight;
+           $('html, body').animate({
+               scrollTop: offset
+           }, this.config.scrollSpeed, this.config.easing, callback);
+       },
+</PRE><PRE>       unbindInterval: function () {
+           clearInterval(this.t);
+           this.$win.unbind('scroll.onePageNav');
+       }
+   };
+</PRE><PRE>   OnePageNav.defaults = OnePageNav.prototype.defaults;
+</PRE><PRE>   $.fn.onePageNav = function (options) {
+       return this.each(function () {
+           new OnePageNav(this, options).init();
+       });
+   };
+</PRE><P>})(jQuery, window, document);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

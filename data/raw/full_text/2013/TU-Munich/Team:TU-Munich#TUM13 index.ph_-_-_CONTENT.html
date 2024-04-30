@@ -1,0 +1,214 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_TU-Munich_TUM13_index_php"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:TU-Munich/TUM13_index.php">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:TU-Munich/TUM13_index.php&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:TU-Munich/TUM13_index.php&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:TU-Munich/TUM13_index.php&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:TU-Munich/TUM13_index.php" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:TU-Munich/TUM13 index.php</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><DIV id="contentSub">(Redirected from <A href="/wiki/index.php?title=Team:TU-Munich/TUM13_index.ph&amp;redirect=no" title="Team:TU-Munich/TUM13 index.ph">Team:TU-Munich/TUM13 index.ph</A>)</DIV><PRE>&lt;?php
+
+// include db interface and init
+include 'lib/db.inc.php';
+
+// set standard values
+date_default_timezone_set('UTC');
+$time1 = strtotime(&quot;10/01/13 11:45:00&quot;);
+$time2 = strtotime(&quot;10/01/13 13:15:00&quot;);
+$data = &quot;`time`, `temperature`, `water`, `light-vis`, `light-ir`&quot;;
+$streams = &quot;[ { name: 'Temperature', key: 'temperature', bar: true }, { name: 'Visible Light', key: 'light-vis' }, { name: 'Infrared Light', key: 'light-ir' }, { name: 'Water', key: 'water', bar: true } ]&quot;;
+$selected = 1;
+
+// check for GET parameters
+if ( isset($_GET['date1'], $_GET['time1'], $_GET['date2'], $_GET['time2']) ) {
+
+	// check for viable date and time values
+	if ( strtotime($_GET['date1'].&quot;&quot;.$_GET['time1']) and strtotime($_GET['date2'].&quot;&quot;.$_GET['time2']) ) {
+		$time1 = strtotime($_GET['date1'].&quot;&quot;.$_GET['time1']);
+		$time2 = strtotime($_GET['date2'].&quot;&quot;.$_GET['time2']);
+	} else {
+		$error = &quot;Wrong date or time format&quot;;
+	}
+	
+	// check for selected data streams
+        /*
+	switch ($_GET['data']) {
+		case 'all':
+			$data = &quot;`time`, `temperature`, `water`, `light-vis`, `light-ir`, `photo1`, `photo2`, `photo3`&quot;;
+			$streams = &quot;[ { name: 'Temperature', key: 'temperature' }, { name: 'Visible Light', key: 'light-vis' }, { name: 'Infrared Light',	key: 'light-ir' }, { name: 'Water', key: 'water' }, { name: 'Photometer 1', key: 'photo1' }, { name: 'Photometer 2', key: 'photo2' }, { name: 'Photometer 3', key: 'photo3' } ]&quot;;
+			$selected = 1;
+			break;
+		case 'environment':
+			$data = &quot;`time`, `temperature`, `water`, `light-vis`, `light-ir`&quot;;
+			$streams = &quot;[ { name: 'Temperature', key: 'temperature' }, { name: 'Visible Light', key: 'light-vis' }, { name: 'Infrared Light',	key: 'light-ir' }, { name: 'Water', key: 'water' } ]&quot;;
+			$selected = 2;
+			break;
+		case 'photometric':
+			$data = &quot;`photo1`, `photo2`, `photo3`&quot;;
+			$streams = &quot;[ { name: 'Photometer 1', key: 'photo1' }, { name: 'Photometer 2', key: 'photo2' }, { name: 'Photometer 3', key: 'photo3' } ]&quot;;
+			$selected = 3;
+			break;
+		default:
+			$error = &quot;Incorrect data streams selected&quot;;
+			break;
+	}
+	*/
+}
+
+// generate and run SQL query
+$sql = &quot;SELECT\n\t&quot;.$data.&quot;\nFROM\n\tarduino_data\nWHERE\n\t(UNIX_TIMESTAMP(time) &gt;= &quot;.$time1.&quot;) AND (UNIX_TIMESTAMP(time) &lt;= &quot;.$time2.&quot;)&quot;;
+
+$result = $db-&gt;query($sql);
+if (!$result) {
+	$error = 'Etwas stimmte mit dem Query nicht: '.$db-&gt;error;
+}
+
+// assemble json object
+$time = array();
+$temp = array();
+$water = array();
+$vis = array();
+$ir = array();
+
+while ($row = $result-&gt;fetch_assoc()) {
+
+	foreach ($row as $k =&gt; $v) {
+		switch ($k) {
+			case 'time':
+				$time[] = strtotime($v);
+				break;
+			case 'temperature':
+				$temp[] = $v;
+				break;
+			case 'water':
+				$water[] = $v;
+				break;
+			case 'light-vis':
+				$vis[] = $v;
+				break;
+			case 'light-ir':
+				$ir[] = $v;
+				break;
+		}
+	}
+
+}
+
+$json = '[ ';
+
+$json .= '{ &quot;key&quot;: &quot;Visible Light&quot;, &quot;color&quot;: &quot;#1DB828&quot;, &quot;bar&quot;: true, &quot;values&quot;: [ ';
+for ($i = 0; $i &lt; sizeof($time); $i++) {
+	if ($i != 0) { $json .= ', '; }
+	$json .= '['.$time[$i].','.$vis[$i].']';
+}
+$json .= ' ] }, ';
+
+$json .= '{ &quot;key&quot;: &quot;Infrared Light&quot;, &quot;color&quot;: &quot;#EB2323&quot;, &quot;bar&quot;: true, &quot;values&quot;: [ ';
+for ($i = 0; $i &lt; sizeof($time); $i++) {
+	if ($i != 0) { $json .= ', '; }
+	$json .= '['.$time[$i].','.$ir[$i].']';
+}
+$json .= ' ] }, ';
+
+$json .= '{ &quot;key&quot;: &quot;Temperature&quot;, &quot;color&quot;: &quot;#8E1FB4&quot;, &quot;values&quot;: [ ';
+for ($i = 0; $i &lt; sizeof($time); $i++) {
+	if ($i != 0) { $json .= ', '; }
+	$json .= '['.$time[$i].','.$temp[$i].']';
+}
+$json .= ' ] }, ';
+
+$json .= '{ &quot;key&quot;: &quot;Water&quot;, &quot;color&quot;: &quot;#1F77B4&quot;, &quot;values&quot;: [ ';
+for ($i = 0; $i &lt; sizeof($time); $i++) {
+	if ($i != 0) { $json .= ', '; }
+	$json .= '['.$time[$i].','.$water[$i].']';
+}
+$json .= ' ] }';
+	
+$json .= ' ]';
+
+$result-&gt;close();
+unset($result);
+
+?&gt;&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD XHTML 1.0 Transitional//EN&quot;&quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd&quot;&gt;&lt;html xmlns=&quot;http://www.w3.org/1999/xhtml&quot; xml:lang=&quot;en&quot; lang=&quot;en&quot;&gt;&lt;head&gt;&lt;title&gt;Arduino data&lt;/title&gt;&lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html; charset=utf-8&quot; /&gt;&lt;link href=&quot;css/smoothness/jquery-ui-1.10.3.custom.min.css&quot; rel=&quot;stylesheet&quot;&gt;&lt;script src=&quot;js/jquery-1.9.1.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;js/jquery-ui-1.10.3.custom.min.js&quot;&gt;&lt;/script&gt;&lt;script&gt;
+	
+	$(document).ready(function(){
+	
+		$(&quot;.datepicker&quot;).datepicker();
+	
+	});
+	
+	&lt;/script&gt;&lt;link href=&quot;src/normalize.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot;&gt;&lt;link href=&quot;src/style.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot;&gt;&lt;link href=&quot;src/nv.d3.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot;&gt;&lt;script src=&quot;src/d3.v3.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/crossfilter.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/nv.d3.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/tooltip.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/utils.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/legend.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/axis.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/scatter.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/line.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/linePlusBarWithFocusChart.js&quot;&gt;&lt;/script&gt;&lt;script src=&quot;src/stream_layers.js&quot;&gt;&lt;/script&gt;&lt;script&gt;
+
+var testdata = &lt;?php echo $json; ?&gt;.map(function(series) {
+  series.values = series.values.map(function(d) { return {x: d[0], y: d[1] } });
+  return series;
+});
+
+function getUTCString(datum) {
+	var ausgabe = '';
+	ausgabe += (datum.getUTCMonth()+1 &lt; 10) ? '0' + datum.getUTCMonth()+1 : datum.getUTCMonth()+1;
+	ausgabe += '/';
+	ausgabe += (datum.getUTCDate() &lt; 10) ? '0' + datum.getUTCDate() : datum.getUTCDate();
+	ausgabe += '/';
+	ausgabe += datum.getUTCFullYear();
+	ausgabe += ' ';
+	ausgabe += (datum.getUTCHours() &lt; 10) ? '0' + datum.getUTCHours() : datum.getUTCHours();
+	ausgabe += ':';
+	ausgabe += (datum.getUTCMinutes() &lt; 10) ? '0' + datum.getUTCMinutes() : datum.getUTCMinutes();
+	ausgabe += ':';
+	ausgabe += (datum.getUTCSeconds() &lt; 10) ? '0' + datum.getUTCSeconds() : datum.getUTCSeconds();
+	return ausgabe;
+}
+
+
+nv.addGraph(function() {
+    var chart = nv.models.linePlusBarWithFocusChart();
+      //  .x(function(d,i) { return i });
+
+				chart.margin({top: 60, right: 100, bottom: 60, left: 100});
+				chart.margin2({top: 0, right: 60, bottom: 60, left: 60});
+
+    chart.xAxis
+			.tickFormat(function(d) {
+				jetzt = new Date(d*1000);
+				return getUTCString(jetzt);
+			})
+			.staggerLabels(true);
+		chart.x2Axis
+			.tickFormat(function(d) {
+				jetzt = new Date(d*1000);
+				return getUTCString(jetzt);
+			})
+			.staggerLabels(true);
+		chart.y1Axis.axisLabel('Light (lx)').tickFormat(d3.format(',.0f'));
+		chart.y2Axis.axisLabel('Temperature (°C)').tickFormat(d3.format(',.1f'));
+		chart.y3Axis.tickFormat(d3.format(',.0f'));
+		chart.y4Axis.tickFormat(d3.format(',.1f'));
+        
+    chart.bars.forceY([0]);
+    chart.bars2.forceY([0]);
+    chart.lines.forceY([0]);
+    chart.lines2.forceY([0]);
+    nv.log(testdata);
+    d3.select('#chart svg')
+        .datum(testdata)
+        .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+});
+
+	&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Arduino data&lt;/h1&gt;&lt;?php
+	
+	if ( isset($error) and $error ) {
+		echo &quot;&lt;div class='ui-widget'&gt;&quot;;
+		echo &quot;&lt;div class='ui-state-error ui-corner-all' style='padding: 0 .7em;'&gt;&quot;;
+		echo &quot;&lt;p&gt;&lt;span class='ui-icon ui-icon-alert' style='float: left; margin-right: .3em;'&gt;&lt;/span&gt;&quot;;
+		echo &quot;&lt;strong&gt;Alert:&lt;/strong&gt;&quot;.$error.&quot;.&lt;/p&gt;&quot;;
+		echo &quot;&lt;/div&gt;&quot;;
+		echo &quot;&lt;/div&gt;&quot;;
+	}
+	
+	?&gt;&lt;div id=&quot;chart&quot;&gt;&lt;svg style=&quot;height: 500px;&quot;&gt;&lt;/svg&gt;&lt;/div&gt;&lt;h2&gt;Options:&lt;/h2&gt;&lt;form action=&quot;index.php&quot; method=&quot;get&quot;&gt;&lt;h3&gt;Select a time range to display:&lt;/h3&gt;&lt;p&gt;From: &lt;input name=&quot;date1&quot; class=&quot;datepicker&quot; type=&quot;text&quot; size=&quot;10&quot; maxlength=&quot;10&quot; value=&quot;&lt;?php echo date(&quot;m/d/Y&quot;, $time1); ?&gt;&quot; /&gt;&lt;input name=&quot;time1&quot; type=&quot;text&quot; size=&quot;5&quot; maxlength=&quot;5&quot; value=&quot;&lt;?php echo date(&quot;H:i&quot;, $time1); ?&gt;&quot; /&gt;&lt;/p&gt;&lt;p&gt;To: &lt;input name=&quot;date2&quot; class=&quot;datepicker&quot; type=&quot;text&quot; size=&quot;10&quot; maxlength=&quot;10&quot; value=&quot;&lt;?php echo date(&quot;m/d/Y&quot;, $time2); ?&gt;&quot; /&gt;&lt;input name=&quot;time2&quot; type=&quot;text&quot; size=&quot;5&quot; maxlength=&quot;5&quot; value=&quot;&lt;?php echo date(&quot;H:i&quot;, $time2); ?&gt;&quot; /&gt;&lt;/p&gt;&lt;p&gt;&lt;input type=&quot;submit&quot; value=&quot;Submit&quot; /&gt;&lt;input type=&quot;reset&quot; value=&quot;Clear&quot; /&gt;&lt;/p&gt;&lt;/form&gt;&lt;/body&gt;&lt;/html&gt;</PRE><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:TU-Munich/TUM13_index.php">http://2013.igem.org/Team:TU-Munich/TUM13_index.php</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:TU-Munich/TUM13_index.php" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:TU-Munich/TUM13_index.php" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:TU-Munich/TUM13_index.php&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:TU-Munich/TUM13_index.php&amp;oldid=348560" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

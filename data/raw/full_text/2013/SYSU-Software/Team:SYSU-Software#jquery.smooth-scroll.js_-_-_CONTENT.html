@@ -1,0 +1,206 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_SYSU-Software_jquery_smooth-scroll_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:SYSU-Software/jquery.smooth-scroll.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:SYSU-Software/jquery.smooth-scroll.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:SYSU-Software/jquery.smooth-scroll.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:SYSU-Software/jquery.smooth-scroll.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:SYSU-Software/jquery.smooth-scroll.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:SYSU-Software/jquery.smooth-scroll.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>/*!
+</P><PRE>* Smooth Scroll - v1.4.11 - 2013-07-15
+* <A href="https://github.com/kswedberg/jquery-smooth-scroll" class="external free" rel="nofollow">https://github.com/kswedberg/jquery-smooth-scroll</A>
+* Copyright (c) 2013 Karl Swedberg
+* Licensed MIT (<A href="https://github.com/kswedberg/jquery-smooth-scroll/blob/master/LICENSE-MIT" class="external free" rel="nofollow">https://github.com/kswedberg/jquery-smooth-scroll/blob/master/LICENSE-MIT</A>)
+*/
+</PRE><P>(function($) {
+</P><P>var version = '1.4.11',
+</P><PRE>   defaults = {
+     exclude: [],
+     excludeWithin:[],
+     offset: 0,
+</PRE><PRE>     // one of 'top' or 'left'
+     direction: 'top',
+</PRE><PRE>     // jQuery set of elements you wish to scroll (for $.smoothScroll).
+     //  if null (default), $('html, body').firstScrollable() is used.
+     scrollElement: null,
+</PRE><PRE>     // only use if you want to override default behavior
+     scrollTarget: null,
+</PRE><PRE>     // fn(opts) function to be called before scrolling occurs.
+     // `this` is the element(s) being scrolled
+     beforeScroll: function() {},
+</PRE><PRE>     // fn(opts) function to be called after scrolling occurs.
+     // `this` is the triggering element
+     afterScroll: function() {},
+     easing: 'swing',
+     speed: 400,
+</PRE><PRE>     // coefficient for &quot;auto&quot; speed
+     autoCoefficent: 2,
+</PRE><PRE>     // $.fn.smoothScroll only: whether to prevent the default click action
+     preventDefault: true
+   },
+</PRE><PRE>   getScrollable = function(opts) {
+     var scrollable = [],
+         scrolled = false,
+         dir = opts.dir &amp;&amp; opts.dir == 'left' ? 'scrollLeft' : 'scrollTop';
+</PRE><PRE>     this.each(function() {
+</PRE><PRE>       if (this == document || this == window) { return; }
+       var el = $(this);
+       if ( el[dir]() &gt; 0 ) {
+         scrollable.push(this);
+       } else {
+         // if scroll(Top|Left) === 0, nudge the element 1px and see if it moves
+         el[dir](1);
+         scrolled = el[dir]() &gt; 0;
+         if ( scrolled ) {
+           scrollable.push(this);
+         }
+         // then put it back, of course
+         el[dir](0);
+       }
+     });
+</PRE><PRE>     // If no scrollable elements, fall back to &lt;body&gt;,
+     // if it's in the jQuery collection
+     // (doing this because Safari sets scrollTop async,
+     // so can't set it to 1 and immediately get the value.)
+     if (!scrollable.length) {
+       this.each(function(index) {
+         if (this.nodeName === 'BODY') {
+           scrollable = [this];
+         }
+       });
+     }
+</PRE><PRE>     // Use the first scrollable element if we're calling firstScrollable()
+     if ( opts.el === 'first' &amp;&amp; scrollable.length &gt; 1 ) {
+       scrollable = [ scrollable[0] ];
+     }
+</PRE><PRE>     return scrollable;
+   },
+   isTouch = 'ontouchend' in document;
+</PRE><P>$.fn.extend({
+</P><PRE> scrollable: function(dir) {
+   var scrl = getScrollable.call(this, {dir: dir});
+   return this.pushStack(scrl);
+ },
+ firstScrollable: function(dir) {
+   var scrl = getScrollable.call(this, {el: 'first', dir: dir});
+   return this.pushStack(scrl);
+ },
+</PRE><PRE> smoothScroll: function(options) {
+   options = options || {};
+   var opts = $.extend({}, $.fn.smoothScroll.defaults, options),
+       locationPath = $.smoothScroll.filterPath(location.pathname);
+</PRE><PRE>   this
+   .unbind('click.smoothscroll')
+   .bind('click.smoothscroll', function(event) {
+     var link = this,
+         $link = $(this),
+         exclude = opts.exclude,
+         excludeWithin = opts.excludeWithin,
+         elCounter = 0, ewlCounter = 0,
+         include = true,
+         clickOpts = {},
+         hostMatch = ((location.hostname === link.hostname) || !link.hostname),
+         pathMatch = opts.scrollTarget || ( $.smoothScroll.filterPath(link.pathname) || locationPath ) === locationPath,
+         thisHash = escapeSelector(link.hash);
+</PRE><PRE>     if ( !opts.scrollTarget &amp;&amp; (!hostMatch || !pathMatch || !thisHash) ) {
+       include = false;
+     } else {
+       while (include &amp;&amp; elCounter &lt; exclude.length) {
+         if ($link.is(escapeSelector(exclude[elCounter++]))) {
+           include = false;
+         }
+       }
+       while ( include &amp;&amp; ewlCounter &lt; excludeWithin.length ) {
+         if ($link.closest(excludeWithin[ewlCounter++]).length) {
+           include = false;
+         }
+       }
+     }
+</PRE><PRE>     if ( include ) {
+</PRE><PRE>       if ( opts.preventDefault ) {
+         event.preventDefault();
+       }
+</PRE><PRE>       $.extend( clickOpts, opts, {
+         scrollTarget: opts.scrollTarget || thisHash,
+         link: link
+       });
+</PRE><PRE>       $.smoothScroll( clickOpts );
+     }
+   });
+</PRE><PRE>   return this;
+ }
+</PRE><P>});
+</P><P>$.smoothScroll = function(options, px) {
+</P><PRE> var opts, $scroller, scrollTargetOffset, speed,
+     scrollerOffset = 0,
+     offPos = 'offset',
+     scrollDir = 'scrollTop',
+     aniProps = {},
+     aniOpts = {},
+     scrollprops = [];
+</PRE><PRE> if (typeof options === 'number') {
+   opts = $.fn.smoothScroll.defaults;
+   scrollTargetOffset = options;
+ } else {
+   opts = $.extend({}, $.fn.smoothScroll.defaults, options || {});
+   if (opts.scrollElement) {
+     offPos = 'position';
+     if (opts.scrollElement.css('position') == 'static') {
+       opts.scrollElement.css('position', 'relative');
+     }
+   }
+ }
+</PRE><PRE> opts = $.extend({link: null}, opts);
+ scrollDir = opts.direction == 'left' ? 'scrollLeft' : scrollDir;
+</PRE><PRE> if ( opts.scrollElement ) {
+   $scroller = opts.scrollElement;
+   scrollerOffset = $scroller[scrollDir]();
+ } else {
+   $scroller = $('html, body').firstScrollable();
+ }
+</PRE><PRE> // beforeScroll callback function must fire before calculating offset
+ opts.beforeScroll.call($scroller, opts);
+</PRE><PRE> scrollTargetOffset = (typeof options === 'number') ? options :
+                       px ||
+                       ( $(opts.scrollTarget)[offPos]() &amp;&amp;
+                       $(opts.scrollTarget)[offPos]()[opts.direction] ) ||
+                       0;
+</PRE><PRE> aniProps[scrollDir] = scrollTargetOffset + scrollerOffset + opts.offset;
+ speed = opts.speed;
+</PRE><PRE> // automatically calculate the speed of the scroll based on distance / coefficient
+ if (speed === 'auto') {
+</PRE><PRE>   // if aniProps[scrollDir] == 0 then we'll use scrollTop() value instead
+   speed = aniProps[scrollDir] || $scroller.scrollTop();
+</PRE><PRE>   // divide the speed by the coefficient
+   speed = speed / opts.autoCoefficent;
+ }
+</PRE><PRE> aniOpts = {
+   duration: speed,
+   easing: opts.easing,
+   complete: function() {
+     opts.afterScroll.call(opts.link, opts);
+   }
+ };
+</PRE><PRE> if (opts.step) {
+   aniOpts.step = opts.step;
+ }
+</PRE><PRE> if ($scroller.length) {
+   $scroller.stop().animate(aniProps, aniOpts);
+ } else {
+   opts.afterScroll.call(opts.link, opts);
+ }
+</PRE><P>};
+</P><P>$.smoothScroll.version = version;
+$.smoothScroll.filterPath = function(string) {
+</P><PRE> return string
+   .replace(/^\//,<I>)</I>
+   .replace(/(index|default).[a-zA-Z]{3,4}$/,<I>)</I>
+   .replace(/\/$/,<I>);</I></PRE><P>};
+</P><P>// default options
+$.fn.smoothScroll.defaults = defaults;
+</P><P>function escapeSelector (str) {
+</P><PRE> return str.replace(/(:|\.)/g,'\\$1');
+</PRE><P>}
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:SYSU-Software/jquery.smooth-scroll.js">http://2013.igem.org/Team:SYSU-Software/jquery.smooth-scroll.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:SYSU-Software/jquery.smooth-scroll.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:SYSU-Software/jquery.smooth-scroll.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:SYSU-Software/jquery.smooth-scroll.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:SYSU-Software/jquery.smooth-scroll.js&amp;oldid=107360" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

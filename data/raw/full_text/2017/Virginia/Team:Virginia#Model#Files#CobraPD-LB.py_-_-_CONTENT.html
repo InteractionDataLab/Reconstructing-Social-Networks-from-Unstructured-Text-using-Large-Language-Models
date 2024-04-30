@@ -1,0 +1,402 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Virginia_Model_Files_CobraPD-LB_py skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Virginia/Model/Files/CobraPD-LB.py</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><DIV class="container-fluid"><UL class="nav navbar-nav navbar-right"><LI class="active"><A href="https://2017.igem.org/Team:Virginia">Home</A></LI><LI class="dropdown"><A class="dropdown-toggle" data-toggle="dropdown" href="#">Team
+        </A></LI><LI><A href="/Team:Virginia/Team">Team</A></LI><LI><A href="/Team:Virginia/Collaborations">Collaborations</A></LI><LI><A href="/Team:Virginia/Attributions">Attributions</A></LI></UL><LI class="dropdown"><A class="dropdown-toggle" data-toggle="dropdown" href="#">Project
+        </A></LI><LI><A href="/Team:Virginia/Description">Description</A></LI><LI><A href="/Team:Virginia/Design">Design</A></LI><LI><A href="/Team:Virginia/Model">Model</A></LI><LI><A href="/Team:Virginia/Part_Collection">Parts</A></LI><LI><A href="/Team:Virginia/Improve">Improve</A></LI><LI><A href="/Team:Virginia/Results">Results</A></LI><LI class="dropdown"><A class="dropdown-toggle" data-toggle="dropdown" href="#">Documentation
+        </A></LI><LI><A href="/Team:Virginia/Notebook">Notebook</A></LI><LI><A href="/Team:Virginia/InterLab">InterLab</A></LI><LI><A href="/Team:Virginia/Safety">Safety</A></LI><LI><A href="/Team:Virginia/Experiments">Protocols</A></LI><LI><A href="/Team:Virginia/MedalCriteria">Medal Criteria</A></LI><LI class="dropdown"><A class="dropdown-toggle" data-toggle="dropdown" href="#">Human Practices
+        </A></LI><LI><A href="/Team:Virginia/Engagement">Public Engagement</A></LI><LI><A href="/Team:Virginia/HP/SilverGold">Integrated Human Practices</A></LI><LI><A href="https://igem.org/2017_Judging_Form?team=Virginia">Judging</A></LI></DIV><DIV class="igem_2017_content_wrapper"><P><PRE><CODE>
+&quot;&quot;&quot;
+Visit COBRApy and Mackinac github pages for installation instructions
+
+http://cobrapy.readthedocs.io/en/latest/index.html
+https://github.com/mmundy42/mackinac
+&quot;&quot;&quot;
+
+from __future__ import print_function
+import cobra
+import os
+import mackinac
+from os.path import join
+
+def boundary_list(model):
+    &quot;&quot;&quot; Creates and returns the list of boundary reactions (exchange, demand, and sink-type reactions)
+    &quot;&quot;&quot;
+    exList = []
+    for rxn in model.reactions:
+        if (rxn.boundary == True):
+            exList.append(rxn)
+    return exList
+
+&quot;&quot;&quot; Defining parameters &quot;&quot;&quot;
+
+modelseed_id = '266.10' # Patric/ModelSEED ID of the organism in study
+first_run = False # If True, will create and optimize a ModelSEED Model of the selected organism. WARNING: VERY SLOW! Set to False after the first execution of the script. Your data will be saved on ModelSEED website.
+validate = False # Perform mass balance 
+token_username = '' # Patric or RAST account login
+token_password = '' # Patric or RAST account password
+perform_fva = True # (bool) Set to True to perform FVA
+export_to_escher = True # flag for export of the model to escher-compatible .json file
+block_nitrite_EX = True # Knocks out NO2- exchange and one of the branches of HAO
+precision_fva = 0.999 # Fraction of Optimum for FVA. A good choice would be: 1 - (fraction difference between WT and synthetic biomass yields)
+rxns_KO = ['EX_cpd00644_e', 'EX_cpd10516_e', 'EX_cpd00060_e', 'rxn14010_c', 'rxn00109_c', 'rxn00570_c', 'rxn14202_c', 'rxn06111_c', 'rxn05625_c', 'EX_cpd00528_e'] # List of knockout reaction ID's. See generated rxnList.txt file for reaction data
+simult_KO = ['rxn05625_c', 'EX_cpd00528_e'] # List of reactions for simultaneous knockout
+
+# Sets data_dir to current working directory. Make sure the script is saved there.
+data_dir = os.getcwd()
+print(&quot;Script directory: &quot;, data_dir)
+
+# Reactions are written in terms of ModelSEED compounds. Uncomment the four commands below during the first run ONLY, as most data are subsequently saved on ModelSEED server. All Mackinac commands have their corresponding functionality on the website.
+
+if(first_run):
+    # Obtain authentication token from ModelSEED website. Requires PATRIC or RAST login. Default token_type argument is 'patric'
+    mackinac.get_token(token_username, token_password, token_type='rast')
+    
+    # Reconstruct one of the existing models on complete media
+    mackinac.reconstruct_modelseed_model(modelseed_id)
+    
+    # Gapfill the reconstructed model on complete media. See source code for additional arguments.
+    mackinac.gapfill_modelseed_model(modelseed_id)
+    
+    # Run Flux Balance Analysis on the model. Customizable: see source code.
+    mackinac.optimize_modelseed_model(modelseed_id)
+
+    # Convert an existing ModelSEED model to COBRApy model. 'validate=True' optional argument will report common errors with the model, e.g. mass/charge balance errors of reactions. Whether to fix them or not is optional -- they do not affect the FBA calculations.
+    MODEL = mackinac.create_cobra_model_from_modelseed_model(modelseed_id, validate=True)
+    
+    # Creates a .json file of the original model
+    cobra.io.save_json_model(MODEL, &quot;initMODEL.json&quot;)
+    
+if(not(first_run)):
+    MODEL = cobra.io.load_json_model(join(data_dir, &quot;initMODEL.json&quot;))
+    print(&quot;Model loaded from an existing file: &quot;, join(data_dir, &quot;initMODEL.json\n&quot;))
+
+if(validate):
+    print(&quot;---- MODEL VALIDATION BEGINS ----&quot;)
+    print(cobra.manipulation.validate.check_mass_balance(MODEL))
+    print(cobra.manipulation.validate.check_metabolite_compartment_formula(MODEL))
+    print(cobra.manipulation.validate.check_reaction_bounds(MODEL))
+    print(&quot;---- END OF VALIDATION ----&quot;)
+
+from cobra import Model, Reaction, Metabolite # Import COBRA classes for the purpose of adding extra reactions and metabolites to the model
+
+# nitric-oxide:ferricytochrome-c oxidoreductase (EC 1.7.2.1)
+# NO2 + H+ + cyt c2+ &lt;=&gt; NO + H2O + cyt c3+
+# cpd00075_c + cpd00067_c + cpd00110_c  &lt;=&gt; cpd00418_c + cpd00001_c + cpd00109_c
+cpd00418_c = MODEL.metabolites.get_by_id('cpd00418_c')
+cpd00110_c = MODEL.metabolites.get_by_id('cpd00110_c')
+cpd00109_c = MODEL.metabolites.get_by_id('cpd00109_c')
+cpd00075_c = MODEL.metabolites.get_by_id('cpd00075_c')
+cpd00075_e = MODEL.metabolites.get_by_id('cpd00075_e')
+cpd00067_c = MODEL.metabolites.get_by_id('cpd00067_c')
+cpd00001_c = MODEL.metabolites.get_by_id('cpd00001_c')
+cpd00659_c = MODEL.metabolites.get_by_id('cpd00659_c')
+
+rxn05889_c = Reaction('rxn05889_c')
+rxn05889_c.name = 'nitrite reductase (NO-forming)'
+rxn05889_c.subsystem = 'Denitrification'
+rxn05889_c.lower_bound = -1000.
+rxn05889_c.upper_bound = 1000.
+rxn05889_c.gene_reaction_rule = &quot;( 266.10.peg.2397 )&quot;
+
+rxn05889_c.add_metabolites({
+    cpd00075_c: -1.0,
+    cpd00067_c: -1.0,
+    cpd00110_c: -1.0,
+    cpd00418_c: 1.0,
+    cpd00001_c: 1.0,
+    cpd00109_c: 1.0
+})
+
+cpd00528_c = MODEL.metabolites.get_by_id('cpd00528_c')
+
+cpd00528_e = Metabolite(
+'cpd00528_e', 
+formula='N2', 
+name='N2_e', 
+compartment='e')
+
+rxn10577_c = Reaction('rxn10577_c')
+rxn10577_c.name = 'Nitrogen exchange, diffusion'
+rxn10577_c.subsystem = 'Transport'
+rxn10577_c.lower_bound = -1000.
+rxn10577_c.upper_bound = 1000.
+rxn10577_c.add_metabolites({
+    cpd00528_c: -1.0,
+    cpd00528_e: 1.0
+})
+
+# Adds the exchange reaction for N2_e
+MODEL.add_boundary(cpd00528_e, type=&quot;exchange&quot;, reaction_id=&quot;EX_cpd00528_e&quot;, ub=1000.)
+MODEL.add_reactions([rxn05889_c, rxn10577_c])
+
+# Excess NH3 inhibits NH3-forming Nitrite reductase 
+MODEL.reactions.get_by_id('rxn00568_c').knock_out()
+MODEL.reactions.get_by_id('rxn00569_c').knock_out()
+
+# Block NO2- exchange, block one of the loop
+if(block_nitrite_EX):
+    MODEL.reactions.get_by_id('EX_cpd00075_e').knock_out()
+
+# Nitrate and nitrite reductases only catalyze the forward reaction in excess of ammonia
+MODEL.reactions.get_by_id('rxn10121_c').bounds = (-10.,1000.)
+
+print('')
+print(len(MODEL.reactions), &quot;reactions initially&quot;)
+print(len(MODEL.metabolites), &quot;metabolites initially&quot;)
+print(len(MODEL.genes), &quot;genes initially&quot;)
+
+# Locally execute FBA on the model.
+sol_1 = MODEL.optimize()
+print('Unmodified objective value: %3.15f\n' % sol_1.objective_value)
+
+# Performs flux variability analysis (FVA) on the model. The result is a pandas.data_frame that contains the minimum and maximum flux range for exchange reactions within 0.1% of the optimal solution.
+rxnList = boundary_list(MODEL)
+rxnList.append(MODEL.reactions.get_by_id('rxn05889_c'))
+if(perform_fva):
+    from cobra.flux_analysis import flux_variability_analysis
+    sol_fva1 = flux_variability_analysis(MODEL, rxnList, fraction_of_optimum=precision_fva, loopless=True)
+    fva1_max = sol_fva1['maximum']
+    fva1_min = sol_fva1['minimum']
+
+&quot;&quot;&quot; Below is a list of compounds and reactions to be added to the model. All the data is available on the ModelSEED website, in the 'Biochemistry' section. It is advisable to stick to the conventions presented there and further in this script when adding your own elements. I.e, don't mess up the names.
+&quot;&quot;&quot;
+
+# rxn14010 (NH3[c] + QH2[c] + O2[c] &lt;=&gt; H2O[c] + Q[c] + NH2OH[c])
+#   cpd00013 + cpd11665 + cpd00007 &lt;=&gt; cpd00001 + cpd11669 + cpd00165
+cpd11665_c = Metabolite(
+    'cpd11665_c', 
+    formula='C19H28O4', 
+    name='Ubiquinol_c', 
+    compartment='c')
+cpd11669_c = Metabolite(
+    'cpd11669_c',
+    formula='C19H26O4',
+    name='Ubiquinone_c',
+    compartment='c')
+cpd00165_c = Metabolite(
+    'cpd00165_c',
+    formula='H3NO',
+    name='Hydroxylamine_c',
+    compartment='c')
+cpd00013_c = MODEL.metabolites.get_by_id('cpd00013_c')
+cpd00007_c = MODEL.metabolites.get_by_id('cpd00007_c')
+cpd00001_c = MODEL.metabolites.get_by_id('cpd00001_c')
+
+rxn14010_c = Reaction('rxn14010_c')
+rxn14010_c.name = 'ammonia,ubiquinol:monooxygenase'
+rxn14010_c.subsystem = 'Nitrogen Metabolism'
+rxn14010_c.lower_bound = 0. 
+rxn14010_c.upper_bound = 1000.
+rxn14010_c.gene_reaction_rule = &quot;( 228410.6.peg.1054 and 228410.6.peg.1055 and 228410.6.peg.1056 )&quot;
+
+rxn14010_c.add_metabolites({
+    cpd00013_c: -1.0,
+    cpd11665_c: -1.0,
+    cpd00007_c: -1.0,
+    cpd00001_c: 1.0,
+    cpd11669_c: 1.0,
+    cpd00165_c: 1.0
+})
+
+# rxn00109 (NH3[c] + H2O[c] + NAD[c] &lt;=&gt; 2H+[c] + NADH[c] + NH2OH[c]
+#   cpd00013 + cpd00001 + cpd00003 &lt;=&gt; cpd00067 + cpd00004 + cpd00165
+cpd00003_c = MODEL.metabolites.get_by_id('cpd00003_c')
+cpd00004_c = MODEL.metabolites.get_by_id('cpd00004_c')
+cpd00067_c = MODEL.metabolites.get_by_id('cpd00067_c')
+
+rxn00109_c = Reaction('rxn00109_c')
+rxn00109_c.name = 'Ammonia:(acceptor) monooxygenase'
+rxn00109_c.subsystem = 'Ammonia Oxidation'
+rxn00109_c.lower_bound = 0. 
+rxn00109_c.upper_bound = 1000. 
+rxn00109_c.gene_reaction_rule = &quot;( 228410.6.peg.1054 and 228410.6.peg.1055 and 228410.6.peg.1056 )&quot;
+
+rxn00109_c.add_metabolites({
+    cpd00001_c: -1.0,
+    cpd00003_c: -1.0,
+    cpd00013_c: -1.0,
+    cpd00004_c: 1.0,
+    cpd00067_c: 2.0,
+    cpd00165_c: 1.0
+})
+
+# rxn00570 (NO2[c] + H+[c] + H2O[c] &lt;=&gt; NH2OH[c] + O2[c])
+#   cpd00001_c + cpd00067_c + cpd00075_c &lt;=&gt; cpd00007_c + cpd00165_c
+cpd00075_c = MODEL.metabolites.get_by_id('cpd00075_c')
+
+rxn00570_c = Reaction('rxn00570_c')
+rxn00570_c.name = 'Hydroxylamine:oxygen oxidoreductase'
+rxn00570_c.subsystem = 'Nitrogen Metabolism'
+rxn00570_c.lower_bound = -1000. 
+rxn00570_c.upper_bound = 1000. 
+rxn00570_c.gene_reaction_rule = &quot;( 915.3.peg.508 )&quot;
+
+rxn00570_c.add_metabolites({ 
+    cpd00007_c: -1.0,
+    cpd00165_c: -1.0,
+    cpd00001_c: 1.0,
+    cpd00067_c: 1.0,
+    cpd00075_c: 1.0,
+})
+
+if(block_nitrite_EX):
+    rxn00570_c.knock_out()
+
+# rxn14202 (H2O[c] + 2Q[c] + NH2OH[c] &lt;=&gt; NO2[c] + 2QH2[c]
+#   cpd00001_c + cpd00165_c + 2cpd11669_c &lt;=&gt; cpd00075_c + 2cpd11665_c
+rxn14202_c = Reaction('rxn14202_c')
+rxn14202_c.name = 'hydroxylamine:ubiquinone oxidoreductase'
+rxn14202_c.subsystem = 'Nitrogen Metabolism'
+rxn14202_c.lower_bound = -1000. 
+rxn14202_c.upper_bound = 1000. 
+rxn14202_c.gene_reaction_rule = &quot;( 915.3.peg.508 )&quot;
+
+rxn14202_c.add_metabolites({ 
+    cpd00001_c: -1.0,
+    cpd00165_c: -1.0,
+    cpd11669_c: -2.0,
+    cpd00075_c: 1.0,
+    cpd11665_c: 2.0,
+})
+
+# rxn06111 (QH2[c] &lt;=&gt; 2H+[c] + Q[c])
+#   cpd11665_c &lt;=&gt; 2 cpd00067_C + cpd11669_c
+rxn06111_c = Reaction('rxn06111_c')
+rxn06111_c.name = 'NADH:ubiquinone oxidoreductase'
+rxn06111_c.lower_bound = 0.
+rxn06111_c.upper_bound = 1000.
+rxn06111_c.gene_reaction_rule = &quot;( 266.10.peg.1251 )&quot;
+
+rxn06111_c.add_metabolites({
+    cpd11665_c: -1.0,
+    cpd00067_c: 1.0,
+    cpd11669_c: 1.0,
+})
+
+# Append the above reactions to the model
+MODEL.add_reactions([rxn14010_c, rxn00109_c, rxn00570_c, rxn14202_c, rxn06111_c])
+
+# Maybe fixes something, maybe not, I don't know what it does
+#   MODEL.repair()
+
+print(len(MODEL.reactions), &quot;reactions&quot;)
+print(len(MODEL.metabolites), &quot;metabolites&quot;)
+print(len(MODEL.genes), &quot;genes&quot;)
+
+# Writes reaction and compound data into .txt files. The files are saved into the working directory of the script.
+f = open(join(os.getcwd(), &quot;rxnList.txt&quot;), 'w')
+for rxn in MODEL.reactions:
+    f.write('Rxn ID: %s\n' % rxn.id)
+    f.write('Rxn: %s\n' % rxn.name)
+    f.write('%s\n\n' % rxn.reaction)
+f.close()
+
+f = open(join(os.getcwd(), &quot;cpdList.txt&quot;), 'w')
+for cpd in MODEL.metabolites:
+    f.write('%s (%s) : %s[%s]\n\n' % (cpd.id, cpd.name, cpd.formula, cpd.compartment))
+f.close()
+
+# Run FBA on the modified model
+sol_2 = MODEL.optimize()
+print('Modified objective value: %3.15f\n' % sol_2.objective_value)
+
+# Writes the exchange reaction (&quot;EX_...&quot;) fluxes into a file. These reactions, althought not strictly considered &quot;reactions&quot; because they're unbalanced, define the nutrients available for uptake from the media.
+n_ex = 0 # Exchange reaction counter
+rxns_EX = [] # List of exchange reactions for knockout
+f = open(join(os.getcwd(), &quot;EXflux.txt&quot;), 'w')
+for i in range(len(MODEL.reactions) - 5):
+    if MODEL.reactions[i].boundary == True:
+    #if MODEL.reactions[i].id.startswith(&quot;EX_&quot;):
+        n_ex += 1
+        rxns_EX.append(MODEL.reactions[i].id)
+        f.write(&quot;(%35s) %8.4f %8.4f\n&quot; % (MODEL.reactions[i].name, sol_1.fluxes[i], sol_2.fluxes[i]))
+f.close()
+
+# Performs FVA on the synthetic strain model.
+if(perform_fva):
+    sol_fva2 = flux_variability_analysis(MODEL, rxnList, fraction_of_optimum=precision_fva, loopless=True)
+    fva2_max = sol_fva2['maximum']
+    fva2_min = sol_fva2['minimum']
+
+    # Prints out FVA data in a column format: name, WT min, WT max, synthetic min, synthetic max fluxes.
+    f = open(join(os.getcwd(), &quot;FVA.txt&quot;), 'w')
+    for i in range(len(rxnList)):
+            f.write(&quot;(%35s) %8.4f %8.4f %8.4f %8.4f\n&quot; % (MODEL.reactions.get_by_id(sol_fva1.index[i]).name, fva1_min[i], fva1_max[i], fva2_min[i], fva2_max[i]))
+    f.close()
+
+# Saves the model into escher-compatible format.
+if(export_to_escher):
+    cpd00418_c.name = 'NO'
+    cpd00110_c.name = 'Cytochrome c2+'
+    cpd00109_c.name = 'Cytochrome c3+'
+    cpd00075_c.name = 'NO2'
+    cpd00075_e.name = 'NO2[e]'
+    cpd00067_c.name = 'H+'
+    cpd00001_c.name = 'H2O'
+    cpd11665_c.name = 'UQH2'
+    cpd11669_c.name = 'UQ'
+    cpd00165_c.name = 'NH2OH'    
+    cpd00003_c.name = 'NAD'
+    cpd00004_c.name = 'NADH'
+    cpd00013_c.name = 'NH3'
+    cpd00007_c.name = 'O2'
+    cpd00659_c.name = 'N2O'
+    cpd00528_c.name = 'N2'
+    cpd00528_e.name = 'N2[e]'
+    f = open(join(os.getcwd(), &quot;MODEL_fluxes.json&quot;), 'w')
+    f.write('{')
+    N_RXNS = len(MODEL.reactions)
+    for i in range(N_RXNS):
+        if(i == N_RXNS - 1):
+            f.write('\&quot;%s\&quot;: %f}' % (MODEL.reactions[i].name, sol_2.fluxes[i]))  
+            break
+        f.write('\&quot;%s\&quot;: %f, ' % (MODEL.reactions[i].name, sol_2.fluxes[i]))
+    f.close()    
+    cobra.io.save_json_model(MODEL, &quot;MODEL.json&quot;)
+    
+# Perform reversible reaction knockouts
+print('Individual knockout: ')
+for reaction in rxns_KO:
+    with MODEL as model:
+        rxn = model.reactions.get_by_id(reaction)
+        rxn.knock_out()
+        model.optimize()
+        print(' %s blocked (bounds: %s, old/new growth rate %f/%f' % (rxn.name, str(rxn.bounds), sol_2.objective_value, model.objective.value))
+print('')
+
+# Performs simultaneous reaction knockouts
+with MODEL as model:
+    print('Simultaneous knockout:')
+    for reaction in simult_KO:
+        rxn = model.reactions.get_by_id(reaction)
+        rxn.knock_out()
+        print(' %s was blocked' % (rxn.name))
+    model.optimize()
+    print('Old/new growth rate %f/%f\n' % (sol_2.objective_value, model.objective.value))
+    
+# Perform exchange reaction knockouts
+&quot;&quot;&quot;print('Exchange knockout: ')
+for ex_reaction in rxns_EX:
+    with MODEL as model:
+        rxn = model.reactions.get_by_id(ex_reaction)
+        rxn.knock_out()
+        MODEL.optimize()
+        print(' %s blocked (bounds: %s, old/new growth rate %f/%f)' % (rxn.name, str(rxn.bounds), sol_2.objective_value, MODEL.objective.value))  
+print('')
+&quot;&quot;&quot;
+
+with MODEL as model:
+    rxn = model.reactions.get_by_id('EX_cpd00528_e')
+    rxn.knock_out()
+    model.optimize()
+    print(' %s blocked (bounds: %s, old/new growth rate %f/%f)' % (rxn.name, str(rxn.bounds), sol_2.objective_value, model.objective.value)) 
+    
+MODEL.optimize()
+MODEL.metabolites.get_by_id('cpd00528_c').summary()
+
+</CODE></PRE></P></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

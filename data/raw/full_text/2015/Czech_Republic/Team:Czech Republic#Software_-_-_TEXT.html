@@ -1,0 +1,141 @@
+Team:Czech Republic/Software
+Achievements
+People
+Project
+Software
+Human Practices
+Parts
+Interlab
+Notebook
+Software
+Contents
+1 Abstract
+2 Key Achievements
+3 Demo
+3.1 Demo 1
+3.2 Demo 2
+3.3 Download
+4 Architecture
+4.1 Visualization
+5 The underlying models
+5.1 Diffusion
+5.2 Streamlines
+5.2.1 Boundary conditions
+5.2.1.1 Inlet
+5.2.1.2 Outlet
+5.3 Stochastic reactions
+5.3.1 Propensity
+5.3.2 Gillespie First reaction method
+5.3.3 Tau-leaping and Dependency graph
+6 Download
+6.1 Source code
+7 References
+Abstract
+CeCe is a simulation environment capturing in one setting the key processes that influence cell-cell signal transmission. The underlying scene is a simple 2D world. Cells enter and exit this world through predefined channels of arbitrary shape. Each cell executes its own stochastic biochemical reactions and based on its state interacts with the rest of the population. As such, CeCe is easy to setup, intuitive to interpret, and fast to run.
+Key Achievements
+Provided simulation tool to confirm IOD design
+Built in streamlines, diffusion, stochastic reactions, and more
+Released under open-source license so everyone can simulate their projects
+Highly modular, easy to be extended by community-made plugins
+Extendable by Python without having C++ knowledge
+Demo
+Demo 1
+Your browser does not support the video tag.
+We created a demo simulation to present some of CeCe's features. This simulation contains two different length paths. The slower flow velocity in the bottom path causes signal and cells to accumulate leading to higher cell activation, represented by YFP expression. The connection between tanks shows how the simulator handles differences in pressure.
+Demo 2
+Your browser does not support the video tag.
+The second demo shows yeast colony cells reacting to contamination, i.e., cells of different types producing measurable extracellular signals. Contaminating cells are added randomly throughout the scene and produce an invisible signal. When the yeast cells (shown in grey) detect a sufficient amount of the signal in the surrounding medium, they randomly express RFP.
+This simulation was constructed to model detection of contaminants for Team Chalmers Gothenburg's Scarlett detection design.
+Download
+Simulate yourself, both simulation files can be downloaded here .
+Architecture
+Error creating thumbnail: File missing
+Simulation iteration scheme
+The simulator is designed to be highly modular. The simulator's core contains almost no functionality and the missing functionality is provided by plugins. This design allows for an extension of the simulator's functionality by the addition of plugins written by someone else. Plugins are loaded on demand by a simulation file, so unnecessary functionality is never used.
+Simulation is computed by stepping over independent iterations. Each iteration is defined by a time step and all modules and objects (provided by plugins) are updated. A module is a unit that is updated in each iteration and provides some global functionality (e.g. diffusion). Only one module of the same type is allowed to be in a simulation. Objects are simulation entities that provide some local functionality (e.g. Yeast cells).
+Objects within a simulation are driven by a physical engine ( Box2D ) so interactions between objects look almost realistic. The physical engine uses different time steps (engine is designed for games and generally expects a simulation step around 33 ms) than are used by the simulation and thus the physical engine uses coefficients to convert units between those two systems. The reason for separation of the time steps is that different simulations can require larger time steps (seconds, minutes, ...) - cell growth is a slow process that takes hours and having the same time step does not make sense in the context of the simulation.
+The simulator is written in ISO C++11 that provides good performance but is a quite difficult language to pick up. There is also Python language support for scripting purposes of dynamic parts of a simulation.
+Visualization
+The CeCe simulator has the ability to visualize a given simulation ( OpenGL ). Final scene visualization is done by a combination of modules and objects visualization (if they provide it). The visualization is fast so a powerful graphics card is not required. Even an integrated GPU is able to render the visualization in real-time.
+The underlying models
+Default simulator package contains several plugins that offer additional functionalities, which are described below. More detailed overview of how the simulator has been used in our project can be found on the modeling page.
+Diffusion
+The diffusion plugin is used to simulate diffusion where regions with high concentrations spread to regions with lower concentrations. Our model is able to account for this by distributing a grid cell concentration between surrounding grid cells. The following formula is used to compute the signal distribution matrix (in our case it's 3x3):
+$$M_{i,j} = \frac{1}{4 \pi D dt} \cdot e^{\frac{d_{i,j}^2}{4 D dt}}\;i,\,j = 0, 1, 2$$
+where \(M\) is mapping matrix, \(D\) is diffusion rate, \(dt\) is time step and \(d_{i,j}\) is cell distance from source cell (\(M_{1,1}\)). For each diffusion grid cell the \(M\) matrix is used to distribute the cell signal between surrounding grid cells.
+$$G_{x,y+i,j-1,1}^{n+1} = G_{x,y-1,1}^{n} (1 - R_d dt) \bar{M_{i,j}},\;i,\,j = 0, 1, 2;\;x = 0, ... N;\;y = 0, ... M$$
+where \(G\) is diffusion grid, \(R_d\) is degradation rate, \(\bar{M_{i,j}}\) is normalized \(M_{i,j}\) and \(N\), \(M\) are dimensions of the diffusion grid.
+Streamlines
+For simulating complex fluid systems, the Lattice Boltzmann method became the de facto standard in last years. This relatively new method works in two steps:
+Collision step
+Streaming step
+Collision step computes all distribution functions of a node's mass and streaming step moves that specific mass to another node (in a defined direction).
+The simulator implements square lattice LBGK model (D2Q9), which is expressed as (collision step):
+$$f_i(\bar{x} + \bar{e_i}, t + 1) - f_i(\bar{x}, t) = - \frac{1}{\tau}[f_i(\bar{x}, t) - f^{(eq)}_i(\bar{x}, t)], i = 0, 1, ..., 8$$
+where \(f_i\) is distribution function in direction \(i\), \(\bar{x}\) is current position, \(\bar{e_i}\) is position change in direction \(i\), \(\tau\) is relaxation time and \(f^{(eq)}_i\) is equilibrium distribution function in direction \(i\). The direction \(i\) represents 2D direction of momentum. Node density \(\rho\) and macroscopic flow velocity \(\bar{u}\) can be calculated:
+$$\sum_{i=0}^{8}f_i = \rho$$ $$\sum_{i=1}^{8}f_i e_i = \rho \bar{u}$$
+The equilibrium distribution functions \(f^{(eq)}_i\) depends only on local density and velocity. In our case we chose to calculate it in the following way:
+$$f^{(eq)}_i = \rho \cdot w_i [1 - 3(\bar{e_i} \cdot \bar{u}) + \frac{9}{2}(\bar{e_i} \cdot \bar{u})^2 - \frac{3}{2} \bar{u} \cdot \bar{u}]$$
+where \(w_i\) is direction weight:
+$$w_i = \begin{cases} \frac{4}{9} & i = 0\\ \frac{1}{9} & i = 1,2,3,4\\ \frac{1}{36} & i = 5,6,7,8 \end{cases}$$
+After collision step is performed, the streaming step takes place.
+$$f_i(\bar{x} + \bar{e_i}, t + 1) = f_i(\bar{x}, t + 1)$$
+This means the distribution function value is streamed to a next node in that specific direction.
+Boundary conditions
+Boundary conditions are a quite complex problem. The problem arises from the fact that there is no physical intuition on the behaviour of the velocities at boundaries. Choosing the right boundary conditions plays an important role in the simulation's stability. In our simulator, we implement the boundary conditions defined by Zou and He [Zou1997] .
+Inlet
+At inlet boundary condition, we have no information about the behaviour before the inlet. For each inlet node we compute the density and then use this density and inlet velocity \(\bar{u}\) to compute distribution functions.
+$$\rho = \frac{1}{1 - \bar{u}_i} (f_{0,2,4} + 2 f_{3,6,7})$$
+Outlet
+At outlet boundary condition, there is no information about the behaviour after the outlet. We thus compute the outlet velocity and then use this velocity with \(\rho = 1\) to compute distribution functions.
+$$u = -1 + \frac{1}{\rho} (f_{0,2,4} + 2 f_{1,5,8})$$
+Stochastic reactions
+In a stochastic reaction, each reaction is defined by the rate and chemical components. To simulate a reaction, you have to know how much of each reactant there is plus how probable it is for the reaction to happen. The chemical components can be divided into two classes:
+Non-diffusive
+Diffusive
+Non-diffusive components are proteins, markers, and genes, which do not leave the cell. They may be treated as being present only inside of the cell’s center, i.e., programmatically speaking, each biological cell remembers how many molecules of each component there are.
+Diffusive components are a bit trickier, because they are not linked to the cell interior but rather to the environment itself. During each step, a routine is run to determine how many molecules of a diffusive component are currently present in the cell's close surroundings.
+In some simulations, you may need reactions inside the cell, but not diffusive components. To save your resources, diffusive reactions are an optional extension, which may or may not be included in your simulation.
+Propensity
+Each reaction is described by the reactants, the rate, and when talking stochastically, the probability that the reaction happens in the following moments. Usually, a reaction is described by a probability measure called propensity, which is the probability that the reaction fires in the infinitesimal time dt. To simulate a system of chemical reactions, we  need to know how to compute the propensity for simple reactions
+Birth
+\(\varnothing \Rightarrow k_A \Rightarrow A\), propensity \(k_A\)
+Death
+\(A \Rightarrow d_A \Rightarrow \varnothing\), propensity \(d_A A\)
+Two component
+\(A + B \Rightarrow k_{AB} \Rightarrow C\), propensity \(k_{AB} A B\)
+Probability of the birth reaction is constant, it depends only on its rate, but the probability that something dies increases with the amount of things that can die (the more A's, the higher the probability of any of them dying). Similarly, the probability that something collides increases with amounts of both of things that can collide.
+It is often useful to write down reactions in terms of a stoichiometric matrix. This matrix’s rows correspond to reactions and columns to species. Each row says how much of a change in species numbers there is if the linked reaction happens. For example consider the following reaction system:
+\(\varnothing \Rightarrow k_A \Rightarrow A\)
+\(B \Rightarrow d_B \Rightarrow \varnothing\)
+\(A + B \Rightarrow k_{AB} \Rightarrow C\)
+The underlying stoichiometric matrix is $$\begin{bmatrix}+1 & 0 & 0\\0 & -1 & 0\\ -1 & -1 & +1\end{bmatrix}$$ The number at position i, j says how much of a change in number of j-th species molecules there is when the i-th reaction fires.
+Gillespie First reaction method
+It can be proved that in a well-mixed solution with the assumption of a thermal equilibrium, the reaction times have an exponential distribution in time. The simplest way to simulate a stochastic system is the Gillespie first reaction method. This method consists of the following steps in each iteration
+Compute propensities of all reactions in the system
+Generate a uniform random variable (0,1)
+Calculate the random time of next reaction from the following formula $$ \tau = -\dfrac{1}{\sum\nolimits Propenisty} log[rand[0,1]]$$
+Determine which reaction happened – the index of a reaction is the index of the first entry in the cumulative sum of propensities that is greater than $$rand[0,1] \sum\nolimits Propensity$$
+Update the system’s state according to the stoichiometry matrix
+Tau-leaping and Dependency graph
+Tau-leaping is an enhancement of the Gillespie algorithm, where propensities are updated only once per fixed time step instead of after each reaction. This method makes Gillespie algorithm more efficient in simulating larger systems. On the other hand, this approximation does not fully satisfy the idea of the Gillespie algorithm, because some computations are based on outdated propensities.
+To have an efficient simulation together with up-to-date propensities, we decided to include the Dependency graph. This improvement makes recomputation of propensities more effective because propensities are no longer updated all at once, but only those that had changed when a particular reaction occurred. For example, when a reaction with the expression of A has happened, only reactions whose propensity is a function of A are updated. Dependency graph removes the disadvantages of tau-leaping and keeps propensities accurate.
+Download
+Simulator binaries are available to download for following platforms:
+Windows 64bit
+Mac OS X
+Ubuntu/Mint x64
+Package contains simulator binary, examples, manual and tutorial (HTML).
+Source code
+The CeCe simulator source code is available on GitHub .
+References
+↑ Qisu Zou, Xiaoyi He (1997) On pressure and velocity boundary conditions for the lattice Boltzmann BGK model, Phys. Fluids, 9, 1592-1598
+links out
+Georgiev Lab
+Department of Cybernetics NTIS Research centre Faculty of Applied Sciences University of West Bohemia
+contact
+Faculty of Applied Sciences
+Technicka 8
+Pilsen 306 14
+Czech Republic
+georgiev@kky.zcu.cz

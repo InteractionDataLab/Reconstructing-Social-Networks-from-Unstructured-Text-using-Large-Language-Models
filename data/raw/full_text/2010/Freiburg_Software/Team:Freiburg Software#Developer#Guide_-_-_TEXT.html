@@ -1,0 +1,94 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Freiburg Software/Developer/Guide
+From 2010.igem.org
+Home
+Notebook
+Meetings
+Team
+2010
+Photos
+Collaboration
+Project
+Prospect
+History
+User
+User Guide
+The Robots
+Developer
+Guide
+Technologies
+Architecture
+Availability
+Human Practice
+Developer Guide
+One main goal of SynBioWave is extendability. If you are missing some functionality using SynBioWave, you can create your own robot implementing it.
+1. Basic setup
+A SynBioWave-Robot is an extended Wave-Robot. So first, you need to create a normal Wave-Robot following the steps described in the Google Robot Tutorial . Reading is highly recommended, since this forms the basis for our robots. We have put a lot of effort in extending Wave-Robot programming to include robot-robot communication and the use of a common pull-down menu structure.
+Following the Google Robot Tutorial, you should get a servlet class in the src/ directory, some jar's under war/WEB-INF/lib and configured war/WEB-INF/appengine-web.xml and war/WEB-INF/web.xml files.  We now need to further extend this layout to add the SynBioWave-functionality:
+Add the jar files used by SynBioWave
+Download biojava.jar from http://biojava.org/wiki/BioJava:Download and the latest latest version of synbiowave.jar from http://sourceforge.net/projects/synbiowave/ ( or this wiki) ) to your war/WEB-INF/lib folder and add these libraries to your project as you did before .
+Add the OAuth login for the Active API
+First register your robot on Google's robot registration page . After submitting the form, you will receive a "Verification Token" and a "Security Token". At the end of the received text, you see a "verify" - button. Keep the browser tab open, as you will need this a little later. Create a public constructor in your robots servlet class with the following content:
+public YourRobot() {   String verificationToken = "VERIFICATION_TOKEN"; String securityToken = "SECURITY_TOKEN"; super.setupVerificationToken(verificationToken, securityToken); }
+Upload your robot to AppEngine and go back to the browser tab. Press the "verify"-button and you will be presented with your robots OAuth login information ( "Consumer Key" and "Consumer Secret" ).  Now change the basic contructor of your robot such that it looks like the following:
+public YourRobot() { super.setupOAuth("Consumer Key","Consumer Secret","http://gmodules.com/api/rpc"); super.setupOAuth("Consumer Key","Consumer Secret","http://sandbox.gmodules.com/api/rpc"); super.setAllowUnsignedRequests(true); }
+Now your robot is ready for the use of the Active API, both in the preview and the sandbox client. This is required for the use of the SynBioWave API, especially for the use of the sequence workspace.  For further information please have a look on the official Active API page .
+Extend the servlet
+Now open the main servlet, and let your main class extend the AbstractSynBioWaveRobot class instead of the normal AbstractRobot class:  Change
+public class RobotServlet extends AbstractRobot {
+to
+public class RobotServlet extends AbstractSynBioWaveRobot {
+SynBioWave needs to be called by the onGadgetStateChanged and onWaveletSelfAdded-event, so add the lines
+@Override public void onGadgetStateChanged(GadgetStateChangedEvent event){    super.onSynBioWaveGadgetChanged(event); }  @Override public void onWaveletSelfAdded(WaveletSelfAddedEvent event) {    super.onSynBioWaveRobotSelfAdded(event); }
+It is important that the super.onSynBioWaveRobotSelfAdded() and super.onSynBioWaveGadgetChanged() functions are called. Of course you can add code to these events (best after the existing function) and/or register other wave-events as well.  Furthermore, you need a function to extend SynBioWave's user interface, so add:
+@Override public void createMenu(MenuItem menu, MenuItemFactory mif, Event event) throws Exception { }
+The last thing to do is to import the required classes:
+import org.synbiowave.AbstractSynBioWaveRobot; import org.synbiowave.menu.MenuItem; import org.synbiowave.menu.MenuItemFactory;
+This completes the basic layout. You can compare your file with our blueprint robot .
+2. Creating menu items
+To add an item to the SynBioWave menu bar, you can create the item using the MenuItemFactory you got as parameter in the createMenu function:
+MenuItem hello = mif.createButton("Hello World");
+Where "Hello World" is the label of the button. This button is added to the toolbar by adding it to the given
+MenuItem menu
+(which repesents the menu-toolbar) as a subitem:
+menu.appendSubItem(hello);
+The whole function should now look like
+public void createMenu(MenuItem menu, MenuItemFactory mif) throws Exception {  MenuItem hello = mif.createButton("Hello World");  menu.appendSubItem(hello); }
+Now, it's a good time to deploy the robot to AppEngine, create a new Wave, add the SynBioWave-Robot, add your robot to the wave and watch the new "Hello World"-button appear.
+3. Add functionality to menu items
+At the moment, the button doesn't do anything when clicked. SynBioWave uses callbacks to react on menu events. First, you need to create a new class (in this example named Callback.java) extending MenuCallBack:
+public final class BlastCallback extends MenuCallBack {  public void onButtonClicked(Event event, MenuItem menuItem,      AbstractSynBioWaveRobot servlet) {} }
+The function onButtonClicked is called when the corresponding button is pressed. As you get an event, you can do everything you could do on "normal" wave events, for example add an new blip to the wave:
+public final class BlastCallback extends MenuCallBack {  public void onButtonClicked(Event event, MenuItem menuItem,      AbstractSynBioWaveRobot servlet) {   event.getBlip().reply().append("Button pressed\n");  } }
+Now that you completed the callback, you need to connect it with the button you created before. Go back to the main servlet and add
+this.connectMenuCallBack(hello, new Callback());
+inside of the createMenu function (again import your Callback class of course):
+public void createMenu(MenuItem menu, MenuItemFactory mif) throws Exception {  MenuItem hello = mif.createButton("Hello World");  menu.appendSubItem(hello);  this.connectMenuCallBack(hello, new callback()); }
+Now your robot should add a reply with "Button pressed" to the root-blip of the wave, which contains the menu and therefore is referred to as active blip in the "event" event.
+4. Create and receive sequences
+This chapter will give you a brief introduction in SynBioWave's internal sequence usage.
+Create a new sequence
+Nothing easier like this:
+Sequence sequence=new Sequence("Name","Sequence"); sequence.setAuthor("Author"); sequence.addAnnotation("Feature Name",1,15); sequence.publish(robot,wavelet,true);
+With the publish() method of your created sequence class, you add the sequence to the workspace. The boolean parameter of the publish() method sets the initial active state of the sequence in the workspace.  You can work on this sequence and change the values as needed. The changes will be presented in the workspace as soon as you use the publish() function again.
+Receiving sequences from the workspace
+Again, very easy:
+List<Sequence> sequences=Workspace.getActiveSequences(servlet,event.getWavelet()); if(sequences!=null){   for(Sequence sequence:sequences){     //do everything you want with the sequences     //remember that you have to use the publish()     //function of the sequence to update the     //sequence changes in the workspace   } }
+For further information, please have a look at our SynBioWave API doc (http://www.synbiowave.org/docu/api/).
+Retrieved from " http://2010.igem.org/Team:Freiburg_Software/Developer/Guide "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

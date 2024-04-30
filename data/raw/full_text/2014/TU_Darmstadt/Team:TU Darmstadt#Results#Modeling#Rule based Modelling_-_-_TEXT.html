@@ -1,0 +1,144 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:TU Darmstadt/Results/Modeling/Rule based Modelling
+From 2014.igem.org
+Home
+Home
+Project
+Results
+Policy & Practices
+Achievements
+Notebook
+Team
+Gallery
+Sitemap
+Contact
+‹
+›
+‹
+›
+‹
+›
+‹
+›
+‹
+›
+‹
+›
+Our Biobricks
+Look at our bricks!
+eANS
+Check out the best protein engineering model!
+The People
+See the people behind the project!
+iGEM TUD
+Sitemap
+Team
+Kontakt
+Sponsoren
+Home
+Project
+Results
+Pathway
+Scaffold
+Modeling
+Theory
+ANS Engineering
+Open Software
+Rule based Modelling
+Safety
+Open Hardware
+Policy & Practices
+Achievements
+Notebook
+Team
+Gallery
+Rule Based Modeling
+In order to understand the dynamics of our reaction pathways, a model of the underlying chemical eactions is needed. Currently there exist two commonly used approaches to do so. The first being the reaction rate approach, where one has to solve a system of ordinary differential equations (ODE). Which is a deterministic and continuous description of chemical reactions. The alternative to this is the so called stochastic approach, which one may deem to be superior to the deterministic approach, in terms of correctness regarding the laws of physics. As chemical reactions always occur within an ensemble of many particles we never face absolute reaction rates, but rather reaction probabilities. Furthermore, the quantity of chemical molecules contained within a system can only change by discrete values, which is contrary to the continuous description, given by the deterministic approach1. Thus stochastic based descriptions are commonly implemented by using rule-based languages. Where one describes the several reactions by rules and stochastically reaction rates. The according simulations are then done by a Monte-carlo based algorithm, like the Gillepsie algorithm. 
+Kappa
+The rule-based modeling language examined within this contribution is the Kappa-language.2 Afterwards, a short introduction to this language is given. Where the language is specified by description of the language constructs and their syntax.
+Agent
+The main data construct of Kappa is the Agent, which is an abstract construct describing some entity, per example an protein or any other reactant, with several interaction sites x1 ... xn. Furthermore, each interaction site can have several site states expressed by Xi ~ s1 ~ s2 ~ ... ~ sn. Where the syntax for an agent is
+%agent: AgentName(
+Xi ~ s1 ~ s2 ~ ... ~ sN
+X2 ~ s1 ~ s2 ~ ... ~ sN
+...
+XN ~ s1 ~ s2 ~ ... ~ sN
+)
+One then describes the interaction between Agents within the system by a set of rules, which are of the syntax 
+’label’ Agent1(sx),..., AgentN(sy ) -> Ñ Agent1(s1x), .. AgentN(s1y) @ r ,
+where r is the rate constant, thus some numerical value, describing the probability of the reaction described by the according rule. This quantity will be explained in a later chapter.
+However general previous description seems to be, it does not yet describe the full set of possible rules. Rules can be build depending on an agents pure reaction site, the state of an agents reaction site and also based on connections between interaction sites. Connections or rather bounds between interaction sites are labeled by !i, with i being some integer which specifies the connection. 
+For example, a binding between an agent A and an agent B could be described as follows.
+’Binding’ A(x),B(y) -> Ñ A(x!1),B(y!1) @ 1.0
+A rule based on the state of an specific reaction site could be used to describe the following Situation: If connected to some agent B, an agent A should transform a substance sm located on the interaction of Agent B to some new substance sk. Which would be given by the following Kappa rule
+’Change’ A(a!1),B(x ~ sm !1) Ñ A(a!1),B(x ~ s k !1) @ 1.0 .
+Furthermore, by using !_ one can define that a site is bound but it is not important to which agent and by using ? one can specify that it doesn't matter if a site is bound or not bound.
+Token
+The token is like an agent without any interaction sites and inner states. Thus, a token simply needs a name, which has to be specified after the %token keyword.
+%Token: TokenName
+A token can be used to represent substances that are there but have no interaction at all. Which is the case,e.g., for substances which are produced or depleted by one of the agents.
+Variable
+A variable can be declared as follows
+%var: 'variable rate' 0.01
+in more detail this declares a variable 'variable rate' and assigns the value 0.01, which will afterwards be referenced to by typing 'variable rate' anywhere within a Kappa program. This is for example useful to specify reaction rates occurring in several rules. If they change, one only has to modify the according variable definition.
+Observable
+By using the %obs directive one can specify observables, which means that the absolute number of elements matching the right hand site of the rule throughout the simulation will be stored.
+%obs: 'Observable Name' Agent(site~state)
+Executing the program will generate an output file containing one row for each observable and one column for each simulation time step.
+Init
+By using the %init directive the initial values of our several Agents can be set. Where %init is followed by an numerical value representing the number of afterwards specified constructs.
+%init: 10 (Agent1(a~a0,b~b1!1,c~c2!2),Agent2(x~x0!1,y~y0!2,z~z0) )
+Perturbation
+The %mod directive can be used to apply perturbations to the data, as follows. After %mod some conditional statement regarding any agent of interest is given. Followed by a do and a declaration where a variable gets assigned a new value. Yielding in a conditional perturbation of said agent, by changing the variable to a new value after some condition is met.
+%mod: ’AgentA’ < 50 do ’variable’ := 0.5
+Application to Scaffold
+The main application of ruled-based modeling, within our work is to optimize the Scaffold. In order to do so Kappa models for the Scaffold and its according reactions have been created. By using these one should essentially be able to simulate the time behavior of the scaffold together with according reactants, which it is designed to move into spatial proximity. Thus one would also be able to do several simulations for different used Promotors. Which would, essentially render one able to estimate the optimal Promotor to be used. However, one of the main problems regarding this, is that the according reaction rates are not known. An computational feasible approach to solve this would be, to do a random sampling of a limited reaction rate space for every simulation. Where knowledge regarding the several occurring reactions could also be used to get an better estimate and therefore better restriction of the according reaction rates. As it is not the common reaction rate k of chemistry used for the simulations but an stochastic reaction rate k, describing the relative frequency of a according reaction. The connection between both, for reactions with two reactants, is given as
+\[ k = V \cdot r \cdot \frac{ \left<X_1 X_2\right> }{\left<X_1\right> \left<X_2\right>}\,, \]
+which yields 
+\[ k = V \cdot r \,, \]
+for a simple binary reaction, with the reaction Volume being V1. Thus by getting the ranges of reaction Volumes within our Scaffold reactions, reasonable limits for the sampling simulations can be found.
+Since any kappa simulation is a randomized algorithm, meaningful results can only be reached by averaging over several runs. Where we averaged over 1000 runs, this has been parallelized by means of a bash script.
+Fig. 1: Results of Scaffold model for averages over 1000 runs
+Components as written in our modell are listed below:
+DNA_E: Amount of DNA representing proteins of enzymes inside Plasmid A
+DNA_S: Amount of DNA representing proteins of scaffold inside Plasmid B
+RNA_E: Amount of RNA representing proteins of enzymes inside Plasmid A
+RNA_S: Amount of RNA representing proteins of scaffold inside Plasmid B
+DNA_tot & RNA_tot: Each summarized amount of nuclein acid.
+Scaff: Amount of Scaffold inside model.
+DFR: Amount of Dihydroflavonoul inside model.
+ANS: Amount of Anthocyanidin Synthase inside model.
+Fig. 2: Standard Deviation of Scaffold model for averages over 1000 runs
+As can be seen by comparing (Fig. 1) and (Fig. 2) the standard deviations are of the same order as the averages. Thus, the statistical error of the data has the same order as the data itself. 
+Which leads to the conclusion that this model can not be used to correctly model our scaffold, since the results have large inherent variations.
+This behavior remains even after using 104 samples instead of 103. Therefore, it is safe to say that this variation is due to some systematic misconception within the model.
+We used the original repressilator model taken from https://rulebase.com/ - temporay not accessible anymore -  as base for our model. To check if theses results are due to some error from our side we again calculated results for 10000 samples for averaging.
+Fig. 3:  Results of Repress model for averages over 1000 runs
+Fig. 4: Standard Deviation of repress model for averages over 1000 runs
+Again the result is that the statistical errors are of the same order as the averaged values.
+Thus, there seems to be some underlying problem with this model. Which we seemed to include in our model by using the repress model as base.
+For one final visualization of the variations we plotted the normalized difference to the average
+\[ \Gamma(x_i) = \frac{\left|\mu\left(x_i\right) - x_i\right|}{\left| \mu\left(x_i\right)\right|} \,. \]
+In the following (Fig. 4) this is plotted for the RNAC of repress model. 
+As can clearly be seen the variations are extensive were the largest occurring deviation is an error of over 2500%. 
+These systematic errors, the fact the we do not know the kinetic rate constants for our agents as well as the fact that at least at the time of our contribution kappa seems to be poorly documented lead us to the decision that we can not use kappa for the scaffold modeling.
+References
+Gillespie, D. T. (1977). Exact stochastic simulation of coupled chemical reactions. J. Phys. Chem., 81(25):2340–2361.
+www.kappalanguage.org
+Retrieved from " http://2014.igem.org/Team:TU_Darmstadt/Results/Modeling/Rule_based_Modelling "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

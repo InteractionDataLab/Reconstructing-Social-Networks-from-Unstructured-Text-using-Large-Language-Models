@@ -1,0 +1,86 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Sweden/Mathematical Modelling
+From 2009.igem.org
+Home
+Team
+Project
+Mathematical Modelling
+Logbook
+Result
+Sponsors
+Contents
+1 The Linguistic Cell
+2 How the model works described in words
+2.1 A complete example
+3 The boring theory
+4 The full model: Something to play with
+4.1 act.m
+4.2 rep.m
+4.3 FSA_ODE_full.m
+4.4 main.m
+The Linguistic Cell
+How the model works described in words
+Several problems needed to be taken care of when implementing a biological model.
+Repeated input (e.g. det det adj)
+Wrong input (e.g. det adj det)
+For the repeatedly inputting the same PoS we used a counter (with courtesy of ETH iGEM 2005) which counts how many times an input occurs in a row. It uses an interval state and an intermediate input to move the automaton from one state to the other. For the wrong input we set inhibitions in the model in a specific way. so, the interval states (I1-I5 in the figure) only get activated by the interval input X0 and they inhibit all the other interval states. Interval states are also inhibiting some of the S-states, depending on what can be the next correct input.
+For example, if I2 is activate it inhibits S1, S4 and S5 from the S-states. This is because we can get a correct input from X2 (which corresponds to a adj) and X3 (which corresponds to a N).
+As for the errors, they are inhibited like the S-states from the I-states just reversed. For example, we are again in I2. Then only the error signals from input X2 and X3 are inhibited, meaning these inputs will NOT send an error signal.
+Next example, we finish a sentence with an stop signal (input X5). Right now I5 is active and the only X5 activates S5 to send the "right" signal.
+Let's take another example. This time let's assume we are in an active S2 state. Since after every input we make there is an interval input, X0 is inputted. What happens now? X0 activates all I-states. But S2 inhibits all EXCEPT I3. So the system has to move there. Here we can check real quick if the sensing repeated input mechanism works. Let's input another X2 (which would correspond to and adj and would in a correct sentence activate S2) But we are not in I2, so the system in I3 cannot activate S2 because it is inhibited by I3. Instead the error 2, which is not inhibited by I3 but activated by X2. So here we get an error response and our repeated input mechanism works.
+BTW, the figure on top only shows half of the model. We apologize for that, but this model has already 17 states and 6 inputs (the corresponding FSA stops at state 4, if you remember the FSA from the project page). So this figure shows 4 states and the stop. Just imagine what it would look like if we have 9 FSA states. That would mean states = 8 (fail state is handled differently) + interval states(8) = 16 + error(5, same as input number) = 21 + wrong and right  =  23 states. It would be a bit crowded if we wanted to show all the inhibitions and states.
+A complete example
+Let's go through the whole model with a correct sentence.
+English: The dog bites.
+Model: det N V stop
+As mentioned above the model has always state I1 active in the beginning. So, we start with input X1 = det. This activates S1. Next the interval input X0, which moves the system to S2. Input N = X3, activates S3 from I2. Why? The grammar tells us that this is possible and we don't have an inhibition from I2 to S2 (input X2 = adj) or to S3 (input X3 = N). So, we have S3 active and we have to input the interval input X0. The system moves to I4. Next input is then V = X4. S4 is activated. And again the interval input X0. The system is moved to I5. To end the sentence we input the stop signal X5. The system activates S5 which leads to a correct sentence signal.
+Now we will go through an incorrect sentence.
+English: Dog bites hurt.
+Model: N N V stop
+So, again we start with an activate I1 state. We input N = X3. The system moves to S3. This is possible because I1 only fails to activate S4 and S5 with a X4 and X5 input. Now, we are in S3 and we have to input the interval input. The system shifts to I4. Now we can observe how the system behaves when we input another N = X3. I4 inhibits the activation of S3, but not the activation of the error 3. So the error is activated instead of the S3. This leads to an incorrect output signal. The model doesn't even bother with checking the rest of the sentence.
+The boring theory
+Several assumptions have been made to make the model work the way we want it to.
+I1 is always active at t=0, meaning that every sentence begins with an intermediate input to activate I1.
+The strength of every inhibition is the same.
+We introduce a stop signal, so we know when a sentence is finished
+We used ODEs to model the system. ODEs are used for describing how a system changes over time. In general, our ODEs look like this:
+State i = synthesis * (every incoming activation and repression) – degradation of i
+For activation and repression we used a hill function:
+act = ((conc*k)^m)/(1+(conc*k)^m),
+where k is the responsible for when the activation occurs and m for how fast it is. so the hill function tells you how long it takes for a protein to be synthesized and if it is synthesized how fast it is done. The repression is simply
+rep = 1 – act
+This way we set up a model as in the figure. This model does not represent the full automaton, but only the first four states.
+The full model: Something to play with
+here are links to the ODE model in Matlab.
+act.m
+This is the activation function.
+Activation.m
+rep.m
+This is the repression function.
+Repression.m
+FSA_ODE_full.m
+This is the ODE function.
+FSA_ODE_full.m
+main.m
+This is the main program. If run, you can choose which PoS to input. The program aborts immediately if you have a wrong input otherwise it will only stop with a stop-input. Correct sentences are according to the following rules. But you will need to have the other files as well. And don't worry if you cannot find the interval or intermediate input. As the name almost suggests, it is intermediate and already integrated in the program. So every time you input a PoS the system automatically adds the interval input X0.
+S --> NP VP
+NP --> (det)(adj) N
+VP --> V (NP)
+Main.m
+Retrieved from " http://2009.igem.org/Team:Sweden/Mathematical_Modelling "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

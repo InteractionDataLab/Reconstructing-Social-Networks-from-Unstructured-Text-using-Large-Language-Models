@@ -1,0 +1,629 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_UCAS-China_igemUCAS_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:UCAS-China/igemUCAS.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* igemUCAS JavaScript Library v0.18.22
+* Copyright UCAS iGEM team
+*/
+</PRE><P>( function( global, factory ) { var iU = global.iU = factory(global); iU(); } ) (window, function( window ) {
+	var 
+		document = window.document,
+</P><P>		getUid = (function(){
+			var now = -1;
+			return function(){
+				now ++;
+				return (function(n){
+					return '_'+n+'_';
+				})(now);
+			};
+		})(),
+</P><P>		configs = {
+			heading_padding: 60,
+			subheading_padding: 60,
+			block_padding: 20,
+			default_padding: 20,
+			script_max_width: 400,
+			line_height: (function(){
+				var test = document.createElement(&quot;span&quot;);
+				test.innerHTML = &quot;a&quot;;
+				test.className = &quot;script&quot;;
+				document.body.appendChild(test);
+				var h = test.offsetHeight;
+				document.body.removeChild(test);
+				return h;
+			})()
+		};
+</P><P>	function css( elem, styles ){
+		if( !(elem &amp;&amp; styles) )
+			return ;
+</P><P>		for(var prop in styles){
+			var 
+				key = &quot;&quot;,
+				change = false;
+</P><P>			for(var j = 0; j &lt; prop.length; j ++){
+				if( prop[j] == '-' )
+					change = true;
+				else{
+					key += change ? prop[j].toUpperCase() : prop[j];
+					change = false;
+				}
+			}
+</P><P>			if( typeof styles[ prop ] == &quot;function&quot; )
+				elem.addEventListener(key, styles[prop]);
+			else
+				elem.style[ key ] = styles[ prop ];
+		}
+	}
+</P><P>	function Component( node, left, top ){
+		this.node = node;
+		this.node.id = getUid();
+		this.left = left;
+		this.top  = top;
+	}
+	Component.prototype = {
+		constructor: Component,
+		position: function(left, top){
+			this.left = left;
+			this.top  = top;
+		},
+		render: function(offsetX){
+			if(offsetX === +offsetX){
+				configs.position(this.node, offsetX+this.left, this.top );
+				css(this.node,{&quot;visibility&quot;:&quot;visible&quot;});
+			}
+			else
+				css(this.node,{&quot;visibility&quot;:&quot;hidden&quot;});
+		}
+	}
+</P><P>	function Flow(){
+		this.node = configs.toDOM(&quot;div&quot;,&quot;.script&quot;);
+		this.node.style.visibility = &quot;hidden&quot;;
+		configs.enroll(this.node);
+	}
+	Flow.prototype = {
+		constructor: Flow,
+		write: function( p ){
+			this.node.appendChild(p);
+		},
+		cut: function( width, height ){
+			if( !this.node )
+				return null;
+</P><P>			var
+				product  = this.node,
+				children = [],
+				careful  = null,
+				divPoint = undefined,
+				node     = null;
+</P><P>			for(var i = 0; i &lt; product.children.length ; i ++ )
+				children.push( product.children[i] );
+</P><P>			product.innerHTML = &quot;&quot;;
+			for(var i = 0; i &lt; children.length; i ++){
+				product.appendChild(children[i]);
+				product.style.width = width + &quot;px&quot;;
+				if(product.offsetHeight &gt; height){
+					divPoint = i+1;
+					careful  = children[i];
+					break;
+				}
+			}
+			if( careful ){
+				var
+					node 	 = this.node.cloneNode(),
+					copy     = careful.cloneNode(),
+					words 	 = [],
+					childNodes = [];
+				node.innerHTML = &quot;&quot;;
+</P><P>				copy.id = &quot;copy&quot;;
+</P><P>				for(var i = 0; i &lt; careful.childNodes.length; i ++ )
+					childNodes.push( careful.childNodes[i] );
+</P><P>				careful.innerHTML = &quot;&quot;;
+				copy.innerHTML = &quot;&quot;;
+				for(var i = 0; i &lt; childNodes.length; i ++){
+					careful.appendChild( childNodes[i] );
+					if( product.offsetHeight &gt; height ){
+						if( childNodes[i].tagName ){
+							careful.removeChild( childNodes[i] );
+							copy.appendChild( childNodes[i] );
+						}
+						else{
+							var
+								words = childNodes[i].textContent.split(/\s/);
+							childNodes[i].textContent = &quot;&quot;;
+</P><P>							for(var j = 0; j &lt; words.length-1; j ++){
+								careful.lastChild.textContent = words.slice(0, j+1).join(&quot; &quot;);
+								if( product.offsetHeight &gt; height ){
+									careful.lastChild.textContent = words.slice(0, j).join(&quot; &quot;) + &quot;\n&quot;;
+									var
+										nt = document.createTextNode( words.slice(j).join(&quot; &quot;) );
+									copy.appendChild(nt);
+									break;
+								}
+							}
+						}
+						for(var j = i+1; j &lt; childNodes.length; j ++)
+							copy.appendChild( childNodes[j] );
+</P><P>						break;
+					}
+				}
+				if( copy )
+					node.appendChild( copy );
+</P><P>				for(var i = divPoint; i &lt; children.length ; i ++ )
+					node.appendChild( children[i] );
+			}
+			this.node = node;
+</P><P>			if(this.node)
+				configs.enroll(this.node);
+			return new Component(product);
+		}
+	};
+</P><P>	function Graphics( img, caption ){
+		this.state 	= &quot;preparing&quot;;
+		this.img  	= img;
+		this.caption= caption;
+</P><P>		var
+			_this = this;
+		if( !this.img.height ){
+			if(this.img.tagName.toLowerCase() == &quot;img&quot;){
+				this.img.onload = function(){
+					_this.loaded();
+					if( _this.sealSlide )
+						_this.sealSlide();
+				};
+			}
+			else{
+				this.img.onloadedmetadata = function(){
+					_this.loaded();
+					if( _this.sealSlide )
+						_this.sealSlide();
+				};
+			}
+</P><P>			this.img.onerr  = function(){
+				_this.state = &quot;dispose&quot;;
+			};
+		}
+		else
+			this.loaded();
+</P><P>	}
+	Graphics.prototype = {
+		constructor: Graphics,
+		loaded: function(){
+			configs.enroll(this.img);
+			if(this.caption)
+				configs.enroll(this.caption);
+			this.ratio = this.img.height / this.img.width;
+			this.state = &quot;ready&quot;;
+		},
+		adaptWidth: function( width ){
+			css(this.img,{&quot;width&quot;:width+&quot;px&quot;});
+			this.height  = this.img.offsetHeight;
+			this.width   = this.img.offsetWidth;
+			if(this.caption)
+				this.height += css(this.caption, {&quot;width&quot;: this.width+&quot;px&quot;});
+		},
+		toComp: function( left, top ){
+			var
+				res = [new Component(this.img, left, top)];
+			if(this.caption)
+				res.push( new Component(this.caption, left, top+this.img.offsetHeight) );
+			return res;
+		}
+	};
+</P><P>	function Slide( title, kind ){
+		this.state = &quot;preparing&quot;;
+		this.headline = configs.toDOM(&quot;strong&quot;,&quot;.title&quot;);
+		this.headline.innerHTML = title;
+		configs.enroll( this.headline );
+		this.comps 	 = [];
+</P><P>		this.init();
+		this.flow    = new Flow();
+		this.scripts = [];
+		this.graphics= [];
+		this.kind = kind;
+</P><P>		var
+			_this = this;
+		this.seal = function(){_this._seal();};
+	}
+	Slide.prototype = {
+		constructor: Slide,
+		init: function(){
+			var
+				halfHeight= this.headline.offsetHeight/ 2,
+				halfWidth = this.headline.offsetWidth / 2;
+</P><P>			css(this.headline,{
+				&quot;position&quot;: &quot;absolute&quot;,
+				&quot;top&quot;: 	 &quot;calc(-1% + &quot;+halfWidth+&quot;px)&quot;,
+				&quot;left&quot;:  (-halfWidth+halfHeight) + &quot;px&quot;,
+				&quot;visibility&quot;: &quot;hidden&quot;
+			});
+</P><P>			if( !configs.graphicsArea ){
+				configs.graphicsArea = configs.toDOM(&quot;div&quot;,&quot;graphicsArea&quot;);
+</P><P>				configs.enroll( configs.graphicsArea );
+				var
+					left = halfHeight * 2;
+				css(configs.graphicsArea,{
+					&quot;visibility&quot;: &quot;hidden&quot;,
+					&quot;position&quot;: &quot;absolute&quot;,
+					&quot;background-color&quot;: &quot;blue&quot;,
+					&quot;left&quot;: left + &quot;px&quot;,
+					&quot;top&quot;: &quot;3%&quot;,
+					&quot;width&quot;: &quot;calc(98% - &quot;+left+&quot;px)&quot;,
+					&quot;height&quot;:&quot;94%&quot;
+				});
+</P><P>				configs.span2width = (function( unit_width ){
+					return function(span){
+						return span * unit_width;
+					};
+				})( configs.graphicsArea.offsetWidth/12 );
+</P><P>				configs.position = function( node, left, top ){
+					css(node,{
+						&quot;position&quot;: &quot;absolute&quot;,
+						&quot;top&quot;:   (top+20) + &quot;px&quot; ,
+						&quot;left&quot;:  (left+50)+ &quot;px&quot;
+					});
+					return configs.graphicsArea.offsetHeight - node.offsetHeight - top;
+				};
+			}
+		},
+		addText:function( left, top, width ){
+			var
+				comp = this.flow.cut( width - 2*configs.default_padding, configs.graphicsArea.offsetHeight - top );
+			if(comp){
+				comp.position( left+configs.default_padding, top);
+				this.comps.push( comp );
+			}
+		},
+		addImage: function( left, top, width ){
+			var
+				g = this.graphics.shift();
+			if(!g || g.state == &quot;dispose&quot;)
+				return 0;
+			g.adaptWidth( width );
+			Array.prototype.push.apply(this.comps, g.toComp( left, top));
+			return g.height;
+		},
+		_seal: function(){
+			for(var i = 0; i &lt; this.graphics.length; i ++)
+				if(this.graphics[i].state == &quot;preparing&quot;){
+					this.graphics[i].sealSlide = this.seal;
+					return ;
+				}
+			this.state = &quot;formatting&quot;;
+</P><P>			var w, h;
+</P><P>			switch( this.kind ){
+				case 1:
+					w = configs.span2width( 6 );
+					this.addText(0, this.addImage(w, 0, w), w);
+					this.addText(w, 0, w);
+				case 2:
+					w = configs.span2width( 4 );
+					h = this.addImage(0, 0, 2*w);
+					this.addText(   0, h, w);
+					this.addText(   w, h, w);
+					this.addText( 2*w, 0, w);
+				case 3:
+					w = configs.span2width( 6 );
+					h = this.addImage(0, 0, 2*w);
+					this.addText(   0, h, w);
+					this.addText(   w, h, w);
+				case 0:
+				default:
+					w = configs.span2width( 6 );
+					this.addText(0, 0, w);
+					this.addText(w, this.addImage(w, 0, w), w);
+</P><P>			}
+			this.state = &quot;completed&quot;;
+		},
+		render: function( posX ){
+			css( this.headline, {&quot;visibility&quot;: ((posX === +posX) ? &quot;visible&quot; : &quot;hidden&quot; )} );
+</P><P>			for(var i = 0; i &lt; this.comps.length; i ++)
+				this.comps[i].render(posX);
+		},
+		toString: function(){
+			var	s = this.state + &quot;:&quot;;
+			for(var i in this.comps)
+				s += i.toString() + &quot;()&quot;;
+			return s;
+		}
+	};
+</P><P>	function Book( nav ){
+		var
+			interface = configs.toDOM( &quot;div&quot;, &quot;iU_book&quot;, true );
+</P><P>		configs.enroll = function( node ){
+			node.style.visibility = &quot;hidden&quot;;
+			interface.appendChild(node);
+		};
+</P><P>		this.nav 		   = nav;
+		this.currentPath   = null;
+		this.currentSlide  = null;
+		this.captionHolder = null;
+	}
+	Book.prototype = {
+		constructor: Book,
+		newSlide: function( node ){
+			if( this.currentSlide )
+				this.currentSlide.seal();
+</P><P>			if(!node)
+				return ;
+</P><P>			if( (node.attributes||{})[&quot;path&quot;])
+				this.currentPath =  node.attributes[&quot;path&quot;].value;
+</P><P>			var
+				title = (node.innerHTML||&quot;&quot;),
+				path  = (this.currentPath+&quot;.&quot;+title).toLowerCase(),
+				kind  = node.attributes[&quot;normal&quot;]? 1 :
+						node.attributes[&quot;large&quot; ]? 2 :
+						node.attributes[&quot;full&quot;  ]? 3 : 0;
+</P><P>			var
+				slide = new Slide( title, kind );
+			this.nav.addPath(path, slide);
+			this.currentSlide = slide;
+		},
+		image:  function( node ){
+			if( node.tagName.toLowerCase() == &quot;ins&quot; ){
+				this.captionHolder = configs.toDOM(&quot;div&quot;, &quot;.caption&quot;);
+				this.captionHolder.innerHTML = node.innerHTML;
+			}
+			else{
+				this.currentSlide.graphics.push( new Graphics(node, this.captionHolder) );
+				this.captionHolder = null;
+			}
+		},
+		script: function( node ){
+			this.currentSlide.flow.write(node);
+		},
+		toString: function(){
+			var s = &quot;&quot;;
+			for(var i in this.slides)
+				s += &quot;[&quot;+i+&quot;] &quot;+this.slides[i].toString()+&quot;\n&quot;;
+			return s;
+		}
+	};
+</P><P>	function Navigation( logo, sponsors ){
+		this.surface = configs.toDOM(&quot;div&quot;,&quot;iU_nav&quot;, true);
+</P><P>		this.headings = [];
+		this.init(logo, sponsors);
+		this.logo      = logo;
+		this.sponsors  = sponsors;
+</P><P>		this.slideNow  = null;
+		this.subheading= null;
+		this.blocks    = null;
+</P><P>		this.slides    = {};
+</P><P>		this.offset = 0;
+		this.scroll = function( ev ){
+			ev 		= ev || window.event;
+			if( ev.preventDefault )
+				ev.preventDefault();
+</P><P>			_this.offset -= ev.wheelDelta || ev.detail || 0;
+			_this.offset  = Math.max(_this.offset, 0);
+		}
+		this.currentPath = undefined;
+	}
+	Navigation.prototype = {
+		constructor: Navigation,
+		init: 	function( logo, sponsors ){
+			this.header = configs.toDOM(&quot;div&quot;, &quot;header&quot;);
+			logo.id = &quot;logo&quot;;
+			this.header.appendChild( logo );
+</P><P>			this.ptrH = configs.toDOM(&quot;div&quot;,&quot;ptrH&quot;);
+			css(this.ptrH,{
+				&quot;visibility&quot;: &quot;hidden&quot;,
+				&quot;position&quot;: &quot;absolute&quot;
+			});
+			this.header.appendChild( this.ptrH );
+</P><P>			this.ptrS = configs.toDOM(&quot;div&quot;, &quot;prtS&quot;);
+			css(this.ptrS,{
+				&quot;visibility&quot;: &quot;hidden&quot;,
+				&quot;position&quot;: &quot;absolute&quot;
+			});
+			this.header .appendChild( this.ptrS  );
+			this.surface.appendChild( this.header);
+</P><P>			var
+				footer = configs.toDOM(&quot;div&quot;,&quot;footer&quot;);
+			this.surface.appendChild(footer);
+</P><P>			var
+				strSponsors = configs.toDOM(&quot;span&quot;,&quot;strSponsors&quot;);
+			strSponsors.innerHTML = &quot;Sponsors&quot;;
+			footer.appendChild(strSponsors);
+</P><P>			for(var i = 0; i &lt; sponsors.length; i ++){
+				sponsors[i].className = &quot;sponsor&quot;;
+				footer.appendChild(sponsors[i]);
+			}
+</P><P>			this.switchs = configs.toDOM(&quot;div&quot;,&quot;switchs&quot;);
+			this.surface.appendChild(this.switchs);
+		},
+		switchSubheading: function( newSub ){
+			if( this.subheading != newSub){
+				if( this.subheading )
+					this.subheading.className = &quot;HiddenCatalog&quot;;
+</P><P>				this.subheading = newSub;
+				newSub.className = &quot;VisibleCatalog&quot;;
+			}
+		},
+		addPath:function( path, slide ){
+			this.slides[ path ] = slide;
+</P><P>			var
+				sep = path.split(/\s*\.\s*/);
+			if( !(sep[0] &amp;&amp; sep[1] &amp;&amp; sep[2]) )
+				return false;
+</P><P>			var
+				fst = sep[0].toUpperCase(),
+				sec = sep[1].toUpperCase(),
+				thr = sep[2].toUpperCase(),
+				_this = this,
+				h = this.headings,
+				tgtH = null,
+				tgtS = null;
+</P><P>			for(var i = 0; i &lt; h.length; i ++)
+				if( h[i].innerHTML == fst )
+					tgtH = h[i];
+</P><P>			if( !tgtH ){
+				tgtH = configs.toDOM(&quot;span&quot;, &quot;.H1&quot;);
+				tgtH.innerHTML = fst;
+</P><P>				tgtH._catalog  = configs.toDOM(&quot;div&quot;, &quot;.HiddenCatalog&quot;)
+				this.header.appendChild(tgtH._catalog);
+</P><P>				tgtH.addEventListener(&quot;mouseover&quot;,(function(cata){
+					return function(){
+						_this.switchSubheading(cata);
+					};
+				})(tgtH._catalog) );
+</P><P>				this.header.appendChild(tgtH);
+				this.headings.push(tgtH);
+</P><P>				var accum = [ this.logo.offsetLeft + this.logo.offsetWidth + configs.heading_padding ];
+				for(var i = 0; i &lt; this.headings.length; i ++){
+					css(this.headings[i],{
+						&quot;left&quot;: accum[i] + &quot;px&quot;
+					});
+					accum[i+1] = accum[i] + this.headings[i].clientWidth + configs.heading_padding;
+				}
+			}
+</P><P>			var s = tgtH._catalog.children;
+			for(var i = 0; i &lt; s.length; i ++)
+				if( s[i].innerHTML == sec )
+					tgtS = s[i];
+</P><P>			if( !tgtS ){
+				tgtS = configs.toDOM(&quot;span&quot;, &quot;.H2&quot;);
+				tgtS.innerHTML = sec;
+</P><P>				tgtS._blocks = configs.toDOM(&quot;div&quot;, &quot;.HiddenBlocks&quot;);
+				this.switchs.appendChild(tgtS._blocks);
+</P><P>				tgtS.addEventListener(&quot;mouseover&quot;,(function(blocks){
+					return function(){
+						if(_this.blocks)
+							_this.blocks.className = &quot;HiddenBlocks&quot;;
+</P><P>						_this.blocks = blocks;
+						blocks.className = &quot;VisibleBlocks&quot;;
+					};
+				})(tgtS._blocks) );
+</P><P>				tgtH._catalog.appendChild(tgtS);
+				s = tgtH._catalog.children;
+</P><P>				var accum = [ this.logo.offsetLeft + this.logo.offsetWidth + configs.heading_padding ];
+				for(var i = 0; i &lt; s.length; i ++){
+					css(s[i],{
+						&quot;left&quot;: accum[i] + &quot;px&quot;
+					});
+					accum[i+1] = accum[i] + s[i].clientWidth + configs.subheading_padding;
+				}
+			}
+</P><P>			var
+				block = configs.toDOM(&quot;div&quot;,&quot;.H3&quot;);
+			block.name = thr;
+			block.addEventListener(&quot;mouseover&quot;,(function(path){
+				return function(){
+					_this.jumpTo( path );
+				}
+			})(path) );
+			tgtS._blocks.appendChild(block);
+</P><P>			var b = tgtS._blocks.children, accum = [ 0 ];
+			for(var i = 0; i &lt; b.length; i ++ )
+				accum[i+1] = accum[i] + b[i].clientWidth + configs.block_padding;
+</P><P>			var left  = Math.round( (window.innerWidth - accum.pop())/2);
+			for(var i = 0; i &lt; b.length; i ++ )
+				css(b[i],{
+					&quot;left&quot;: (left + accum[i]) + &quot;px&quot;
+				})
+		},
+		jumpTo: function( path ){
+			var
+				slideNext = this.slides[ path ];
+</P><P>			if( !slideNext || slideNext == this.slideNow)
+				return ;
+</P><P>			path = path.toUpperCase();
+			var
+				sep = path.split(/\s*\.\s*/),
+				fst = sep[0],
+				sec = sep[1],
+				thr = sep[2];
+</P><P>			
+			var c, t, s;
+</P><P>			for(var i = 0; i &lt; this.headings.length; i ++)
+				if(this.headings[i].innerHTML == fst ){
+					t = this.headings[i]._catalog;
+					c = t.children;
+					for(var j = 0; j &lt; c.length; j ++){
+						if( c[j].innerHTML == sec ){
+							s = c[j];
+							break;
+						}
+					}
+					break;				
+				}
+</P><P>			this.switchSubheading(t);
+</P><P>			if(this.blocks)
+				this.blocks.className = &quot;HiddenBlocks&quot;;
+</P><P>			this.blocks = s._blocks;
+			this.blocks.className = &quot;VisibleBlocks&quot;;
+</P><P>			var
+				bc = this.blocks.children;
+</P><P>			for(var i = 0; i &lt; bc.length; i ++){
+				if( bc[i].name == thr )
+					css(bc[i],{&quot;background-color&quot;:&quot;#92ffff&quot;});
+				else
+					css(bc[i],{&quot;background-color&quot;:&quot;#898F94&quot;});
+			}
+</P><P>			if(this.slideNow)
+				this.slideNow.render(null);
+</P><P>			this.slideNow = slideNext;
+			this.slideNow.render(0);
+			return true;
+		}
+	};
+</P><P>	function igemUCAS(){
+		console.log(&quot;igemUCAS.js v0.18.22&quot;);
+		var 
+			iU_root = document.getElementById(&quot;igemUCAS&quot;);
+</P><P>		if( !iU_root )
+			return console.log(&quot;Error: root igemUCAS div not found. Terminating.&quot;);
+</P><P>		iU_root.style.visibility = &quot;hidden&quot;;
+		iU_root.style[&quot;z-index&quot;] = &quot;-100&quot;;
+</P><P>		configs.toDOM = function( type, id, toRoot ){
+			var
+				elem = document.createElement( type||&quot;div&quot; );
+			if( typeof id == &quot;string&quot; &amp;&amp; id.length){
+				var
+					s = id.split(/\s+/);
+				for(var i = 0 ;i &lt; s.length; i ++){
+					if( s[i].charAt(0) == &quot;.&quot;)
+						elem.className = s[i].substr(1);
+					else
+						elem.id = s[i];
+				}
+			}
+			if(toRoot)
+				iU_root.parentNode.appendChild( elem );
+			return elem;
+		};
+</P><P>		var
+			icons 		= iU_root.children[0].children;
+			cover 		= icons[0],
+			logo 		= icons[1],
+			content 	= [],
+			sponsors 	= [];
+		for(var i = 2; i &lt; icons.length; i ++)
+			sponsors.push( icons[i] );
+</P><P>		for(var i = 1; i &lt; iU_root.children.length; i ++)
+			content.push( iU_root.children[i] );
+</P><P>		var
+			nav 		= new Navigation( logo, sponsors ),
+			book 		= new Book( nav );
+</P><P>		iU_root.parentNode.removeChild(iU_root);
+</P><P>		for(var i = 0; i &lt; content.length; i ++){
+			var
+				node = content[i];
+</P><P>			switch( (node.tagName||&quot;&quot;).toLowerCase() ){
+				case &quot;dfn&quot;:
+					book.newSlide( node ); break;
+				case &quot;p&quot;: case &quot;b&quot;: case &quot;span&quot;:
+					book.script(node); break;
+				case &quot;img&quot;: case &quot;video&quot;: case &quot;ins&quot;:
+					book.image(node);  break;
+			}
+		}
+		book.newSlide();
+</P><P>		nav.jumpTo(&quot;project.description.description&quot;);
+		setTimeout(function(){console.log( book.toString() )},2000);
+	}
+	return igemUCAS;
+});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,83 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Slovenia/PROJECT/oscillator/details
+From 2010.igem.org
+Chuck Norris facts:
+oscillator - details
+Contents
+1 MATLAB script and how it works
+1.1 Main variables used in our MATLAB script are as follows:
+2 MATLAB Simbiology tool and how it works
+3 SGN Sim and how to create the input file
+MATLAB script and how it works
+In order to perform the stochastic simulations stochastic simulation algorithm (SSA) is commonly used . Our MATLAB script file is an implementation of the SSA algorithm for MATLAB environment. The basic algorithm we used is as follows:
+1. Initialization: Initialize the number and initial concentrations of species in the system, reactions used, reactions constants and kinetics.
+2. Execution step: Generate random numbers to determine the next reaction to occur. The probability of a given reaction to be chosen is proportional to the concentration of reagents (some of the algorithms also determine the time step, time step we used was constant but small, to make the execution step efficient - but at the cost of simulation taking longer to complete).
+3. Update: Update the species concentrations based on the reaction chosen in step 2.
+4. Iterate: Go back to Step 2 unless the simulation time has been exceeded.
+Note that using constant volume concentration can also mean number of molecules.
+Main variables used in our MATLAB script are as follows:
+S is the number of species
+R is the number of reactions
+v(S,R) is a matrix, called stoichiometric matrix; each row represents one reaction, while the columns are the species; the numbers in the row tell us what species is used and which one produced (and how much of it) in one reaction
+k is a matrix of kinetic rates; rows are different genes (ie gene for NICTAL/RNA polymerase/GFP), while the columns are kinetic rates used in different reactions
+x is a vector of concentration (or molecule count) of each species
+t vector of change - calculated in every step for every reaction
+Each step of the simulation (for i =1:N loop) first evaluates the probabilities of all reactions (propensity function ajx), again proportional to the concentration (or molecule count) of the species and kinetic rates.
+Change of the system state is calculated. This is where the randomness occurs. For every reaction (for j = 1:R loop) we calculate t as t = v(:,j)'*poissrnd(a(j)*tau), where v(:,j) presents the stoichiometric vector for reaction j, a(j) presents the result of the propensity function for this reaction and poissrnd(x) a random number somewhere close to x according to Poisson distribution.
+The validation of calculated change needs to be examined. If it causes negative values of concentrations (x), we do not take it as valid. In other case we simply add vector t to the vector change from previous reaction. Once we finish the calculation for all reactions, we add the change vector to the species vector x, updating the values to reflect reaction execution.
+If we want to know how the concentration (or molecule count) was changing throughout the simulation, we need to save the x value in every step. The code under %% Plotting results simply turns the saved values of the simulations into a graph comprehensible by the person sitting behind the computer.
+MATLAB Simbiology tool and how it works
+To import a simple example of our model in sbml format we could follow these simple steps:
+open the simbiology tool by writting "simbiology" in the Matlab console
+create a new project from menu File ( File -> New Project )
+in the new project wizard window in the left panel menu select  "Add model"
+in the right panel "Add model", using scrolled bar, select item "Load model from file"
+select the source folder where the sbml file is located
+click "Finish" to build selected model
+Several variable changes of the existing default configuration parameters of simbiology are required to set-up configuration for simulations. The following settings should be used:
+in the "Project explorer", expand the "Model session" tree
+click on "Configuration Settings"
+set the simulation time to 30.000 (recommended) or more
+set the solver type to "ode15s"
+click on the "Data logging" tab
+deselect all species logs you do not want in your result figure
+select the species you want in your result figure
+SGN Sim and how to create the input file
+SGN Sim is easy to use and versatile program that offers a great deal of tools for stochastic simulation. Its base is SSA algorithm described in the 'MATLAB script' section, but with certain additions. For example, we can delay the production of translation with a simple fix in the input file. Two great guides come along with the program explaining how to create an input file, what it should contain and how to use certain tricks. You can find the guides here . The program then parses your input file and runs the simulation. Here is a quick recap of what we used in our input file:
+"time" and "stop _time" parameters determine when the simulation starts and ends, the "read_out interval" tells the program the saving frequency of calculation results and "output_file" tells the program what output file to use (it can save the results directly as an Excel file, a txt file, etc.).
+Segment:
+lua !{ ... }
+tells the program what are the constants used in our simulation.
+Segment:
+population { ... }
+determines starting concentrations (or molecule counts) for all species.
+Segment:
+reaction { ... }
+is the part where the reactions are determined.
+To describe a reaction we simply use the notation from population { } segment and follow the syntax provided by the two guides: A + B --[k]--> C;
+where A, B and C are the reagents and k is the kinetic constant used for this reaction. If we use a letter for the rate, we must declare it in the lua !{ } section, however the parser allows using a number as well (A + B --[0.02]--> C). Degradation is simply noted as:
+A --[k_deg]--> ;
+The most important part is the time delay we can add to products of the reactions. If I use the example from our input file, where we had to delay the production of translation:
+A --[transcription_rate]--> B(translation_delay);
+We can again replace translation_delay by a number, the parser even allows mathematical expressions (such as 700/200 - 700 divided by 200). A great feature of this program is also that you can use a probability distribution inside the delay. We used exponential distribution for the translation delay:
+A--[transcription_rate]-->B(exp:(1/translation_delay));
+Simple, yet very effective and useful.
+As we can see setting up a biological model and running a stochastic simulation is easy and very accurate with this program. We were also surprised how fast it calculates the result of simulation, compared to our MATLAB script.
+Back to Oscillator.
+Retrieved from " http://2010.igem.org/Team:Slovenia/PROJECT/oscillator/details "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

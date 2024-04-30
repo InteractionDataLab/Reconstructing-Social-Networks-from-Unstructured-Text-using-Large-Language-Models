@@ -1,0 +1,663 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_TU-Munich_excanvas_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:TU-Munich/excanvas.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:TU-Munich/excanvas.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:TU-Munich/excanvas.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:TU-Munich/excanvas.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:TU-Munich/excanvas.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:TU-Munich/excanvas.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>// Copyright 2006 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   <A href="http://www.apache.org/licenses/LICENSE-2.0" class="external free" rel="nofollow">http://www.apache.org/licenses/LICENSE-2.0</A>
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+</P><P>
+// Known Issues: (From VML version)
+//
+// * Patterns are not implemented.
+// * Radial gradient are not implemented. The VML version of these look very
+//   different from the canvas one.
+// * Clipping paths are not implemented.
+// * Coordsize. The width and height attribute have higher priority than the
+//   width and height style values which isn't correct.
+// * Painting mode isn't implemented.
+// * Canvas width/height should is using content-box by default. IE in
+//   Quirks mode will draw the canvas using border-box. Either change your
+//   doctype to HTML5
+//   (<A href="http://www.whatwg.org/specs/web-apps/current-work/#the-doctype" class="external free" rel="nofollow">http://www.whatwg.org/specs/web-apps/current-work/#the-doctype</A>)
+//   or use Box Sizing Behavior from WebFX
+//   (<A href="http://webfx.eae.net/dhtml/boxsizing/boxsizing.html" class="external free" rel="nofollow">http://webfx.eae.net/dhtml/boxsizing/boxsizing.html</A>)
+// * Optimize. There is always room for speed improvements.
+</P><P>//Known Issues: Silverlight version
+//
+// * Doing a transformation during a path (ie lineTo, transform, lineTo) will
+//   not work corerctly because the transform is done to the whole path (ie
+//   transform, lineTo, lineTo)
+// * Patterns are not yet implemented.
+</P><P>
+// only add this code if we do not already have a canvas implementation
+if (!window.CanvasRenderingContext2D) {
+</P><P>(function () {
+</P><PRE> var xamlId;
+</PRE><PRE> var G_vmlCanvasManager_ = {
+   init: function (opt_doc) {
+     var doc = opt_doc || document;
+     // Create a dummy element so that IE will allow canvas elements to be
+     // recognized.
+     doc.createElement('canvas');
+     if (/MSIE/.test(navigator.userAgent) &amp;&amp; !window.opera) {
+       var self = this;
+</PRE><PRE>       createXamlScriptTag();
+</PRE><PRE>       doc.attachEvent('onreadystatechange', function () {
+         self.init_(doc);
+       });
+     }
+   },
+</PRE><PRE>   init_: function (doc) {
+     // setup default css
+     var ss = doc.createStyleSheet();
+     ss.cssText = 'canvas{display:inline-block;overflow:hidden;' +
+         // default size is 300x150 in Gecko and Opera
+         'text-align:left;width:300px;height:150px}' +
+         'canvas object{width:100%;height:100%;border:0;' +
+         'background:transparen;margin:0}';
+</PRE><PRE>     // find all canvas elements
+     var els = doc.getElementsByTagName('canvas');
+     for (var i = 0; i &lt; els.length; i++) {
+       if (!els[i].getContext) {
+         this.initElement(els[i]);
+       }
+     }
+   },
+</PRE><PRE>   /**
+    * Public initializes a canvas element so that it can be used as canvas
+    * element from now on. This is called automatically before the page is
+    * loaded but if you are creating elements using createElement you need to
+    * make sure this is called on the element.
+    * @param {HTMLElement} el The canvas element to initialize.
+    * @return {HTMLElement} the element that was created.
+    */
+   initElement: function (el) {
+     el.getContext = function () {
+       if (this.context_) {
+         return this.context_;
+       }
+       return this.context_ = new CanvasRenderingContext2D_(this);
+     };
+</PRE><PRE>     var attrs = el.attributes;
+     if (attrs.width &amp;&amp; attrs.width.specified) {
+       // TODO: use runtimeStyle and coordsize
+       // el.getContext().setWidth_(attrs.width.nodeValue);
+       el.style.width = attrs.width.nodeValue + 'px';
+     } else {
+       el.width = el.clientWidth;
+     }
+     if (attrs.height &amp;&amp; attrs.height.specified) {
+       // TODO: use runtimeStyle and coordsize
+       // el.getContext().setHeight_(attrs.height.nodeValue);
+       el.style.height = attrs.height.nodeValue + 'px';
+     } else {
+       el.height = el.clientHeight;
+     }
+</PRE><PRE>     // insert object tag
+     el.innerHTML = getObjectHtml();
+</PRE><PRE>     // do not use inline function because that will leak memory
+     el.attachEvent('onpropertychange', onPropertyChange);
+     return el;
+   }
+ };
+</PRE><PRE> function onPropertyChange(e) {
+   var el = e.srcElement;
+</PRE><PRE>   switch (e.propertyName) {
+     case 'width':
+       el.style.width = el.attributes.width.nodeValue + 'px';
+       el.getContext().clearRect();
+       break;
+     case 'height':
+       el.style.height = el.attributes.height.nodeValue + 'px';
+       el.getContext().clearRect();
+       break;
+   }
+ }
+</PRE><PRE> G_vmlCanvasManager_.init();
+</PRE><PRE> function createXamlScriptTag() {
+   // This script tag contains the boilerplate XAML.
+   document.write('&lt;script type=text/xaml&gt;' +
+       '&lt;Canvas x:Name=&quot;root&quot; ' +
+       'xmlns=&quot;<A href="http://schemas.microsoft.com/client/2007" class="external free" rel="nofollow">http://schemas.microsoft.com/client/2007</A>&quot; ' +
+       'xmlns:x=&quot;<A href="http://schemas.microsoft.com/winfx/2006/xaml" class="external free" rel="nofollow">http://schemas.microsoft.com/winfx/2006/xaml</A>&quot; ' +
+       'Width=&quot;300&quot; ' +
+       'Height=&quot;150&quot; ' +
+       'Background=&quot;Transparent&quot;&gt; ' +
+       '&lt;/Canvas&gt;' +
+       '&lt;/script&gt;');
+   // Find the id of the writtenscript file.
+   var scripts = document.scripts;
+   var script = scripts[scripts.length - 1];
+   xamlId = script.uniqueID;
+   script.id = xamlId;
+ }
+</PRE><PRE> function getObjectHtml(fn) {
+   return '&lt;object type=&quot;application/x-silverlight&quot; &gt;' +
+       '&lt;param name=&quot;windowless&quot; value=&quot;true&quot;&gt;' +
+       '&lt;param name=&quot;background&quot; value=&quot;transparent&quot;&gt;' +
+       '&lt;param name=&quot;source&quot; value=&quot;#' + xamlId + '&quot;&gt;' +
+       '&lt;/object&gt;';
+ }
+</PRE><PRE> function hasSilverlight() {
+   try {
+     new ActiveXObject('AgControl.AgControl');
+     return true;
+   } catch(_) {
+     return false;
+   }
+ }
+</PRE><PRE> // precompute &quot;00&quot; to &quot;FF&quot;
+ var dec2hex = [];
+ for (var i = 0; i &lt; 16; i++) {
+   for (var j = 0; j &lt; 16; j++) {
+     dec2hex[i * 16 + j] = i.toString(16) + j.toString(16);
+   }
+ }
+</PRE><PRE> function createMatrixIdentity() {
+   return [
+     [1, 0, 0],
+     [0, 1, 0],
+     [0, 0, 1]
+   ];
+ }
+</PRE><PRE> function matrixMultiply(m1, m2) {
+   var result = createMatrixIdentity();
+</PRE><PRE>   for (var x = 0; x &lt; 3; x++) {
+     for (var y = 0; y &lt; 3; y++) {
+       var sum = 0;
+</PRE><PRE>       for (var z = 0; z &lt; 3; z++) {
+         sum += m1[x][z] * m2[z][y];
+       }
+</PRE><PRE>       result[x][y] = sum;
+     }
+   }
+   return result;
+ }
+</PRE><PRE> function doTransform(ctx) {
+   transformObject(ctx, getRoot(ctx), ctx.m_);
+ }
+</PRE><PRE> function transformObject(ctx, obj, m) {
+   var transform = obj.renderTransform;
+   var matrix;
+   if (!transform) {
+     transform = create(ctx, '&lt;MatrixTransform/&gt;');
+     matrix = create(ctx, '&lt;Matrix/&gt;');
+     transform.matrix = matrix;
+     obj.renderTransform = transform;
+   } else {
+     matrix = transform.matrix;
+   }
+</PRE><PRE>   matrix.m11 = m[0][0];
+   matrix.m12 = m[0][1];
+   matrix.m21 = m[1][0];
+   matrix.m22 = m[1][1];
+   matrix.offsetX = m[2][0];
+   matrix.offsetY = m[2][1];
+ }
+</PRE><PRE> function copyState(o1, o2) {
+   o2.fillStyle     = o1.fillStyle;
+   o2.lineCap       = o1.lineCap;
+   o2.lineJoin      = o1.lineJoin;
+   o2.lineWidth     = o1.lineWidth;
+   o2.miterLimit    = o1.miterLimit;
+   o2.shadowBlur    = o1.shadowBlur;
+   o2.shadowColor   = o1.shadowColor;
+   o2.shadowOffsetX = o1.shadowOffsetX;
+   o2.shadowOffsetY = o1.shadowOffsetY;
+   o2.strokeStyle   = o1.strokeStyle;
+   o2.globalAlpha   = o1.globalAlpha;
+   o2.arcScaleX_    = o1.arcScaleX_;
+   o2.arcScaleY_    = o1.arcScaleY_;
+ }
+</PRE><PRE> function translateColor(s) {
+   var rgbaMatch = /rgba\(([^)]+)\)/gi.exec(s);
+   if (rgbaMatch) {
+     var parts = rgbaMatch[1].split(',');
+     return '#' + dec2hex[Math.floor(Number(parts[3]) * 255)] +
+         dec2hex[Number(parts[0])] +
+         dec2hex[Number(parts[1])] +
+         dec2hex[Number(parts[2])];
+   }
+</PRE><PRE>   var rgbMatch  = /rgb\(([^)]+)\)/gi.exec(s);
+   if (rgbMatch) {
+     var parts = rgbMatch[1].split(',');
+     return '#FF' + dec2hex[Number(parts[0])] +
+         dec2hex[Number(parts[1])] +
+         dec2hex[Number(parts[2])];
+   }
+</PRE><PRE>   return s;
+ }
+</PRE><PRE> function processLineCap(lineCap) {
+   switch (lineCap) {
+     case 'butt':
+       return 'flat';
+     case 'round':
+       return 'round';
+     case 'square':
+     default:
+       return 'square';
+   }
+ }
+</PRE><PRE> function getRoot(ctx) {
+   return ctx.canvas.firstChild.content.findName('root');
+ }
+</PRE><PRE> function create(ctx, s, opt_args) {
+   if (opt_args) {
+     s = s.replace(/\%(\d+)/g, function(match, index) {
+       return opt_args[Number(index) - 1];
+     });
+   }
+</PRE><PRE>   try {
+     return ctx.canvas.firstChild.content.createFromXaml(s);
+   } catch (ex) {
+     throw Error('Could not create XAML from: ' + s);
+   }
+ }
+</PRE><PRE> function drawShape(ctx, s, opt_args) {
+   var canvas = ctx.lastCanvas_ || create(ctx, '&lt;Canvas/&gt;');
+   var shape = create(ctx, s, opt_args);
+   canvas.children.add(shape);
+   transformObject(ctx, canvas, ctx.m_);
+   if (!ctx.lastCanvas_) {
+     getRoot(ctx).children.add(canvas);
+     ctx.lastCanvas_ = canvas;
+   }
+   return shape;
+ }
+</PRE><PRE> function createBrushObject(ctx, value) {
+   if (value instanceof CanvasGradient_) {
+     return value.createBrush_(ctx);
+   } else if (value instanceof CanvasPattern_) {
+     throw Error('Not implemented');
+   } else {
+     return create(ctx, '&lt;SolidColorBrush Color=&quot;%1&quot;/&gt;',
+                   [translateColor(value)]);
+   }
+ }
+</PRE><PRE> /**
+  * This class implements CanvasRenderingContext2D interface as described by
+  * the WHATWG.
+  * @param {HTMLElement} surfaceElement The element that the 2D context should
+  *     be associated with
+  */
+  function CanvasRenderingContext2D_(surfaceElement) {
+   this.m_ = createMatrixIdentity();
+   this.lastCanvas_ = null;
+</PRE><PRE>   this.mStack_ = [];
+   this.aStack_ = [];
+   this.currentPath_ = [];
+</PRE><PRE>   // Canvas context properties
+   this.strokeStyle = '#000';
+   this.fillStyle = '#000';
+</PRE><PRE>   this.lineWidth = 1;
+   this.lineJoin = 'miter';
+   this.lineCap = 'butt';
+   this.miterLimit = 10;
+   this.globalAlpha = 1;
+   this.canvas = surfaceElement;
+ };
+</PRE><PRE> var contextPrototype = CanvasRenderingContext2D_.prototype;
+</PRE><PRE> contextPrototype.clearRect = function() {
+   var root = getRoot(this);
+   root.children.clear();
+</PRE><PRE>   // TODO: Implement
+   this.currentPath_ = [];
+   this.lastCanvas_ = null;
+</PRE><PRE> };
+</PRE><PRE> contextPrototype.beginPath = function() {
+   // TODO: Branch current matrix so that save/restore has no effect
+   //       as per safari docs.
+</PRE><PRE>   this.currentPath_ = [];
+ };
+</PRE><PRE> contextPrototype.moveTo = function(aX, aY) {
+   this.currentPath_.push('M' + aX + ',' + aY);
+ };
+</PRE><PRE> contextPrototype.lineTo = function(aX, aY) {
+   if (this.currentPath_.length == 0) return;
+   this.currentPath_.push('L' + aX + ',' + aY);
+ };
+</PRE><PRE> contextPrototype.bezierCurveTo = function(aCP1x, aCP1y,
+                                           aCP2x, aCP2y,
+                                           aX, aY) {
+   if (this.currentPath_.length == 0) return;
+   this.currentPath_.push('C' + aCP1x + ',' + aCP1y + ' ' +
+                          aCP2x + ',' + aCP2y + ' ' +
+                          aX + ' ' + aY);
+ };
+</PRE><PRE> contextPrototype.quadraticCurveTo = function(aCPx, aCPy, aX, aY) {
+   if (this.currentPath_.length == 0) return;
+   this.currentPath_.push('Q' + aCPx + ',' + aCPy + ' ' +
+                          aX + ',' + aY);
+ };
+</PRE><PRE> contextPrototype.arcTo = function(x1, y1, x2, y2, radius) {
+   if (this.currentPath_.length == 0) return;
+   // TODO: Implement
+ };
+</PRE><PRE> contextPrototype.arc = function(aX, aY, aRadius,
+                                 aStartAngle, aEndAngle, aClockwise) {
+   var deltaAngle = Math.abs(aStartAngle - aEndAngle);
+   // If start and stop are the same WebKit and Moz does nothing
+   if (aStartAngle == aEndAngle) {
+     // different browsers behave differently here so we do the easiest thing
+     return;
+   }
+</PRE><PRE>   var endX = aX + aRadius * Math.cos(aEndAngle);
+   var endY = aY + aRadius * Math.sin(aEndAngle);
+</PRE><PRE>   if (deltaAngle &gt;= 2 * Math.PI) {
+     // if larger than 2PI
+     this.arc(aX, aY, aRadius, aStartAngle, aStartAngle + Math.PI, aClockwise);
+     this.arc(aX, aY, aRadius, aStartAngle + Math.PI,
+              aStartAngle + 2 * Math.PI, aClockwise);
+     // now move to end point
+     this.moveTo(endX, endY);
+     return;
+   }
+</PRE><PRE>   var startX = aX + aRadius * Math.cos(aStartAngle);
+   var startY = aY + aRadius * Math.sin(aStartAngle);
+   var rotationAngle = deltaAngle * 180 / Math.PI; // sign, abs?
+   var sweepDirection = aClockwise ? 0 : 1;
+   var isLargeArc = rotationAngle &gt;= 180 == Boolean(aClockwise) ? 0 : 1;
+</PRE><PRE>   if (this.currentPath_.length != 0) {
+     // add line to start point
+     this.lineTo(startX, startY);
+   } else {
+     this.moveTo(startX, startY);
+   }
+</PRE><PRE>   this.currentPath_.push('A' + aRadius + ',' + aRadius + ' ' +
+                          rotationAngle + ' ' +
+                          isLargeArc + ' ' +
+                          sweepDirection + ' ' +
+                          endX + ',' + endY);
+ };
+</PRE><PRE> contextPrototype.rect = function(aX, aY, aWidth, aHeight) {
+   this.moveTo(aX, aY);
+   this.lineTo(aX + aWidth, aY);
+   this.lineTo(aX + aWidth, aY + aHeight);
+   this.lineTo(aX, aY + aHeight);
+   this.closePath();
+ };
+</PRE><PRE> contextPrototype.strokeRect = function(aX, aY, aWidth, aHeight) {
+   // Will destroy any existing path (same as FF behaviour)
+   this.beginPath();
+   this.moveTo(aX, aY);
+   this.lineTo(aX + aWidth, aY);
+   this.lineTo(aX + aWidth, aY + aHeight);
+   this.lineTo(aX, aY + aHeight);
+   this.closePath();
+   this.stroke();
+   this.currentPath_ = [];
+ };
+</PRE><PRE> contextPrototype.fillRect = function(aX, aY, aWidth, aHeight) {
+   // Will destroy any existing path (same as FF behaviour)
+   this.beginPath();
+   this.moveTo(aX, aY);
+   this.lineTo(aX + aWidth, aY);
+   this.lineTo(aX + aWidth, aY + aHeight);
+   this.lineTo(aX, aY + aHeight);
+   this.closePath();
+   this.fill();
+   this.currentPath_ = [];
+ };
+</PRE><PRE> contextPrototype.createLinearGradient = function(aX0, aY0, aX1, aY1) {
+   return new LinearCanvasGradient_(aX0, aY0, aX1, aY1);
+ };
+</PRE><PRE> contextPrototype.createRadialGradient = function(x0, y0,
+                                                  r0, x1,
+                                                  y1, r1) {
+   return new RadialCanvasGradient_(x0, y0, r0, x1, y1, r1);
+ };
+</PRE><PRE> contextPrototype.drawImage = function (image, var_args) {
+   var dx, dy, dw, dh, sx, sy, sw, sh;
+</PRE><PRE>   // For Silverlight we don't need to get the size of the image since
+   // Silverlight uses the image original dimension if not provided.
+</PRE><PRE>   if (arguments.length == 3) {
+     dx = arguments[1];
+     dy = arguments[2];
+     // Keep sx, sy, sw, dw, sh and dh undefined
+   } else if (arguments.length == 5) {
+     dx = arguments[1];
+     dy = arguments[2];
+     dw = arguments[3];
+     dh = arguments[4];
+     // Keep sx, sy, sw and sh undefined
+   } else if (arguments.length == 9) {
+     sx = arguments[1];
+     sy = arguments[2];
+     sw = arguments[3];
+     sh = arguments[4];
+     dx = arguments[5];
+     dy = arguments[6];
+     dw = arguments[7];
+     dh = arguments[8];
+   } else {
+     throw Error('Invalid number of arguments');
+   }
+</PRE><PRE>   var slImage;
+</PRE><PRE>   // If we have a source rect we need to clip the image.
+   if (arguments.length == 9) {
+     slImage = drawShape(this, '&lt;Image Source=&quot;%1&quot;/&gt;', [image.src]);
+</PRE><PRE>     var clipRect = create(this,
+         '&lt;RectangleGeometry Rect=&quot;%1,%2,%3,%4&quot;/&gt;', [sx, sy, sw, sh]);
+     slImage.clip = clipRect;
+</PRE><PRE>     var m = createMatrixIdentity();
+</PRE><PRE>     // translate to 0,0
+     m[2][0] = -sx;
+     m[2][1] = -sy;
+</PRE><PRE>     // scale
+     var m2 = createMatrixIdentity();
+     m2[0][0] = dw / sw;
+     m2[1][1] = dh / sh;
+</PRE><PRE>     m = matrixMultiply(m, m2);
+</PRE><PRE>     // translate to destination
+     m[2][0] += dx;
+     m[2][1] += dy;
+</PRE><PRE>     transformObject(this, slImage, m);
+</PRE><PRE>   } else {
+     slImage = drawShape(this,
+         '&lt;Image Source=&quot;%1&quot; Canvas.Left=&quot;%2&quot; Canvas.Top=&quot;%3&quot;/&gt;',
+         [image.src, dx, dy]);
+     if (dw != undefined || dh != undefined) {
+       slImage.width = dw;
+       slImage.height = dh;
+       slImage.stretch = 'fill';
+     }
+   }
+ };
+</PRE><PRE> contextPrototype.stroke = function() {
+   if (this.currentPath_.length == 0) return;
+   var path = drawShape(this, '&lt;Path Data=&quot;%1&quot;/&gt;',
+                        [this.currentPath_.join(' ')]);
+   path.stroke = createBrushObject(this, this.strokeStyle);
+   path.opacity = this.globalAlpha;
+   path.strokeThickness = this.lineWidth;
+   path.strokeMiterLimit = this.miterLimit;
+   path.strokeLineJoin = this.lineJoin;
+   // Canvas does not differentiate start from end
+   path.strokeEndLineCap = path.strokeStartLineCap =
+       processLineCap(this.lineCap);
+ };
+</PRE><PRE> contextPrototype.fill = function() {
+   if (this.currentPath_.length == 0) return;
+   var path = drawShape(this, '&lt;Path Data=&quot;%1&quot;/&gt;',
+                        [this.currentPath_.join(' ')]);
+   // The spec says to use non zero but Silverlight uses EvenOdd by defaul
+   path.data.fillRule = 'NonZero';
+   path.fill = createBrushObject(this, this.fillStyle);
+   // TODO: What about even-odd etc?
+ };
+</PRE><PRE> contextPrototype.closePath = function() {
+   this.currentPath_.push('z');
+ };
+</PRE><PRE> /**
+  * Sets the transformation matrix and marks things as dirty
+  */
+ function setM(self, m) {
+   self.m_ = m;
+   self.lastCanvas_ = null;
+ };
+</PRE><PRE> contextPrototype.save = function() {
+   var o = {};
+   copyState(this, o);
+   this.aStack_.push(o);
+   this.mStack_.push(this.m_);
+   setM(this, matrixMultiply(createMatrixIdentity(), this.m_));
+ };
+</PRE><PRE> contextPrototype.restore = function() {
+   copyState(this.aStack_.pop(), this);
+   setM(this, this.mStack_.pop());
+ };
+</PRE><PRE> contextPrototype.translate = function(aX, aY) {
+   var m1 = [
+     [1,  0,  0],
+     [0,  1,  0],
+     [aX, aY, 1]
+   ];
+</PRE><PRE>   setM(this, matrixMultiply(m1, this.m_));
+ };
+</PRE><PRE> contextPrototype.rotate = function(aRot) {
+   var c = Math.cos(aRot);
+   var s = Math.sin(aRot);
+</PRE><PRE>   var m1 = [
+     [c,  s, 0],
+     [-s, c, 0],
+     [0,  0, 1]
+   ];
+</PRE><PRE>   setM(this, matrixMultiply(m1, this.m_));
+ };
+</PRE><PRE> contextPrototype.scale = function(aX, aY) {
+   var m1 = [
+     [aX, 0,  0],
+     [0,  aY, 0],
+     [0,  0,  1]
+   ];
+</PRE><PRE>   setM(this, matrixMultiply(m1, this.m_));
+ };
+</PRE><PRE> contextPrototype.transform = function(m11, m12, m21, m22, dx, dy) {
+   var m1 = [
+     [m11, m12, 0],
+     [m21, m22, 0],
+     [ dx,  dy, 1]
+   ];
+</PRE><PRE>   setM(this, matrixMultiply(m1, this.m_));
+ };
+</PRE><PRE> contextPrototype.setTransform = function(m11, m12, m21, m22, dx, dy) {
+   setM(this, [
+     [m11, m12, 0],
+     [m21, m22, 0],
+     [ dx,  dy, 1],
+   ]);
+ };
+</PRE><PRE> /******** STUBS ********/
+ contextPrototype.clip = function() {
+   // TODO: Implement
+ };
+</PRE><PRE> contextPrototype.createPattern = function() {
+   return new CanvasPattern_;
+ };
+</PRE><PRE> // Gradient / Pattern Stubs
+ function CanvasGradient_() {
+   this.colors_ = [];
+ }
+</PRE><PRE> CanvasGradient_.prototype.addColorStop = function(aOffset, aColor) {
+   aColor = translateColor(aColor);
+   this.colors_.push({offset: aOffset, color: aColor});
+ };
+</PRE><PRE> CanvasGradient_.prototype.createStops_ = function(ctx, brushObj, colors) {
+   var gradientStopCollection = brushObj.gradientStops;
+   for (var i = 0, c; c = colors[i]; i++) {
+     var color = translateColor(c.color);
+     gradientStopCollection.add(create(ctx,
+         '&lt;GradientStop Color=&quot;%1&quot; Offset=&quot;%2&quot;/&gt;', [color, c.offset]));
+   }
+ };
+</PRE><PRE> function LinearCanvasGradient_(x0, y0, x1, y1) {
+   CanvasGradient_.call(this);
+   this.x0_ = x0;
+   this.y0_ = y0;
+   this.x1_ = x1;
+   this.y1_ = y1;
+ }
+ LinearCanvasGradient_.prototype = new CanvasGradient_;
+</PRE><PRE> LinearCanvasGradient_.prototype.createBrush_ = function(ctx) {
+   var brushObj = create(ctx, '&lt;LinearGradientBrush MappingMode=&quot;Absolute&quot; ' +
+                         'StartPoint=&quot;%1,%2&quot; EndPoint=&quot;%3,%4&quot;/&gt;',
+                         [this.x0_, this.y0_, this.x1_, this.y1_]);
+   this.createStops_(ctx, brushObj, this.colors_);
+   return brushObj;
+ };
+</PRE><PRE> function isNanOrInfinite(v) {
+   return isNaN(v) || !isFinite(v);
+ }
+</PRE><PRE> function RadialCanvasGradient_(x0, y0, r0, x1, y1, r1) {
+   if (r0 &lt; 0 || r1 &lt; 0 || isNanOrInfinite(x0) || isNanOrInfinite(y0) ||
+       isNanOrInfinite(x1) || isNanOrInfinite(y1)) {
+     // IE does not support DOMException so this is as close as we get.
+     var error = Error('DOMException.INDEX_SIZE_ERR');
+     error.code = 1;
+     throw error;
+   }
+</PRE><PRE>   CanvasGradient_.call(this);
+   this.x0_ = x0;
+   this.y0_ = y0;
+   this.r0_ = r0;
+   this.x1_ = x1;
+   this.y1_ = y1;
+   this.r1_ = r1;
+ }
+ RadialCanvasGradient_.prototype = new CanvasGradient_;
+</PRE><PRE> CanvasGradient_.prototype.createBrush_ = function(ctx) {
+   if (this.x0_ == this.x1_ &amp;&amp; this.y0_ == this.y1_ &amp;&amp; this.r0_ == this.r1_) {
+     return null;
+   }
+</PRE><PRE>   var radius = Math.max(this.r0_, this.r1_);
+   var minRadius = Math.min(this.r0_, this.r1_);
+   var brushObj = create(ctx, '&lt;RadialGradientBrush MappingMode=&quot;Absolute&quot; ' +
+                         'GradientOrigin=&quot;%1,%2&quot; Center=&quot;%3,%4&quot; ' +
+                         'RadiusX=&quot;%5&quot; RadiusY=&quot;%5&quot;/&gt;',
+                         [this.x0_, this.y0_, this.x1_, this.y1_, radius]);
+</PRE><PRE>   var colors = this.colors_.concat();
+</PRE><PRE>   if (this.r1_ &lt; this.r0_) {
+     // reverse color stop array
+     colors.reverse();
+     for (var i = 0, c; c = colors[i]; i++) {
+       c.offset = 1 - c.offset;
+     }
+   }
+</PRE><PRE>   // sort the color stops
+   colors.sort(function(c1, c2) {
+     return c1.offset - c2.offset;
+   });
+</PRE><PRE>   if (minRadius &gt; 0) {
+     // We need to adjust the color stops since SL always have the inner radius
+     // at (0, 0) so we change the stops in case the min radius is not 0.
+     for (var i = 0, c; c = colors[i]; i++) {
+       c.offset = minRadius / radius + (radius - minRadius) / radius * c.offset;
+     }
+   }
+</PRE><PRE>   this.createStops_(ctx, brushObj, colors);
+   return brushObj;
+ };
+</PRE><PRE> function CanvasPattern_() {}
+</PRE><PRE> // set up externs
+ G_vmlCanvasManager = G_vmlCanvasManager_;
+ CanvasRenderingContext2D = CanvasRenderingContext2D_;
+ CanvasGradient = CanvasGradient_;
+ CanvasPattern = CanvasPattern_;
+</PRE><P>})();
+</P><P>} // if
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:TU-Munich/excanvas.js">http://2013.igem.org/Team:TU-Munich/excanvas.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:TU-Munich/excanvas.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:TU-Munich/excanvas.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:TU-Munich/excanvas.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:TU-Munich/excanvas.js&amp;oldid=244150" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

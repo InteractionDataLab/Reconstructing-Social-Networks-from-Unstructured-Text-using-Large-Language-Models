@@ -1,0 +1,423 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_UniSalento_Lecce_js_cal_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:UniSalento_Lecce/js/cal.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:UniSalento_Lecce/js/cal.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:UniSalento_Lecce/js/cal.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:UniSalento_Lecce/js/cal.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:UniSalento_Lecce/js/cal.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:UniSalento Lecce/js/cal.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>/* =
+	jquery.eventCalendar.js
+	version: 0.54
+	date: 18-04-2013
+	author:
+		Jaime Fernandez (@vissit)
+	company:
+		Paradigma Tecnologico (@paradigmate)
+</P><UL><LI>/
+</LI></UL><DL><DT>$.fn.eventCalendar = function(options){
+</DT></DL><P>	var eventsOpts = $.extend({}, $.fn.eventCalendar.defaults, options);
+</P><P>	// define global vars for the function
+	var flags = {
+		wrap: &quot;&quot;,
+		directionLeftMove: &quot;300&quot;,
+		eventsJson: {}
+	}
+</P><P>	// each eventCalendar will execute this function
+	this.each(function(){
+</P><P>		flags.wrap = $(this);
+</P>
+		flags.wrap.addClass('eventCalendar-wrap').append(&quot;<DIV class="eventsCalendar-list-wrap"><SPAN class="eventsCalendar-loading">loading...</SPAN></DIV>&quot;);
+<P>		if (eventsOpts.eventsScrollable) {
+			flags.wrap.find('.eventsCalendar-list-content').addClass('scrollable');
+		}
+</P><P>		setCalendarWidth();
+		$(window).resize(function(){
+			setCalendarWidth();
+		});
+		//flags.directionLeftMove = flags.wrap.width();
+</P><P>		// show current month
+		dateSlider(&quot;current&quot;);
+</P><P>		getEvents(eventsOpts.eventsLimit,false,false,false,false);
+</P><P>		changeMonth();
+</P><P>		flags.wrap.on('click','.eventsCalendar-day a',function(e){
+		//flags.wrap.find('.eventsCalendar-day a').live('click',function(e){
+			e.preventDefault();
+			var year = flags.wrap.attr('data-current-year'),
+				month = flags.wrap.attr('data-current-month'),
+				day = $(this).parent().attr('rel');
+</P><P>			getEvents(false, year, month,day, &quot;day&quot;);
+		});
+		flags.wrap.on('click','.monthTitle', function(e){
+		//flags.wrap.find('.monthTitle').live('click',function(e){
+			e.preventDefault();
+			var year = flags.wrap.attr('data-current-year'),
+				month = flags.wrap.attr('data-current-month');
+</P><P>			getEvents(eventsOpts.eventsLimit, year, month,false, &quot;month&quot;);
+		})
+</P><P>	});
+</P><P>	// show event description
+	flags.wrap.find('.eventsCalendar-list').on('click','.eventTitle',function(e){
+	//flags.wrap.find('.eventsCalendar-list .eventTitle').live('click',function(e){
+		if(!eventsOpts.showDescription) {
+			e.preventDefault();
+			var desc = $(this).parent().find('.eventDesc');
+</P><P>			if (!desc.find('a').size()) {
+				var eventUrl = $(this).attr('href');
+				var eventTarget = $(this).attr('target');
+</P><P>				// create a button to go to event url
+				// desc.append('&lt;a href=&quot;' + eventUrl + '&quot; target=&quot;'+eventTarget+'&quot; class=&quot;bt&quot;&gt;'+eventsOpts.txt_GoToEventUrl+'&lt;/a&gt;')
+			}
+</P><P>			if (desc.is(':visible')) {
+				desc.slideUp();
+			} else {
+				if(eventsOpts.onlyOneDescription) {
+					flags.wrap.find('.eventDesc').slideUp();
+				}
+				desc.slideDown();
+			}
+</P><P>		}
+	});
+</P><P>	function sortJson(a, b){
+		return a.date.toLowerCase() &gt; b.date.toLowerCase() ? 1 : -1;
+	};
+</P><P>	function dateSlider(show, year, month) {
+</P>
+		var $eventsCalendarSlider = $(&quot;&quot;),
+			$eventsCalendarMonthWrap = $(&quot;&quot;),
+			$eventsCalendarTitle = $(&quot;<DIV class="eventsCalendar-currentTitle">&lt;a href='#' class='monthTitle'&gt;&lt;/a&gt;</DIV>&quot;),
+<P>			$eventsCalendarArrows = $(&quot;&lt;a href='#' class='arrow prev'&gt;<SPAN>&quot; + eventsOpts.txt_prev + &quot;</SPAN>&lt;/a&gt;&lt;a href='#' class='arrow next'&gt;<SPAN>&quot; + eventsOpts.txt_next + &quot;</SPAN>&lt;/a&gt;&quot;);
+</P>
+			$eventsCalendarDaysList = $(&quot;&quot;),
+<P>			date = new Date();
+</P><P>		if (!flags.wrap.find('.eventsCalendar-slider').size()) {
+			flags.wrap.prepend($eventsCalendarSlider);
+			$eventsCalendarSlider.append($eventsCalendarMonthWrap);
+		} else {
+			flags.wrap.find('.eventsCalendar-slider').append($eventsCalendarMonthWrap);
+		}
+</P><P>		flags.wrap.find('.eventsCalendar-monthWrap.currentMonth').removeClass('currentMonth').addClass('oldMonth');
+		$eventsCalendarMonthWrap.addClass('currentMonth').append($eventsCalendarTitle, $eventsCalendarDaysList);
+</P><P>		// if current show current month &amp; day
+		if (show === &quot;current&quot;) {
+			day = date.getDate();
+			$eventsCalendarSlider.append($eventsCalendarArrows);
+</P><P>		} else {
+			date = new Date(flags.wrap.attr('data-current-year'),flags.wrap.attr('data-current-month'),1,0,0,0); // current visible month
+			day = 0; // not show current day in days list
+</P><P>			moveOfMonth = 1;
+			if (show === &quot;prev&quot;) {
+				moveOfMonth = -1;
+			}
+			date.setMonth( date.getMonth() + moveOfMonth );
+</P><P>			var tmpDate = new Date();
+			if (date.getMonth() === tmpDate.getMonth()) {
+				day = tmpDate.getDate();
+			}
+</P><P>		}
+</P><P>		// get date portions
+		var year = date.getFullYear(), // year of the events
+			currentYear = (new Date).getFullYear(), // current year
+			month = date.getMonth(), // 0-11
+			monthToShow = month + 1;
+</P><P>		if (show != &quot;current&quot;) {
+			// month change
+			getEvents(eventsOpts.eventsLimit, year, month,false, show);
+		}
+</P><P>		flags.wrap.attr('data-current-month',month)
+			.attr('data-current-year',year);
+</P><P>		// add current date info
+		$eventsCalendarTitle.find('.monthTitle').html(eventsOpts.monthNames[month] + &quot; &quot; + year);
+</P><P>		// print all month days
+		var daysOnTheMonth = 32 - new Date(year, month, 32).getDate();
+		var daysList = [];
+		if (eventsOpts.showDayAsWeeks) {
+			$eventsCalendarDaysList.addClass('showAsWeek');
+</P><P>			// show day name in top of calendar
+			if (eventsOpts.showDayNameInCalendar) {
+				$eventsCalendarDaysList.addClass('showDayNames');
+</P><P>				var i = 0;
+				// if week start on monday
+				if (eventsOpts.startWeekOnMonday) {
+					i = 1;
+				}
+</P><P>				for (; i &lt; 7; i++) {
+</P>
+					daysList.push('<LI class="eventsCalendar-day-header">'+eventsOpts.dayNamesShort[i]+'&lt;/li&gt;');
+
+					if (i === 6 &amp;&amp; eventsOpts.startWeekOnMonday) {
+						// print sunday header
+						daysList.push('</LI><LI class="eventsCalendar-day-header">'+eventsOpts.dayNamesShort[0]+'&lt;/li&gt;');
+					}
+
+				}
+			}
+
+			dt=new Date(year, month, 01);
+			var weekDay = dt.getDay(); // day of the week where month starts
+
+			if (eventsOpts.startWeekOnMonday) {
+				weekDay = dt.getDay() - 1;
+			}
+			if (weekDay &lt; 0) { weekDay = 6; } // if -1 is because day starts on sunday(0) and week starts on monday
+			for (i = weekDay; i &gt; 0; i--) {
+				daysList.push('</LI><LI class="eventsCalendar-day empty">&lt;/li&gt;');
+			}
+		}
+		for (dayCount = 1; dayCount &lt;= daysOnTheMonth; dayCount++) {
+			var dayClass = &quot;&quot;;
+
+			if (day &gt; 0 &amp;&amp; dayCount === day &amp;&amp; year === currentYear) {
+				dayClass = &quot;today&quot;;
+			}
+			daysList.push('</LI><LI id="dayList_.27_.2B_dayCount_.2B_.27" class="eventsCalendar-day '+dayClass+'">&lt;a href=&quot;#&quot;&gt;' + dayCount + '&lt;/a&gt;&lt;/li&gt;');
+		}
+		$eventsCalendarDaysList.append(daysList.join(<I>));</I>
+
+		$eventsCalendarSlider.css('height',$eventsCalendarMonthWrap.height()+'px');
+	}
+
+	function num_abbrev_str(num) {
+		var len = num.length, last_char = num.charAt(len - 1), abbrev
+		if (len === 2 &amp;&amp;num.charAt(0) === '1') {
+			abbrev = 'th'
+		} else {
+			if (last_char === '1') {
+				abbrev = 'st'
+			} else if (last_char === '2') {
+				abbrev = 'nd'
+			} else if (last_char === '3') {
+				abbrev = 'rd'
+			} else {
+				abbrev = 'th'
+			}
+		}
+		return num + abbrev
+	}
+
+	function getEvents(limit, year, month, day, direction) {
+		var limit = limit || 0;
+		var year = year || <I>;</I>
+		var day = day || <I>;</I>
+
+		// to avoid problem with january (month = 0)
+
+		if (typeof month != 'undefined') {
+			var month = month;
+		} else {
+			var month = <I>;</I>
+		}
+
+		//var month = month || <I>;</I>
+		flags.wrap.find('.eventsCalendar-loading').fadeIn();
+
+		if (eventsOpts.jsonData) {
+			// user send a json in the plugin params
+			eventsOpts.cacheJson = true;
+
+			flags.eventsJson = eventsOpts.jsonData;
+			getEventsData(flags.eventsJson, limit, year, month, day, direction);
+
+		} else if (!eventsOpts.cacheJson || !direction) {
+			// first load: load json and save it to future filters
+			$.getJSON(eventsOpts.eventsjson + &quot;?limit=&quot;+limit+&quot;&amp;year=&quot;+year+&quot;&amp;month=&quot;+month+&quot;&amp;day=&quot;+day, function(data) {
+				flags.eventsJson = data; // save data to future filters
+				getEventsData(flags.eventsJson, limit, year, month, day, direction);
+			}).error(function() {
+				showError(&quot;error getting json: &quot;);
+			});
+		} else {
+			// filter previus saved json
+			getEventsData(flags.eventsJson, limit, year, month, day, direction);
+		}
+
+		if (day &gt;<I>) {</I>
+			flags.wrap.find('.current').removeClass('current');
+			flags.wrap.find('#dayList_'+day).addClass('current');
+		}
+	}
+
+	function getEventsData(data, limit, year, month, day, direction){
+		directionLeftMove = &quot;-=&quot; + flags.directionLeftMove;
+		eventContentHeight = &quot;auto&quot;;
+
+		subtitle = flags.wrap.find('.eventsCalendar-list-wrap .eventsCalendar-subtitle')
+		if (!direction) {
+			// first load
+			subtitle.html(eventsOpts.txt_NextEvents);
+			eventContentHeight = &quot;auto&quot;;
+			directionLeftMove = &quot;-=0&quot;;
+		} else {
+			if (day != <I>) {</I>
+				subtitle.html(eventsOpts.txt_SpecificEvents_prev + eventsOpts.monthNames[month] + &quot; &quot; + num_abbrev_str(day) + &quot; &quot; + eventsOpts.txt_SpecificEvents_after);
+			} else {
+				subtitle.html(eventsOpts.txt_SpecificEvents_prev + eventsOpts.monthNames[month] + &quot; &quot; + eventsOpts.txt_SpecificEvents_after);
+			}
+
+			if (direction === 'prev') {
+				directionLeftMove = &quot;+=&quot; + flags.directionLeftMove;
+			} else if (direction === 'day' || direction === 'month') {
+				directionLeftMove = &quot;+=0&quot;;
+				eventContentHeight = 0;
+			}
+		}
+
+		flags.wrap.find('.eventsCalendar-list').animate({
+			opacity: eventsOpts.moveOpacity,
+			left: directionLeftMove,
+			height: eventContentHeight
+		}, eventsOpts.moveSpeed, function() {
+			flags.wrap.find('.eventsCalendar-list').css({'left':0, 'height': 'auto'}).hide();
+			//wrap.find('.eventsCalendar-list li').fadeIn();
+
+			var events = [];
+
+			data = $(data).sort(sortJson); // sort event by dates
+
+			// each event
+			if (data.length) {
+
+				// show or hide event description
+				var eventDescClass = <I>;</I>
+				if(!eventsOpts.showDescription) {
+					eventDescClass = 'hidden';
+				}
+				var eventLinkTarget = &quot;_self&quot;;
+				if(eventsOpts.openEventInNewWindow) {
+					eventLinkTarget = '_target';
+				}
+
+				var i = 0;
+				$.each(data, function(key, event) {
+					if (eventsOpts.jsonDateFormat == 'human') {
+						var eventDateTime = event.date.split(&quot; &quot;),
+							eventDate = eventDateTime[0].split(&quot;-&quot;),
+							eventTime = eventDateTime[1].split(&quot;:&quot;),
+							eventYear = eventDate[0],
+							eventMonth = parseInt(eventDate[1]) - 1,
+							eventDay = parseInt(eventDate[2]),
+							//eventMonthToShow = eventMonth,
+							eventMonthToShow = parseInt(eventMonth) + 1,
+							eventHour = eventTime[0],
+							eventMinute = eventTime[1],
+							eventSeconds = eventTime[2],
+							eventDate = new Date(eventYear, eventMonth, eventDay, eventHour, eventMinute, eventSeconds);
+					} else {
+						var eventDate = new Date(parseInt(event.date)),
+							eventYear = eventDate.getFullYear(),
+							eventMonth = eventDate.getMonth(),
+							eventDay = eventDate.getDate(),
+							eventMonthToShow = eventMonth + 1,
+							eventHour = eventDate.getHours(),
+							eventMinute = eventDate.getMinutes();
+
+					}
+
+					if (parseInt(eventMinute) &lt;= 9) {
+						eventMinute = &quot;0&quot; + parseInt(eventMinute);
+					}
+
+
+					if (limit === 0 || limit &gt; i) {
+						// if month or day exist then only show matched events
+
+						if ((month === false || month == eventMonth)
+								&amp;&amp; (day == <I> || day == eventDay)</I>&amp;&amp; (year == <I> || year == eventYear) // get only events of current year</I>
+							) {
+								// if initial load then load only future events
+								if (month === false &amp;&amp; eventDate &lt; new Date()) {
+
+								} else {
+									eventStringDate = eventDay + &quot;/&quot; + eventMonthToShow + &quot;/&quot; + eventYear;
+									if (event.url) {
+										var eventTitle = '&lt;a href=&quot;'+event.url+'&quot; target=&quot;' + eventLinkTarget + '&quot; class=&quot;eventTitle&quot;&gt;' + event.title + '&lt;/a&gt;';
+									} else {
+										var eventTitle = '<SPAN class="eventTitle">'+event.title+'</SPAN>';
+									}
+									events.push('</LI><LI id=".27_.2B_key_.2B_.27" class="'+event.type+'">&lt;time datetime=&quot;'+eventDate+'&quot;&gt;<EM>' + eventStringDate + '</EM><SMALL>'+eventHour+&quot;:&quot;+eventMinute+'</SMALL>&lt;/time&gt;'+eventTitle+'<P class="eventDesc ' + eventDescClass + '">' + event.description + '</P>&lt;/li&gt;');
+<P>									i++;
+								}
+						}
+					}
+</P><P>					// add mark in the dayList to the days with events
+					if (eventYear == flags.wrap.attr('data-current-year') &amp;&amp; eventMonth == flags.wrap.attr('data-current-month')) {
+						flags.wrap.find('.currentMonth .eventsCalendar-daysList #dayList_' + parseInt(eventDay)).addClass('dayWithEvents');
+					}
+</P><P>				});
+			}
+			// there is no events on this period
+			if (!events.length) {
+</P>
+				events.push('</LI><LI class="eventsCalendar-noEvents"><P>' + eventsOpts.txt_noEvents + '</P>&lt;/li&gt;');
+<P>			}
+			flags.wrap.find('.eventsCalendar-loading').hide();
+</P><P>			flags.wrap.find('.eventsCalendar-list')
+				.html(events.join(<I>));</I></P><P>			flags.wrap.find('.eventsCalendar-list').animate({
+				opacity: 1,
+				height: &quot;toggle&quot;
+			}, eventsOpts.moveSpeed);
+</P><P>
+		});
+		setCalendarWidth();
+	}
+</P><P>	function changeMonth() {
+		flags.wrap.find('.arrow').click(function(e){
+			e.preventDefault();
+</P><P>			if ($(this).hasClass('next')) {
+				dateSlider(&quot;next&quot;);
+				var lastMonthMove = '-=' + flags.directionLeftMove;
+</P><P>			} else {
+				dateSlider(&quot;prev&quot;);
+				var lastMonthMove = '+=' + flags.directionLeftMove;
+			}
+</P><P>			flags.wrap.find('.eventsCalendar-monthWrap.oldMonth').animate({
+				opacity: eventsOpts.moveOpacity,
+				left: lastMonthMove
+			}, eventsOpts.moveSpeed, function() {
+				flags.wrap.find('.eventsCalendar-monthWrap.oldMonth').remove();
+			});
+		});
+	}
+</P><P>	function showError(msg) {
+		flags.wrap.find('.eventsCalendar-list-wrap').html(&quot;<SPAN class="eventsCalendar-loading error">&quot;+msg+&quot; &quot; +eventsOpts.eventsjson+&quot;</SPAN>&quot;);
+	}
+</P><P>	function setCalendarWidth(){
+		// resize calendar width on window resize
+		flags.directionLeftMove = flags.wrap.width();
+		flags.wrap.find('.eventsCalendar-monthWrap').width(flags.wrap.width() + 'px');
+</P><P>		flags.wrap.find('.eventsCalendar-list-wrap').width(flags.wrap.width() + 'px');
+</P><P>	}
+};
+</P><P>
+// define the parameters with the default values of the function
+$.fn.eventCalendar.defaults = {
+</P><PRE>   eventsjson: 'js/events.json',
+</PRE><P>	eventsLimit: 4,
+	monthNames: [ &quot;January&quot;, &quot;February&quot;, &quot;March&quot;, &quot;April&quot;, &quot;May&quot;, &quot;June&quot;,
+		&quot;July&quot;, &quot;August&quot;, &quot;September&quot;, &quot;October&quot;, &quot;November&quot;, &quot;December&quot; ],
+	dayNames: [ 'Sunday','Monday','Tuesday','Wednesday',
+		'Thursday','Friday','Saturday' ],
+	dayNamesShort: [ 'Sun','Mon','Tue','Wed', 'Thu','Fri','Sat' ],
+	txt_noEvents: &quot;There are no events in this period&quot;,
+	txt_SpecificEvents_prev: &quot;&quot;,
+	txt_SpecificEvents_after: &quot;events:&quot;,
+	txt_next: &quot;next&quot;,
+	txt_prev: &quot;prev&quot;,
+	txt_NextEvents: &quot;Next events:&quot;,
+	txt_GoToEventUrl: &quot;See the event&quot;,
+	showDayAsWeeks: true,
+	startWeekOnMonday: true,
+	showDayNameInCalendar: true,
+	showDescription: false,
+	onlyOneDescription: true,
+	openEventInNewWindow: false,
+	eventsScrollable: false,
+	jsonDateFormat: 'timestamp', // you can use also &quot;human&quot; 'YYYY-MM-DD HH:MM:SS'
+	moveSpeed: 500,	// speed of month move when you clic on a new date
+	moveOpacity: 0.15, // month and events fadeOut to this opacity
+	jsonData: &quot;&quot;, 	// to load and inline json (not ajax calls)
+	cacheJson: true	// if true plugin get a json only first time and after plugin filter events
+					// if false plugin get a new json on each date change
+};
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:UniSalento_Lecce/js/cal.js">http://2013.igem.org/Team:UniSalento_Lecce/js/cal.js</A>&quot;</DIV></LI></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:UniSalento_Lecce/js/cal.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:UniSalento_Lecce/js/cal.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:UniSalento_Lecce/js/cal.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:UniSalento_Lecce/js/cal.js&amp;oldid=181679" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

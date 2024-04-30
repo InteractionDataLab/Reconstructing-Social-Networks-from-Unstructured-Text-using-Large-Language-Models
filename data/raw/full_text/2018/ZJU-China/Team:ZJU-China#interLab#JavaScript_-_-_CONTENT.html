@@ -1,0 +1,92 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_ZJU-China_interLab_JavaScript skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:ZJU-China/interLab/JavaScript</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>window.onload = function() {
+</P><P>	var toc = document.querySelector( '.toc' );
+	var tocPath = document.querySelector( '.toc-marker path' );
+	var tocItems;
+</P><P>	// 元素必须交叉的屏幕大小系数
+	// 在它被认为是可见之前
+	var TOP_MARGIN = 0.1,
+		BOTTOM_MARGIN = 0.2;
+</P><P>	var pathLength;
+</P><P>	window.addEventListener( 'resize', drawPath, false );
+	window.addEventListener( 'scroll', sync, false );
+</P><P>	drawPath();
+</P><P>	function drawPath() {
+</P><P>		tocItems = [].slice.call( toc.querySelectorAll( 'li' ) );
+</P><P>		// 缓存元素参考和测量
+		tocItems = tocItems.map( function( item ) {
+			var anchor = item.querySelector( 'a' );
+			var target = document.getElementById( anchor.getAttribute( 'href' ).slice( 1 ) );
+</P><P>			return {
+				listItem: item,
+				anchor: anchor,
+				target: target
+			};
+		} );
+</P><P>		// 删除丢失的目标
+		tocItems = tocItems.filter( function( item ) {
+			return !!item.target;
+		} );
+</P><P>		var path = [];
+		var pathIndent;
+</P><P>		tocItems.forEach( function( item, i ) {
+</P><P>			var x = item.anchor.offsetLeft - 5,
+				y = item.anchor.offsetTop,
+				height = item.anchor.offsetHeight;
+</P><P>			if( i === 0 ) {
+				path.push( 'M', x, y, 'L', x, y + height );
+				item.pathStart = 0;
+			}
+			else {
+				// 当有一个变化时，再画一条线
+				// 缩进级别
+				if( pathIndent !== x ) path.push( 'L', pathIndent, y );
+</P><P>				path.push( 'L', x, y );
+</P><P>				// 设置当前路径，以便我们可以测量它
+				tocPath.setAttribute( 'd', path.join( ' ' ) );
+				item.pathStart = tocPath.getTotalLength() || 0;
+</P><P>				path.push( 'L', x, y + height );
+			}
+</P><P>			pathIndent = x;
+</P><P>			tocPath.setAttribute( 'd', path.join( ' ' ) );
+			item.pathEnd = tocPath.getTotalLength();
+</P><P>		} );
+</P><P>		pathLength = tocPath.getTotalLength();
+</P><P>		sync();
+</P><P>	}
+</P><P>	function sync() {
+</P><P>		var windowHeight = window.innerHeight;
+</P><P>		var pathStart = pathLength,
+			pathEnd = 0;
+</P><P>		var visibleItems = 0;
+</P><P>		tocItems.forEach( function( item ) {
+</P><P>			var targetBounds = item.target.getBoundingClientRect();
+</P><P>			if( targetBounds.bottom &gt; windowHeight * TOP_MARGIN &amp;&amp; targetBounds.top &lt; windowHeight * ( 1 - BOTTOM_MARGIN ) ) {
+				pathStart = Math.min( item.pathStart, pathStart );
+				pathEnd = Math.max( item.pathEnd, pathEnd );
+</P><P>				visibleItems += 1;
+</P><P>				item.listItem.classList.add( 'visible' );
+			}
+			else {
+				item.listItem.classList.remove( 'visible' );
+			}
+</P><P>		} );
+</P><P>		// S指定可见路径或完全隐藏路径
+		// 如果没有可见的项目
+		if( visibleItems &gt; 0 &amp;&amp; pathStart &lt; pathEnd ) {
+			tocPath.setAttribute( 'stroke-dashoffset', '1' );
+			tocPath.setAttribute( 'stroke-dasharray', '1, '+ pathStart +', '+ ( pathEnd - pathStart ) +', ' + pathLength );
+			tocPath.setAttribute( 'opacity', 1 );
+		}
+		else {
+			tocPath.setAttribute( 'opacity', 0 );
+		}
+</P><P>	}
+</P><P>};
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

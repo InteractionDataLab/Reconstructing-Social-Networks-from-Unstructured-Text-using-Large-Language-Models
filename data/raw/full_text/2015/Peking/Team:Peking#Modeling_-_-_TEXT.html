@@ -1,0 +1,122 @@
+Team:Peking/Modeling
+Achievements
+Judging Criteria
+Parts
+Collaborations
+Project
+Overview
+Paired dCas9 Reporter
+Iso-thermal Amplification
+Hardware
+Speculation
+Modeling
+Array Design
+Analysis Algorithm
+Practices
+Overview
+Facts about TB
+Consultation and Interview
+Public Engagement
+Ethics and Economics Issue
+Lab
+Team
+Notebook
+Attributions
+Safety
+Modeling
+The purpose of models is not to fit the data but to sharpen the questions.
+Home
+Modeling
+Marker Finder
+Overview
+SSPD Method
+Oligo Generator
+Marker Finder
+Overview
+SSPD Method
+Oligo Generator
+Overview
+Though single marker detection using PC reporter works well in lab, in clinical diagnosis of MTB there can be more disturbance, which may mislead the diagnosis. To increase the reliability of the detection , we designed MTB multi-marker array. To select all MTB specific markers through out MTB genome and facilitate array experiment, we developed an algorithm named SSPD, which consists of 4 steps:
+Search for all target candidates
+Select MTB specific targets
+Pair left and right target sites as markers
+Determine PCR fragments
+Notice that a target has the same sequence with corresponding sgRNA guide sequence, selecting MTB specific target is thus equivalent to selecting sgRNA.
+In addition, we designed Oligo Generator to generate oligo sequences from corresponding targets, together with sgRNA generator, it facilitates multiple sgRNA construction. The code can be found here with a report here .
+SSPD Methods
+Search for guide sequences of gRNA candidates
+The CRISPR/dCas9 requires a protospacer adjacent motif (PAM) sequence in the form of 5’-NGG-3’ downstream the target sequence to bind to the target. (Figure 1) Since our experimental results shows that PAM-out orientation (5’-CCN(N)20-…-(N)20NGG-3’) was highly efficient for PC Reporter system to work, our model focused on this orientation. (It is convenient to adjust our program for guide sequence design with other orientations. See more in Supplementary Information 1 )
+Figure 1. Schematic illustration of guide design in PAM-out orientation. Note that the 20nt guide sequence is identical to target.
+We took advantage of Python 3.4.3 build-in regular expression to search for left guide sequences of gRNA (‘(?<=cc).(?=.{20})’) and right guide sequences of gRNA (‘(?<=.{20}).(?=gg)’) separately, which would be paired later for PC reporter system to function.
+Left gRNA candidates   (CCN(N)20)
+414962
+Right gRNA candidates ((N)20NGG)
+407371
+Table 1. The number of gRNA candidates in Mycobacterium Tuberculosis genome
+Specificity test for each candidate
+Specificity of guide sequence of gRNA here is defined as the probability of the gRNA binds to the corresponding target site instead of other similar non-target sites. It is measured by taking both quantity of potential off-target sites and similarity between off-target sites and the unique target site into consideration. Since we hope to take sample directly from human mouth, we compared our guide sequence candidates with Human Oral Meta-Genome (HOMG), and reserved only the orthogonal ones to avoid false positive in MTB detection. We adopted a BLAST-based 2-step filtration approach to realize it. In general, the two steps are: a) Filter out guides with off-targets that have 12 bp PAM-proximal sequence identical to corresponding target; b) Score the reserved gRNA on specificity. The principle of the score-rule is that higher specificity should get higher score (see the detail below). Thus we can easily filter out guides with high off-target probability, which is indicated by a low score.
+a) PAM-proximal 12bp filtration by BLAST
+Previous research has demonstrated that SpCas9 tolerates mismatches to a greater extent in the PAM-distal region than the PAM-proximal region, and the PAM-proximal 8-12nt of the target largely determine the specificity of the targets. Guide sequences of gRNA whose target has identical PAM-proximal 12nt off-targets is highly possible to hit off target, which suggest its fate of being eliminated. Remaining guides are uploaded to BLAST again for potential off-target site finding.  Sequences that are similar to target and found by BLAST are recorded as all off-target sites for the second filtration, those ignored are considered not contributing to off-target.
+Left gRNA candidates  (CCN(N)20)
+55156
+Right gRNA candidates ((N)20NGG)
+54938
+Table 2. The number of gRNA candidates left after the first filtration in Mycobacterium Tuberculosis genome
+b) Score filtration
+Our initial filtration significantly reduce computation by limiting guide sequence score operation to only most possible off-target sites rather than entire subject. We then use Zhang Lab score methods to give an off-target effects measurement of the guide sequences. For each guide candidates, scoring process includes two steps: firstly，each of the individual off-target sites is assigned an “individual score”, then all individual scores are aggregated to an overall score of the given guide sequence.The algorithm used to score single off-target sites is as below.
+In the first term, e runs over the mismatch positions set
+between the guide and the off-target site, with
+representing the experimentally-determined effect of mismatch position on targeting. Term two refers to the effect caused by mean pairwise distance between mismatches(
+). Term three represent a dampening penalty for highly mismatched off-targets, where
+refers to the number of mismatches.
+Figure 2. Schematic illustration of an off-target site. The 20 bps are numbered sequentially from the one most distant to PAM, and the red 7, 12, 19 represents the mismatches in the off-target sites.
+Here we show an example (Figure 2) to help readers understand this formula better. Nucleotides are numbered sequentially from the one most distant to PAM, and mismatches in the off-target sites are emphasized by red sign. In this case, W(7)= 0.317, W(12)=0.508, W(19)=0.583; dmean=(d(7,12)+d(7,19)+d(12,19))/3=7; nm=3. Therefore, the off-target site shown above has an individual score of 0.004415278985074628. A higher individual score for an off target site indicates a higher similarity to the target, and thus a higher likelihood of the CRISPR/Cas9 complex binding to the off-target site. Once individual off-target have been scored, each guide is assigned an overall score:
+h runs over the potential off-target set
+of guide sequence
+A higher overall score indicates a better guide with few or weak potential off-targets. Guides with individual off-target sites score 2% or above are eliminated, the remaining are ranked in the order of overall score from 100% to 0%, with a list of off-targets presented in individual score descending order. Guides having an overall score of greater than 45% are reserved finally while others were filtered out in case their lack of specificity.
+Left gRNA candidates   (CCN(N)20)
+54417
+Right gRNA candidates ((N)20NGG)
+54288
+Table 2. The number of gRNA candidates left after the first filtration in Mycobacterium Tuberculosis genome
+Figure 3. Analysis of the guide sequences scores after score filtration. (a)Overall score distribution of guide sequences after the second step filtration. Most sequences have scores more than 97. (b)Ratio of reserved guides (i.e. the number of guide sequences reserved after score filtration / the number of guide sequences after first filtration) is approximately 1 on higher score gRNA and 0 on lower score gRNA.ure 1. Schematic illustration of guide design in PAM-out orientation. Note the 20nt guide sequence is identical to target non-complementary strand.
+Pair left and right target sites with optimal spacer length
+All reserved left and right target sites after two-step filtration are considered to be qualified for pairing. In this step, a left site and a right site with appropriate spacer length will be paired. The best spacer length is 19-23bp for split-luciferase dCas9 fusion system according to our experimental data (Figure 4, Link to CRISPR). Single sites that cannot pair with any other sites within the given range of the spacer length would be eliminated.
+Figure 4. The effect of spacer length variation on the performance of PC reporter system. Spacer is defined as the sequence between the sgRNA pairs. The spacer length varies from 5 bp to 107 bp.
+Spacer Length
+19
+20
+21
+22
+23
+19-23
+Marker Number
+690
+836
+746
+720
+759
+3751
+The number of gRNA pairs under the condition of different spacer length between left and right pair from 19 to 23 bps in Mycobacterium Tuberculosis genome
+Design PCR fragments
+We provide two methods for determining PCR fragments. For the first, fix pair number k per fragment, search the adjacent but non-overlapped k pairs. Sort the results with fragment length. For another, fix maximal PCR fragment length, sort the results with pair numbers per fragment. Sorted results will be presented on user interface, enabling users to select fragments by themselves as needed. Selecting overlapping fragment is not allowable for array design.
+Figure 5. Schematic illustration of PCR fragment determination method, taking 2 pairs per fragment as an example. The top xxx shows all left and right targets on given segment of pathogen genome, and the chart aside lists all pairs. Only adjacent but non-overlapped pairs can be deposited on one fragment. Users can choose one through the four optional PCR fragment listed below, since they are overlapped.
+ 
+Figure 6. 72 target sites (MTB-specific markers) out of 9 fragments on MTB genome, screened out using SSPD.)
+Oligo Generator
+Using SSPD method mentioned above, we can easily find the reliable target sites on genome. However, designing multiple target sites into oligonucleotides sequences for following sgRNA construction manually can be laborious. Thus here we developed a supplementary program to facilitate oligo sequence generation, which is combined with our sgRNA generator (Link to Part xxx). Specifically, we used Golden Gate Cloning to make it more convenient to substitute guide sequences for different target sites. Detailed operation is explained on flow chart below. See more details in Supplementary Information 2 .
+Figure 7. Schematic illustration of a flow chart explaining the protocol of guide sequence substitution.
+Reference
+1. Hsu P D, Scott D A, Weinstein J A, et al. DNA targeting specificity of RNA-guided Cas9 nucleases[J]. Nature biotechnology, 2013, 31(9): 827-832.
+2. http://crispr.mit.edu/about
+3. Naito Y, Hino K, Bono H, et al. CRISPRdirect: software for designing CRISPR/Cas guide RNA with reduced off-target sites[J]. Bioinformatics, 2014: btu743.
+Share This
+Follow Us
+Sponsors
+Contact us
+Email: pekingigem@gmail.com
+Website: 2015.igem.org/Team:Peking
+Address: Peking University,
+No.5 Yiheyuan Road Haidian District,
+Beijing, P.R.China 100871
+© 2015 Peking iGEM -  All Rights Reserved. Based on Bootstrap and Margo template.

@@ -1,0 +1,37 @@
+Team:Leiden/javascript/crowdfunding
+var fits = {
+xs: 1,  s: 1,  m: 1,  l: 1,  xl: 1
+}; var sizes = ['xs', 's', 'm', 'l', 'xl'] var order = new Object; var resizeId; // var state = 'static';
+$(document).ready(function() {
+if ($('#screenIndicator').is(':visible')) {    $('div.StatDynSwitch').css('display', 'none');    RunStatic();  } else {    DynamicCircles();  }
+$(window).resize(function() { // check when resizing is finished, then recalculate positions of circles    clearTimeout(resizeId);    resizeId = setTimeout(function() {
+if ($('#screenIndicator').is(':visible')) {        RunStatic();        $('div.StatDynSwitch').css('display', 'none');
+} else if (order['xl'] == undefined) { // from small to large, has to initiate everything        // console.log('xl undefined, so complete run of dynamic circles');        DynamicCircles();        $('div.StatDynSwitch').css('display', 'block');      } else if ($('div.StatDynSwitch input').is(':checked')) { //by default switch is checked + has been initiated earlier        $('div.StatDynSwitch').css('display', 'block');        $.each(sizes, function(index, value) {          CheckRecalculate(value);        });      } else { //only the case when was previously on large screen and the switch unchecked        RunStatic();        $('div.StatDynSwitch').css('display', 'block');      }    }, 500);  });  $('div.StatDynSwitch input').on('click', function() {    if ($('div.StatDynSwitch input').is(':checked')) {      DynamicCircles();    } else {      RunStatic();    }  });
+});
+function DynamicCircles() {
+$.each(sizes, function(index, value) {    //Set animation delay to spread all circles across the height of the screen    delayDynamic(value);
+//run position function, initialising order-Array and fits_old - followed by running posX function, vertically spacing circles;    position(value);  });
+}
+function delayDynamic(circlesize) {
+var selectedcircles = $('.donors div.circle.' + circlesize);  // console.log(circlesize, selectedcircles.length);  var duration = selectedcircles.eq(0).css('animation-duration').match(/[+-]?\d+(?:\.\d+)?/g).map(Number);  // console.log('duration:', duration);  selectedcircles.each(function(index) {    var delay = (-index * duration / selectedcircles.length) - 0.3 * duration;    selectedcircles.eq(index).css({      'animation-delay': delay + 's',    });
+// Randomize animation (normal vs reverse):    var normal_reverse = function() {      return Math.floor(Math.random() * 2)    };
+if (normal_reverse()) {      selectedcircles.eq(index).css({        'animation-name': 'donor_bubbles_reverse',        // 'animation-play-state': 'paused'      });    } else {      selectedcircles.eq(index).css({        'animation-name': 'donor_bubbles',        // 'animation-play-state': 'paused'      });    };  });
+};
+function NewArray(length) {
+// create an array of specified length, randomized sequence  var foo = new Array(length);  for (var i = 0; i < length; i++) {    foo[i] = i + 1;  };  foo.sort(function(a, b) {    return 0.5 - Math.random()  });  return foo;
+}
+function position(circlesize) {
+// Check how many circles fit the screen  var selectedcircles = $('.donors div.circle.' + circlesize);  var scrWidth = $(window).width();  var bolWidth = selectedcircles.eq(0).width();  var unitWidth = 3 * bolWidth;  var fits_new = Math.floor(scrWidth / unitWidth) + (Math.floor(scrWidth / unitWidth) - 1);  if (fits_new < 0) {    fits_new = 1;  }  order[circlesize] = NewArray(fits_new); // Create new randomized array  fits[circlesize] = fits_new;
+posX(circlesize, fits[circlesize]); //control the horizontal position of appearance
+}
+function posX(circlesize, CircleCount) {
+// correction for switching between static and dynamic circles:  if ($('.donors').hasClass('static')) {    $('.donors div.circle, .donors, .verticalspan').removeClass('static');  }  $('div.StatDynSwitch').css('display', 'block');
+// actual positioning:  var selectedcircles = $('.donors div.circle.' + circlesize);  var scrWidth = $(window).width();  var bolWidth = selectedcircles.eq(0).width();  var unitWidth = 3 * bolWidth;  var FitNr_adjusted = Math.floor(scrWidth / unitWidth);  if (FitNr_adjusted == 0) {    FitNr_adjusted = 1;  }  var blockWidth = scrWidth / FitNr_adjusted  var diffWidth = blockWidth - unitWidth;  var specificOrder = order[circlesize];
+selectedcircles.each(function(index) {    var position = (0.5 * diffWidth) + bolWidth + ((specificOrder[index % (CircleCount)] - 1) * 0.5 * blockWidth);    $(this).css({      'left': position + 'px',    });  });
+}
+function CheckRecalculate(circlesize) { //Check whether recalculation of position is needed
+if ($('.donors').hasClass('static')) {    $.each(sizes, function(index, value) {      delayDynamic(value)    });  }  var selectedcircles = $('.donors div.circle.' + circlesize);  var scrWidth = $(window).width();  var bolWidth = selectedcircles.eq(0).width();  var unitWidth = 3 * bolWidth;  var fits_new = Math.floor(scrWidth / unitWidth) + (Math.floor(scrWidth / unitWidth) - 1);  if (fits_new != fits[circlesize]) {    if (fits_new < 0) {      fits_new = 1;    }    fits[circlesize] = fits_new;    order[circlesize] = NewArray(fits_new); // Create new randomized array  }  posX(circlesize, fits[circlesize])
+}
+function RunStatic() {
+if ($('.donors').hasClass('static')) {} else {    $('.donors div.circle, .donors, .verticalspan').addClass('static');    $('.donors div.circle').css({      'left': , 'animation-name': 'none',      'animation-delay':     })  }
+}

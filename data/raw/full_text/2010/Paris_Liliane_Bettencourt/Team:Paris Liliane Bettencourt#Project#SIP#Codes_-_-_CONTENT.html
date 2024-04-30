@@ -1,0 +1,1179 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Paris_Liliane_Bettencourt_Project_SIP_Codes"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Paris_Liliane_Bettencourt/Project/SIP/Codes">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Paris_Liliane_Bettencourt/Project/SIP/Codes&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Liliane_Bettencourt/Project/SIP/Codes&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Paris_Liliane_Bettencourt/Project/SIP/Codes&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Paris_Liliane_Bettencourt/Project/SIP/Codes" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Paris Liliane Bettencourt/Project/SIP/Codes</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2010.igem.org</H3><DIV id="header"><DIV id="logo_left"><SPAN class="plainlinks"><A title="igem.org" href="https://2010.igem.org/"> </A></SPAN></DIV></DIV><DIV id="menu"><UL><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt">home</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project">projects</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Parts">parts</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Team">team</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Notebook">notebook</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Safety">safety</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Brainstorming">Brainstorming</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Acknowledgements">acknowledgements</A></LI></UL></DIV><DIV id="content"><DIV id="frame"><P style="display:block"><FONT size="4">SIP Wiki Analyser </FONT></P><DIV class="submenu"><UL id="submenu_3"><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project/SIP" target="_self">Overview</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project/SIP/Results" target="_self">Results</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project/SIP/Downloads" target="_self">Downloads</A></LI><LI><A href="https://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project/SIP/Codes" target="_self">Codes</A></LI></UL></DIV><P style="display:block;">
+These two pieces of code make up our SIP system.  We are releasing them without any sort of license or restriction to the public domain, in the hope that other teams will find them as useful as we have!
+
+Our SIP programs are written in C and make use of the sqlite3 API.  The Paris SIP programs run natively in Linux but can be run on Mac OSX or windows (with Cygwin for wget and MinGW for sqlite3.)  For the random module, we have used a C++ algorithm  <A href="http://www-personal.umich.edu/~wagnerr/MersenneTwister.html" class="external text" rel="nofollow">MersenneTwister</A>, so G++ is needed to compile.
+
+<UL><LI><B>SIP.C :</B> allow you to analyze any text and generate SIP's.
+</LI></UL>
+As set up here, it's configured to download iGEM wikis.  To get a team's wiki, place the team name in a list; the software will calculate the frequency of all words in the text to establish a dictionary, and then calculate frequencies for each word on each team's page.  SIP values are established, and the results are sorted in a database.
+
+
+<UL><LI><B>TOP_SIP.C :</B> After you've generated SIP values, this bit of code allows you to pluck the top N SIP's, where N is any number you like.  Specify the database and the names of teams you wish to use in a list file.  
+</LI></UL>
+
+If the software finds more than N words above your given SIP value, it randomly picks N words. 
+If it finds less, it gradually decreases the SIP value needed to enter the list until the list is composed of N words. The last argument, coefficient, is the value used to decrement your sip value level used to define your list. It's a number between <I>1</I> and <I>15</I>. Adjust this number like you want to improve results and software speed.
+
+ </P><H2><SPAN class="mw-headline" id="SIP.C"> SIP.C </SPAN></H2><P style="display:block"><PRE>
+/* SIP.C *** Make SIP database and dictionary *** v 1.0
+
+PUBLIC DOMAIN
+From iGEM team 2010 Paris
+
+comment:
+
+ This code permits you to calculate SIP words (most improbable words) in each
+ wiki team.
+ You need sqlite3, wget and links to run this program.
+
+build:
+
+ $ gcc -o sip sip.c -lsqlite3
+
+usage :
+
+ $ ./sip [list of team name] [name of database] [year]
+
+
+Sqlite3 database :
+
+Table for team.
++--------+-----------+------------+-----------+
+| Words  | local occ | local freq | SIP value |
++--------+-----------+------------+-----------+
+| string |   u_long  |  float     |   float   |  
+|        |           |            |           |
++--------+-----------+------------+-----------+
+
+
+Table name : Dictionary.
++--------+------------+-------------+
+| word   | global_occ | global_freq |
++--------+------------+-------------+
+| string |   u_long   |  float      |
+|        |            |             |
++--------+------------+-------------+
+
+*/
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;dirent.h&gt;
+#include &lt;sqlite3.h&gt;
+
+#define MAXBUFFER	256
+#define LEN_CMD		96
+
+#define TEAM_NAME 	1
+#define DATABASE_NAME	2
+#define YEAR		3
+
+#define FALSE 		0
+#define TRUE		1
+
+#define IS_REP		1
+#define NO_REP		2
+
+/*
+isRep says if the stream is a directory or a file.
+@entryname : name of the file
+return : IS_REP it's a directory, NO_REP it's a file
+*/
+int isRep( char *entryname )
+{
+	FILE *fp;
+	fp = fopen( entryname, &quot;rb&quot; );
+
+	if ( fp == 0 )
+		return IS_REP;
+	else {
+		fclose( fp );
+		return NO_REP; }
+}
+
+/*
+Change a character by an other one in a string.
+@string : your string
+@c : char to remove
+@r : char to set instead
+@len : lenght of the string
+return number of char changed.
+*/
+unsigned long int chgchar( char *string, char c, char r, int len )
+{
+	int i = 0;
+	unsigned long int n=0;
+
+	while ( i &lt; len )
+	{
+		if ( string[i] == c )
+		{
+			
+			string[i] = r;
+			i++;
+			n++;
+		}
+		else
+			i++;
+	}
+	
+	return n;
+}
+
+int close_sqlitedb( sqlite3*** conn )
+{
+	if ( sqlite3_close(**conn) != SQLITE_OK )
+	{
+		printf(&quot;Error closing the db: %s\n&quot;, sqlite3_errmsg(*conn));
+	}
+}
+
+/*
+Read the next word in your file
+@word : buffer to put your next word
+@fp : descriptor to our file.
+*/
+void read_next_word( char word[MAXBUFFER], FILE *fp )
+{
+	char buffer[MAXBUFFER];
+	char ch;
+	int n = 0;
+
+	ch = fgetc(fp);
+
+	if( ch == EOF ) {
+		return;
+	}
+
+	while ( ch != 0x20 &amp;&amp; ch != EOF &amp;&amp; n &lt; MAXBUFFER )
+	{
+		buffer[n] = ch;
+		n++;
+		ch = fgetc(fp);
+	}
+	buffer[n] = '\0';
+	strcpy( word, buffer );
+}
+
+int is_word_valid( char *word )
+{
+// there's no filter at the moment.
+// We can compare with MeSH white list ie.
+}
+
+/*
+Check if the world is already in the database.
+*/
+int is_word_exists( char *word, sqlite3_stmt **statement, sqlite3** conn )
+{
+	if ( sqlite3_bind_text( *statement, 1, word, -1, SQLITE_STATIC) != SQLITE_OK ) {
+		printf(&quot;Error binding to query select: %s\n&quot;, sqlite3_errmsg(*conn));
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+
+	if ( sqlite3_step( *statement ) != SQLITE_DONE ) {
+		sqlite3_reset( *statement );
+		return TRUE;
+	} else {
+		sqlite3_reset( *statement );
+		return FALSE;
+	}
+
+}
+
+/*
+Add a word to the database.
+*/
+void add_to_the_list( char *word, sqlite3_stmt **statement, sqlite3** conn )
+{
+	if ( sqlite3_bind_text( *statement, 1, word, -1, SQLITE_STATIC) != SQLITE_OK ) {
+		printf(&quot;Error binding to query insert: %s\n&quot;, sqlite3_errmsg(*conn));
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+
+	sqlite3_step( *statement );
+	sqlite3_reset( *statement );
+}
+
+/*
+Increment the occurence of this word, if is already in the database.
+*/
+void inc_occ( char *word, sqlite3_stmt **statement, sqlite3** conn )
+{
+// UPDATE dictionary SET global_occ = global_occ + 1 WHERE word=word
+// INSERT into dictionary ...
+	if ( sqlite3_bind_text( *statement, 1, word, -1, SQLITE_STATIC) != SQLITE_OK ) {
+		printf(&quot;Error binding to query update: %s\n&quot;, sqlite3_errmsg(*conn));
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+
+	sqlite3_step( *statement );
+	sqlite3_reset( *statement );
+}
+
+void compute_freq( sqlite3** conn, float nbr_of_words, char *table )
+{
+// UPDATE dictionary SET global_freq = global_occ / nbr_of_word
+// note that nbr_of_word must be a REAL type.
+/* For each words we compute : F = occ_of_word / nbr_of_words */
+	char sqlite3_query[MAXBUFFER];
+	sqlite3_stmt *statement;
+
+	sprintf( sqlite3_query, &quot;UPDATE %s SET global_freq = global_occ / %f&quot;,
+		table, nbr_of_words);
+
+	if ( sqlite3_prepare_v2(*conn, sqlite3_query, -1, &amp;statement, NULL ) != SQLITE_OK )
+	{
+		printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(*conn) );
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+	sqlite3_step( statement );
+	sqlite3_finalize( statement );
+}
+
+make_dictionary( char *team_list, char *database_name)
+{
+	FILE *fp, *fp_wiki;
+	float nbr_of_words = 0;
+	char word[MAXBUFFER], digest_name[MAXBUFFER-LEN_CMD], team_name[MAXBUFFER-LEN_CMD];
+	int size_name;
+
+	sqlite3_stmt *stmt_select, *stmt_insert, *stmt_update;
+
+	sqlite3 *conn;
+	if ( sqlite3_open( database_name, &amp;conn ) != SQLITE_OK )
+	{
+		printf(&quot;Error opening the db: %s\n&quot;, sqlite3_errmsg(conn));
+		exit(1);
+	}
+
+	fp = fopen(team_list, &quot;r&quot;);
+
+	if ( fp == 0 ) {
+		printf(&quot;Can't open %s file\n&quot;, team_list);
+		exit(1);
+	}
+
+	// pre-compile the query to optimize the process
+	if ( sqlite3_prepare_v2(conn, &quot;SELECT * FROM dictionary WHERE word=?&quot;, -1,
+		&amp;stmt_select, NULL ) != SQLITE_OK )
+	{
+		printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+		goto CLOSE_DB;
+		exit(1);
+	}
+
+	if ( sqlite3_prepare_v2(conn, &quot;INSERT INTO dictionary VALUES (?, 1, NULL)&quot;, -1,
+		&amp;stmt_insert, NULL ) != SQLITE_OK )
+	{
+		printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+		goto CLOSE_DB;
+		exit(1);
+	}
+
+	if ( sqlite3_prepare_v2(conn, &quot;UPDATE dictionary SET global_occ = global_occ + 1 WHERE word=?&quot;,
+		-1, &amp;stmt_update, NULL ) != SQLITE_OK )
+	{
+		printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+		goto CLOSE_DB;
+		exit(1);
+	}
+
+	while( !feof(fp) )
+	{
+		fgets( team_name, (MAXBUFFER - LEN_CMD), fp );
+
+		if ( feof(fp) ) {
+			break;
+		}
+
+		size_name = strlen( team_name );
+		team_name[size_name - 1] = '\0';
+		chgchar( team_name, '-', '_', size_name);
+
+		printf(&quot;On the %s Team\n&quot;, team_name);
+
+		if ( chdir(team_name) == -1 ) {
+			printf(&quot;error changing directory to %s\n&quot;, team_name);
+			exit(1);
+		}
+
+		strncpy( digest_name, team_name, (MAXBUFFER-LEN_CMD-4) );
+		strcat( digest_name, &quot;.xtr&quot;);
+
+		fp_wiki = fopen( digest_name, &quot;r&quot; );
+		if( fp_wiki == 0 ) {
+			printf(&quot;error when you open %s file&quot;, digest_name);
+			exit(1);
+		}
+
+		if ( chdir(&quot;..&quot;) == -1 ) {
+			printf(&quot;error changing directory to ..\n&quot;);
+			exit(1);
+		}
+
+
+		sqlite3_exec(conn, &quot;begin&quot;, NULL, NULL, NULL );
+		while ( !feof(fp_wiki) )
+		{
+			read_next_word( word, fp_wiki );
+			if ( is_word_valid( word ) == FALSE ) {
+				continue;
+			}
+			if ( is_word_exists( word, &amp;stmt_select, &amp;conn ) == FALSE ) {
+				add_to_the_list( word, &amp;stmt_insert, &amp;conn );
+			}
+			else {
+				inc_occ( word, &amp;stmt_update, &amp;conn );
+			}
+		
+			nbr_of_words++;
+		}
+		sqlite3_exec(conn, &quot;commit&quot;, NULL, NULL, NULL );
+		fclose(fp_wiki);
+	}
+	fclose(fp);
+	sqlite3_finalize( stmt_select );
+	sqlite3_finalize( stmt_insert );
+	sqlite3_finalize( stmt_update );
+
+	compute_freq( &amp;conn, nbr_of_words, &quot;dictionary&quot; );
+
+CLOSE_DB :
+	if ( sqlite3_close(conn) != SQLITE_OK ) {
+		printf(&quot;Error closing the db: %s\n&quot;, sqlite3_errmsg(conn));
+	}
+}
+
+void make_database( char *team_list, char *database_name )
+{
+	sqlite3 *conn;
+	sqlite3_stmt *statement;
+	FILE* fp;
+	int size_name;
+	char team_name[MAXBUFFER-LEN_CMD], sqlite_query[MAXBUFFER];
+
+	if ( sqlite3_open( database_name, &amp;conn ) != SQLITE_OK )
+	{
+		printf(&quot;Error opening the db: %s\n&quot;, sqlite3_errmsg(conn));
+		exit(1);
+	}
+
+	if ( sqlite3_prepare_v2(conn,
+		&quot;CREATE TABLE dictionary ( word text, global_occ int, global_freq real )&quot;,
+		-1, &amp;statement, NULL ) != SQLITE_OK )
+	{
+		printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+		goto CLOSE_DB;
+		exit(1);
+	}
+	
+	sqlite3_step( statement );
+	sqlite3_finalize( statement );
+
+	fp = fopen(team_list, &quot;r&quot;);
+
+	if ( fp == 0 ) {
+		printf(&quot;Can't open %s file\n&quot;, team_list);
+		exit(1);
+	}
+
+	while( !feof(fp) )
+	{
+		fgets( team_name, (MAXBUFFER - LEN_CMD), fp );
+
+		if ( feof(fp) ) {
+			break;
+		}
+
+		size_name = strlen( team_name );
+		team_name[size_name - 1] = '\0';
+		chgchar( team_name, '-', '_', size_name);
+
+		printf(&quot;Create %s Team Table\n&quot;, team_name);
+
+		sprintf( sqlite_query,
+			&quot;CREATE TABLE %s ( word text, global_occ int, global_freq real, sip real )&quot;,
+			team_name);
+		if ( sqlite3_prepare_v2(conn, sqlite_query, -1, &amp;statement, NULL ) != SQLITE_OK )
+		{
+			printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+			goto CLOSE_DB;
+			exit(1);
+		}
+
+		sqlite3_step( statement );
+		sqlite3_reset( statement );
+
+	}
+	fclose( fp);
+	sqlite3_finalize( statement );
+
+CLOSE_DB :
+	if ( sqlite3_close(conn) != SQLITE_OK ) {
+		printf(&quot;Error closing the db: %s\n&quot;, sqlite3_errmsg(conn));
+	}
+	
+}
+
+void download_wiki( char *team_list, char* year )
+{
+	FILE *fp_src, *fp_tar, *fp;
+	char ch, last_ch;
+	char buffer[MAXBUFFER], team_name[MAXBUFFER-LEN_CMD], digest_name[MAXBUFFER-LEN_CMD];
+	char dir_name[MAXBUFFER];
+	int size_name;
+	DIR *dp;
+	struct dirent *entry;
+
+	fp = fopen(team_list, &quot;r&quot;);
+
+	if ( fp == 0 ) {
+		printf(&quot;Can't open %s file\n&quot;, team_list);
+		exit(1);
+	}
+
+	while( !feof(fp) )
+	{
+		fgets( team_name, (MAXBUFFER - LEN_CMD), fp );
+
+		if ( feof(fp) ) {
+			break;
+		}
+
+		size_name = strlen( team_name );
+		team_name[size_name - 1] = '\0';
+
+		size_name = strlen( dir_name );
+		strncpy( dir_name, team_name, MAXBUFFER);
+		chgchar( dir_name, '-', '_', size_name);
+
+		if ( mkdir(dir_name, 0777) == -1 ) {
+			printf(&quot;error in the mkdir\n&quot;);
+			exit(1);
+		}
+
+		if ( chdir(dir_name) == -1 ) {
+			printf(&quot;error changing the directory to %s\n&quot;, team_name);
+			exit(1);
+		}
+
+
+		if ( strcmp( year, &quot;2007&quot;) == 0 ) {
+			snprintf(buffer, MAXBUFFER, &quot;wget -R.jpg -R.png -R.gif \
+				-R.jpeg -RUser:* -E -l1 -nd -r \
+				https://2007.igem.org/%s&quot;, team_name);
+			printf(&quot;CMD : %s\n&quot;, buffer);
+			system(buffer);
+		} else {
+			snprintf(buffer, MAXBUFFER, &quot;wget -E -ITeam:%s -nd -r \
+				http://%s.igem.org/Team:%s&quot;, team_name, year, team_name);
+			printf(&quot;CMD : %s\n&quot;, buffer);
+			system(buffer);
+		}
+	
+		if((dp = opendir(&quot;.&quot;)) == NULL) {
+			printf(&quot;can't open the dir&quot;);
+			return;
+		}
+        	   
+		while((entry = readdir(dp)) != NULL) {
+			if ( isRep(entry-&gt;d_name) != IS_REP ) {
+				if ( (strstr(entry-&gt;d_name, &quot;.html&quot;) != NULL)
+					&amp;&amp; (strstr(entry-&gt;d_name, &quot;.dumpx&quot;) == NULL) ) {
+				snprintf(buffer, MAXBUFFER, &quot;links -dump %s &gt; %s.dumpx&quot;,
+					entry-&gt;d_name, entry-&gt;d_name);
+				system(buffer);
+				}	
+			}
+		}
+		closedir(dp);
+
+		chgchar( team_name, '-', '_', size_name);
+
+
+		snprintf(buffer, MAXBUFFER, &quot;cat *.dumpx &gt; %s&quot;, team_name);
+		system(buffer);
+
+		strncpy( digest_name, team_name, (MAXBUFFER-LEN_CMD-4) );
+		strcat( digest_name, &quot;.xtr&quot;);
+	
+		fp_src = fopen(team_name, &quot;r&quot;);
+		if ( fp == 0 ) {
+			printf(&quot;Can't open %s file\n&quot;, team_name);
+			exit(1);
+		}
+
+		fp_tar = fopen(digest_name, &quot;w&quot;);
+		if ( fp == 0 ) {
+			printf(&quot;Can't open %s file\n&quot;, digest_name);
+			exit(1);
+		}
+
+		while( !feof(fp_src) )
+		{
+			ch = fgetc(fp_src);
+	
+			if ( (ch &gt;= 0x41 &amp;&amp; ch &lt;= 0x5A) ||
+			(ch &gt;= 0x61 &amp;&amp; ch &lt;= 0x7A) ||
+			(ch == 0x20 &amp;&amp; last_ch != 0x20) ||
+			ch == 0x2D ||
+			(ch &gt;= 0x30 &amp;&amp; ch &lt;= 0x39) ) {
+				if (ch &gt;= 0x41 &amp;&amp; ch &lt;= 0x5A) { //put in lowercase
+					ch += 0x20;
+				}
+				fputc(ch, fp_tar);
+			}
+			else {
+				ch = 0x20;
+	
+				if ( last_ch != 0x20 ) {
+					fputc(ch, fp_tar);
+				}
+			}
+			last_ch = ch;
+		}
+		
+		fclose( fp_src );
+		fclose( fp_tar );
+
+		if ( chdir(&quot;..&quot;) == -1 ) {
+			printf(&quot;error changing the directory to %s\n&quot;, team_name);
+			exit(1);
+		}
+	}
+	fclose(fp);
+}
+
+void compute_sip( sqlite3 **conn, char *team_name )
+{
+// SELECT * from TEAM_NAME;
+// For each result -&gt; get the freq | get the word =&gt; get the freq of word in all wiki
+// f/F
+// UPDATE where word='yourword'
+
+	sqlite3_stmt *statement, *stmt_select, *stmt_update;
+	char sqlite_query[MAXBUFFER];
+	float local_freq, global_freq;
+	int res;
+
+	snprintf( sqlite_query, MAXBUFFER, &quot;SELECT * from %s&quot;, team_name);
+	if ( sqlite3_prepare_v2(*conn, sqlite_query, -1, &amp;statement, NULL ) != SQLITE_OK ) {
+		printf(&quot;compute_sip() : Error compiling the request 1: %s\n&quot;,
+			sqlite3_errmsg(*conn) );
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+
+	if ( sqlite3_prepare_v2(*conn, &quot;SELECT * from dictionary WHERE word=?&quot;, -1,
+				&amp;stmt_select, NULL ) != SQLITE_OK )
+	{
+		printf(&quot;compute_sip() : Error compiling the request 2: %s\n&quot;,
+			sqlite3_errmsg(*conn) );
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+
+	snprintf( sqlite_query, MAXBUFFER, &quot;UPDATE %s SET sip = ?/? WHERE word=?&quot;,
+		team_name);
+	if ( sqlite3_prepare_v2(*conn, sqlite_query, -1, &amp;stmt_update, NULL ) != SQLITE_OK ) {
+		printf(&quot;compute_sip() : Error compiling the request 3: %s\n&quot;,
+			sqlite3_errmsg(*conn) );
+		close_sqlitedb( &amp;conn );
+		exit(1);
+	}
+
+	sqlite3_exec(*conn, &quot;begin&quot;, NULL, NULL, NULL );
+	while( (res = sqlite3_step(statement)) == SQLITE_ROW)
+	{
+		local_freq = (float)sqlite3_column_double(statement, 2);
+
+		if ( sqlite3_bind_text( stmt_select, 1, sqlite3_column_text(statement, 0), -1,
+					SQLITE_STATIC) != SQLITE_OK ) {
+			printf(&quot;compute_sip() : Error binding 1: %s\n&quot;, sqlite3_errmsg(*conn));
+			close_sqlitedb( &amp;conn );
+			exit(1);
+		}
+		sqlite3_step( stmt_select );
+		global_freq = (float)sqlite3_column_double(stmt_select, 2);
+
+		if ( sqlite3_bind_double( stmt_update, 1, (double)local_freq) != SQLITE_OK ) {
+			printf(&quot;compute_sip() : Error binding 2: %s\n&quot;, sqlite3_errmsg(*conn));
+			close_sqlitedb( &amp;conn );
+			exit(1);
+		}
+
+		if ( sqlite3_bind_double( stmt_update, 2, (double)global_freq) != SQLITE_OK ) {
+			printf(&quot;compute_sip() : Error binding 3: %s\n&quot;, sqlite3_errmsg(*conn));
+			close_sqlitedb( &amp;conn );
+			exit(1);
+		}
+
+		if ( sqlite3_bind_text( stmt_update, 3, sqlite3_column_text(statement, 0), -1,
+					SQLITE_STATIC) != SQLITE_OK ) {
+			printf(&quot;compute_sip() : Error binding 4: %s\n&quot;, sqlite3_errmsg(*conn));
+			close_sqlitedb( &amp;conn );
+			exit(1);
+		}
+
+		sqlite3_step( stmt_update );
+
+		sqlite3_reset( stmt_select );
+		sqlite3_reset( stmt_update );
+	}
+	sqlite3_exec(*conn, &quot;commit&quot;, NULL, NULL, NULL );
+
+	sqlite3_finalize( statement );
+	sqlite3_finalize( stmt_select );
+	sqlite3_finalize( stmt_update );
+}
+
+void make_sipword( char *team_list, char *database_name)
+{
+	FILE *fp_wiki, *fp;
+	float nbr_of_words = 0;
+	char word[MAXBUFFER], digest_name[MAXBUFFER-LEN_CMD], team_name[MAXBUFFER-LEN_CMD];
+	char sqlite_query[MAXBUFFER];
+	int size_name;
+
+	sqlite3_stmt *stmt_select, *stmt_insert, *stmt_update;
+
+	sqlite3 *conn;
+	if ( sqlite3_open( database_name, &amp;conn ) != SQLITE_OK )
+	{
+		printf(&quot;Error opening the db: %s\n&quot;, sqlite3_errmsg(conn));
+		exit(1);
+	}
+	
+	fp = fopen(team_list, &quot;r&quot;);
+
+	if ( fp == 0 ) {
+		printf(&quot;Can't open %s file\n&quot;, team_list);
+		exit(1);
+	}
+
+	while( !feof(fp) )
+	{
+		fgets( team_name, (MAXBUFFER - LEN_CMD), fp );
+
+		if ( feof(fp) ) {
+			break;
+		}
+
+		size_name = strlen( team_name );
+		team_name[size_name - 1] = '\0';
+		chgchar( team_name, '-', '_', size_name);
+
+
+		printf(&quot;On the %s Team\n&quot;, team_name);
+
+		// pre-compile the query to optimize the process
+		snprintf( sqlite_query, MAXBUFFER, &quot;SELECT * FROM %s WHERE word=?&quot;,
+			team_name);
+
+		if ( sqlite3_prepare_v2(conn, sqlite_query , -1,
+			&amp;stmt_select, NULL ) != SQLITE_OK )
+		{
+			printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+			goto CLOSE_DB;
+			exit(1);
+		}
+
+		snprintf( sqlite_query, MAXBUFFER, &quot;INSERT INTO %s \
+			VALUES (?, 1, NULL, NULL)&quot;, team_name);
+
+		if ( sqlite3_prepare_v2(conn, sqlite_query, -1,
+			&amp;stmt_insert, NULL ) != SQLITE_OK )
+		{
+			printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+			goto CLOSE_DB;
+			exit(1);
+		}
+	
+		snprintf( sqlite_query, MAXBUFFER, &quot;UPDATE %s \
+			SET global_occ = global_occ + 1 WHERE word=?&quot;, team_name);
+
+		if ( sqlite3_prepare_v2(conn, sqlite_query, -1,
+			&amp;stmt_update, NULL ) != SQLITE_OK )
+		{
+			printf(&quot;Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+			goto CLOSE_DB;
+			exit(1);
+		}
+	
+		if ( chdir(team_name) == -1 ) {
+			printf(&quot;error changing directory to %s\n&quot;, team_name);
+			exit(1);
+		}
+
+		strncpy( digest_name, team_name, MAXBUFFER-LEN_CMD-4 );
+		strcat( digest_name, &quot;.xtr&quot;);
+
+		fp_wiki = fopen( digest_name, &quot;r&quot; );
+		if( fp_wiki == 0 ) {
+			printf(&quot;error when you open %s file&quot;, digest_name);
+			exit(1);
+		}
+
+		if ( chdir(&quot;..&quot;) == -1 ) {
+			printf(&quot;error changing directory to ..\n&quot;);
+			exit(1);
+		}
+
+
+		sqlite3_exec(conn, &quot;begin&quot;, NULL, NULL, NULL );
+		while ( !feof(fp_wiki) )
+		{
+			read_next_word( word, fp_wiki );
+			if ( is_word_valid( word ) == FALSE ) {
+				continue;
+			}
+			if ( is_word_exists( word, &amp;stmt_select, &amp;conn ) == FALSE ) {
+				add_to_the_list( word, &amp;stmt_insert, &amp;conn );
+			}
+			else {
+				inc_occ( word, &amp;stmt_update, &amp;conn );
+			}
+		
+			nbr_of_words++;
+		}
+		sqlite3_exec(conn, &quot;commit&quot;, NULL, NULL, NULL );
+		fclose(fp_wiki);
+		sqlite3_finalize( stmt_select );
+		sqlite3_finalize( stmt_insert );
+		sqlite3_finalize( stmt_update );
+
+		compute_freq( &amp;conn, nbr_of_words, team_name );
+		compute_sip( &amp;conn, team_name);
+	}
+
+CLOSE_DB :
+	if ( sqlite3_close(conn) != SQLITE_OK ) {
+		printf(&quot;Error closing the db: %s\n&quot;, sqlite3_errmsg(conn));
+	}
+}
+
+int main( int argc, char *argv[] )
+{
+
+	if ( argv[TEAM_NAME] == 0 || argv[DATABASE_NAME] == 0 ) {
+		printf(&quot;usage : %s [list of team name] [name of database] [year]\n \
+	- don't put [year] if you want to skip the download step.\n&quot;, argv[0] );
+		exit(1);
+	}
+
+	if ( argv[YEAR] == 0 ) {
+		printf(&quot;skip the downlad step !\n&quot;);
+	} else {
+		printf(&quot;start to download wiki !\n&quot;);
+		download_wiki( argv[TEAM_NAME], argv[YEAR] );
+	}
+
+	printf(&quot;make the database !\n&quot;);
+	make_database( argv[TEAM_NAME], argv[DATABASE_NAME] );
+
+	printf(&quot;start to make a dictionary !\n&quot;);
+	make_dictionary( argv[TEAM_NAME], argv[DATABASE_NAME] );
+
+	printf(&quot;start calculate SIP words !\n&quot;);
+	make_sipword( argv[TEAM_NAME], argv[DATABASE_NAME] );
+
+	return 0;
+}
+
+</PRE></P><H2><SPAN class="mw-headline" id="TOP-SIP.CPP"> TOP-SIP.CPP </SPAN></H2><P style="display:block"><PRE>
+/* TOP_SIP.C *** Give the top high SIP words *** v 1.0
+
+PUBLIC DOMAIN
+From iGEM team 2010 Paris
+
+comment:
+
+ This code allows you to get the words with the high SIP value
+ Use SIP.C before using this tools.
+ For the random module, you can use what you want, we use
+ MersenneTwister written in C++, that's why you have to compile
+ with g++ in this case.
+
+ MersenneTwister : http://www-personal.umich.edu/~wagnerr/MersenneTwister.html
+
+build:
+
+ $ g++ -o top-sip top-sip.c -lsqlite3
+
+usage :
+
+ $ ./top-sip [list of team name] [name of database] [coeff]
+
+
+*/
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;dirent.h&gt;
+#include &lt;sqlite3.h&gt;
+#include &quot;MersenneTwister.hpp&quot;
+
+
+#define MAXBUFFER	256
+#define LEN_CMD		96
+
+#define TEAM_NAME 	1
+#define DATABASE_NAME	2
+#define DEC_COEFF	3
+
+#define FALSE 		0
+#define TRUE		1
+
+#define MIN_COEFF	0
+#define MAX_COEFF	15
+
+#define WORD_C	0
+#define FREQ_C	2
+#define SIP_C	3
+
+/******** customizable constant **********/
+
+//// The number of result you want
+#define TOP 	25
+
+//// Active the filter to remove words with a small number of alpha char,
+//// but big number
+//// of numeric char
+#define FILTER		1
+//// Minimum numeric char to ban the word
+#define CHAR_NUM_MIN	1
+//// Maximum alpha char to ban the word
+#define CHAR_ALPHA_MAX	3
+
+/******************************************/
+
+
+
+/*
+Change a character by an other one in a string.
+@string : your string
+@c : char to remove
+@r : char to set instead
+@len : lenght of the string
+return number of char changed.
+*/
+unsigned long int chgchar( char *string, char c, char r, int len )
+{
+	int i = 0;
+	unsigned long int n=0;
+
+	while ( i &lt; len )
+	{
+		if ( string[i] == c )
+		{
+			
+			string[i] = r;
+			i++;
+			n++;
+		}
+		else
+			i++;
+	}
+	
+	return n;
+}
+
+/*
+Check if the word has number, if is a word we want.
+@string : your woord
+@len: lenght of your string
+return: FALSE if you need to remove the word
+*/
+int is_word_is_valid( char *string, int len )
+{
+	int i = 0;
+	int n=FALSE;
+	int alph_char = 0;
+	int numb_char = 0;
+
+	//// DNA sequences filter
+	while ( i &lt; len )
+	{
+		if ( string[i] != 'a' || string[i] != 'g' || string[i] != 't' || string[i] != 'c' ) {
+			n = TRUE;
+			break;
+		}
+		i++;
+	}
+
+	/// Alpha-numeric filter
+	i = 0;
+	while ( i &lt; len )
+	{
+		if ( (string[i] &gt;= 0x41 &amp;&amp; string[i] &lt;= 0x5A) || (string[i] &gt;= 0x61 &amp;&amp; string[i] &lt;= 0x7A) ) {
+			alph_char++;
+		}
+		else {
+			numb_char++;
+		}
+		i++;
+	}
+
+	if( numb_char &gt;= CHAR_NUM_MIN &amp;&amp; alph_char &lt;= CHAR_ALPHA_MAX) {
+		n = FALSE;
+	}
+
+	return n;
+}
+
+/*
+pick a random number between 0 and X, use your favorite random algorithm ! I use Mersenne Twister.
+@prob : your X, so you have 1/X prob to get the good number. X+1 numbers can be choosen.
+return : the random number
+*/
+int pickrandom( int prob )
+{
+	MTRand mtrand1;
+	int d = mtrand1.randInt( prob );
+	return d;
+}
+
+unsigned long int compute_mul( double min_freq )
+{
+	unsigned long int mult = 1;
+
+	while( min_freq &lt; 1 )
+	{
+		min_freq = min_freq * 10;
+		mult = mult * 10;
+	}
+
+	return mult;
+}
+
+void compute_top_sip( char *team_list, char *database_name, float dec_coeff )
+{
+	FILE *fp, *fp_team;
+	sqlite3_stmt *statement;
+
+	char sqlite_query[MAXBUFFER];
+	char top_words[TOP][MAXBUFFER];
+	char team_name[MAXBUFFER-LEN_CMD];
+
+	int wanted_stuff, total_stuff, max_interval, i;
+	unsigned long int t, multiplicator;
+	int size_name, index;
+	double top_freq[TOP];
+	double max_sip, curr_sip;
+	double min_freq, curr_freq;
+
+	sqlite3 *conn;
+	if ( sqlite3_open( database_name, &amp;conn ) != SQLITE_OK )
+	{
+		printf(&quot;Error opening the db: %s\n&quot;, sqlite3_errmsg(conn));
+		exit(1);
+	}
+
+	fp = fopen(team_list, &quot;r&quot;);
+
+	if ( fp == 0 ) {
+		printf(&quot;Can't open %s file\n&quot;, team_list);
+		exit(1);
+	}
+
+	while( !feof(fp) )
+	{
+
+		fgets( team_name, (MAXBUFFER - LEN_CMD), fp );
+
+		if ( feof(fp) ) {
+			break;
+		}
+
+		size_name = strlen( team_name );
+		team_name[size_name - 1] = '\0';
+		chgchar( team_name, '-', '_', size_name);
+
+		printf(&quot;On the %s Team\n&quot;, team_name);
+
+	FIND_HIGH_SIP:
+		max_sip = 0, min_freq = 1;
+
+		snprintf( sqlite_query, MAXBUFFER, &quot;SELECT * FROM %s&quot;, team_name);
+
+		if ( sqlite3_prepare_v2(conn, sqlite_query , -1,
+			&amp;statement, NULL ) != SQLITE_OK )
+		{
+			printf(&quot;COMPUTE HIGHT SIP : Error compiling the request: %s\n&quot;, sqlite3_errmsg(conn) );
+			goto CLOSE_DB;
+			exit(1);
+		}
+
+		t = 0;
+		while ( sqlite3_step( statement ) != SQLITE_DONE ) {
+			curr_sip = (double)sqlite3_column_double(statement, SIP_C);
+			if ( curr_sip &gt; max_sip ) {
+				max_sip = curr_sip;
+			}
+			curr_freq = (double)sqlite3_column_double(statement, FREQ_C);
+			if ( curr_freq &lt; min_freq ) {
+				min_freq = curr_freq;
+			}
+			t++;
+		}
+		// For Wordle, to avoid float value &lt; 0 we use a multiplicator.
+		multiplicator = compute_mul( min_freq );
+		printf(&quot;hight sip is %.15f, for %ld entry and multiplicator %ld\n&quot;, max_sip, t, multiplicator);
+		sqlite3_finalize( statement );
+
+	GET_THE_TOP_WORDS:
+		int loop = TRUE;
+		int prev_rest = TOP;
+		int rest = 0;
+		curr_sip = max_sip;
+		index = 0;
+		int nbr_words_registred = 0;
+
+		while( loop == TRUE )
+		{
+			max_interval = 0;
+			wanted_stuff = TOP;
+			total_stuff = 0;
+			loop = FALSE;
+	
+			snprintf( sqlite_query, MAXBUFFER,
+				&quot;SELECT * FROM %s WHERE sip &gt; %.15f AND sip &lt;= %.15f&quot;,
+				team_name, curr_sip, max_sip);
+	
+			if ( sqlite3_prepare_v2(conn, sqlite_query , -1,
+				&amp;statement, NULL ) != SQLITE_OK )
+			{
+				printf(&quot;PICK TOP FIVE : Error compiling the request: %s\n&quot;,
+					sqlite3_errmsg(conn) );
+				goto CLOSE_DB;
+				exit(1);
+			}
+	
+	
+			while ( sqlite3_step( statement ) != SQLITE_DONE ) {
+				total_stuff++;
+			}
+	
+			rest = prev_rest - total_stuff;
+			//printf(&quot;rest = %d, prev_rest=%d, total_stuff = %d\n&quot;, rest, prev_rest, total_stuff);
+			// debug
+	
+			if( rest &gt; 0 ) {
+	
+				if ( rest &lt; prev_rest ) {
+					max_sip = curr_sip;
+				}
+				curr_sip = curr_sip - dec_coeff;
+				if ( curr_sip &lt;= 0 ) {
+					continue;
+				}
+				loop = TRUE;
+			}
+	
+			max_interval = total_stuff / prev_rest; // we put the fraction to 1/X and we save X.
+			max_interval--;
+	
+			if ( max_interval &lt;= 0 ) {
+				max_interval = 0;
+			}
+	
+			/*printf(&quot;prob is : %f, (%d/%d), give a number between 0 and %d\n&quot;,
+				(float)prev_rest / total_stuff, prev_rest, total_stuff, max_interval);*/
+			// debug
+	
+	
+			while ( sqlite3_step( statement ) != SQLITE_DONE &amp;&amp; rest != prev_rest ) {
+	
+				if ( pickrandom(max_interval) == FALSE ) {
+					strncpy( top_words[index],
+						(const char*)sqlite3_column_text(statement, WORD_C), MAXBUFFER);
+					top_freq[index] = (double)sqlite3_column_double(statement, FREQ_C);
+					index++;
+	
+					if ( rest &lt;= 0 ) {
+						if ( (index - nbr_words_registred) == prev_rest ) {
+						break;
+						}
+					} else { 
+						if ( (index - nbr_words_registred) == total_stuff ) {
+							break;
+						}
+					}
+				}		
+			}		
+			
+			prev_rest = rest;
+			nbr_words_registred = index;
+		}
+	
+		printf(&quot;Your top-words for this team is :\n&quot;);
+
+		fp_team = fopen(team_name, &quot;w&quot;);
+
+		if( fp_team == 0 ) {
+			printf(&quot;error opening the %s file\n&quot;, team_name);
+			exit(1);
+		}
+
+		for( index=0;index&lt;TOP;index++) {
+			if ( FILTER ) {
+				if ( is_word_is_valid(top_words[index], strlen(top_words[index]) ) == FALSE ) {
+					continue;
+				}
+			}
+			
+			printf(&quot;\t- %s (freq = %f; len=%d)\n&quot;, top_words[index],
+				(float)(top_freq[index] * multiplicator),
+				(int)(top_freq[index] * multiplicator));
+
+			fprintf(fp_team, &quot;%s: %d\n&quot;, top_words[index],
+				(int)(top_freq[index] * multiplicator));
+		}
+		fclose( fp_team );
+		sqlite3_finalize( statement );
+		
+	}
+	fclose(fp);
+
+CLOSE_DB :
+	if ( sqlite3_close(conn) != SQLITE_OK ) {
+		printf(&quot;Error closing the db: %s\n&quot;, sqlite3_errmsg(conn));
+	}
+}
+
+int main( int argc, char *argv[] )
+{
+
+	if ( argv[TEAM_NAME] == 0 || argv[DATABASE_NAME] == 0 || argv[DEC_COEFF] == 0 ) {
+		printf(&quot;usage : %s [list of team name] [name of database] [dec-coeff]\n&quot;, argv[0] );
+		printf(&quot;/tUse 0 to 15 to define a dec-coeff.\n&quot;);
+		exit(1);
+	}
+
+	if ( atoi( argv[DEC_COEFF]) &gt;= MIN_COEFF &amp;&amp; atoi( argv[DEC_COEFF]) &lt;= MAX_COEFF ) {
+		printf(&quot;Compute with 10^-%s dec_coeff!\n&quot;, argv[DEC_COEFF]);
+		compute_top_sip( argv[TEAM_NAME], argv[DATABASE_NAME], powf( 10, -atoi(argv[DEC_COEFF])) );
+	} else {
+		printf(&quot;Use 0 to 15 to define a dec-coeff.\n&quot;);
+	}
+
+	return 0;
+}
+
+</PRE></P></DIV></DIV><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project/SIP/Codes">http://2010.igem.org/Team:Paris_Liliane_Bettencourt/Project/SIP/Codes</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Paris_Liliane_Bettencourt/Project/SIP/Codes" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Paris_Liliane_Bettencourt/Project/SIP/Codes" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Paris_Liliane_Bettencourt/Project/SIP/Codes&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Paris_Liliane_Bettencourt/Project/SIP/Codes&amp;oldid=206560" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2010.igem.org:Privacy_policy" title="2010.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2010.igem.org:General_disclaimer" title="2010.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

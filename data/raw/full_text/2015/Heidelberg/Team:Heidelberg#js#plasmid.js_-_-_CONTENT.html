@@ -1,0 +1,243 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Heidelberg_js_plasmid_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Heidelberg/js/plasmid.js</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>function Plasmid(canvas, infobox, inserts, diameter, legendWidth, insertWidth, defaultText, insertBoxAttr, fontSize, spacing, startAngle) {
+</P><PRE>   // Are all required parameters given?
+   if (canvas == undefined || infobox == undefined || inserts == undefined || diameter == undefined) {
+       console.log(&quot;Error: Not alle required parameters (canvas, inserts, infobox, diameter) given!&quot;);
+   }
+   this.canvas = canvas;
+   this.inserts = inserts;
+   this.diameter = diameter;
+   this.infobox = infobox;
+</PRE><PRE>   // Set sane defaults for optional parameters
+   this.legendWidth = legendWidth || 500;
+   this.radiusOfInsertBox = insertWidth || diameter / 13;
+   this.defaultText = defaultText || &quot;Hover over an insert to get more information!&quot;;
+   this.fontSize = fontSize || 20;
+   this.spacing = spacing || 25;
+   this.startAngle = startAngle || -40;
+   this.insertBoxAttr = insertBoxAttr || {
+       stroke: &quot;#666&quot;,
+       opacity: 0.7,
+       &quot;stroke-width&quot;: 1,
+       &quot;stroke-linejoin&quot;: &quot;round&quot;
+   };
+</PRE><PRE>   // Other stuff
+   this.radiusOfPlasmid = this.diameter * 0.5;
+   this.center = {x: this.spacing + this.radiusOfPlasmid, y: this.spacing + this.radiusOfPlasmid};
+</PRE><P>}
+</P><P>Plasmid.prototype = {
+</P><PRE>   constructor: Plasmid,
+</PRE><PRE>   // Checks list of inserts for completeness and applies sane defaults
+   checkInserts: function () {
+       for (i in this.inserts) {
+           insert = this.inserts[i];
+           if ( !(&quot;size&quot; in insert) || !(&quot;color&quot; in insert) || !(&quot;description&quot; in insert) || !(&quot;label&quot; in insert)) {
+               console.log(&quot;Error parsing inserts array, insert no.&quot;, i, &quot;misses one or more required fields (size, color, description, label).&quot;);
+               return false;
+           } else {
+               if (!(&quot;gap&quot; in insert)) {
+                   insert.gap = true;
+               }
+               if (!(&quot;promoter&quot; in insert)) {
+                   insert.promoter = false;
+               }
+               if (insert.promoter &amp;&amp; insert.size &lt; 10) {
+                   console.log(&quot;Warning, Insert is to small to be a promoter!&quot;);
+                   insert.promoter = false;
+               }
+           }
+       }
+</PRE><PRE>       // Everythin is alright
+       return true;
+   },
+</PRE><PRE>   // Converts polar coordinates to carthesian coordinates, will assume this.center as center
+   polarToCartesian: function (radius, angleInDegrees) {
+       var angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+</PRE><PRE>       return {
+           x: this.center.x + (radius * Math.cos(angleInRadians)),
+           y: this.center.y + (radius * Math.sin(angleInRadians))
+       };
+   },</PRE><PRE>   // Returns the the describtion for an arc, will use the shortest arc path
+   // Arcs starts at the current position
+   describeArc: function (radius, arcSweep, end) {
+       return [
+           &quot;A&quot;, this.radiusOfPlasmid, this.radiusOfPlasmid, 0, 0, arcSweep, end.x, end.y
+       ];
+   },
+</PRE><PRE>   // Describes a line, line starts at current position
+   describeLine: function(end) {
+       return [
+           &quot;L&quot;, end.x, end.y
+       ];
+   },
+</PRE><PRE>   // Describes the box for an insert
+   describeInsertBox: function(startAngle, size, promoter) {
+       var SWEEP_FWD = 1;
+       var SWEEP_RWD = 0;
+       var endAngle = startAngle + size;
+</PRE><PRE>       var topLeft             = this.polarToCartesian(this.radiusOfPlasmid, startAngle);
+       var bottomLeft          = this.polarToCartesian(this.radiusOfPlasmid - this.radiusOfInsertBox, startAngle);
+       if (promoter) {
+           var topRight        = this.polarToCartesian(this.radiusOfPlasmid, endAngle - 10);
+           var bottomRight     = this.polarToCartesian(this.radiusOfPlasmid - this.radiusOfInsertBox, endAngle - 10);
+           var arrowbodyOuter  = this.polarToCartesian(this.radiusOfPlasmid + 10, endAngle - 10);
+           var arrowbodyInner  = this.polarToCartesian(this.radiusOfPlasmid - this.radiusOfInsertBox - 10, endAngle - 10);
+           var arrowhead       = this.polarToCartesian(this.radiusOfPlasmid - this.radiusOfInsertBox * 0.5, endAngle)
+       } else {
+           var topRight        = this.polarToCartesian(this.radiusOfPlasmid, endAngle);
+           var bottomRight     = this.polarToCartesian(this.radiusOfPlasmid - this.radiusOfInsertBox, endAngle);
+       }
+</PRE><PRE>       if (promoter) {
+           var d = [].concat(
+               [&quot;M&quot;, topLeft.x, topLeft.y],
+               this.describeArc(this.radiusOfPlasmid, SWEEP_FWD, topRight),
+               this.describeLine(arrowbodyOuter),
+               this.describeLine(arrowhead),
+               this.describeLine(arrowbodyInner),
+               this.describeLine(bottomRight),
+               this.describeArc(this.radiusOfPlasmid - this.radiusOfInsertBox, SWEEP_RWD, bottomLeft),
+               [&quot;Z&quot;]
+           );
+       } else {
+           var d = [].concat(
+               [&quot;M&quot;, topLeft.x, topLeft.y],
+               this.describeArc(this.radiusOfPlasmid, SWEEP_FWD, topRight),
+               this.describeLine(bottomRight),
+               this.describeArc(this.radiusOfPlasmid - this.radiusOfInsertBox, SWEEP_RWD, bottomLeft),
+               [&quot;Z&quot;]
+           );
+       }
+</PRE><PRE>       return d.join(&quot; &quot;);
+   },
+</PRE><PRE>   // Draws an arrow from from to to, used to connect legend to insert
+   describeArrow: function(from, to) {
+       // We do not want an arrow to go through the graph
+       // There are four possible positions relative to us
+       // from.x &gt; from.y is always true
+       var start = [].concat(
+           [&quot;M&quot;, from.x, from.y],
+           [&quot;L&quot;, from.x - 20, from.y]
+       );
+</PRE><PRE>       // to is right of center
+       if(to.x &gt; this.center.x) {
+           // to is higher
+           if (to.y &lt; from.y) {
+               d = start.concat(
+                   [&quot;L&quot;, from.x - 20, this.center.y - this.radiusOfPlasmid - 20],
+                   [&quot;L&quot;, to.x, this.center.y - this.radiusOfPlasmid - 20],
+                   [&quot;L&quot;, to.x, to.y]
+               );
+           // to is lower or same height
+           } else {
+               d = start.concat(
+                   [&quot;L&quot;, from.x - 20, to.y],
+                   [&quot;L&quot;, to.x, to.y]
+               );
+           }
+       // to is left or directy above/beneath center
+       } else {
+           // to is above center
+           if (to.y &lt; this.center.y) {
+               d = start.concat(
+                   [&quot;L&quot;, from.x - 20, this.center.y - this.radiusOfPlasmid - 20],
+                   [&quot;L&quot;, to.x, this.center.y - this.radiusOfPlasmid - 20],
+                   [&quot;L&quot;, to.x, to.y]
+               );
+           // to is below center
+           } else {
+               d = start.concat(
+                   [&quot;L&quot;, from.x - 20, this.center.y + this.radiusOfPlasmid + 20],
+                   [&quot;L&quot;, to.x, this.center.y + this.radiusOfPlasmid + 20],
+                   [&quot;L&quot;, to.x, to.y]
+               );
+           }
+       }
+</PRE><PRE>       return d.join(&quot; &quot;);
+   },
+</PRE><PRE>   calculateGapSize: function () {
+       // First, compute how many blocks of inserts there are and how many space is taken up by blocks
+       blockSpace = 0; // in degrees
+       insertBlocks = 0;
+       for (i in this.inserts) {
+           insert = this.inserts[i];
+           blockSpace += insert.size;
+           if (insert.gap == true) {
+               insertBlocks++;
+           }
+       }
+</PRE><PRE>       // Now calculate how big each gap has to be
+       gapSize = (360 - blockSpace) / insertBlocks;
+</PRE><PRE>       // Return
+       return gapSize;
+   },
+</PRE><PRE>   // Registers mouseeventhandlers to the drawn box
+   registerEventHandlers: function(box, arrow, hoverText) {
+       box.mouseover(function() {
+           $(&quot;#info&quot;).html(hoverText);
+           box.attr({&quot;stroke-width&quot;: 2, opacity: 1.0});
+           arrow.show();
+       });
+       box.mouseout(function() {
+           $(&quot;#&quot; + this.infobox).html(this.defaultText);
+           box.attr({&quot;stroke-width&quot;: 1, opacity: 0.7});
+           arrow.hide();
+       });
+   },
+</PRE><PRE>   // Draws the plasmid
+   draw: function() {
+</PRE><P>		$(&quot;#&quot; + this.infobox).html = this.defaultText; 
+</P><PRE>       // Check Inserts, this HAS to be done first to provide sane defaults for non-given values!
+       this.checkInserts();
+</PRE><PRE>       var paper = Raphael(this.canvas, this.diameter + this.legendWidth + 3 * this.spacing, this.diameter + 2 * this.spacing);
+       var legendPos = { x: this.diameter + 2 * this.spacing, y: this.spacing };
+       var legendBubbleRadius = 5;
+       var gapSize = this.calculateGapSize(this.inserts);
+</PRE><PRE>       // Draw the rope
+       var ropeDiameter = (this.diameter - this.radiusOfInsertBox) * 1.037;
+       paper.image(&quot;&quot;, this.center.x - ropeDiameter * 0.5, this.center.y - ropeDiameter * 0.5, ropeDiameter, ropeDiameter);
+</PRE><PRE>       // Draw the inserts
+       var legendIdx = 0;
+       angle = this.startAngle;
+       for (i in this.inserts) {
+           insert = this.inserts[i];
+</PRE><PRE>           // Draw the legend entry
+           legendRowY = legendPos.y + this.fontSize * 1.2 * legendIdx;
+           var text = paper.text(legendPos.x + legendBubbleRadius * 3, legendRowY, insert.label);
+           text.attr({&quot;font-size&quot;: this.fontSize, &quot;text-anchor&quot;: &quot;start&quot;});
+           var bubble = paper.circle(legendPos.x + legendBubbleRadius, legendRowY, legendBubbleRadius);
+           bubble.attr({fill: insert.color, stroke: &quot;#CCC&quot;});
+           legendIdx++;
+</PRE><PRE>           // Draw the arrow from the legend entry to center of the outer arc of the box
+           var arrowFrom = {x: legendPos.x, y: legendRowY};
+           if (insert.promoter) {
+               var midAngle = angle + (insert.size - 10) * 0.5;
+           } else {
+               var midAngle = angle + insert.size * 0.5;
+           }
+           var arrowTo = this.polarToCartesian(this.radiusOfPlasmid, midAngle);
+           var arrow = paper.path(this.describeArrow(arrowFrom, arrowTo));
+           arrow.hide();
+</PRE><PRE>           // Draw the box and a white box as background for opacity to work correctly
+           // This is easier than computing the fill color appropreately
+           paper.path(this.describeInsertBox(angle, insert.size, insert.promoter)).attr({fill: &quot;#FFF&quot;});
+           var box = paper.path(this.describeInsertBox(angle, insert.size, insert.promoter));
+           box.attr(this.insertBoxAttr);
+           box.attr({fill: insert.color});
+           angle += insert.size;
+</PRE><PRE>           // Register mouseevent handlers
+           this.registerEventHandlers(box, arrow, insert.description);
+</PRE><PRE>           // Draw the connector line
+           if (insert.gap) {
+               //paper.path(describeConnector(angle, gapSize, center, radius, radiusOfInsertBox));
+               angle += gapSize;
+           }
+       }
+   }
+</PRE><P>}
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

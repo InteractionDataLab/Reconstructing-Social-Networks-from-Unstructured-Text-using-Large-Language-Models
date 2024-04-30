@@ -1,0 +1,255 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tianjin_Resources_JS_jqueryflex skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tianjin/Resources/JS:jqueryflex</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><DL><DT> (function($, undefined) {</DT></DL><PRE>       &quot;use strict&quot;;
+</PRE><PRE>       // Create the defaults once
+       var defaults = {
+               duration: 300,
+               padding: 10,
+               threshhold: 50
+       };
+</PRE><PRE>       function Flex(element, options) {
+               this.version = '0.2';
+               this.element = $(element);
+               this.tiles = this.element.find(&quot;a&quot;);
+               this.options = $.extend({},
+               defaults, options);
+               this.list = [];
+               this.cache = [];
+</PRE><PRE>               this.init();
+       }
+</PRE><PRE>       Flex.prototype.init = function() {
+               this.buildCache();
+               this.createEvents();
+       };
+</PRE><PRE>       // creates an object that is our cache of def the
+       // properties we need
+       Flex.prototype.createCacheObj = function(el) {
+               return {
+                       elm: el,
+                       defaults: {
+                               width: el.width(),
+                               height: el.height(),
+                               left: parseInt(el.css(&quot;left&quot;), 10),
+                               top: parseInt(el.css(&quot;top&quot;), 10)
+                       },
+                       expanded: {
+                               width: parseInt(el.attr(&quot;width&quot;), 10),
+                               height: parseInt(el.attr(&quot;height&quot;), 10),
+                               left: parseInt(el.css(&quot;left&quot;), 10),
+                               top: parseInt(el.css(&quot;top&quot;), 10)
+                       }
+               };
+       };
+</PRE><PRE>       Flex.prototype.buildCache = function() {
+               var tiles = this.tiles,
+               tile, len = tiles.length;
+</PRE><PRE>               for (var x = 0; x &lt; len; x++) {
+                       tile = $(tiles[x]);
+                       this.list.push(this.createCacheObj(tile));
+                       this.cache[x] = this.list[this.list.length - 1];
+                       tile.data(&quot;flex-cache&quot;, x);
+               }
+       };
+</PRE><PRE>       Flex.prototype.createEvents = function() {
+               var self = this;
+               this.tiles.on('mouseenter',
+               function() {
+                       self.change(this);
+                       self.animate('grow');
+               }).on('mouseleave',
+               function() {
+                       self.animate('shrink');
+               });
+       };
+</PRE><PRE>       Flex.prototype.getCache = function(el) {
+               return this.cache[$(el).data(&quot;flex-cache&quot;)];
+       };
+</PRE><PRE>       Flex.prototype.animate = function(dir) {
+               var options = {
+                       queue: false,
+                       duration: 300
+               },
+               x = 0;
+               if (dir === 'grow') {
+                       for (; x &lt; this.changes.length; x++) {
+                               this.changes[x].elm.dequeue().animate(this.changes[x].change, options);
+                       }
+               } else {
+                       for (; x &lt; this.list.length; x++) {
+                               this.list[x].elm.dequeue().animate(this.list[x].defaults, options);
+                               delete this.list[x].change;
+                               delete this.list[x].start;
+                               delete this.list[x].adjusted;
+                       }
+               }
+       };
+</PRE><PRE>       Flex.prototype.getPositions = function(d) {
+               return [[d.left, (d.left + d.width)], [d.top, d.top + d.height]];
+       };
+</PRE><PRE>       Flex.prototype.comparePositions = function(p1, p2) {
+               var r1, r2;
+</PRE><PRE>               r1 = p1[0] &lt;= p2[0] ? p1: p2;
+               r2 = p1[0] &lt;= p2[0] ? p2: p1;
+</PRE><PRE>               return r1[1] &gt;= r2[0] || r1[0] === r2[0];
+       };
+</PRE><PRE>       Flex.prototype.overlaps = function(a, b) {
+               var pos1 = this.getPositions(a.change),
+               pos2 = this.getPositions(b.change || b.defaults);
+</PRE><PRE>               return this.comparePositions(pos1[0], pos2[0]) &amp;&amp; this.comparePositions(pos1[1], pos2[1]);
+       };
+</PRE><PRE>       Flex.prototype.intersectors = function(compare, compareAgainstChanges) {
+               var list = (compareAgainstChanges) ? this.changes: this.list,
+               intersectors = [];
+</PRE><PRE>               for (var x = 0; x &lt; list.length; x++) {
+                       if (list[x].elm[0] !== compare.elm[0] &amp;&amp; !list[x].start &amp;&amp; !list[x].adjusted &amp;&amp; this.overlaps(compare, list[x])) {
+                               intersectors.push(list[x]);
+                       }
+               }
+</PRE><PRE>               return intersectors;
+       };
+</PRE><PRE>       // take the child and it's parent and calculate the difference
+       // threshhold - min width &amp; height for any given element
+       // padding - empty area between the elements
+       Flex.prototype.adjust = function(child, overrideParent) {
+               var w, h, l, t, d = {},
+               parent = overrideParent,
+               flag = false,
+               threshhold = this.options.threshhold,
+               padding = this.options.padding,
+               childBelow = child.defaults.top &gt; parent.defaults.top + parent.defaults.height,
+               childAbove = child.defaults.top + child.defaults.height &lt; parent.defaults.top,
+               childLeftOf = child.defaults.left &lt; parent.defaults.left,
+               childRightOf = child.defaults.left &gt; parent.defaults.left + parent.defaults.width;
+</PRE><PRE>               // Width
+               if (childAbove || childBelow) {
+                       w = child.defaults.width;
+               } else if (childRightOf) {
+                       w = child.defaults.left + child.defaults.width - (parent.change.left + parent.change.width) - padding;
+               } else {
+                       w = parent.change.width - child.defaults.width + padding;
+               }
+</PRE><PRE>               if (w &lt; threshhold) {
+                       w = threshhold;
+                       flag = true;
+               }
+</PRE><PRE>               // Height
+               if (childBelow || childAbove) {
+                       h = child.defaults.height + child.defaults.top - parent.change.height - padding;
+               } else if (childRightOf) {
+                       h = child.defaults.height;
+               } else {
+                       h = parent.change.height - child.defaults.height;
+               }
+</PRE><PRE>               if (h &lt; threshhold) {
+                       h = threshhold;
+                       flag = true;
+               }
+</PRE><PRE>               // Left
+               if (childBelow || childAbove) {
+                       l = child.defaults.left;
+               } else if (childRightOf) {
+                       l = (parent.change.left + parent.change.width) + padding;
+               } else {
+                       l = parent.change.left + parent.change.width + padding;
+               }
+</PRE><PRE>               // Top
+               if (childBelow) {
+                       t = parent.change.top + parent.change.height + padding;
+               } else {
+                       t = child.defaults.top;
+               }
+</PRE><PRE>               return [{
+                       width: w,
+                       height: h,
+                       left: l,
+                       top: t
+               },
+               flag];
+       };
+</PRE><PRE>       Flex.prototype.recursion = function(start) {
+</PRE><PRE>               var cp, adj, adjustment, intersector, i, p, y, cacheTimes = this.times,
+               changes = this.changes,
+               current, x = 0,
+               t = changes.length,
+               moreChanges = 0;
+</PRE><PRE>               // if this is the first iteration
+               for (; x &lt; t; x++) {
+                       current = changes[x];
+                       // if it's the first iteration, set properties
+                       // on the matching element
+                       if (start) {
+                               // current is the same as the start elm
+                               // ie. what element the mouse entered on
+                               if (current.elm[0] === start.elm[0]) {
+                                       // simple flag to know which element is the beginning node
+                                       current.start = true;
+                                       current.change = current.expanded;
+                                       moreChanges++;
+                                       // break out of loop, for next iteration
+                                       break;
+                               }
+                       }
+                       /* 酷站代码整理 <A rel="nofollow" class="external free" href="http://www.5icool.org">http://www.5icool.org</A> */
+                       // if an element has been marked for change and is not adjusted (complete)
+                       if (current.change &amp;&amp; !current.adjusted) {
+                               if (!this.first) {
+                                       this.first = true;
+                                       current.adjusted = true;
+                               }
+                               // does this element overlap with any other elements
+                               i = this.intersectors(current, true);
+</PRE><PRE>                               for (y = 0; y &lt; i.length; y++) {
+                                       intersector = i[y];
+</PRE><PRE>                                       // don't make changes to the current elm
+                                       if (!intersector.start &amp;&amp; intersector.elm[0] !== current.elm[0]) {
+                                               // calculate the css changes
+                                               adjustment = this.adjust(intersector, current);
+</PRE><PRE>                                               // loop through list of changes to update
+                                               for (p = 0; p &lt; changes.length; p++) {
+</PRE><PRE>                                                       if (intersector.elm[0] === changes[p].elm[0] &amp;&amp; !changes[p].adjusted) {
+                                                               cp = changes[p];
+                                                               adj = adjustment[0];
+</PRE><PRE>                                                               // if this has been changed and the change/adjustments
+                                                               // are the same mark as adjusted
+                                                               if (cp.change &amp;&amp; (cp.change.width === adj.width &amp;&amp; cp.change.height === adj.height &amp;&amp; cp.change.left === adj.left &amp;&amp; cp.change.top === adj.top)) {
+                                                                       changes[p].adjusted = true;
+                                                               } else {
+                                                                       // apply adjustments to the change obj
+                                                                       changes[p].change = adjustment[0];
+                                                                       moreChanges++;
+                                                               }
+                                                               break;
+                                                       }
+                                               }
+                                       }
+                               }
+                       }
+               }
+</PRE><PRE>               if (moreChanges) this.recursion();
+       };
+</PRE><PRE>       Flex.prototype.change = function(el) {
+               var cache = this.getCache(el),
+               reference = [];
+</PRE><PRE>               // create copy of list
+               this.changes = $.extend(true, [], this.list);
+               this.first = null;
+</PRE><PRE>               this.recursion(cache);
+       };
+</PRE><PRE>       $.fn.flex = function(options) {
+               var p = this.data(&quot;flex&quot;),
+               opts = options || {};
+</PRE><PRE>               if (p) return p;
+</PRE><PRE>               this.each(function() {
+                       p = new Flex(this, opts);
+                       $(this).data(&quot;flex&quot;, p);
+               });
+</PRE><PRE>               return opts.api ? p: this;
+       };
+     
+</PRE><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

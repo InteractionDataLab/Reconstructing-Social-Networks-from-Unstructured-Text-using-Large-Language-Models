@@ -1,0 +1,329 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Exeter_Modelling_BM01 skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Exeter/Modelling BM01</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P><TITLE>BM_07_09_insilicobinding</TITLE></P><DIV class="content"><H2>Contents</H2><DIV><UL><LI><A href="#1">BM_07_09</A></LI><LI><A href="#2">Setting our deafault parameters and variables</A></LI><LI><A href="#3">The coordinate generation and the main loop</A></LI><LI><A href="#4">Generation of the inital starting points, calls startpoint.</A></LI><LI><A href="#5">Coordinate generation and confinement checking</A></LI><LI><A href="#7">Bouncing</A></LI><LI><A href="#9">Startpoint</A></LI><LI><A href="#10">Checking function</A></LI><LI><A href="#11">Joining function</A></LI><LI><A href="#12">Splitter function</A></LI><LI><A href="#13">Plotting function</A></LI><LI><A href="#14">Bouncing function</A></LI><LI><A href="#15">Counting function</A></LI><LI><A href="#16">Code needed to produce a .gif file of the simulation output</A></LI><LI><A href="#18">End Of The Code</A></LI></UL></DIV><H2>BM_07_09</H2><P>Our final code for the simulation of our cell free kit. This is after the restructure implimented after meetings with both Jonathan Fieldsend and the lab team. There are still improvements and optimisations to be made these are discussed below. More information can be found at <A href="https://2015.igem.org/Team:Exeter/Modeling">https://2015.igem.org/Team:Exeter/Modeling</A>. The function take inputs of: * t - Number of toeholds * r - Number of RNA's * N - Number of time steps * T - temperature -&gt; this is the parameter scanning variable It outputs GFPcount, this depends on the parameter scanning variable choosen.</P><PRE class="codeinput"><SPAN class="keyword">function</SPAN> [GFPcount] = BM_07_09_insilicobinding(t,r,N,T)
+</PRE><H2>Setting our deafault parameters and variables</H2><P>These are the parameters used for the basic setup of Brownian motion as well as the contianment to a tube. Containment changed to a cylinder to emulate the lab, they are using a well plate now. All units are SI units unless otherwise stated.</P><PRE class="codeinput">    rng(<SPAN class="string">'shuffle'</SPAN>);
+
+    eta = 1.0e-3; <SPAN class="comment">% viscosity of water in SI units (Pascal-seconds)</SPAN>
+    kB = 1.38e-23; <SPAN class="comment">% Boltzmann constant</SPAN><SPAN class="comment">%T = 293; % Temperature in degrees Kelvin</SPAN>
+    tau = .1; <SPAN class="comment">% time interval in seconds</SPAN>
+    d_t=5.1e-8; <SPAN class="comment">% diameter in meters of toehold</SPAN>
+    d_r=1.7e-8; <SPAN class="comment">% of RNA</SPAN>
+    d_c=5.1e-8; <SPAN class="comment">% of toehold-RNA complex</SPAN>
+    D_t = kB * T / (3 * pi * eta * d_t); <SPAN class="comment">%diffusion coefficient</SPAN>
+    D_r = kB * T / (3 * pi * eta * d_r);
+    D_c = kB * T / (3 * pi * eta * d_c);
+    p_t = sqrt(2*D_t*tau);
+    p_r = sqrt(2*D_r*tau);
+    p_c = sqrt(2*D_c*tau);
+
+    <SPAN class="comment">%CONFINEMENT - height can be changed depending on the volume of the solution (rather than the total possible volume of the eppendorf)</SPAN>
+    A = (3.5e-10)*2; <SPAN class="comment">%binding distance, default at 1e-7, real world value .5e-10</SPAN>
+
+    cylinder_radius=3.34e-6; <SPAN class="comment">%radius of F-Well plate well in metres (3.34e-3metres) %changed</SPAN>
+    tube_height_max=7.13e-7; <SPAN class="comment">%height of F-Well plate well to fill i billionth of 50microlitres (1.426e-3metres)</SPAN>
+    tube_height_min=-7.13e-7;
+    <SPAN class="comment">%Changeable to suit the container of your system</SPAN><SPAN class="comment">%Total height is split in half, with one half above the positive xy plane and one half below</SPAN>
+    cone_height=18e-3; <SPAN class="comment">%unused</SPAN><SPAN class="comment">%GIF stuff</SPAN>
+    theta = 0; <SPAN class="comment">% changes the viewing angle</SPAN><SPAN class="comment">%Figure Stuff</SPAN><SPAN class="comment">%     figure()</SPAN><SPAN class="comment">%     %axis([-0.00005 0.00005 -0.00005 0.00005 -0.00005 0.00005]);</SPAN><SPAN class="comment">%     axis([-5e-3 5e-3 -5e-3 5e-3  -8e-3 8e-3]) %changed</SPAN><SPAN class="comment">%     grid on</SPAN><SPAN class="comment">%     grid MINOR</SPAN><SPAN class="comment">%     set(gcf, 'Position', [100 10 600 600])</SPAN><SPAN class="comment">%     xlabel('X-axis')</SPAN><SPAN class="comment">%     ylabel('Y-axis')</SPAN><SPAN class="comment">%     zlabel('Z-axis')</SPAN><SPAN class="comment">%     hold on</SPAN><SPAN class="comment">%Choosing the number of complexs based on the lower of t and r</SPAN><SPAN class="keyword">if</SPAN> t&gt;=r
+        c=r;
+    <SPAN class="keyword">else</SPAN>
+        c=t;
+    <SPAN class="keyword">end</SPAN><SPAN class="comment">%Checking variables and initalising to zeros</SPAN>
+    blank=[0,0,0];
+    points={};
+    joinstatus=zeros(N,t+r);
+
+    <SPAN class="comment">%Initalising points to zeros</SPAN><SPAN class="keyword">for</SPAN> j=1:N
+        <SPAN class="keyword">for</SPAN> k=1:t+r+(2*c)
+            points{j,k}=blank;
+        <SPAN class="keyword">end</SPAN><SPAN class="keyword">for</SPAN> k=t+r+2:2:t+r+(2*c)
+            points{j,k}=0;
+        <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN>
+    bouncepoints=points;
+</PRE><H2>The coordinate generation and the main loop</H2><P>The coordinates are now generated on the fly at every time step, this prevents the need to pass around large matrices. This is also the main loop at which every required function is called at each time step.</P><PRE class="codeinput"><SPAN class="comment">%The main for loop -&gt; loops over all the time steps</SPAN><SPAN class="keyword">for</SPAN> j=1:N
+</PRE><H2>Generation of the inital starting points, calls startpoint.</H2><PRE class="codeinput"><SPAN class="keyword">if</SPAN> j==1
+            [coords, startposition] = startpoint();
+<SPAN class="comment">%             c_joined=zeros(1,c);</SPAN><SPAN class="comment">%             c_split=zeros(1,c);</SPAN>
+            check=zeros(c,3);
+        <SPAN class="keyword">else</SPAN></PRE><H2>Coordinate generation and confinement checking</H2><P>The coordinates are checked against the height of the tube frist then checkxy is called to check whether it has left the cyclinder.</P><PRE class="codeinput"><SPAN class="comment">%Toehold</SPAN><SPAN class="keyword">for</SPAN> i=1:t
+                <SPAN class="keyword">if</SPAN> any(any(check==i))~=1
+                    <SPAN class="keyword">for</SPAN> k=1:3
+                        coords(k+3,i)=coords(k,i);
+                        coords(k,i)=(p_t*randn(1))+coords(k+3,i);
+                    <SPAN class="keyword">end</SPAN><SPAN class="comment">% checking against the height of the tube.</SPAN><SPAN class="keyword">if</SPAN> coords(3,i)&gt;=tube_height_max
+                        coords(3,i)=tube_height_max;
+                    <SPAN class="keyword">elseif</SPAN> coords(3,i)&lt;=tube_height_min
+                        coords(3,i)=tube_height_min;
+                    <SPAN class="keyword">end</SPAN><SPAN class="comment">%calling checkxy to check x and y</SPAN>
+                    [coords,bouncepoints]=checkxy(cylinder_radius, coords, i, bouncepoints);
+<SPAN class="comment">%</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%RNA</SPAN><SPAN class="keyword">for</SPAN> i=t+1:t+r
+                <SPAN class="keyword">if</SPAN> any(any(check==i))~=1
+                    <SPAN class="keyword">for</SPAN> k=1:3
+                        coords(k+3,i)=coords(k,i);
+                        coords(k,i)=(p_r*randn(1))+coords(k+3,i);
+                    <SPAN class="keyword">end</SPAN><SPAN class="comment">% checking against the height of the tube.</SPAN><SPAN class="keyword">if</SPAN> coords(3,i)&gt;=tube_height_max
+                        coords(3,i)=tube_height_max;
+                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> coords(3,i)&lt;=tube_height_min
+                        coords(3,i)=tube_height_min;
+                    <SPAN class="keyword">end</SPAN><SPAN class="comment">%                   %calling checkxy to check x and y</SPAN>
+                    [coords,bouncepoints]=checkxy(cylinder_radius, coords, i, bouncepoints);
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="comment">%Complex</SPAN><SPAN class="keyword">for</SPAN> i=t+r+1:t+r+c
+                <SPAN class="keyword">if</SPAN> check(i-(t+r),1)~=0 &amp;&amp; check(i-(t+r),2)~=0
+                    <SPAN class="keyword">for</SPAN> k=1:3
+                        coords(k+3,i)=coords(k,i);
+                        coords(k,i)=(p_c*randn(1))+coords(k+3,i);
+                    <SPAN class="keyword">end</SPAN><SPAN class="comment">% checking against the height of the tube.</SPAN><SPAN class="keyword">if</SPAN> coords(3,i)&gt;=tube_height_max
+                        coords(3,i)=tube_height_max;
+                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> coords(3,i)&lt;=tube_height_min
+                        coords(3,i)=tube_height_min;
+                    <SPAN class="keyword">end</SPAN><SPAN class="comment">%                   %calling checkxy to check x and y</SPAN>
+                    [coords,bouncepoints]=checkxy(cylinder_radius, coords, i, bouncepoints);
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><PRE class="codeinput"><SPAN class="keyword">end</SPAN><SPAN class="keyword">for</SPAN> q=1:c
+            <SPAN class="keyword">if</SPAN> check(q,3)==0 &amp;&amp; check(q,1)==0 &amp;&amp; check(q,2)==0 &amp;&amp; j~=1
+                jointime=j; <SPAN class="comment">%variable to make sure joiner and splitter dont happen in same time step</SPAN>
+                [coords,check, startposition, points] = joiner(coords,check, startposition, points);
+            <SPAN class="keyword">elseif</SPAN> check(q,3)~=0
+                check(q,3)=check(q,3)+1;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> check(q,1)~=0 &amp;&amp; check(q,2)~=0 &amp;&amp; j~=jointime
+                [coords, check, startposition, points] = splitter(q, coords, check, startposition, points);
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Bouncing</H2><PRE class="codeinput"><SPAN class="keyword">for</SPAN> f=1:t+r+c
+            <SPAN class="keyword">if</SPAN> f&lt;t+r+1
+                <SPAN class="keyword">if</SPAN> bouncepoints{j,f}==0 <SPAN class="comment">%not a bouncer</SPAN>
+                    matcoords=[coords(1,f),coords(2,f),coords(3,f)];
+                    points{j,f}=matcoords;
+                <SPAN class="comment">%couldn't have these statements on the same line for some reason</SPAN><SPAN class="keyword">elseif</SPAN> bouncepoints{j,f}~=0
+                    <SPAN class="keyword">if</SPAN> size(bouncepoints{j,f},2)==3 <SPAN class="comment">%couldn't have these statements on the same line for some reason</SPAN>
+                        matcoords=[coords(1,f),coords(2,f),coords(3,f) bouncepoints{j,f}(1,1),bouncepoints{j,f}(1,2),bouncepoints{j,f}(1,3)];
+                        points{j,f}=matcoords;
+                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> f&gt;=(t+r+1)
+                <SPAN class="keyword">if</SPAN> f==(t+r+1)
+                    g=f;
+                    h=f+1;
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> bouncepoints{j,g}==0 <SPAN class="comment">%not a bouncer</SPAN>
+                    matcoords=[coords(1,f),coords(2,f),coords(3,f)];
+                    points{j,g}=matcoords;
+                <SPAN class="keyword">elseif</SPAN> bouncepoints{j,g}~=0
+                    <SPAN class="keyword">if</SPAN> size(bouncepoints{j,f},2)==3
+                        matcoords=[coords(1,f),coords(2,f),coords(3,f) bouncepoints{j,g}(1,1),bouncepoints{j,g}(1,2),bouncepoints{j,g}(1,3)];
+                        points{j,g}=matcoords;
+                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN>
+                g=g+2;
+                <SPAN class="keyword">if</SPAN> j&gt;1
+               <SPAN class="keyword">if</SPAN> points{j-1,h}(1,1)~=0
+                        <SPAN class="keyword">if</SPAN> points{j,h}==0
+                            points{j,h}=1;
+                        <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN>
+                h=g+1;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> j==N
+            plotter(points);
+            counter(points);
+            finish=1;
+        <SPAN class="keyword">end</SPAN></PRE><PRE class="codeinput"><SPAN class="keyword">end</SPAN></PRE><H2>Startpoint</H2><P>Creates a start point definitely inside the dimensions of container, this is randomly generated. A vector called startpositon is made so the particles are located around this.</P><PRE class="codeinput"><SPAN class="keyword">function</SPAN> [coords, startposition] = startpoint()
+        coords=zeros(6,(t+r+c)); <SPAN class="comment">%each column is a toehold, with six rows, for current xyz and previous xyz</SPAN><SPAN class="comment">%         startposition=zeros(6,(t+r+c));</SPAN><SPAN class="comment">%         coords=mat2dataset(coords);</SPAN><SPAN class="keyword">for</SPAN> m=1:t+r
+            coords(3,m)=(tube_height_min)+((tube_height_max-tube_height_min)*rand(1));
+            coords(1,m)=(-cylinder_radius)+((cylinder_radius-(-cylinder_radius))*rand(1));
+            coords(2,m)=(-cylinder_radius)+((cylinder_radius-(-cylinder_radius))*rand(1));
+
+        <SPAN class="keyword">end</SPAN>
+        startposition=coords;
+    <SPAN class="keyword">end</SPAN></PRE><H2>Checking function</H2><P>Checks the coordinates are within the boundaries of the eppendorf</P><PRE class="codeinput"><SPAN class="comment">%Function that checks whether the particle is inside of the tube</SPAN><SPAN class="comment">%for its calculated z-coordinate at the point of contact in the</SPAN><SPAN class="comment">%tube (in cone: via line equation intersects of path and boundary</SPAN><SPAN class="comment">%// in cylinder: line equation of tube boundary).</SPAN><SPAN class="comment">%From this point of contact, the new X and Y coordinates are</SPAN><SPAN class="comment">%calculated for the &quot;exit point&quot; and then subsequently, the new</SPAN><SPAN class="comment">%resultant xyz can be calculated</SPAN><SPAN class="keyword">function</SPAN> [coords,bouncepoints]=checkxy(radius,coords,i,bouncepoints)
+        <SPAN class="comment">%Function that checks whether the particle is inside of the tube</SPAN><SPAN class="comment">%for its calculated z-coordinate at the point of contact in the</SPAN><SPAN class="comment">%tube (in cone: via line equation intersects of path and boundary</SPAN><SPAN class="comment">%// in cylinder: line equation of tube boundary).</SPAN><SPAN class="comment">%From this point of contact, the new X and Y coordinates are</SPAN><SPAN class="comment">%calculated for the &quot;exit point&quot; and then subsequently, the new</SPAN><SPAN class="comment">%resultant xyz can be calculated</SPAN><SPAN class="keyword">if</SPAN> (coords(1,i)^2)+(coords(2,i)^2)&gt;=(radius^2)
+                <SPAN class="comment">%red box in (Maths for exitx.png explains derivation)</SPAN><SPAN class="comment">%setting exitX/Y at boundary of cylinder</SPAN>
+                grad=abs((sqrt((coords(1,i)^2)+(coords(2,i)^2))-sqrt((coords(4,i)^2)+(coords(5,i)^2)))/(coords(3,i)-coords(6,i)));
+
+
+                <SPAN class="comment">%confirmed to be correct</SPAN><SPAN class="keyword">if</SPAN> coords(1,i)&lt;0
+                   exitX=-sqrt((radius^2)/((grad^2)+1));
+                <SPAN class="keyword">else</SPAN>
+                   exitX=sqrt((radius^2)/((grad^2)+1));
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> coords(2,i)&lt;0
+                   exitY=-(grad*sqrt(((radius^2)/((grad^2)+1))));
+                <SPAN class="keyword">else</SPAN>
+                   exitY=grad*sqrt(((radius^2)/((grad^2)+1)));
+                <SPAN class="keyword">end</SPAN>
+
+                Px=coords(1,i);
+                Py=coords(2,i);
+                lastx=coords(4,i);
+                lasty=coords(5,i);
+
+
+
+
+                trajectory_gradient=(Py-lasty)/(Px-lastx); <SPAN class="comment">%m1</SPAN>
+                tangent_gradient=(-exitX/exitY);  <SPAN class="comment">%m2</SPAN>
+                theta_bounce=atan(trajectory_gradient);
+                phi_2=atan(tangent_gradient);
+                phi_1=theta_bounce-phi_2;
+                exitPDist=sqrt(((Px-lastx)^2)+((Py-lasty)^2));
+                G_length=exitPDist*cos(phi_1);
+                Gx=exitX+(G_length*cos(phi_1));
+                Gy=exitY+(G_length*cos(phi_1));
+                Cx=Px-Gx;
+                Cy=Py-Gy;
+                newX=Px-(2*Cx);
+                newY=Py-(2*Cy);
+
+                perpendicular_gradient=(exitY/exitX);
+<SPAN class="comment">%                 shifted_perpendicular_line=(perpendicular_gradient*EX)-((exitY+Px)/exitX)+Py;</SPAN><SPAN class="comment">%z-intercept with boundary: (see book)</SPAN>
+                prad=sqrt((coords(1,i)^2)+(coords(2,i)^2));
+                lastrad=sqrt((coords(4,i)^2)+(coords(5,i)^2));
+                Dr=prad-lastrad;
+                pZ=coords(3,i);
+                lastZ=coords(6,i);
+                Dz=pZ-lastZ;
+                Gr=radius-lastrad;
+                Gz=Gr*tan(acos(Dr/sqrt((Dr^2)+(Dz^2))));
+
+                <SPAN class="keyword">if</SPAN> pZ&lt;lastZ
+                    exitZ=lastZ-Gz;
+                <SPAN class="keyword">else</SPAN>
+                    exitZ=lastZ+Gz;
+                <SPAN class="keyword">end</SPAN><SPAN class="comment">%write new points directly into points in a way that joiner and</SPAN><SPAN class="comment">%splitter can still work</SPAN><SPAN class="keyword">if</SPAN> i&lt;=t+r
+                    bouncepoints{j,i}=[exitX exitY exitZ];
+                <SPAN class="keyword">elseif</SPAN> i&gt;t+r
+                    bouncepoints{j,(2*i)-1}=[exitX exitY exitZ];
+                <SPAN class="keyword">end</SPAN><SPAN class="comment">%update for next point</SPAN>
+                coords(1,i)=newX;
+                coords(2,i)=newY;
+                coords(3,i)=coords(3,i);
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Joining function</H2><P>This function has a threshold for joining, a joining probability. If this is met the toehold and RNA's are joined. The check vector changes to indicate this, the toeholds and RNA's are spotted being made and a complex line is made instead. startingposition is also updated to indicate the new starting point of the complex line.</P><PRE class="codeinput"><SPAN class="keyword">function</SPAN> [coords, check, startposition, points] = joiner(coords, check, startposition, points)
+        colshift=0;
+        <SPAN class="comment">%Joining probability calculated from in silico data of free energy of complex from NUPACK and</SPAN><SPAN class="comment">%equation of polynomial fit to normalised curve gives probability</SPAN><SPAN class="comment">%of binding (or rather gives the threshold to enable a successful</SPAN><SPAN class="comment">%binding event which a randomly generated number is tested against)</SPAN>
+        joinevent = (randi([1 10000000],1))/10000000;
+        Tempcorrection = T-273;
+        jointhreshold = ((4e-07)*(Tempcorrection^4)) - ((6e-05)*(Tempcorrection^3)) + (0.0023*(Tempcorrection^2)) - (0.0072*Tempcorrection) + 0.3745;
+        <SPAN class="keyword">if</SPAN> joinevent &gt;= jointhreshold
+            <SPAN class="keyword">for</SPAN> n=1:t
+                <SPAN class="keyword">for</SPAN> m=t+1:r+t
+                    <SPAN class="keyword">if</SPAN> any(any(check==n))==1 || any(any(check==m))==1
+                        <SPAN class="keyword">continue</SPAN><SPAN class="keyword">else</SPAN><SPAN class="comment">%                 if ((((tx(j,k)-rx(j,m))^2)+((ty(j,k)-ry(j,m))^2)+((tz(j,k)-rz(j,m))^2))&lt;=(A^2) || (check_r(1,m)~=0 &amp;&amp; check_t(1,k)~=0)) &amp;&amp; (j~=1) &amp;&amp; delay(1,n)==0</SPAN><SPAN class="keyword">if</SPAN> (((coords(1,n)-coords(1,m))^2)+((coords(2,n)-coords(2,m))^2)+((coords(3,n)-coords(3,m))^2))&lt;=(A^2)
+                            <SPAN class="keyword">for</SPAN> p=1:c
+                                <SPAN class="keyword">if</SPAN> check(p,1)~=0 &amp;&amp; check(p,2)~=0
+                                    <SPAN class="keyword">continue</SPAN><SPAN class="keyword">else</SPAN><SPAN class="keyword">if</SPAN> check(p,1)==0 &amp;&amp; check(p,2)==0
+                                        coords(1,t+r+p)=(coords(1,n)+coords(1,m))/2;
+                                        coords(2,t+r+p)=(coords(2,n)+coords(2,m))/2;
+                                        coords(3,t+r+p)=(coords(3,n)+coords(3,m))/2;
+                                        startposition(1,t+r+p)=coords(1,t+r+p);
+                                        startposition(2,t+r+p)=coords(2,t+r+p);
+                                        startposition(3,t+r+p)=coords(3,t+r+p);
+                                        check(p,1)=n;
+                                        check(p,2)=m;
+                                        <SPAN class="keyword">if</SPAN> colshift==0;
+                                            colshift=1;
+                                        <SPAN class="keyword">end</SPAN>
+                                        points{j,t+r+p+colshift}=[1,n,m];
+                                        colshift=colshift+1;
+                                        joinstatus(j,n)=1;
+                                        joinstatus(j,m)=1;
+                                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">break</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Splitter function</H2><P>Splitter is similar to joiner but the opposite happnens. If a threshold is reached the complex will split back into a toehold and RNA. These lines are now produced again, check is updated to reflect this and finally startposition is changed.</P><PRE class="codeinput"><SPAN class="keyword">function</SPAN> [coords, check, startposition, points] = splitter(q, coords, check, startposition, points)
+        splitevent = (randi([1 10000000],1))/10000000;
+        Tempcorrection = T-273;
+        splitthreshold = (-(4e-07)*(Tempcorrection^4)) + ((6e-05)*(Tempcorrection^3)) - (0.0023*(Tempcorrection^2)) + (0.0072*Tempcorrection) + 0.6255;
+        <SPAN class="comment">%y=-4E-07x4 + 6E-05x3 - 0.0023x2 + 0.0072x + 0.6255</SPAN><SPAN class="keyword">if</SPAN> splitevent&lt;=splitthreshold
+            <SPAN class="keyword">if</SPAN> check(q,1)~=0 &amp;&amp; check(q,2)~=0
+                toehold=check(q,1);
+                rna=check(q,2);
+                startposition(1,toehold)=coords(1,t+r+q);
+                startposition(2,toehold)=coords(2,t+r+q);
+                startposition(3,toehold)=coords(3,t+r+q);
+                startposition(1,rna)=coords(1,t+r+q);
+                startposition(2,rna)=coords(2,t+r+q);
+                startposition(3,rna)=coords(3,t+r+q);
+                coords(1,rna)=coords(1,t+r+q);
+                coords(2,rna)=coords(2,t+r+q);
+                coords(3,rna)=coords(3,t+r+q);
+                coords(1,toehold)=coords(1,t+r+q);
+                coords(2,toehold)=coords(2,t+r+q);
+                coords(3,toehold)=coords(3,t+r+q);
+
+
+                points{j,t+r+(2*q)}=[0,toehold,rna];
+                check(q,1)=0;
+                check(q,2)=0;
+                check(q,3)=-5;
+            <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Plotting function</H2><PRE class="codeinput"><SPAN class="keyword">function</SPAN> [] = plotter(points)
+        <SPAN class="comment">%Conditions from plotting drawn from points array</SPAN><SPAN class="keyword">for</SPAN> row=1:N
+            <SPAN class="keyword">if</SPAN> row==1
+                <SPAN class="comment">%startpoints</SPAN><SPAN class="keyword">for</SPAN> col=1:t+r
+                   plot3(points{row,col}(1,1), points{row,col}(1,2), points{row,col}(1,3),<SPAN class="string">'kx'</SPAN>)
+                <SPAN class="keyword">end</SPAN><SPAN class="keyword">else</SPAN><SPAN class="keyword">for</SPAN> altcol=t+r+2:2:t+r+(2*c)
+                    <SPAN class="keyword">if</SPAN> points{row,altcol}(1,1)==1 &amp;&amp; size(points{row,altcol},2)==3 &amp;&amp; row&gt;1
+                        <SPAN class="keyword">if</SPAN> points{row-1,altcol}(1,1)==0 <SPAN class="comment">%definitely joinpoint</SPAN><SPAN class="comment">%plot blue using row-1 to row to joinpoint column, column selected from points{row,col}(1,2))</SPAN>
+                            plot3([points{row-1,(points{row,altcol}(1,2))}(1,1), points{row,altcol-1}(1,1)], [points{row-1,(points{row,altcol}(1,2))}(1,2), points{row,altcol-1}(1,2)], [points{row-1,(points{row,altcol}(1,2))}(1,3), points{row,altcol-1}(1,3)], <SPAN class="string">'b'</SPAN>)
+                            <SPAN class="comment">%plot red using row-1 to row to joinpoint column, column selected from points{row,col}(1,2)</SPAN>
+                            plot3([points{row-1,(points{row,altcol}(1,3))}(1,1), points{row,altcol-1}(1,1)], [points{row-1,(points{row,altcol}(1,3))}(1,2), points{row,altcol-1}(1,2)], [points{row-1,(points{row,altcol}(1,3))}(1,3), points{row,altcol-1}(1,3)], <SPAN class="string">'r'</SPAN>)
+                            <SPAN class="comment">%plot circle at joinpoint</SPAN>
+                            plot3(points{row,altcol-1}(1,1), points{row,altcol-1}(1,2), points{row,altcol-1}(1,3), <SPAN class="string">'ko'</SPAN>)
+                        <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> points{row-1,altcol}(1,1)==1 <SPAN class="comment">%defintely splitpoint</SPAN><SPAN class="comment">%do nothing</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">elseif</SPAN> (points{row,altcol}(1,1)==1 &amp;&amp; size(points{row,altcol},2)==1) || (points{row,altcol}(1,1)==0 &amp;&amp; size(points{row,altcol},2)==3)
+                        <SPAN class="comment">%plot green from row-1 to row</SPAN><SPAN class="keyword">if</SPAN> size(points{row-1,altcol-1},2)==3
+                            plot3([points{row-1,altcol-1}(1,1), points{row, altcol-1}(1,1)], [points{row-1,altcol-1}(1,2), points{row, altcol-1}(1,2)], [points{row-1,altcol-1}(1,3), points{row, altcol-1}(1,3)],<SPAN class="string">'g'</SPAN>)
+                        <SPAN class="keyword">elseif</SPAN> size(points{row,altcol-1},2)==6 <SPAN class="comment">%Bouncing of the side points index for this is 6 numbers, the xyzpoint before hitting and the xyzpoint on the boundary</SPAN>
+                            bounceplot(points, row, altcol-1, <SPAN class="string">'g'</SPAN>)
+                        <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> points{row,altcol}(1,1)==0 <SPAN class="comment">%currently split</SPAN><SPAN class="keyword">if</SPAN> size(points{row-1,altcol},2)==3 &amp;&amp; points{row-1,altcol}(1,1)==0 <SPAN class="comment">%prevents incorrect plotting in the case of join/split in consecutive timesteps</SPAN><SPAN class="comment">%plot from split column to blue column</SPAN>
+                            plot3([points{row-1,altcol-1}(1,1), points{row,(points{row-1,altcol}(1,2))}(1,1)],[points{row-1,altcol-1}(1,2), points{row,(points{row-1,altcol}(1,2))}(1,2)],[points{row-1,altcol-1}(1,3), points{row,(points{row-1,altcol}(1,2))}(1,3)],<SPAN class="string">'b'</SPAN>)
+                            <SPAN class="comment">%plot from split column to red column</SPAN>
+                            plot3([points{row-1,altcol-1}(1,1), points{row,(points{row-1,altcol}(1,3))}(1,1)],[points{row-1,altcol-1}(1,2), points{row,(points{row-1,altcol}(1,3))}(1,2)],[points{row-1,altcol-1}(1,3), points{row,(points{row-1,altcol}(1,3))}(1,3)],<SPAN class="string">'r'</SPAN>)
+                            <SPAN class="comment">%plot star at splitpoint</SPAN>
+                            plot3(points{row-1,altcol-1}(1,1), points{row-1,altcol-1}(1,2), points{row-1,altcol-1}(1,3), <SPAN class="string">'k*'</SPAN>)
+                            <SPAN class="comment">%plot</SPAN><SPAN class="keyword">continue</SPAN><SPAN class="comment">%might not be necessary</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">for</SPAN> col=1:t+r
+                        <SPAN class="keyword">if</SPAN> points{row,col}(1,1)~=points{row-1,col}(1,1) &amp;&amp; points{row,col}(1,2)~=points{row-1,col}(1,2) &amp;&amp; points{row,col}(1,3)~=points{row-1,col}(1,3)
+<SPAN class="comment">%                         have to be specific due to 1x6 object when bouncing occurs</SPAN><SPAN class="keyword">if</SPAN> size(points{row,altcol},2)~=3
+                               <SPAN class="comment">%determine column in t or r for colour of line</SPAN><SPAN class="keyword">if</SPAN> col&lt;=t <SPAN class="comment">%plot blue for toeholds</SPAN><SPAN class="keyword">if</SPAN> ((size(points{row-1,altcol},2)==3 &amp;&amp; points{row-1,altcol}(1,1)==0) &amp;&amp; points{row-1,altcol}(1,2)==col)
+                                   <SPAN class="comment">%if just split, don't plot from row-1 to row in t column since plotting from split point has just occurred</SPAN><SPAN class="keyword">continue</SPAN><SPAN class="keyword">elseif</SPAN> points{row,altcol}==0 &amp;&amp; size(points{row-1,altcol},2)~=3
+                                       <SPAN class="keyword">if</SPAN> size(points{row-1,col},2)==3
+                                           plot3([points{row-1,col}(1,1), points{row,col}(1,1)], [points{row-1,col}(1,2), points{row,col}(1,2)], [points{row-1,col}(1,3), points{row,col}(1,3)],<SPAN class="string">'b'</SPAN>)
+                                       <SPAN class="keyword">elseif</SPAN> size(points{row,col},2)==6 <SPAN class="comment">%Bouncing of the side points index for this is 6 numbers, the xyzpoint before hitting and the xyzpoint on the boundary</SPAN>
+                                           bounceplot(points, row, col, <SPAN class="string">'b'</SPAN>)
+                                       <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> col&gt;t <SPAN class="comment">%plot red for rna(trigger)</SPAN><SPAN class="keyword">if</SPAN> ((size(points{row-1,altcol},2)==3 &amp;&amp; points{row-1,altcol}(1,1)==0) &amp;&amp; points{row-1,altcol}(1,3)==col)
+                                   <SPAN class="comment">%if just split, don't plot from row-1 to row in r column since plotting from split point has just occurred</SPAN><SPAN class="keyword">continue</SPAN><SPAN class="keyword">elseif</SPAN> points{row,altcol}==0 &amp;&amp; size(points{row-1,altcol},2)~=3
+                                       <SPAN class="keyword">if</SPAN> size(points{row-1,col},2)==3
+                                           plot3([points{row-1,col}(1,1), points{row,col}(1,1)], [points{row-1,col}(1,2), points{row,col}(1,2)], [points{row-1,col}(1,3), points{row,col}(1,3)],<SPAN class="string">'r'</SPAN>)
+                                       <SPAN class="keyword">elseif</SPAN> size(points{row,col},2)==6 <SPAN class="comment">%Bouncing of the side points index for this is 6 numbers, the xyzpoint before hitting and the xyzpoint on the boundary</SPAN>
+                                           bounceplot(points, row, col, <SPAN class="string">'r'</SPAN>)
+                                       <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Bouncing function</H2><PRE class="codeinput"><SPAN class="keyword">function</SPAN> [points] = bounceplot(points, row, col, style)
+
+    <SPAN class="comment">%   coordinate structure is now: row-1 = [lastX lastY lastZ]</SPAN><SPAN class="comment">%                                row   = [newY exitZ newZ exitX newX exitY ]</SPAN>
+
+        plot3([points{row-1,col}(1,1) points{row,col}(1,4)], [points{row-1,col}(1,2) points{row,col}(1,5)], [points{row-1,col}(1,3) points{row,col}(1,6)],style)
+        plot3([points{row,col}(1,4) points{row,col}(1,1)], [points{row,col}(1,5) points{row,col}(1,2)], [points{row,col}(1,6) points{row,col}(1,3)],style)
+  <SPAN class="keyword">end</SPAN></PRE><H2>Counting function</H2><P>This function is related to the generation of a GFP output of our system, it is used in combination with the parameter scanning aspect of our simulation.</P><PRE class="codeinput"><SPAN class="keyword">function</SPAN> counter(points)
+        <SPAN class="comment">%simplfied status of each toehold and trigger drawn from points array</SPAN><SPAN class="keyword">for</SPAN> jstatcol=1:t+r
+            <SPAN class="keyword">for</SPAN> jstatrow=2:N
+                <SPAN class="keyword">if</SPAN> points{jstatrow,jstatcol}(1)==points{jstatrow-1,jstatcol}(1) &amp;&amp; points{jstatrow,jstatcol}(2)==points{jstatrow-1,jstatcol}(2) &amp;&amp; points{jstatrow,jstatcol}(3)==points{jstatrow-1,jstatcol}(3)
+                    joinstatus(jstatrow,jstatcol)=1;
+<SPAN class="comment">%                     if joinstatus{jstatrow-1,jstatcol}==0</SPAN><SPAN class="comment">%                         joinstatus{jstatrow-1,jstatcol}=1;</SPAN><SPAN class="comment">%                     end</SPAN><SPAN class="keyword">else</SPAN><SPAN class="keyword">if</SPAN> joinstatus(jstatrow,jstatcol)~=1
+                        joinstatus(jstatrow,jstatcol)=0;
+                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">if</SPAN> points{jstatrow-1,jstatcol}==1
+                        joinstatus(jstatrow,jstatcol)=<SPAN class="string">'split'</SPAN>;
+                    <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN>
+        totalgreen=0;
+        <SPAN class="keyword">for</SPAN> col=1:t
+            totalgreen=totalgreen+sum(joinstatus(:,col));
+        <SPAN class="keyword">end</SPAN>
+        totalgreentime=totalgreen*tau;
+        GFPrate=1.2;
+        GFPcount=totalgreentime*GFPrate;
+        <SPAN class="comment">%GFPconc=GFPcount/eppendorfvolume;</SPAN><SPAN class="comment">%GFPrate is calculated using E0040 Biobrick for GFP (720 base</SPAN><SPAN class="comment">%pairs/240 AA) Ribosome speed @ 200AA/min -&gt; 240/200 = 1.2 GFP/min</SPAN><SPAN class="keyword">end</SPAN></PRE><H2>Code needed to produce a .gif file of the simulation output</H2><PRE class="codeinput"><SPAN class="keyword">function</SPAN> jiff(row)
+       change = 360/N; <SPAN class="comment">% the size of the angle change</SPAN><SPAN class="comment">% gif utilities</SPAN>
+       set(gcf,<SPAN class="string">'color'</SPAN>,<SPAN class="string">'w'</SPAN>); <SPAN class="comment">% set figure background to white</SPAN>
+       drawnow;
+       frame = getframe(gcf);
+       im = frame2im(frame);
+       [imind,cm] = rgb2ind(im,256);
+       outfile = <SPAN class="string">'17_07_v1.gif'</SPAN>;
+
+       <SPAN class="comment">% adjusting the viewing the angle</SPAN>
+       view(theta,45);
+       theta = theta + change;
+
+       <SPAN class="comment">% On the first loop, create the file. In subsequent loops, append.</SPAN><SPAN class="keyword">if</SPAN> row==2
+          imwrite(imind,cm,outfile,<SPAN class="string">'gif'</SPAN>,<SPAN class="string">'DelayTime'</SPAN>,0,<SPAN class="string">'loopcount'</SPAN>,inf);
+       <SPAN class="keyword">else</SPAN>
+          imwrite(imind,cm,outfile,<SPAN class="string">'gif'</SPAN>,<SPAN class="string">'DelayTime'</SPAN>,0,<SPAN class="string">'writemode'</SPAN>,<SPAN class="string">'append'</SPAN>);
+       <SPAN class="keyword">end</SPAN><SPAN class="keyword">end</SPAN></PRE><PRE class="codeinput"><SPAN class="keyword">end</SPAN></PRE><H2>End Of The Code</H2><P>This is the final simulation developed by the Univeristy Of Exeter iGEM team 2015. Developed mainly by Amy, Dan and Todd.</P><P class="footer"><A href="http://www.mathworks.com/products/matlab/">Published with MATLAB® R2015a</A></P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

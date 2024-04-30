@@ -1,0 +1,1802 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Cadets2Vets_js_spimeengine skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Cadets2Vets/js/spimeengine</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/******************************************************************************************************
+</P><PRE>*                                             SPIME ENGINE 
+******************************************************************************************************/
+</PRE><P>var SpimeEngine = {};
+</P><P>/******************************************************************************************************
+</P><PRE>*                                               GLOBALS 
+******************************************************************************************************/
+</PRE><P>SpimeEngine.debugMode = false; //When set to true console logs will be shown
+SpimeEngine.arrangers = {}; // An array of all the arrangers in the page
+SpimeEngine.layouts = {}; //An array of all the layouts in the page
+SpimeEngine.itemType = &quot;&quot;; //The current item type
+SpimeEngine.resourceRoot = (document.location.hostname == &quot;localhost&quot;)? &quot;<A rel="nofollow" class="external free" href="http://localhost:7000">http://localhost:7000</A>&quot; : &quot;&quot;; //Represents the resource root for local development and production
+SpimeEngine.captchaKey = (document.location.hostname == &quot;127.0.0.1&quot; || document.location.hostname == &quot;localhost&quot;) ? &quot;6LdmEiUUAAAAAJBHO4Pb7MdtE5Et1jN1Wk4wjOBr&quot; : &quot;6Lc2KCUUAAAAAGP2G2L0bhHTq_hcnbo_we19MIXA&quot;;
+SpimeEngine.YTPlayers = {};
+SpimeEngine.Geocoder = {};
+SpimeEngine.GoogleMaps = {};
+SpimeEngine.MapStyles = {};
+SpimeEngine.stripePaymentHandler = {};
+SpimeEngine.stripePaymentParams = {};
+SpimeEngine.scrollEnabled = true;
+</P><P>/******************************************************************************************************
+</P><PRE>*                                               MAIN
+*                                  called from body onLoad func    
+******************************************************************************************************/
+</PRE><P>SpimeEngine.start = function(){
+	$(document).ready(function() {
+		SpimeEngine.updateParent({&quot;deliver_to&quot;:&quot;parent&quot;,&quot;action&quot;:&quot;finished-loading&quot;});
+		var shopId = $(&quot;#sr-companyid&quot;).val();
+		if (shopId){
+</P><P>		}
+	});
+		try{ 
+			SpimeEngine.BeforeInit();
+			SpimeEngine.InitMaster();
+			var c = 0
+			SpimeEngine.getAllHolders().each(function(){
+				var currentHolder = $(this);
+				setTimeout(function(){
+					SpimeEngine.InitHolder(currentHolder);	
+				},10 *c )
+				c++;
+			});
+			SpimeEngine.initForms();
+			LightBox.initLinks();
+			SpimeEngine.initVideos();
+			SpimeEngine.initMaps();
+			SpimeEngine.initDynamicStripes();
+			SpimeEngine.AttachHelperIfNeeded();
+			SpimeEngine.AfterInit();
+			SpimeEngine.initAnchors();
+			setTimeout(function(){
+				SpimeEngine.loadHighResImages();	
+			},1500);
+			SpimeEngine.initRawHTMLs();
+			var hasScrollEffects = $(&quot;.master.container&quot;).hasClass(&quot;scroll-effects&quot;);
+			var hasItemEnterEffects = $(&quot;.master.item-box.items-enter-effects&quot;).length &gt; 0;
+			//first init of sections visibility
+			if (hasScrollEffects || hasItemEnterEffects){
+				SpimeEngine.handleScrollEffects();
+			}
+			if (getParameterByName(&quot;show_site&quot;)){
+				$('body,html').animate({
+			           scrollTop: $(document).height()
+			        }, 4000);
+				setTimeout(function(){
+					$('body,html').animate({
+				           scrollTop: 0
+				        }, 2000);
+				},4500)
+			}
+		}catch(err){
+			console.log(err);
+			console.trace();
+			//XPRSHelper.xprsAlert(&quot;something went wrong... (Engine)\n&quot; + err,{title:&quot;ERROR&quot;,&quot;report_error&quot;:true});
+			console.error(&quot;something went wrong... (Engine) &quot; + err)
+			var errorMessage = $(&quot;#error&quot;).html();
+			$(&quot;#content&quot;).html(errorMessage);
+		}
+};
+</P><P>/******************************************************************************************************
+</P><PRE>*                                               INIT
+*                                 The following methods are only called once
+******************************************************************************************************/
+</PRE><P>SpimeEngine.BeforeInit = function(){
+	SpimeEngine.UpdateDeviceClass();
+	SpimeEngine.itemType = $(&quot;.master.container&quot;).data(&quot;itemtype&quot;);
+	var scrollingContainer = $(document);
+	//scrollingContainer = scrollingContainer.add($(&quot;.main-page&quot;));
+	var hasScrollEffects = $(&quot;.master.container&quot;).hasClass(&quot;scroll-effects&quot;);
+	var hasItemEnterEffects = $(&quot;.master.item-box.items-enter-effects&quot;).length &gt; 0;
+</P><P>	SpimeEngine.handleParallax();
+</P><P>	scrollingContainer.unbind(&quot;scroll&quot;).bind(&quot;scroll&quot;,function(event){
+		if (SpimeEngine.scrollEnabled){
+			if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+</P><P>				EditorHelper.handleScroll(event);
+				//$(&quot;.left-menu-placeholder .header-box&quot;).css(&quot;top&quot;,$(this).scrollTop());
+				//if ($(&quot;.light-box-wrapper&quot;).length &gt; 0){
+				//	$(&quot;.light-box-wrapper&quot;).css(&quot;top&quot;,$(this).scrollTop());
+				//}
+			}
+			if (&quot;menu&quot; in SpimeEngine.layouts){
+				if (typeof SpimeEngine.layouts[&quot;menu&quot;].handleScroll != &quot;undefined&quot;){
+					SpimeEngine.layouts[&quot;menu&quot;].handleScroll($(&quot;[data-preset-type-id='MENUS']&quot;),$(this).scrollTop());
+				}
+			}
+</P><P>			SpimeEngine.handleParallax();
+</P><P>			if (hasScrollEffects || hasItemEnterEffects){
+				SpimeEngine.handleScrollEffects();
+			}
+		}
+		if (typeof popupStripeAppOnScroll == 'function') { 
+			setTimeout(function(){
+				popupStripeAppOnScroll(); 
+			},300);
+		}
+</P><P>	});
+</P><P>	if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+		var currentBrowser = XPRSHelper.getBrowser();
+		if (currentBrowser.toLowerCase().indexOf(&quot;chrome&quot;) != -1){
+			scrollingContainer.bind('mousewheel', function(e){
+				if (SpimeEngine.scrollEnabled){
+					if ($(e.target).closest(&quot;.new-page-blocker&quot;).length == 0 &amp;&amp; $(e.target).closest(&quot;#quick-style-menu&quot;).length == 0 &amp;&amp; $(e.target).closest(&quot;#xprs-class-selector-holder&quot;).length == 0 ){
+						e.preventDefault();
+						scrollingContainer.scrollTop(scrollingContainer.scrollTop() - (e.originalEvent.wheelDelta / 2));
+					}
+				}
+		    });
+		}
+	}
+</P><P>};
+</P><P>
+SpimeEngine.disableScroll= function(){
+	SpimeEngine.scrollEnabled = false;
+	$(&quot;body&quot;).addClass(&quot;no-scroll&quot;);
+};
+</P><P>
+SpimeEngine.enableScroll= function(){
+	SpimeEngine.scrollEnabled = true;
+	$(&quot;body&quot;).removeClass(&quot;no-scroll&quot;);
+};
+</P><P>
+SpimeEngine.handleParallax = function(){
+	if ($(&quot;#xprs&quot;).is(&quot;.tablet-mode&quot;)){
+		return;
+	}
+	$(&quot;.parallax50-bg&quot;).each(function( index ) {
+		var relevant_bg_img = $(this)
+		var relevant_bg = relevant_bg_img.closest(&quot;.master.item-box&quot;);
+		relevant_bg_top = relevant_bg.offset().top;
+		relevant_bg_bottom = relevant_bg_top + relevant_bg.height();
+		if ( (window.scrollY + $(window).height()) &gt;  relevant_bg_top ) {
+			if ( window.scrollY &lt; relevant_bg_bottom ) {
+				var pospos = (relevant_bg_top + relevant_bg.height()/2) -  (window.scrollY + $(window).height()/1.2);
+				pospos = pospos/3;
+				relevant_bg_img.css(&quot;background-position-y&quot;, pospos+&quot;px&quot;);
+			}
+		}
+	});
+}
+</P><P>SpimeEngine.handleScrollEffects = function(){
+	SpimeEngine.getAllHolders().not(&quot;.header-box&quot;).each(function(){
+		var currentStripe = $(this);
+		var bufferChecker = Math.min(0.3 * $(this).outerHeight(), 150)
+</P><PRE>       var top_of_object = currentStripe.offset().top + bufferChecker;
+       var bottom_of_window = $(window).scrollTop() + $(window).height();
+       /* If the object is completely visible in the window, fade it it */
+       if( bottom_of_window &gt; top_of_object ){
+       	currentStripe.addClass(&quot;visible-section&quot;);
+       	currentStripe.removeClass(&quot;hidden-section&quot;);
+       } else {
+       	currentStripe.removeClass(&quot;visible-section&quot;);
+       	currentStripe.addClass(&quot;hidden-section&quot;);
+       }
+</PRE><P>	});
+};
+</P><P>
+SpimeEngine.AfterInit = function(){
+	$(&quot;#loading&quot;).remove();
+	$(&quot;.master.container&quot;).css(&quot;visibility&quot;,&quot;visible&quot;);
+</P><P>	var resizeFlag = &quot;off&quot;;
+</P><P>	window.onresize = function(event) {
+		if(typeof event != &quot;undefined&quot; &amp;&amp; event.target === window) { 
+			if (resizeFlag == &quot;off&quot;){
+				resizeFlag = &quot;waiting&quot;;
+				setTimeout(function(){ 
+					SpimeEngine.ArrangeAll();
+					resizeFlag = &quot;off&quot;
+				}, 1500);
+			}
+			//SpimeEngine.ArrangeAll();
+			SpimeEngine.UpdateDeviceClass();
+			if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+				EditorHelper.adjustUI();
+			}
+</P><P>			$(&quot;.master.item-box&quot;).each(function(index) {
+				var win = $(window);
+				var viewport = {
+						top : win.scrollTop(),
+						left : win.scrollLeft()
+					};
+				viewport.bottom = viewport.top + win.height();
+				viewport.right = viewport.left + win.width();
+</P><P>				if ( ($(this).position().top &gt; (viewport.bottom)) || ($(this).position().bottom &lt; (viewport.top)) ){
+				} else {
+					SpimeEngine.ArrangeHolder($(this))
+				}
+</P><P>				
+			});
+</P><P>
+		}
+	};
+</P><P>
+	window.addEventListener(&quot;orientationchange&quot;, function() {
+		SpimeEngine.UpdateDeviceClass();
+			$(&quot;.master.item-box&quot;).each(function(index) {
+				var win = $(window);
+				var viewport = {
+						top : win.scrollTop(),
+						left : win.scrollLeft()
+					};
+				viewport.bottom = viewport.top + win.height();
+				viewport.right = viewport.left + win.width();
+				if ( ($(this).position().top &gt; (viewport.bottom)) || ($(this).position().bottom &lt; (viewport.top)) ){
+				} else {
+					SpimeEngine.ArrangeHolder($(this))
+				}
+			});
+	}, false);	
+</P><P>	SpimeEngine.handleUnarranged();
+</P><P>//	var resizeTimeout;
+//	$(window).resize(function(){
+//	    clearTimeout(resizeTimeout);
+//	    resizeTimeout = setTimeout(function(){    
+//	    	SpimeEngine.ArrangeAll();
+//	    }, 100);
+//	});
+</P><P>//	  function debounce(func, wait, immediate) {
+//		    var timeout;
+//		    return function() {
+//		      var context = this, args = arguments;
+//		      var later = function() {
+//		        timeout = null;
+//		        if (!immediate) func.apply(context, args);
+//		      };
+//		      if (immediate &amp;&amp; !timeout) func.apply(context, args);
+//		      clearTimeout(timeout);
+//		      timeout = setTimeout(later, wait);
+//		    };
+//		  }
+//		  window.onresize = debounce(function() {
+//		      // Your code here
+//		  }, 500);
+</P><P>};
+</P><P>
+SpimeEngine.UpdateDeviceClass = function(){
+	var currentWinWidth = $(window).width();
+	var deviceClass = &quot;desktop-mode&quot;;
+	var disableScrollEffects = false;
+</P><P>	if(currentWinWidth &lt; 800){
+		deviceClass = &quot;tablet-mode desktop-mode&quot;;
+		disableScrollEffects = true;
+	}
+</P><P>	if (currentWinWidth &lt; 500){
+		deviceClass = &quot;phone-mode tablet-mode desktop-mode&quot;;
+	}
+</P><P>	
+	var xprsHolder = $(&quot;#xprs&quot;);
+	xprsHolder.removeClass(&quot;desktop-mode tablet-mode phone-mode&quot;);
+	xprsHolder.addClass(deviceClass);
+	var mainPage = xprsHolder.find(&quot;.main-page&quot;);
+	var forceDisable = mainPage.attr(&quot;data-force-disable&quot;);
+	if (mainPage.hasClass(&quot;disable_effects&quot;) &amp;&amp; !disableScrollEffects &amp;&amp; !forceDisable){
+		mainPage.removeClass(&quot;disable_effects&quot;);
+	}
+	if (!mainPage.hasClass(&quot;disable_effects&quot;) &amp;&amp; disableScrollEffects){
+		mainPage.addClass(&quot;disable_effects&quot;);
+	}
+};
+</P><P>SpimeEngine.handleUnarranged = function(){
+	if ($(&quot;.rearrange&quot;).length &gt; 0){
+		setTimeout(function(){
+			$(&quot;.rearrange&quot;).each(function(){
+				$(this).removeClass(&quot;rearrange&quot;);
+				SpimeEngine.ArrangeHolder($(this));
+			});
+			SpimeEngine.handleUnarranged();
+		},200);
+	}
+};
+</P><P>SpimeEngine.loadHighResImages = function(){
+	SpimeEngine.loadHighResImage($(&quot;.stripe_popup_app_hide .load-high-res&quot;).not(&quot;#no-image&quot;),1600);
+	var c = 0;
+	$(&quot;.load-high-res&quot;).not(&quot;.from-feed&quot;).not(&quot;#no-image&quot;).each(function(){
+		var currentImg = $(this);
+		setTimeout(function(){
+			SpimeEngine.loadHighResImage(currentImg);
+		},10 *c )
+		c++;
+	});
+</P><P>	
+};
+</P><P>
+SpimeEngine.loadHighResImage = function(imgDiv,forceNewRes){
+	if (imgDiv.length == 0){
+		return;
+	}
+	imgDiv.removeClass(&quot;load-high-res&quot;)
+	var currentSrc = imgDiv.css(&quot;background-image&quot;);
+	var currentWidth = imgDiv.width();
+	var currentHeight = imgDiv.height();
+	var newRes = Math.max(currentWidth,currentHeight);
+	newRes = Math.min(newRes,1600);
+	if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+		newRes = 1600;
+	}
+	if (isNaN(newRes)){
+		newRes = 1200;
+	}
+</P><P>	if (forceNewRes){
+		newRes = forceNewRes;
+	}
+</P><P>	var backgroundZoom = imgDiv.css(&quot;background-size&quot;);
+	if (typeof backgroundZoom != &quot;undefined&quot;){
+		if (backgroundZoom.indexOf(&quot;%&quot;) != -1){
+			if (parseInt(backgroundZoom) &gt; 100){
+				newRes = 1600;
+			}
+		}else if(backgroundZoom == &quot;cover&quot;){
+			var tempRes = Math.max(currentWidth,currentHeight);
+			if (forceNewRes){
+				tempRes = forceNewRes;
+			}
+			tempRes*=2;
+			tempRes = Math.min(tempRes,1600);
+			newRes = tempRes;
+		}
+	}
+</P><P>	var newSrc = currentSrc.replace(&quot;=s300&quot;,&quot;=s&quot;+newRes);
+	var finalSrc =  newSrc + &quot;,&quot; +currentSrc
+	imgDiv.css(&quot;background-image&quot;,finalSrc);
+	setTimeout(function() {
+		SpimeEngine.removeLowResimg(imgDiv);
+	}, 1000);
+};
+</P><P>SpimeEngine.removeLowResimg = function(imgDiv) {
+	var oldBg = imgDiv.css(&quot;background-image&quot;);
+	var bgArray = oldBg.split(',');
+	if (bgArray.length&gt;1) {
+		imgDiv.css(&quot;background-image&quot;, bgArray[0]);
+	}
+}
+</P><P>
+SpimeEngine.initRawHTMLs = function(){
+	$(&quot;.main-page:not(.disable-raw-html) .raw-container, .main-page:not(.disable-raw-html) .preview-raw-container&quot;).not(&quot;.disable-raw-html&quot;).each(function() {
+		SpimeEngine.initRawHTML($(this));
+	});
+};
+</P><P>SpimeEngine.initRawHTML = function(htmlContainer,forceLoad, callback){
+	if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+		if(htmlContainer.closest(&quot;.raw-wrapper&quot;).find(&quot;.page-app&quot;).length &gt; 0) {
+			htmlContainer.closest(&quot;.raw-wrapper&quot;).css({&quot;min-height&quot;:&quot;0px&quot;});
+		}
+	}
+	if (htmlContainer.attr(&quot;data-static&quot;) == &quot;false&quot; || forceLoad){
+		var url = htmlContainer.attr(&quot;data-raw-content-url&quot;);
+		$.get(XPRSHelper.getServerPath() + url,function(html){
+			if($(&quot;[data-block-script]&quot;).length &gt; 0){
+				htmlContainer.html(SpimeEngine.unescapeHtml(html))
+			}else{
+				htmlContainer.html(html)
+			}
+			if(callback)callback();
+		});
+	}
+};
+</P><P>SpimeEngine.unescapeHtml = function(safe) {
+</P><PRE>   var temp = document.createElement(&quot;div&quot;);
+   temp.innerHTML = safe;
+   var result = temp.childNodes[0].nodeValue;
+   temp.removeChild(temp.firstChild);
+</PRE><P>	return result;
+}
+</P><P>
+SpimeEngine.getProductUrl = function(pid){
+	var rootId = $(&quot;body&quot;).attr(&quot;data-root-id&quot;);
+	var pageId = $(&quot;.master.container&quot;).attr(&quot;id&quot;);
+	var isInnerpage = rootId != pageId
+	var pathName = location.pathname;
+	if(pathName.endsWith(&quot;/&quot;)){
+		pathName = pathName.substring(0,pathName.length-1);
+	}
+	if (isInnerpage){
+		if (pathName.indexOf(&quot;/free/&quot;) != -1 || pathName.indexOf(&quot;/viewer/&quot;) != -1 || pathName.indexOf(&quot;/live/&quot;) != -1){
+			pathName = pathName.substring(0, pathName.lastIndexOf('/'));
+		}else{
+			pathName = &quot;&quot;;
+		}
+	}
+	return window.location.protocol + &quot;//&quot; + window.location.host + pathName + &quot;/product/&quot; + pid;
+};
+</P><P>SpimeEngine.parsePrice = function(priceElement){
+	if (priceElement.find(&quot;.real-price&quot;).length &gt; 0){
+		strPrice = priceElement.find(&quot;.real-price&quot;).text();
+	}else{
+		strPrice = priceElement.text();
+	}
+	var parsedPrice  = 0.0;
+	var multiplyBy = 1;
+	strPrice = strPrice.trim().toLowerCase().replace(&quot;,&quot;,&quot;&quot;);
+	strPrice = strPrice.split(&quot; &quot;)[0];
+	if (strPrice.indexOf(&quot;k&quot;) == strPrice.length - 1){
+		multiplyBy = 1000;
+	}
+	//strPrice = strPrice.replace(&quot;k&quot;,&quot;000&quot;)
+	return parseFloat(strPrice) * 100 * multiplyBy;
+};
+</P><P>
+SpimeEngine.populateProductDetails = function(priceElement){
+	var productImg = &quot;none&quot;; 
+	var productName = &quot;&quot;;
+	var item = priceElement.closest(&quot;.item-box&quot;);
+	var previewImage = item.find(&quot;.inner-pic.preview-element&quot;);
+	if (previewImage.length ==0){
+		previewImage = item.find(&quot;.image-source.preview-element&quot;);
+	}
+	if (previewImage.length &gt; 0){
+		var originalSrc = previewImage.css(&quot;background-image&quot;);
+		var imageSrc = originalSrc;
+		if (imageSrc.indexOf(&quot;,&quot;) != -1){
+			imageSrc = imageSrc.split(&quot;,&quot;)[0];
+			imageSrc = imageSrc.replace('&quot;',<I>).replace('&quot;',</I>);
+		}
+		imageSrc = imageSrc.replace(&quot;url(&quot;,&quot;&quot;).replace(&quot;)&quot;,&quot;&quot;);
+		var imageSrc = imageSrc.substring(0,imageSrc.indexOf(&quot;=s&quot;));
+		//imageSrc += &quot;=s60&quot;;
+		productImg = imageSrc;
+	}
+	SpimeEngine.stripePaymentParams[&quot;product_img&quot;] = productImg;
+	SpimeEngine.stripePaymentParams[&quot;product_name&quot;] = item.find(&quot;.preview-title&quot;).text().replace(/ /gi, ' ');
+}
+</P><P>SpimeEngine.initAnchors = function(){
+	$(&quot;a[data-link-type='ANCHOR']&quot;).each(function() {
+		var currentLink = $(this);
+		currentLink.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(e){
+			e.preventDefault();
+			var target = $(this).attr(&quot;href&quot;);
+			var menuOffset = SpimeEngine.calculateScrollOffset();
+			if ($(this).closest(&quot;.preview-item-links.flipped&quot;).length &gt; 0 ){
+				$(&quot;.links-menu-btn&quot;).click();
+			}
+//			var targetOffset = $(target).offset().top + $(&quot;.main-page&quot;).scrollTop() - menuOffset;
+//			$(&quot;.main-page&quot;).animate({
+//	           scrollTop: targetOffset
+//	        }, 2000);
+</P><P>			//targetOffset = $(target).offset().top + $(&quot;body&quot;).scrollTop() - menuOffset;
+			if ($(target).length &gt; 0) {
+</P><PRE>				targetOffset = $(target).offset().top - menuOffset;
+				$('body,html').animate({
+				scrollTop: targetOffset
+				}, 2000);
+			} else {
+				var pathName = SpimeEngine.getPathName();
+				var newTarget = window.location.protocol + &quot;//&quot; + window.location.host + pathName +target;
+				window.location.href = newTarget;
+			}
+</PRE><P>		});
+	});
+};
+</P><P>SpimeEngine.getPathName = function() {
+</P><PRE>	var rootId = $(&quot;body&quot;).attr(&quot;data-root-id&quot;);
+	var pageId = $(&quot;.master.container&quot;).attr(&quot;id&quot;);
+	var isInnerpage = rootId != pageId
+	var pathName = location.pathname;
+	if(pathName.endsWith(&quot;/&quot;)){
+		pathName = pathName.substring(0,pathName.length-1);
+	}
+	if (isInnerpage){
+		if (pathName.indexOf(&quot;/edit_site/&quot;) != -1 || pathName.indexOf(&quot;/edit/&quot;) != -1 || pathName.indexOf(&quot;/free/&quot;) != -1 || pathName.indexOf(&quot;/viewer/&quot;) != -1 || pathName.indexOf(&quot;/live/&quot;) != -1){
+			pathName = pathName.substring(0, pathName.lastIndexOf('/'));
+		}else{
+			pathName = &quot;&quot;;
+		}
+	}
+	return pathName;
+}
+</PRE><P>
+SpimeEngine.calculateScrollOffset = function(){
+	var scrollOffset = 0;
+	var menuStripe = $(&quot;.menus-wrapper&quot;).closest(&quot;.master.item-box&quot;);
+</P><P>	//if the menu exists
+	if (menuStripe.length &gt; 0){
+		var menuStripeSettings = menuStripe.find(&quot;.layout-settings&quot;);
+		var isFloatingMenu = menuStripeSettings.attr(&quot;data-menu_scroll&quot;) == &quot;true&quot;;
+		var isLeftSideMenu = $(&quot;.left-menu-placeholder&quot;).length != 0;
+		if (isFloatingMenu &amp;&amp; !isLeftSideMenu){
+			var originalMenuHeight = menuStripe.outerHeight(true);
+			var floatingMenuHeight = Math.max(50 + menuStripe.find(&quot;.preview-content-holder&quot;).outerHeight(true) - menuStripe.find(&quot;.preview-content-holder&quot;).height(),menuStripe.find(&quot;.preview-title-holder&quot;).height() + parseInt(menuStripe.find(&quot;.preview-content-holder&quot;).css(&quot;padding-top&quot;))+ parseInt(menuStripe.find(&quot;.preview-content-holder&quot;).css(&quot;margin-top&quot;)));
+			if (menuStripe.is(&quot;.being-scrolled&quot;) || menuStripe.is(&quot;.force-transparency&quot;) || $(&quot;.left-menu-placeholder&quot;).length &gt; 0){
+				originalMenuHeight = 0;
+			}
+			scrollOffset = originalMenuHeight + floatingMenuHeight;
+		}
+	}
+	return scrollOffset;
+};
+</P><P>
+SpimeEngine.InitContainer = function(container,itemsClass, whatsNext){
+	SpimeEngine.DebugPrint(&quot;Init Container Start&quot;);
+	var containerArranger = SpimeEngine.getArranger(container);
+	var items = container.children(&quot;#children&quot;).find(&quot;.item-box&quot;);
+	SpimeEngine.arrangers[containerArranger] = window[containerArranger + &quot;_arranger&quot;];
+	if (typeof SpimeEngine.arrangers[containerArranger] != &quot;undefined&quot;){
+		SpimeEngine.arrangers[containerArranger].init(container,items ,whatsNext);
+	}
+};
+</P><P>SpimeEngine.initLayout = function(container, itemsClass){
+	var layoutSettings = container.find(&quot;.layout-settings&quot;);
+	var itemsLayout = layoutSettings.attr(&quot;data-type&quot;);
+	if (typeof itemsLayout == &quot;undefined&quot;){
+		itemsLayout = &quot;bottom&quot;;
+	}
+	if (typeof window[itemsLayout + &quot;_layout&quot;]== &quot;undefined&quot;){
+		console.error(&quot;layout &quot; + itemsLayout + &quot; needs to be loaded, thank you&quot;);
+	}
+	SpimeEngine.layouts[itemsLayout] = window[itemsLayout + &quot;_layout&quot;];
+	SpimeEngine.layouts[itemsLayout].init(container,container.find(itemsClass));
+	SpimeEngine.setInitialShrinkerData(container.find(itemsClass),&quot;&quot;);
+	SpimeEngine.setInitialShrinkerData(container.find(itemsClass),&quot;blocks-&quot;);
+};
+</P><P>SpimeEngine.AttachHelperIfNeeded = function(){
+	if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+		window.addEventListener(&quot;message&quot;, EditorHelper.receiveMessage, false);
+		EditorHelper.bindHelperActions();
+	}
+	if(typeof window[&quot;PreviewHelper&quot;] != &quot;undefined&quot;  &amp;&amp;  window.self != XPRSHelper.getParentWindow()){
+		window.addEventListener(&quot;message&quot;, PreviewHelper.receiveMessage, false);
+		PreviewHelper.bindHelperActions();
+	}
+	//window.addEventListener(&quot;message&quot;, SpimeEngine.receiveMessage, false);
+};
+</P><P>/******************************************************************************************************
+</P><PRE>*                                               ON RESIZE
+*                      The following methods are called every time the window is resized
+******************************************************************************************************/
+</PRE><P>SpimeEngine.ArrangeAll = function(includeMaster){
+	if ($(&quot;.master.container&quot;).hasClass(&quot;left-menu-layout&quot;)){
+		$(&quot;.master.container&quot;).find(&quot;#children&quot;).first().css(&quot;width&quot;,$(window).innerWidth() - menu_layout.SCROLLBAR_WIDTH - $(&quot;.left-menu-placeholder&quot;).width());
+		$(&quot;.left-menu-placeholder&quot;).height($(window).height());
+	}else{
+		$(&quot;.master.container&quot;).find(&quot;#children&quot;).first().css(&quot;width&quot;,&quot;&quot;);
+	}
+	SpimeEngine.ArrangeMaster();
+	SpimeEngine.getAllHolders().each(function(){
+		var currentHolder = $(this);
+		SpimeEngine.ArrangeHolder(currentHolder,{&quot;force_redraw&quot;:true});
+	});
+	LightBox.arrange();
+</P><P>};
+</P><P>SpimeEngine.InitHolder = function(holder){
+	var holderType = SpimeEngine.getHolderType(holder);
+	switch(holderType){
+		case &quot;gallery&quot;:
+			var currentContainer = holder.find(&quot;.sub.container&quot;);
+			SpimeEngine.InitContainer(currentContainer,&quot;.item-box&quot;);
+			SpimeEngine.ArrangeContainer(currentContainer);
+			SpimeEngine.initLayout(currentContainer,&quot;.item-box&quot;);
+			SpimeEngine.applyLayout(currentContainer,&quot;.item-box&quot;,{&quot;force_redraw&quot;:true});
+			setTimeout(function(){
+				if (currentContainer.is(&quot;.matrix&quot;)){
+					SpimeEngine.evenItemsHeights(currentContainer);
+				}
+			},500)
+			break;
+		case &quot;item&quot;:
+			var currentItem = holder.find(&quot;.item-wrapper&quot;);
+			SpimeEngine.initLayout(currentItem,&quot;.item-content&quot;);
+			SpimeEngine.applyLayout(currentItem,&quot;.item-content&quot;,{&quot;force_redraw&quot;:true});
+			break;
+		case &quot;element&quot;:
+			SpimeEngine.AlignElement(holder);
+			break;
+	}
+};
+</P><P>SpimeEngine.InitMaster = function(){
+	var masterContainer = $(&quot;.master.container&quot;);
+	SpimeEngine.InitContainer(masterContainer,&quot;.master.item-box&quot;);
+	SpimeEngine.ArrangeContainer(masterContainer);
+};
+</P><P>SpimeEngine.ArrangeMaster = function(){
+	var masterContainer = $(&quot;.master.container&quot;);
+	SpimeEngine.ArrangeContainer(masterContainer);
+	SpimeEngine.fitVideos();
+	SpimeEngine.centerMaps();
+	SpimeEngine.fixZoomedImages();
+};
+</P><P>SpimeEngine.HideHolder = function(holder){
+	var stripesCemetery = $(&quot;#stripes-cemetery&quot;);
+	if (stripesCemetery.length == 0){
+		stripesCemetery = $(&quot;&lt;div id='stripes-cemetery' /&gt;&quot;);
+		stripesCemetery.css({&quot;display&quot;:&quot;none&quot;});
+		$(&quot;body&quot;).append(stripesCemetery);
+	}
+	stripesCemetery.append(holder);
+};
+</P><P>
+SpimeEngine.ArrangeHolder = function(holder,paramsFromRealtime,whatsNext){
+	if (holder.hasClass(&quot;master container&quot;)){
+		SpimeEngine.ArrangeMaster();
+		return;
+	}
+	var holderType = SpimeEngine.getHolderType(holder);
+	switch(holderType){
+		case &quot;gallery&quot;:
+			var currentContainer = holder.find(&quot;.sub.container&quot;);
+			SpimeEngine.ArrangeContainer(currentContainer,whatsNext);
+			SpimeEngine.applyLayout(currentContainer,&quot;.item-box&quot;,paramsFromRealtime);
+			if (currentContainer.is(&quot;.matrix&quot;)){
+				setTimeout(function(){
+					SpimeEngine.evenItemsHeights(currentContainer);	
+				},10);
+</P><P>			}
+			break;
+		case &quot;item&quot;:
+			var currentItem = holder.find(&quot;.item-wrapper&quot;);
+			SpimeEngine.applyLayout(currentItem,&quot;.item-content&quot;,paramsFromRealtime);
+			break;
+		case &quot;element&quot;:
+			SpimeEngine.AlignElement(holder);
+			break;
+	}
+};
+</P><P>SpimeEngine.showMoreInHolder = function(holder){
+	var holderType = SpimeEngine.getHolderType(holder);
+	if (holderType == &quot;gallery&quot;){
+		var currentContainer = holder.find(&quot;.sub.container&quot;);
+		var containerArranger = SpimeEngine.getArranger(currentContainer);
+		if (typeof SpimeEngine.arrangers[containerArranger] != &quot;undefined&quot;){
+			if (typeof SpimeEngine.arrangers[containerArranger].showMore != &quot;undefined&quot;){
+				SpimeEngine.arrangers[containerArranger].showMore(holder);
+			}
+		}else{
+			console.error(&quot;bad arranger for show more &quot; + containerArranger);
+		}
+	}
+};
+</P><P>SpimeEngine.showLessInHolder = function(holder){
+	var holderType = SpimeEngine.getHolderType(holder);
+	if (holderType == &quot;gallery&quot;){
+		var currentContainer = holder.find(&quot;.sub.container&quot;);
+		var containerArranger = SpimeEngine.getArranger(currentContainer);
+		if (typeof SpimeEngine.arrangers[containerArranger] != &quot;undefined&quot;){
+			if (typeof SpimeEngine.arrangers[containerArranger].showLess != &quot;undefined&quot;){
+				SpimeEngine.arrangers[containerArranger].showLess(holder);
+			}
+		}else{
+			console.error(&quot;bad arranger for show more &quot; + containerArranger);
+		}
+	}
+};
+</P><P>SpimeEngine.getAllHolders = function(){
+	return $(&quot;.master.item-box&quot;).not(&quot;.hidden-from-view&quot;).not(&quot;.error-stripe&quot;);
+};
+</P><P>SpimeEngine.getHiddenHolders= function(){
+	return $(&quot;.master.item-box.hidden-from-view&quot;);
+};
+</P><P>SpimeEngine.getHolderType = function(holder){
+	var holderRole = holder.attr(&quot;data-holder-type&quot;);
+	if (typeof holderRole == &quot;undefined&quot;){
+		return &quot;element&quot;;
+	}
+	switch(holderRole){
+		case &quot;header&quot;:
+		case &quot;footer&quot;:
+		case &quot;page&quot;:
+			return &quot;item&quot;;
+		case &quot;gallery&quot;:
+			return &quot;gallery&quot;;
+		case &quot;element&quot;:
+			return &quot;element&quot;;
+		}
+};
+</P><P>SpimeEngine.applyLayout = function(container,itemsClass,paramsFromRealTime){
+	var layoutSettings = container.find(&quot;.layout-settings&quot;);
+	container.find(&quot;.circlize&quot;).closest(&quot;.preview-image-holder&quot;).css({&quot;height&quot;:&quot;&quot;,&quot;width&quot;:&quot;&quot;});
+	if (layoutSettings.length &gt; 0 &amp;&amp; (!(container.hasClass(&quot;master&quot;)))) {
+		var itemsLayout = layoutSettings.attr(&quot;data-type&quot;);
+</P><P>		if (typeof itemsLayout == &quot;undefined&quot; ||  itemsLayout==&quot;&quot;){
+			itemsLayout = &quot;bottom&quot;;
+		}
+		if (typeof SpimeEngine.layouts[itemsLayout] != &quot;undefined&quot;){
+			//if (typeof paramsFromRealTime!= &quot;undefined&quot;){
+				SpimeEngine.layouts[itemsLayout].applyLayout(container,container.find(itemsClass),paramsFromRealTime);
+				if (itemsLayout != &quot;menu&quot;){
+					var fromHeightResize = (typeof container.closest(&quot;.master.item-box&quot;).attr(&quot;data-height-resize&quot;) != &quot;undefined&quot;);
+					if (!fromHeightResize){
+						SpimeEngine.shrinkText(container.find(&quot;.sub.item-box&quot;).not(&quot;.stripe-header&quot;).not(&quot;.stripe-footer&quot;),paramsFromRealTime,&quot;&quot;);
+						SpimeEngine.shrinkText(container.find(&quot;.blocks_layout&quot;),paramsFromRealTime,&quot;blocks-&quot;);
+						SpimeEngine.shrinkText(container.find(&quot;.blocks_layout&quot;),paramsFromRealTime,&quot;blocks-&quot;);
+					}
+				}
+				SpimeEngine.fitVideos(container);
+				SpimeEngine.centerMaps(container);
+			//}
+		}else{
+			console.error(&quot;bad layout &quot; + itemsLayout);
+		}
+	}
+	//SpimeEngine.fitVideos(container);
+	var visibleCircles = container.find(&quot;.circlize:visible&quot;);
+	if (visibleCircles.length &gt; 0){
+		//Getting height from visible items only
+		container.addClass(&quot;circlize-holder&quot;);
+		var firstVisibleCircle = visibleCircles.first();
+		var visibleCircleImageCover = firstVisibleCircle.closest(&quot;.image-cover&quot;);
+		var newSquareSize = Math.min(visibleCircleImageCover.height(),visibleCircleImageCover.width());
+		container.find(&quot;.circlize&quot;).each(function(){
+			var imageHolder = $(this);//.closest(&quot;.preview-image-holder&quot;);
+			if (imageHolder.hasClass(&quot;element&quot;)){
+				//this is an element
+			}else{
+				if (imageHolder.hasClass(&quot;inner-pic&quot;)){
+					//visibleCircleImageCover = firstVisibleCircle.closest(&quot;.item-box&quot;);
+					var widthToCheck = firstVisibleCircle.closest(&quot;.pic-side&quot;).width();
+					var heightToCheck = firstVisibleCircle.closest(&quot;.item-box&quot;).height();
+					if (imageHolder.closest(&quot;.bottom-center&quot;).length &gt; 0 || imageHolder.closest(&quot;.top-center&quot;).length &gt; 0){
+						heightToCheck = firstVisibleCircle.closest(&quot;.pic-side&quot;).height();
+						//console.log(&quot;heightToCheck &quot; + heightToCheck)
+					}
+					newSquareSize = Math.min(heightToCheck,widthToCheck);
+					//console.log(visibleCircleImageCover.height() + &quot; &quot; + visibleCircleImageCover.width())
+					imageHolder.css(&quot;border-radius&quot;,6000);
+					imageHolder.height(newSquareSize);
+					imageHolder.width(newSquareSize);
+					//imageHolder.css(&quot;min-height&quot;,newSquareSize);
+					imageHolder.closest(&quot;.inner-pic-holder&quot;).height(newSquareSize).css({&quot;display&quot;:&quot;table-cell&quot;,&quot;vertical-align&quot;:&quot;middle&quot;});
+					//console.log(newSquareSize)
+				}else{
+					imageHolder.height(newSquareSize);
+					imageHolder.width(newSquareSize);
+					imageHolder.css(&quot;border-radius&quot;,6000);
+					imageHolder.css(&quot;margin-left&quot;,&quot;auto&quot;);
+					imageHolder.css(&quot;margin-right&quot;,&quot;auto&quot;);
+					$(this).position().left= $(this).parent().width() - $(this).width();
+					$(this).position().top = $(this).parent().height() - $(this).height();
+				}
+			}
+		});
+	}
+	SpimeEngine.shrinkImg(container);
+	SpimeEngine.fixZoomedImages(container);
+};
+</P><P>
+SpimeEngine.fixZoomedImages = function(container){
+	return;
+	var zoomedImages;
+	if (typeof container != &quot;undefined&quot;){
+		zoomedImages = container.find(&quot;.background-div&quot;);
+	}else{
+		zoomedImages = $(&quot;.element-box .background-div&quot;);
+	}
+	zoomedImages = zoomedImages.filter(function() {return ($(this).css('background-size').indexOf(&quot;%&quot;) != -1);});
+	zoomedImages.each(function(){
+		var currentSize = $(this).css(&quot;background-size&quot;);
+		if ($(this).width() &lt; $(this).height()){
+			if(currentSize.indexOf(&quot;auto&quot;) == -1){
+				$(this).css(&quot;background-size&quot; ,&quot;auto &quot; + currentSize);	
+			}
+		}else{
+			if(currentSize.indexOf(&quot;auto&quot;) != -1){
+				$(this).css(&quot;background-size&quot; ,currentSize.replace(&quot;auto&quot;,&quot;&quot;));
+			}
+		}
+	});
+};
+</P><P>
+SpimeEngine.sendVideoCommand = function(videoId,commandName){
+	var vid = $(&quot;#&quot; + videoId + &quot;-vidframe&quot;);
+	if (vid.is(&quot;.ytplayer&quot;)){
+		if (typeof YT != &quot;undefined&quot;){
+			if (typeof YT.Player != &quot;undefined&quot;){
+				if ( !(videoId in SpimeEngine.YTPlayers)) {
+					setTimeout(function(){
+						SpimeEngine.YTPlayers[videoId] =  new YT.Player(videoId + &quot;-vidframe&quot;, {});
+						SpimeEngine.YTPlayers[videoId].addEventListener(&quot;onStateChange&quot;, &quot;onytplayerStateChange&quot;);
+					},300);
+				}
+				SpimeEngine.sendVideoCommandOnInterval(videoId,commandName);
+			}else{
+				SpimeEngine.sendVideoCommandOnInterval(videoId,&quot;init-&quot;+commandName);
+			}
+		}else{
+			SpimeEngine.sendVideoCommandOnInterval(videoId,&quot;init-&quot;+commandName);
+		}
+	}else if (vid.is(&quot;.vimplayer&quot;)){
+		setTimeout(function(){
+			if ($(&quot;#&quot; + videoId +&quot;.magic-circle-holder&quot;).hasClass(&quot;vid-mute&quot;)){
+				vid[0].contentWindow.postMessage({&quot;method&quot;:&quot;setVolume&quot;,&quot;value&quot;: 0}, '*');
+			}
+			vid[0].contentWindow.postMessage({&quot;method&quot;:commandName}, '*');	
+		},2000);
+</P><P>	}
+};
+</P><P>SpimeEngine.sendVideoCommandOnInterval = function(videoId,commandName,interval){
+	vidPlayer = SpimeEngine.YTPlayers[videoId];
+	if (typeof interval == &quot;undefined&quot;){
+		interval = 200;
+	}
+</P><P>	if (typeof vidPlayer == &quot;undefined&quot; || typeof vidPlayer.playVideo == &quot;undefined&quot;){
+		setTimeout(function(){
+			if (commandName.indexOf(&quot;init-&quot;) == -1){
+				SpimeEngine.sendVideoCommandOnInterval(videoId,commandName,interval*1.3);
+			}else{
+				SpimeEngine.sendVideoCommand(videoId,commandName.replace(&quot;init-&quot;,&quot;&quot;));
+			}
+</P><P>		},interval);
+	}else{
+		switch (commandName){
+			case &quot;bind-and-play&quot;:
+				//vidPlayer.addEventListener(&quot;onStateChange&quot;, &quot;SpimeEngine.videoStateChange&quot;);
+				//no break...
+			case &quot;play&quot;:
+				if ($(&quot;#&quot; + videoId +&quot;.magic-circle-holder&quot;).hasClass(&quot;vid-mute&quot;)){
+					vidPlayer.mute();
+				}else{
+					vidPlayer.unMute();
+				}
+				vidPlayer.playVideo();
+				break;
+			case &quot;mute&quot;:
+				vidPlayer.mute();
+				break;
+			case &quot;unmute&quot;:
+				vidPlayer.unMute();
+				break;
+			case &quot;pause&quot;:
+				vidPlayer.pauseVideo();
+				break;
+			case &quot;bind-state-change&quot;:
+				vidPlayer.addEventListener(&quot;onStateChange&quot;, &quot;SpimeEngine.videoStateChange&quot;);
+				break;
+			case &quot;init&quot;:
+			case &quot;init-play&quot;:
+			case &quot;init-mute&quot;:
+			case &quot;init-unmute&quot;:
+			case &quot;init-pause&quot;:	
+				SpimeEngine.sendVideoCommand(videoId,commandName.replace(&quot;init-&quot;,&quot;&quot;));
+				break;
+			}
+	}
+};
+</P><P>function onytplayerStateChange(e) {
+	  var newState = e.data;
+	  for (videoId in SpimeEngine.YTPlayers){
+		  var currentState = SpimeEngine.YTPlayers[videoId].getPlayerState();
+		  //Playing
+		  if (currentState == 1){
+			  if ($(&quot;#&quot; +videoId).hasClass(&quot;vid-autoplay&quot;)){
+				  $(&quot;#&quot; +videoId).css(&quot;opacity&quot;,&quot;1&quot;);
+			  }
+		  }
+		  //ended
+		  if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+			  if (currentState == 0){
+				  if ($(&quot;#&quot; +videoId).hasClass(&quot;vid-loop&quot;)){
+					  SpimeEngine.YTPlayers[videoId].playVideo();
+				  }
+			  }
+		  }
+	  }
+}
+</P><P>//function onYouTubeIframeAPIReady(){
+//	alert(&quot;omg&quot;)
+//}
+</P><P>SpimeEngine.initVideos = function(){
+	//only in site and preview
+	if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+		//Enable click to play
+		$(&quot;.video-blocker&quot;).unbind(&quot;click&quot;).bind(&quot;click&quot;,function(){
+			var videoBlocker = $(this);
+			var videoElement = videoBlocker.closest(&quot;.magic-circle-holder&quot;);
+			SpimeEngine.sendVideoCommand(videoElement.attr(&quot;id&quot;),&quot;play&quot;);
+			videoBlocker.remove();
+		});
+	}
+</P><P>	//Play all autoplay videos
+	$(&quot;.vid-autoplay&quot;).each(function(){
+		SpimeEngine.sendVideoCommand($(this).attr(&quot;id&quot;),&quot;play&quot;);
+		if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+			$(&quot;.video-blocker&quot;).unbind(&quot;click&quot;).bind(&quot;click&quot;,function(){
+				var videoBlocker = $(this);
+				var videoElement = videoBlocker.closest(&quot;.magic-circle-holder&quot;);
+				SpimeEngine.sendVideoCommand(videoElement.attr(&quot;id&quot;),&quot;play&quot;);
+				videoBlocker.remove();
+			});
+		}
+	});
+</P><P>	if (window.addEventListener) {
+</P><PRE>       window.addEventListener('message', SpimeEngine.vimeoMessage, false);
+   }
+   else {
+       window.attachEvent('onmessage', SpimeEngine.vimeoMessage, false);
+   }
+</PRE><P>	SpimeEngine.fitVideos();
+};
+</P><P>
+SpimeEngine.vimeoMessage = function(event){
+	if (!(/^https?:\/\/player.vimeo.com/).test(event.origin)) {
+		//not from vimeo
+	}else{
+		var data = JSON.parse(event.data);
+		switch (data.event) {
+</P><PRE>           case 'ready':
+</PRE><P>	        	$(&quot;.vid-mute .vimplayer&quot;).each(function(){
+	    			$(this)[0].contentWindow.postMessage({&quot;method&quot;:&quot;setVolume&quot;,&quot;value&quot;: 0}, '*');
+	    		});
+	        	$(&quot;.vid-autoplay .vimplayer&quot;).each(function(){
+	        		$(this).closest(&quot;.vid-autoplay&quot;).css(&quot;opacity&quot;,1)
+	    		});
+	            break;
+		 };
+	}
+};
+</P><P>
+SpimeEngine.shrinkImg = function(container){
+	container.closest(&quot;.master.item-box&quot;).find(&quot;.shrinkable-img&quot;).each(function(){
+		var currentImg = $(this);
+		var imgWidth = currentImg.width()
+		if (currentImg.attr(&quot;data-width-before-shrink&quot;)){
+			imgWidth = parseInt(currentImg.attr(&quot;data-width-before-shrink&quot;));
+		}else{
+			currentImg.attr(&quot;data-width-before-shrink&quot;,imgWidth);
+		}
+		if (container.width() &lt; imgWidth){
+			currentImg.css(&quot;width&quot;,&quot;100%&quot;);
+			currentImg.addClass(&quot;shrinked&quot;);
+		}else{
+			if (currentImg.is(&quot;.shrinked&quot;)){
+				currentImg.removeClass(&quot;shrinked&quot;);
+				currentImg.css(&quot;width&quot;,&quot;&quot;);
+			}
+		}
+	});
+};
+</P><P>SpimeEngine.getMapStyles = function(){
+</P><P>};
+</P><P>SpimeEngine.initDynamicStripes = function(){
+	if ($(&quot;body&quot;).attr(&quot;data-caller&quot;) == &quot;static&quot;){
+		$(&quot;.showing-feed&quot;).each(function(){
+			var feedHolder = $(this);
+			SpimeEngine.initDynamicStripe(feedHolder);
+		});
+	}
+};
+</P><P>
+SpimeEngine.initDynamicStripe = function(feedHolder){
+	var resolvedHost = XPRSHelper.getStaticServerPath();
+	feedHolder.load(window.location.protocol + resolvedHost + &quot;/get_part&quot;,{&quot;vbid&quot;:feedHolder.attr(&quot;id&quot;),&quot;root_id&quot;:$(&quot;.master.container&quot;).attr(&quot;id&quot;),&quot;no_blocking_div&quot;:true},function(data, status, xhr){
+		feedHolder.find(&quot;.sub.item-box&quot;).addClass(&quot;animated-opacity&quot;);
+		SpimeEngine.InitHolder(feedHolder);
+		LightBox.initLinks(feedHolder);
+		feedHolder.addClass(&quot;loaded&quot;);
+	});
+};
+</P><P>SpimeEngine.initMaps = function(){
+	if (typeof google != &quot;undefined&quot;){
+		SpimeEngine.Geocoder = new google.maps.Geocoder();
+</P><P>		var resolvedHost = XPRSHelper.getStaticServerPath();
+</P><P>		mapsURL = window.location.protocol + resolvedHost + &quot;/settings/map_styles.json&quot;;
+</P><P>		if(window.location.protocol == &quot;file:&quot;) {
+			mapsURL = &quot;http:&quot; + resolvedHost + &quot;/settings/map_styles.json&quot;;
+		}
+</P><P>		
+		XPRSHelper.GET(mapsURL,{},function(mapStyles){
+			SpimeEngine.MapStyles = mapStyles;
+			$(&quot;.map-frame&quot;).each(function(){
+				var mapFrame = $(this);
+				SpimeEngine.initMap(mapFrame);
+			});
+		},&quot;json&quot;);
+	}
+};
+</P><P>SpimeEngine.initMap = function(mapFrame){
+	var mapHolder = mapFrame.closest(&quot;.magic-circle-holder&quot;);
+	mapBlocker = mapHolder.find(&quot;.map-blocker&quot;);
+	if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+		mapBlocker.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(){
+			$(this).remove();
+		});
+	}
+	var elementId = mapHolder.attr(&quot;id&quot;);
+	var mapLat = parseFloat(mapHolder.attr(&quot;data-spimelat&quot;)) ;
+	var mapLng = parseFloat(mapHolder.attr(&quot;data-spimelng&quot;)) ;
+	var myLatlng = new google.maps.LatLng(mapLat,mapLng);
+	var mapStyleId = mapHolder.attr(&quot;data-spimemap_style_id&quot;);
+	var mapStyle = [];
+	if (typeof SpimeEngine.MapStyles[mapStyleId] != &quot;undefined&quot;){
+		mapStyle = SpimeEngine.MapStyles[mapStyleId].style;
+	}
+</P><P>	var allowInteraction = true;
+</P><P>	if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+		allowInteraction = false;
+	}
+	var mapOptions = {
+			center: myLatlng,
+			zoom:8,
+			disableDefaultUI:!allowInteraction,
+			draggable:allowInteraction,
+			zoomControl:allowInteraction,
+			scrollwheel:allowInteraction,
+			styles: mapStyle
+	};
+</P><P>	
+	var map = new google.maps.Map(mapFrame[0],mapOptions);
+	SpimeEngine.GoogleMaps[elementId]= {};
+	SpimeEngine.GoogleMaps[elementId][&quot;map&quot;] = map;
+	SpimeEngine.sendMapCommand(mapHolder,&quot;center&quot;,{&quot;first_time&quot;:true});
+};
+</P><P>
+SpimeEngine.geoCode = function(address,callbackFunc){
+	SpimeEngine.Geocoder.geocode( { 'address': address}, function(results, status) {
+	  if (status == google.maps.GeocoderStatus.OK) {
+		  var lat = results[0].geometry.location.lat();
+		  var lng = results[0].geometry.location.lng();
+		  var northeastLat = results[0].geometry.viewport.getNorthEast().lat();
+		  var northeastLng = results[0].geometry.viewport.getNorthEast().lng();
+		  var southwestLat = results[0].geometry.viewport.getSouthWest().lat();
+		  var southwestLng = results[0].geometry.viewport.getNorthEast().lng();
+		  callbackFunc(lat,lng,northeastLat,northeastLng,southwestLat,southwestLng);
+	  } else {
+		  XPRSHelper.xprsAlert('Geocode for ' + address + ' was not successful for the following reason: ' + status,{&quot;report_error&quot;:true});
+	  }
+	});
+};
+</P><P>
+SpimeEngine.sendMapCommand = function(mapHolder,commandName,params){
+</P><P>	var mapId = mapHolder.attr(&quot;id&quot;);
+	if (mapHolder.hasClass(&quot;element-box&quot;)){
+		mapHolder = mapHolder.find(&quot;.element.map-source&quot;);
+	}
+	if ( mapId in SpimeEngine.GoogleMaps){
+		var map = SpimeEngine.GoogleMaps[mapId][&quot;map&quot;];
+		switch (commandName){
+			case &quot;center&quot;:
+				//var myLatlng = map.getCenter();
+				var mapnortheastLat =  0 ;
+				var mapnortheastLng =  0 ;
+				var mapsouthwestLat =  0 ;
+				var mapsouthwestLng =  0 ;
+				//if (typeof params.first_time != &quot;undefined&quot;){
+					var mapLat = parseFloat(mapHolder.attr(&quot;data-spimelat&quot;))  ;
+					var mapLng = parseFloat(mapHolder.attr(&quot;data-spimelng&quot;)) ;
+					var myLatlng = new google.maps.LatLng(mapLat,mapLng);
+				//}
+					mapnortheastLat = mapHolder.attr(&quot;data-spimenortheast-lat&quot;) ? parseFloat(mapHolder.attr(&quot;data-spimenortheast-lat&quot;)) : 0 ;
+					mapnortheastLng = mapHolder.attr(&quot;data-spimenortheast-lng&quot;) ? parseFloat(mapHolder.attr(&quot;data-spimenortheast-lng&quot;)) : 0 ;
+					mapsouthwestLat = mapHolder.attr(&quot;data-spimesouthwest-lat&quot;) ? parseFloat(mapHolder.attr(&quot;data-spimesouthwest-lat&quot;)) : 0 ;
+					mapsouthwestLng = mapHolder.attr(&quot;data-spimesouthwest-lng&quot;) ? parseFloat(mapHolder.attr(&quot;data-spimesouthwest-lng&quot;)) : 0 ;
+</P><P>				google.maps.event.trigger(map, &quot;resize&quot;);
+				var viewport = null;
+</P><P>				if (typeof params.first_time != &quot;undefined&quot;){
+				if (mapnortheastLat != 0){
+					var ne = new google.maps.LatLng(mapnortheastLat, mapnortheastLng); 
+					var sw = new google.maps.LatLng(mapsouthwestLat, mapsouthwestLng);
+					viewport = new google.maps.LatLngBounds(sw,ne);
+					map.fitBounds(viewport);
+				}
+				}else{
+					map.setCenter(myLatlng);
+				}
+</P><P>
+				google.maps.event.addListenerOnce(map, 'bounds_changed', function(event) {
+					map.setCenter(myLatlng);
+//					if (typeof SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;] == &quot;undefined&quot;){
+//						var marker = new google.maps.Marker({
+//						      position: myLatlng,
+//						      map:SpimeEngine.GoogleMaps[mapId][&quot;map&quot;],
+//						      title: mapHolder.attr(&quot;data-spimelocation&quot;)
+//						  });
+//						SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;] = marker;
+//					}else{
+//						if (!(SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;].getPosition().equals(myLatlng))){
+//							SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;].setPosition(myLatlng);
+//						}else{
+//						}
+//					}
+</P><P>				});
+</P><P>				google.maps.event.addListenerOnce(map, 'center_changed', function(event) {
+					if (typeof SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;] == &quot;undefined&quot;){
+						var marker = new google.maps.Marker({
+						      position: myLatlng,
+						      map:SpimeEngine.GoogleMaps[mapId][&quot;map&quot;],
+						      title: mapHolder.attr(&quot;data-spimelocation&quot;)
+						  });
+						SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;] = marker;
+					}else{
+						if (!(SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;].getPosition().equals(myLatlng))){
+							SpimeEngine.GoogleMaps[mapId][&quot;marker&quot;].setPosition(myLatlng);
+						}else{
+						}
+					}
+				});
+				break;
+			case &quot;change_style&quot;:
+				map.setOptions({styles: SpimeEngine.MapStyles[params.style_id].style});
+				break;
+		}
+	}
+};
+</P><P>SpimeEngine.centerMaps = function(container){
+	if (typeof container != &quot;undefined&quot;){
+		var maps = container.find(&quot;.preview-map-source&quot;);
+		//console.log(&quot;for all preview maps here&quot; + maps.length)
+		maps.each(function(){
+			var mapHolder = $(this);
+			SpimeEngine.sendMapCommand(mapHolder,&quot;center&quot;,{});
+		});
+	}else{
+		var maps = $(&quot;.element-box .map-source&quot;);
+		maps.each(function(){
+			var mapHolder = $(this);
+			SpimeEngine.sendMapCommand(mapHolder,&quot;center&quot;,{});
+		});
+	}
+};
+</P><P>SpimeEngine.fitVideos = function(container){
+	if (typeof container != &quot;undefined&quot;){
+		var vidList = container.find(&quot;.vid-cover&quot;);
+		vidList.each(function(){
+			var vid = $(this);
+			SpimeEngine.fitVideo(vid);
+		});
+	}else{
+		var vidList = $(&quot;.element-box .vid-cover&quot;);
+		vidList.each(function(){
+			var vid = $(this);
+			SpimeEngine.fitVideo(vid);
+		});
+	}
+};
+</P><P>SpimeEngine.fitVideo = function(vidElement){
+	if (vidElement.length &gt; 0){
+		var outBox,outBoxHeight,outBoxWidth;
+		if (vidElement.hasClass(&quot;preview-element&quot;)){
+			vidElement.css({&quot;width&quot;:&quot;&quot;,&quot;height&quot;:&quot;&quot;});
+			vidElement.find(&quot;iframe&quot;).css({&quot;width&quot;:&quot;&quot;,&quot;height&quot;:&quot;&quot;});
+			outBox = vidElement.closest(&quot;.pic-side&quot;);
+			if (outBox.length == 0){
+				outBox = vidElement.closest(&quot;.preview-video-holder&quot;);
+			}
+			outBoxHeight = outBox.height();
+		    outBoxWidth = outBox.width();
+		}else{
+			outBox = vidElement.closest(&quot;.master.item-box&quot;);
+			outBoxHeight = parseInt(outBox.css(&quot;min-height&quot;));
+			if (outBoxHeight == 0){
+				outBoxHeight = parseInt(vidElement.closest(&quot;.video-wrapper&quot;).css(&quot;height&quot;));
+			}
+		    outBoxWidth = parseInt(vidElement.closest(&quot;.video-wrapper&quot;).css(&quot;max-width&quot;));
+		    if (isNaN(outBoxWidth)){
+		    	outBoxWidth = vidElement.closest(&quot;.video-wrapper&quot;).width();
+		    }
+		}
+</P><P>		var containerRatio = outBoxWidth / outBoxHeight;
+		var iframeHeight = 0;
+		var iframeWidth = 0;
+		if (containerRatio &gt; 16/9){
+			iframeWidth = outBoxWidth;
+			iframeHeight = outBoxWidth * 16/9;
+</P><P>		}else{
+			iframeHeight = outBoxHeight;// * 16/9; 
+			iframeWidth = iframeHeight * 16/9;
+		}
+		var marginTop = (outBoxHeight - iframeHeight) / 2;
+		var marginLeft =  (outBoxWidth - iframeWidth) / 2;
+		vidElement.find(&quot;iframe&quot;).width(iframeWidth).height(iframeHeight).css({&quot;margin-top&quot;: marginTop, &quot;margin-left&quot;:marginLeft});
+		vidElement.width(outBoxWidth).height(outBoxHeight);
+	}
+};
+</P><P>SpimeEngine.unfitVideo = function(vidElement){
+	vidElement.find(&quot;iframe&quot;).css({&quot;margin-top&quot;: &quot;&quot;, &quot;margin-left&quot;:&quot;&quot;,&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;});
+	vidElement.css({&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;});
+};
+</P><P>SpimeEngine.ArrangeContainer = function(container,whatsNext){
+	if (container.closest(&quot;.fill-height&quot;).length &gt; 0){
+		SpimeEngine.fitToPageHeight(container.closest(&quot;.fill-height&quot;));
+	}
+	var containerArranger = SpimeEngine.getArranger(container);
+	var items = container.children(&quot;#children&quot;).find(&quot;.item-box&quot;);
+	if (typeof SpimeEngine.arrangers[containerArranger] != &quot;undefined&quot;){
+		SpimeEngine.arrangers[containerArranger].arrange(items,container,whatsNext);
+	}else{
+		console.error(&quot;bad arranger &quot; + containerArranger);
+	}
+};
+</P><P>
+SpimeEngine.fitToPageHeight = function(stripe){
+	var stripeNewHeight = $(window).height();
+	if(typeof window[&quot;EditorHelper&quot;] != &quot;undefined&quot;){
+		if ( $(&quot;.tablet-preview&quot;).length == 0 &amp;&amp; $(&quot;.cellphone-preview&quot;).length == 0){
+			stripeNewHeight -= 45; //topbar
+		}
+	}
+</P><P>	if ((stripe.prevAll(&quot;.master.item-box[data-preset-type-id='MENUS']&quot;).length &gt; 0 &amp;&amp; stripe.prevAll(&quot;.master.item-box&quot;).not(&quot;[data-preset-type-id='MENUS']&quot;).length == 0) || stripe.nextAll(&quot;.master.item-box[data-preset-type-id='MENUS']&quot;).length &gt; 0){
+		 var menuStripe = $(&quot;.master.item-box[data-preset-type-id='MENUS']&quot;);
+		 if (!menuStripe.is(&quot;.force-transparency&quot;) &amp;&amp; menuStripe.css(&quot;display&quot;) != &quot;none&quot;){
+			var menuHeight  = menuStripe.height();
+			stripeNewHeight -= menuHeight;
+		 }
+	}
+</P><P>	stripeNewHeight -= parseInt(stripe.css(&quot;padding-top&quot;)) + parseInt(stripe.css(&quot;padding-bottom&quot;))
+</P><P>	var footerSize = 0;
+</P><PRE>  	footerSize = stripe.find(&quot;.stripe-header-wrapper&quot;).height() + stripe.find(&quot;.stripe-footer-wrapper&quot;).height();
+</PRE><P>	stripe.css(&quot;min-height&quot;,stripeNewHeight - footerSize);
+};
+</P><P>SpimeEngine.AlignElement = function(elementHolder){
+//	var currentElement = elementHolder.find(&quot;.element&quot;);
+//	var elementParent = currentElement.parent();
+//	if (elementParent.is(&quot;a&quot;)){
+//		elementParent = elementParent.parent();
+//	}
+//	var contentheight = elementParent.height();
+//	//console.debug(contentheight)
+//	var holderHeight = elementHolder.height();
+//	var marginForCentering = (holderHeight/2) - (contentheight/2);
+//	if (!(currentElement.hasClass(&quot;image-source&quot;))){
+//		currentElement.css(&quot;margin-top&quot;,marginForCentering);
+//	}
+};
+</P><P>SpimeEngine.showItem = function(parentHolder,itemToShowId){
+	var holderType = SpimeEngine.getHolderType(parentHolder);
+		if (holderType == &quot;gallery&quot;){
+			var currentContainer = parentHolder.find(&quot;.sub.container&quot;);
+			var containerArranger = SpimeEngine.getArranger(currentContainer);
+			var items = currentContainer.find(&quot;.sub.item-box&quot;);
+			if (typeof SpimeEngine.arrangers[containerArranger] != &quot;undefined&quot;){
+				if (typeof SpimeEngine.arrangers[containerArranger].showItem != &quot;undefined&quot;){
+					SpimeEngine.arrangers[containerArranger].showItem(currentContainer,items,itemToShowId);
+				}
+			}else{
+				console.error(&quot;bad arranger for show item &quot; + containerArranger);
+			}
+		}
+};
+</P><P>SpimeEngine.submitClick = function(currentLink,mailTo){
+		if ($(&quot;#g-recaptcha-response&quot;).length &gt; 0){
+			var recaptchaResponse = $(&quot;#g-recaptcha-response&quot;).val();
+			if (recaptchaResponse == &quot;&quot;){
+				$(&quot;.g-recaptcha&quot;).css(&quot;border&quot;,&quot;1px solid red&quot;);
+				setTimeout(function(){
+					$(&quot;.g-recaptcha&quot;).css(&quot;border&quot;,&quot;&quot;)
+				},2000);
+				return;
+			}
+		}
+		var containingItem = currentLink.closest(&quot;.item-box&quot;);
+		var formFields = containingItem.find(&quot;.Field&quot;);
+		var thankYouText = currentLink.attr(&quot;data-text&quot;);
+		var submitParams = {};
+		var siteName = $(&quot;#xprs&quot;).attr(&quot;data-website-name&quot;);
+		submitParams[&quot;xprs_mail_to&quot;] = mailTo;
+		submitParams[&quot;xprs_site_name&quot;] = siteName;
+		submitParams[&quot;g-recaptcha-response&quot;] = recaptchaResponse;
+		var formIsValid = true;
+		var isRegistrationForm = false;
+		var registrationEmail = &quot;&quot;;
+		var registrationName = &quot;&quot;;
+		formFields.each(function(){
+			var currentField = $(this);
+			if (!(SpimeEngine.validateField(currentField))){
+				formIsValid = false;
+				currentField.addClass(&quot;erred-user-form-field&quot;);
+			}else{
+				currentField.removeClass(&quot;erred-user-form-field&quot;);
+			}
+			if (currentField.hasClass(&quot;field-email&quot;)){
+				isRegistrationForm = true;
+				registrationEmail = currentField.val();
+			}
+			if (currentField.attr(&quot;name&quot;).toLowerCase() == &quot;name&quot;){
+				registrationName = currentField.val();
+			}
+			submitParams[currentField.attr(&quot;name&quot;)] = currentField.val();
+		});
+		if (formIsValid){
+			currentLink.find(&quot;.item-link&quot;).closest(&quot;.removable-parent&quot;).fadeTo(1000,0, function(){
+				$(this).unbind(&quot;click&quot;).css({&quot;visibility&quot;:&quot;hidden&quot;,&quot;cursor&quot;:&quot;default&quot;});
+			});
+			$(&quot;.g-recaptcha&quot;).fadeTo(1000,0);
+</P><P>			// var resolvedHost = XPRSHelper.getStaticServerPath();
+			// XPRSHelper.POST(XPRSHelper.getParentWindow().location.protocol + resolvedHost + &quot;/form_submit&quot;, submitParams, function(){
+			var resolvedHost = location.host;
+			//This is a live site
+			if (resolvedHost.indexOf(&quot;appspot&quot;) == -1 &amp;&amp; resolvedHost.indexOf(&quot;localhost&quot;) == -1 &amp;&amp; resolvedHost.indexOf(&quot;127.0.0.1&quot;) == -1){
+				resolvedHost = &quot;www.imdomainrouter.com&quot;;
+			}
+			XPRSHelper.POST(XPRSHelper.getParentWindow().location.protocol+'//'+  resolvedHost + &quot;/form_submit&quot;, submitParams, function(){
+				var thankyouDiv = $(&quot;&lt;div /&gt;&quot;).addClass(&quot;preview-element preview-subtitle magic-circle-holder text-element&quot;).text(thankYouText);
+				var form = currentLink.closest(&quot;.preview-item-links&quot;).siblings(&quot;.preview-form&quot;);
+				var formHeightBeforeEmpty = form.outerHeight(true);// + currentLink.closest(&quot;.preview-item-links&quot;).outerHeight(true);
+				var formWidthBeforeEmpty = form.find(&quot;.Field&quot;).width();
+				form.fadeTo(1000,0, function(){
+					thankyouDiv.width(formWidthBeforeEmpty);
+					form.height(formHeightBeforeEmpty);
+					var middleTop = formHeightBeforeEmpty /2 - thankyouDiv.height() / 2; 
+					form.empty().first().append(thankyouDiv).fadeTo(&quot;fast&quot;,1);
+					thankyouDiv.css({&quot;top&quot;:middleTop,&quot;position&quot;:&quot;relative&quot;});
+				});
+				if (isRegistrationForm){
+					try{
+			    		if (typeof IMOS != &quot;undefined&quot;){
+			    			IMOS.trackGoal(&quot;Registration&quot;,{&quot;email&quot;:registrationEmail,&quot;nickname&quot;:registrationName});
+			    			if (currentLink.attr(&quot;data-mailing-list&quot;)){
+			    				submitParams[&quot;mailing_list_id&quot;] = currentLink.attr(&quot;data-mailing-list&quot;);
+			    			}
+			    			IMOS.handleNewsLetterIntegration(submitParams);
+						}
+					}catch(err){
+					}
+				}
+			});
+		}
+};
+</P><P>
+SpimeEngine.initForms = function(){
+	//Only in viewer mode
+	if(typeof window[&quot;EditorHelper&quot;] == &quot;undefined&quot;){
+		var links = $(&quot;a[data-link-type='SUBMIT']&quot;);
+		links.each(function(){
+			var currentLink = $(this);
+			var mailTo = currentLink.attr(&quot;href&quot;);
+			currentLink.removeAttr(&quot;href&quot;);
+			currentLink.addClass(&quot;clickable&quot;);
+			var recaptcha = $(&quot;&lt;i /&gt;&quot;).addClass(&quot;clickable g-recaptcha&quot;).attr(&quot;data-sitekey&quot;, SpimeEngine.captchaKey).css(&quot;pointer-events&quot;,&quot;auto&quot;).css({&quot;display&quot;:&quot;block&quot;,&quot;margin&quot;:&quot;5px&quot;,&quot;box-sizing&quot;:&quot;border-box&quot;});
+			currentLink.before(recaptcha);
+			currentLink.unbind(&quot;click&quot;).bind(&quot;click&quot;,function(){
+				SpimeEngine.submitClick(currentLink,mailTo);
+			});
+		});
+	}
+	var allFields = $(&quot;.Field&quot;);
+	allFields.each(function(){
+		var currentField = $(this);
+		SpimeEngine.setPlaceholderFunc(currentField);
+	});
+};
+</P><P>SpimeEngine.setPlaceholderFunc = function(currentField){
+	var currentPlaceholder = currentField.attr(&quot;placeholder&quot;);
+	currentField.addClass(&quot;placeholder-mode&quot;);
+	currentField.val(currentPlaceholder);
+	currentField.attr(&quot;data-placeholder&quot;, currentPlaceholder);
+	currentField.removeAttr(&quot;placeholder&quot;);
+	var currentFieldEl = currentField.get(0);
+	currentFieldEl.addEventListener(&quot;focus&quot;, SpimeEngine.setCaret, false);
+	currentFieldEl.addEventListener(&quot;drop&quot;, SpimeEngine.setCaret, false);
+	currentFieldEl.addEventListener(&quot;click&quot;, SpimeEngine.setCaret, false);
+	currentFieldEl.addEventListener(&quot;keydown&quot;, SpimeEngine.clearPlaceholder, false);
+	currentFieldEl.addEventListener(&quot;keyup&quot;, SpimeEngine.restorePlaceHolder, false);
+	currentFieldEl.addEventListener(&quot;blur&quot;, SpimeEngine.restorePlaceHolder, false);
+};
+</P><P>
+// Set caret at the beginning of the input
+SpimeEngine.setCaret = function (evt) {
+</P><PRE>   if (this.value === this.getAttribute(&quot;data-placeholder&quot;)) {
+   	if(typeof this.setSelectionRange != &quot;undefined&quot;){
+   		this.setSelectionRange(0, 0);
+   	}
+       evt.preventDefault();
+       evt.stopPropagation();
+       return false;
+   }
+</PRE><P>};
+</P><P>// Clear placeholder value at user input
+SpimeEngine.clearPlaceholder = function (evt) {
+	var currentField = this;
+	 if (!(evt.shiftKey &amp;&amp; evt.keyCode === 16) &amp;&amp; evt.keyCode !== 9) {
+	        if (this.value === this.getAttribute(&quot;data-placeholder&quot;)) {
+	        	setTimeout(function(){
+	        		currentField.value = currentField.value.replace(currentField.getAttribute(&quot;data-placeholder&quot;),&quot;&quot;);
+	        	},1)
+</P><P>	            
+	        }
+	        this.className = this.className.replace(&quot;placeholder-mode&quot; ,&quot;&quot;);
+	    } 
+};
+</P><P>SpimeEngine.restorePlaceHolder = function (evt) {
+	var currentField = this;
+	var args = arguments;
+	setTimeout(function(){
+	    if (currentField.value.length === 0) {
+	    	currentField.value = currentField.getAttribute(&quot;data-placeholder&quot;);
+	        SpimeEngine.setCaret.apply(currentField, args);
+	        currentField.className = currentField.className + &quot; placeholder-mode&quot;;
+	    }
+	},50);
+};
+</P><P>SpimeEngine.validateField = function(currentField){
+	if (currentField.hasClass(&quot;field-email&quot;)){
+		return SpimeEngine.validateEmail(currentField.val());
+	}
+	if (currentField.hasClass(&quot;field-phone&quot;)){
+		return SpimeEngine.validatePhone(currentField.val());
+	}
+	if (currentField.hasClass(&quot;field-mandatory&quot;)){
+		return (currentField.val() != &quot;&quot; &amp;&amp; currentField.val() != currentField.attr(&quot;data-placeholder&quot;));
+	}
+	return true;
+</P><P>};
+</P><P>SpimeEngine.validateEmail = function(email) { 
+</P><PRE>   var re = /^(([^&lt;&gt;()[\]\\.,;:\s@\&quot;]+(\.[^&lt;&gt;()[\]\\.,;:\s@\&quot;]+)*)|(\&quot;.+\&quot;))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+   return re.test(email);
+</PRE><P>};
+</P><P>SpimeEngine.validatePhone = function(phone) { 
+	var strippedPhone = phone.replace(&quot;+&quot;,&quot;&quot;).replace(&quot;-&quot;,&quot;&quot;);
+	var phoneAsNumber =  parseInt(strippedPhone);
+	if (isNaN(phoneAsNumber)){
+		return false;
+	}
+</P><PRE>   return true;
+</PRE><P>};
+</P><P>SpimeEngine.setInitialShrinkerData = function(items,textPrefix){
+	var previewTitle = items.find(&quot;.&quot; + textPrefix + &quot;preview-title&quot;);
+	var previewSubtitle = items.find(&quot;.&quot; + textPrefix + &quot;preview-subtitle&quot;);
+	var previewTitleFontSize = 0;
+	var previewSubtitleFontSize = 0;
+	if (previewTitle.length &gt; 0){
+		if (!(previewTitle.attr(&quot;data-orig-font-size&quot;))){
+			previewTitleFontSize = Math.round(parseInt(previewTitle.css(&quot;font-size&quot;)));
+			previewTitle.attr(&quot;data-orig-font-size&quot;,previewTitleFontSize);
+		}
+	}
+	if (previewSubtitle.length &gt; 0){
+		if (!(previewSubtitle.attr(&quot;data-orig-font-size&quot;))){
+			previewSubtitleFontSize = Math.round(parseInt(previewSubtitle.css(&quot;font-size&quot;)));
+			previewSubtitle.attr(&quot;data-orig-font-size&quot;,previewSubtitleFontSize);
+		}
+	}
+};
+</P><P>SpimeEngine.shrinkText = function(items,paramsFromRealTime,textPrefix){
+	items.find(&quot;.text-side&quot;).css(&quot;display&quot;,&quot;block&quot;);
+	var previewTitle = items.find(&quot;.&quot; + textPrefix + &quot;preview-title&quot;);
+	var previewSubtitle = items.find(&quot;.&quot; + textPrefix + &quot;preview-subtitle&quot;);
+	previewTitle.removeClass(&quot;disable-max-width&quot;);
+	previewSubtitle.removeClass(&quot;disable-max-width&quot;);
+</P><P>	
+	var shrinkPlease = true;
+	if (typeof paramsFromRealTime != &quot;undefined&quot; ){
+		if (typeof paramsFromRealTime.value != &quot;undefined&quot;){
+//			originalFontSize = parseInt(paramsFromRealTime.value);
+//			items.find(&quot;.preview-title&quot;).attr(&quot;data-orig-font-size&quot;,originalFontSize);
+			shrinkPlease = false;
+		}
+	}
+	if (shrinkPlease){
+		//previewTitle.addClass(&quot;disable-max-width&quot;);
+		//previewSubtitle.addClass(&quot;disable-max-width&quot;);
+		var previewTitleOriginalFontSize = 9999;
+		var previewSubtitleOriginalFontSize = 9999;
+		if (previewTitle.length &gt; 0){
+			previewTitleOriginalFontSize = Math.round(parseInt(previewTitle.attr(&quot;data-orig-font-size&quot;)));
+			previewTitle.css(&quot;font-size&quot;,previewTitleOriginalFontSize);
+		}
+		if (previewSubtitle.length &gt; 0){
+			previewSubtitleOriginalFontSize = Math.round(parseInt(previewSubtitle.attr(&quot;data-orig-font-size&quot;)));
+			previewSubtitle.css(&quot;font-size&quot;,previewSubtitleOriginalFontSize);
+		}
+</P><P>		var titleMinFontSize = 9999;
+		var subtitleMinFontSize = 9999;
+		items.each(function(){
+			var currentItem = $(this);
+			var currentTitle = currentItem.find(&quot;.&quot; + textPrefix + &quot;preview-title&quot;);
+			var currentSubtitle = currentItem.find(&quot;.&quot; + textPrefix + &quot;preview-subtitle&quot;);
+			var contentHolder = currentItem.find(&quot;.shrinker-content&quot;);
+			//contentHolder.removeClass(&quot;disable-max-width&quot;);
+			var parent = contentHolder.closest(&quot;.shrinker-parent&quot;);
+			var offset = 0;
+			var minimalFontSize = 10;
+			var contentHolderPadding = parseInt(contentHolder.css(&quot;padding-left&quot;)) + parseInt(contentHolder.css(&quot;padding-right&quot;)) +parseInt(contentHolder.css(&quot;margin-left&quot;)) + parseInt(contentHolder.css(&quot;margin-right&quot;)); 
+</P><P>			//if subtitle is bigger
+			if (previewSubtitleOriginalFontSize != 9999 &amp;&amp; previewSubtitleOriginalFontSize &gt; previewTitleOriginalFontSize){
+				titleMinFontSize = SpimeEngine.tryToShrink(   currentTitle,    previewTitleOriginalFontSize,    titleMinFontSize,    currentItem, contentHolderPadding, offset, minimalFontSize, false);
+				subtitleMinFontSize = SpimeEngine.tryToShrink(currentSubtitle, previewSubtitleOriginalFontSize, subtitleMinFontSize, currentItem, contentHolderPadding, offset, minimalFontSize, false);
+				titleMinFontSize = SpimeEngine.tryToShrink(   currentTitle,    previewTitleOriginalFontSize,    titleMinFontSize,    currentItem, contentHolderPadding, offset, minimalFontSize, true);
+			}else{
+				subtitleMinFontSize = SpimeEngine.tryToShrink(currentSubtitle, previewSubtitleOriginalFontSize, subtitleMinFontSize, currentItem, contentHolderPadding, offset, minimalFontSize, false);
+				titleMinFontSize = SpimeEngine.tryToShrink(   currentTitle,    previewTitleOriginalFontSize,    titleMinFontSize,    currentItem, contentHolderPadding, offset, minimalFontSize, false);
+				subtitleMinFontSize = SpimeEngine.tryToShrink(currentSubtitle, previewSubtitleOriginalFontSize, subtitleMinFontSize, currentItem, contentHolderPadding, offset, minimalFontSize, true);
+			}
+</P><P>		});
+</P><P>		items.each(function(){
+			$(this).find(&quot;.text-side&quot;).css(&quot;display&quot;,&quot;&quot;);
+			var currentTitle = $(this).find(&quot;.&quot; + textPrefix + &quot;preview-title&quot;);
+			if (currentTitle.length &gt; 0){
+				if (titleMinFontSize != 9999){
+					currentTitle.css(&quot;font-size&quot;,titleMinFontSize);
+				}
+			}
+			var currentSubtitle = $(this).find(&quot;.&quot; + textPrefix + &quot;preview-subtitle&quot;);
+			if (currentSubtitle.length &gt; 0){
+				if (subtitleMinFontSize != 9999){
+					currentSubtitle.css(&quot;font-size&quot;,subtitleMinFontSize);
+				}
+			}
+		});
+	}
+};
+</P><P>
+SpimeEngine.tryToShrink = function(textElementToShrink,textElementOriginalFontSize,textElementMinFontSize, currentItem, contentHolderPadding,offset , minimalFontSize,revertToOriginalSize){
+	var contentHolder = currentItem.find(&quot;.shrinker-content&quot;);
+	var parent = contentHolder.closest(&quot;.shrinker-parent&quot;);
+	if(textElementToShrink.length &gt; 0){
+		if (parent.width() &lt; textElementToShrink.parent().outerWidth(true) + contentHolderPadding){
+			contentHolder = currentItem.find(&quot;.shrinker-content&quot;);
+			parent = contentHolder.closest(&quot;.shrinker-parent&quot;);
+		}else{
+			contentHolder = textElementToShrink;
+			parent = 	 textElementToShrink.parent();
+		}
+		var delta = Math.abs(contentHolder.outerWidth(true) - parent.width());
+		if (delta &gt; 1) {
+</P><P>			//still no room
+			//revert to original font size
+			if (revertToOriginalSize){
+				textElementToShrink.css(&quot;font-size&quot;,textElementOriginalFontSize);
+			}
+			if (contentHolder.outerWidth(true) + offset&gt; parent.width() || contentHolder.outerHeight(true)  &gt; parent.outerHeight(true) ){
+				//try shrinking the subtitle
+				textElementMinFontSize = Math.min(textElementMinFontSize,SpimeEngine.shrinkTextToFit(textElementOriginalFontSize,parent,contentHolder,textElementToShrink,offset,minimalFontSize));
+				return textElementMinFontSize;
+			}
+		}
+	}
+	return textElementMinFontSize;
+};
+</P><P>
+SpimeEngine.evenItemsHeights = function(holder){
+	if (holder.is(&quot;.sub.container.matrix&quot;)){
+		var maxHeightsArray = {&quot;PREVIEW_ICON&quot;:{&quot;SELECTOR&quot;:&quot;.preview-icon-holder, .element-placeholder[data-elementtype='ICON']&quot;,&quot;MAX_HEIGHT&quot;:0,&quot;MAX_HEIGHT_FOR_PLACEHOLDER&quot;:0},
+				   &quot;PREVIEW_TITLE&quot;:{&quot;SELECTOR&quot;:&quot;.preview-element[data-menu-name='PREVIEW_TITLE'], .element-placeholder[data-elementtype='TITLE']&quot;,&quot;MAX_HEIGHT&quot;:0,&quot;MAX_HEIGHT_FOR_PLACEHOLDER&quot;:0},
+				   &quot;PREVIEW_SUBTITLE&quot;:{&quot;SELECTOR&quot;:&quot;.preview-element[data-menu-name='PREVIEW_SUBTITLE'], .element-placeholder[data-elementtype='SUBTITLE']&quot;,&quot;MAX_HEIGHT&quot;:0,&quot;MAX_HEIGHT_FOR_PLACEHOLDER&quot;:0},
+				   &quot;PREVIEW_BODY&quot;:{&quot;SELECTOR&quot;:&quot;.preview-element[data-menu-name='PREVIEW_BODY'], .element-placeholder[data-elementtype='BODY']&quot;,&quot;MAX_HEIGHT&quot;:0,&quot;MAX_HEIGHT_FOR_PLACEHOLDER&quot;:0},
+				   &quot;PREVIEW_PRICE&quot;:{&quot;SELECTOR&quot;:&quot;.preview-element[data-menu-name='PREVIEW_PRICE'], .element-placeholder[data-elementtype='PRICE']&quot;,&quot;MAX_HEIGHT&quot;:0,&quot;MAX_HEIGHT_FOR_PLACEHOLDER&quot;:0},
+				   //&quot;PREVIEW_FORM&quot;:{&quot;SELECTOR&quot;:&quot;.preview-form&quot;,&quot;MAX_HEIGHT&quot;:0},
+				   &quot;PREVIEW_LINKS&quot;:{&quot;SELECTOR&quot;:&quot;.preview-item-links&quot;,&quot;MAX_HEIGHT&quot;:0},
+				   &quot;PREVIEW_SOCIAL&quot;:{&quot;SELECTOR&quot;:&quot;.preview-element[data-menu-name='PREVIEW_SOCIAL'], .element-placeholder[data-elementtype='SOCIAL']&quot;,&quot;MAX_HEIGHT&quot;:0,&quot;MAX_HEIGHT_FOR_PLACEHOLDER&quot;:0}};
+</P><P>		
+		var arrangerSettings = holder.find(&quot;.arranger-settings&quot;);
+		var isMazonite = arrangerSettings.attr(&quot;data-arranger_order_type&quot;) == &quot;mazonite&quot;;
+		var relevantItems = holder.find(&quot;#items-holder .sub.item-box&quot;);
+		if (isMazonite){
+			//debugger;
+			relevantItems.find(&quot;.item-details&quot;).css(&quot;height&quot;,&quot;&quot;);
+			relevantItems.each(function(){
+				var currentItem = $(this);
+				for(i in maxHeightsArray){
+					var relevantElement = currentItem.find(maxHeightsArray[i].SELECTOR);
+					relevantElement.css(&quot;min-height&quot;,&quot;&quot;);
+				}
+			});
+			SpimeEngine.positionMazonite(holder);
+			return;
+		}else{
+			SpimeEngine.resetMazonite(holder);
+		}
+</P><P>		var maxHeight = 0;
+		relevantItems.find(&quot;.item-details&quot;).css(&quot;height&quot;,&quot;&quot;);
+		//var arrangerSettings = holder.find(&quot;.arranger-settings&quot;);
+		if (relevantItems.filter(&quot;[data-row='1']&quot;).length != 1 ){
+			relevantItems.each(function(){
+				var currentItem = $(this);
+				itemDetailsHeight = currentItem.find(&quot;.item-details&quot;).height();
+				maxHeight = Math.max(maxHeight,itemDetailsHeight);
+				SpimeEngine.updateMaxHeightMap(maxHeightsArray,currentItem);
+			});
+			if(relevantItems.find(&quot;.helper-div.middle-center&quot;).length &gt; 0){
+				relevantItems.find(&quot;.item-details&quot;).css(&quot;height&quot;,maxHeight);
+			}
+			SpimeEngine.evenElementsHeight(maxHeightsArray,holder);
+		}else{
+			relevantItems.each(function(){
+				var currentItem = $(this);
+				for(i in maxHeightsArray){
+					var relevantElement = currentItem.find(maxHeightsArray[i].SELECTOR);
+					relevantElement.css(&quot;min-height&quot;,&quot;&quot;);
+				}
+			});
+		}
+	}
+};
+</P><P>
+SpimeEngine.positionMazonite = function(holder){
+	if (holder.is(&quot;.sub.container.matrix&quot;)){
+		var arrangerSettings = holder.find(&quot;.arranger-settings&quot;);
+		var spacing = parseInt(arrangerSettings.attr(&quot;data-arranger_item_spacing&quot;));
+		var items = holder.find(&quot;#items-holder&quot;).find(&quot;.sub.item-box&quot;);
+		var itemsWidth = items.width();
+		var heightsArr = [];//new Array(items.filter(&quot;[data-row='1']&quot;).length);
+		var cols = items.filter(&quot;[data-row='1']&quot;).length;
+		var topOffset = 0;
+		var stripeHeader = holder.find(&quot;.stripe-header-wrapper&quot;);
+		if (stripeHeader.length &gt; 0){
+			topOffset = stripeHeader.outerHeight(true);
+		}
+</P><P>		for (var i = 0; i &lt; cols ; i++){
+			heightsArr.push(0)
+		}
+		var minValIndex = 0;
+		var itemIndex = 0;
+		items.each(function(){
+			var currentItem = $(this);
+			var minVal = heightsArr[0];
+			for (j in heightsArr){
+				if (heightsArr[j] == 0){
+					minVal = heightsArr[j];
+					minValIndex = j;
+					break;
+				}
+				if (heightsArr[j] &lt;= minVal){
+					minVal = heightsArr[j];
+					minValIndex = j;
+				}
+			}
+			var relevantSpacing = (minValIndex % cols == 0) ? 0 : spacing;
+			var relevantTopSpacing = (itemIndex &lt; cols) ? 0 : spacing;
+			currentItem.css({&quot;position&quot;:&quot;absolute&quot;,&quot;left&quot;:itemsWidth*minValIndex + minValIndex*relevantSpacing*2,&quot;top&quot;:topOffset + heightsArr[minValIndex] + relevantTopSpacing*2,&quot;margin&quot;:&quot;0px&quot;});
+			//currentItem.css({&quot;position&quot;:&quot;absolute&quot;,&quot;left&quot;:itemsWidth*minValIndex + minValIndex*relevantSpacing*2,&quot;top&quot;:topOffset + heightsArr[minValIndex] + relevantTopSpacing*2});
+			//console.log(currentItem.css(&quot;margin&quot;))
+</P><P>			if (cols == 1){
+				var holderWidth  = holder.width();
+				if ( holderWidth &gt; currentItem.width()){
+					var centrelizedLeft = (holderWidth / 2) - (currentItem.width() / 2);
+					currentItem.css({&quot;left&quot;:centrelizedLeft});
+				}
+			}
+</P><P>			heightsArr[minValIndex] += parseInt(currentItem.height()) + relevantTopSpacing*2;
+			itemIndex++;
+		});
+</P><P>	}
+	var maxHeight = 0
+	for(i in heightsArr){
+		if (heightsArr[i] &gt; maxHeight){
+			maxHeight = heightsArr[i];
+		}
+	}
+	holder.closest(&quot;.master.item-box&quot;).height(maxHeight + topOffset).addClass(&quot;mazonite&quot;);
+};
+</P><P>
+SpimeEngine.resetMazonite = function(holder){
+	if (holder.is(&quot;.sub.container.matrix&quot;)){
+		holder.find(&quot;#items-holder&quot;).find(&quot;.sub.item-box&quot;).css({&quot;position&quot;:&quot;&quot;,&quot;left&quot;:&quot;&quot;,&quot;top&quot;:&quot;&quot;,&quot;display&quot;:&quot;&quot;});
+		holder.closest(&quot;.master.item-box&quot;).css(&quot;height&quot;,&quot;&quot;).removeClass(&quot;mazonite&quot;);
+	}
+};
+</P><P>SpimeEngine.updateMaxHeightMap = function(maxHeightsArray,currentItem){
+	for(i in maxHeightsArray){
+		var relevantElement = currentItem.find(maxHeightsArray[i].SELECTOR);
+		relevantElement.css(&quot;min-height&quot;,&quot;&quot;);
+		var currentHeight = relevantElement.height();
+		var heightForPlaceholder = relevantElement.outerHeight(true);
+		maxHeightsArray[i].MAX_HEIGHT = Math.max(currentHeight,maxHeightsArray[i].MAX_HEIGHT);
+		maxHeightsArray[i].MAX_HEIGHT_FOR_PLACEHOLDER = Math.max(heightForPlaceholder,maxHeightsArray[i].MAX_HEIGHT_FOR_PLACEHOLDER);
+	}
+};
+</P><P>SpimeEngine.evenElementsHeight = function(maxHeightsArray,holder){
+	if (holder.find(&quot;.helper-div.middle-center&quot;).length &gt; 0 &amp;&amp; holder.find(&quot;.item-details&quot;).css(&quot;vertical-align&quot;) == &quot;middle&quot;){
+		return;
+	}
+	for(i in maxHeightsArray){
+		holder.find(&quot;.sub.item-box&quot;).not(&quot;.stripe-header&quot;).not(&quot;.stripe-footer&quot;).find(maxHeightsArray[i].SELECTOR).each(function(){
+			var currentElement = $(this);
+			currentElement.css(&quot;min-height&quot;,maxHeightsArray[i].MAX_HEIGHT);
+			if (currentElement.is(&quot;.element-placeholder&quot;)){
+				currentElement.css({&quot;display&quot;:&quot;block&quot;,&quot;visibility&quot;:&quot;hidden&quot;})
+				currentElement.css(&quot;min-height&quot;,maxHeightsArray[i].MAX_HEIGHT_FOR_PLACEHOLDER);
+			}
+			if (currentElement.is(&quot;.preview-icon-holder&quot;)){
+				var icon = currentElement.find(&quot;.magic-circle-holder&quot;);
+				icon.css(&quot;padding-top&quot;,(maxHeightsArray[i].MAX_HEIGHT/2) - (icon.height()/2));
+			}
+		});
+	}
+};
+</P><P>
+SpimeEngine.updateImageRealSize = function(element){
+	if (!(element.attr(&quot;data-orig-width&quot;)) &amp;&amp; element.attr(&quot;id&quot;) != &quot;no-image&quot;){
+</P><P>		var src = element.css(&quot;background-image&quot;).substring(4, element.css(&quot;background-image&quot;).length - 1);
+		if (src.indexOf('&quot;') != -1){
+			src = src.substring(1,src.length - 1)
+		}
+		$(&quot;&lt;img/&gt;&quot;)
+		.attr(&quot;src&quot;,src)
+		.load(function() {
+		    pic_real_width = this.width;
+		    pic_real_height = this.height;
+		    element.attr(&quot;data-orig-width&quot;,pic_real_width)
+		    element.attr(&quot;data-orig-height&quot;,pic_real_height)
+		});
+	}
+}
+</P><P>SpimeEngine.shrinkTextToFit = function(fontSize, parent,contentHolder,textElement,offset,minFontSize,noMoreShrinkCallback){
+	if (isNaN(fontSize)){
+		return -1;
+	}
+	if (fontSize == &quot;N/A&quot;){
+		return -1;
+	}
+	if (contentHolder.outerWidth(true) + offset&gt; parent.width() || contentHolder.outerHeight(true)  &gt; parent.outerHeight(true) ){
+</P><P>		var shrinkedFontSize =  fontSize * 0.9 ;
+</P><P>		if (shrinkedFontSize &lt; minFontSize){
+			if (typeof noMoreShrinkCallback != &quot;undefined&quot;){
+				noMoreShrinkCallback();
+			}
+		}else{
+			textElement.css(&quot;font-size&quot;,shrinkedFontSize);
+			return SpimeEngine.shrinkTextToFit(shrinkedFontSize,parent,contentHolder,textElement,offset,minFontSize,noMoreShrinkCallback);
+		}
+</P><P>	}else{
+		return parseInt(textElement.css(&quot;font-size&quot;));
+	}
+};
+</P><P>SpimeEngine.updateParent = function(msg){
+	XPRSHelper.getParentWindow().postMessage(msg, '*');
+};
+</P><P>SpimeEngine.receiveMessage = function(event){
+	console.log(event.data);
+};
+</P><P>/******************************************************************************************************
+</P><PRE>*                                               HELPERS
+*                                        helper methods and utils
+******************************************************************************************************/
+</PRE><P>SpimeEngine.DebugPrint = function(msg){
+	if (SpimeEngine.debugMode){
+		//The only place console write may exist !
+		console.debug( msg);
+	}
+};
+</P><P>
+SpimeEngine.getArranger = function(container){
+	var arrangerSettings = container.children(&quot;.arranger-settings&quot;);
+	return arrangerSettings.attr(&quot;data-arranger_type&quot;);
+};
+</P><P>SpimeEngine.getLayout = function(container){
+	var layoutSettings = container.children(&quot;.layout-settings&quot;);
+	return layoutSettings.attr(&quot;data-type&quot;);
+};
+</P><P>
+SpimeEngine.splitHostname = function(url) {
+</P><PRE>   var result = {};
+   var regexParse = new RegExp('([a-z\-0-9]{2,63})\.([a-z\.]{2,7})$');
+   var urlParts = regexParse.exec(url);
+   result.domain = urlParts[1];
+   result.type = urlParts[2];
+   result.subdomain = url.replace(result.domain + '.' + result.type, <I>).slice(0, -1);;</I>
+   return result;
+</PRE><P>};
+</P><P>
+//function onYouTubePlayerAPIReady(playerId) {
+	//var vidList = $(&quot;.fitvid iframe&quot;);
+//}
+</P><P>function inBoundariesOf(w,h, elementType) {
+	var min = elementType.minWidth;
+	var max = elementType.maxWidth;
+	if (max!=&quot;none&quot; &amp;&amp; min!=&quot;none&quot;){
+		return w &gt;= min &amp;&amp; w &lt;= max;
+	}
+	if(max==&quot;none&quot;){
+		return w &gt;= min;
+	}
+	if(min==&quot;none&quot;){
+		return w &lt;= max;
+	}
+}
+</P><P>function hasWideRatio(w,h){
+	return h/w &lt; 9/16;
+}
+</P><P>function isSquare(w,h){
+	return Math.abs(w-h) &lt; 2;
+}
+</P><P>function isHebrew(str){
+	return (str.charCodeAt(0) &gt; 0x590) &amp;&amp; (str.charCodeAt(0) &lt; 0x5FF);
+}
+</P><P>function hasMobileRatio(w,h){
+	return h/w &gt; 1;
+}
+</P><P>function getUrlLocation(){
+	var page = window.location.pathname.replace(/^\/([^\/]*).*$/, '$1');
+	return page;
+}
+</P><P>function getParameterByName(name) {
+</P><PRE>   name = name.replace(/[\[]/, &quot;\\[&quot;).replace(/[\]]/, &quot;\\]&quot;);
+   var regex = new RegExp(&quot;[\\?&amp;]&quot; + name + &quot;=([^&amp;#]*)&quot;),
+       results = regex.exec(location.search);
+   return results === null ? &quot;&quot; : decodeURIComponent(results[1].replace(/\+/g, &quot; &quot;));
+</PRE><P>}
+</P><P>SpimeEngine.start();
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

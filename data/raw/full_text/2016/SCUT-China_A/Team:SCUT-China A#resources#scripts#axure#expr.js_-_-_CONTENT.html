@@ -1,0 +1,472 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_SCUT-China_A_resources_scripts_axure_expr_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:SCUT-China A/resources/scripts/axure/expr.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>// ******* Expr MANAGER ******** //
+$axure.internal(function($ax) {
+</P><PRE>   var _expr = $ax.expr = {};
+   var _binOpHandlers = {
+       '&amp;&amp;': function(left, right) { return _binOpOverride(left, right, function(left) { return $ax.getBool(left) &amp;&amp; $ax.getBool(right()); }); },
+       '||': function(left, right) { return _binOpOverride(left, right, function(left) { return $ax.getBool(left) || $ax.getBool(right()); }); },
+       '==': function(left, right) { return isEqual(left, right, true); },
+       '!=': function(left, right) { return !isEqual(left, right, true); },
+       '&gt;': function(left, right) { return _binOpNum(left, right, function(left, right) { return left &gt; right; }); },
+       '&lt;': function(left, right) { return _binOpNum(left, right, function(left, right) { return left &lt; right; }); },
+       '&gt;=': function(left, right) { return _binOpNum(left, right, function(left, right) { return left &gt;= right; }); },
+       '&lt;=': function(left, right) { return _binOpNum(left, right, function(left, right) { return left &lt;= right; }); }
+   };
+</PRE><PRE>   var checkOps = function(left, right) {
+       return left == undefined || right == undefined;
+   };
+</PRE><PRE>   var isEqual = function (left, right, isFunction) {
+       if (isFunction) {
+           //if left and right is function, then get the value
+           //otherwise left and right should be already the value we want
+           left = left();
+           right = right();
+       }
+</PRE><PRE>       if(checkOps(left, right)) return false;
+</PRE><PRE>       if(left instanceof Date &amp;&amp; right instanceof Date) {
+           if(left.getMilliseconds() != right.getMilliseconds()) return false;
+           if(left.getSeconds() != right.getSeconds()) return false;
+           if(left.getMinutes() != right.getMinutes()) return false;
+           if(left.getHours() != right.getHours()) return false;
+           if(left.getDate() != right.getDate()) return false;
+           if(left.getMonth() != right.getMonth()) return false;
+           if(left.getYear() != right.getYear()) return false;
+           return true;
+       }
+</PRE><PRE>       if(left instanceof Object &amp;&amp; right instanceof Object) {
+           var prop;
+           // Go through all of lefts properties and compare them to rights.
+           for(prop in left) {
+               if(!left.hasOwnProperty(prop)) continue;
+               // If left has a property that the right doesn't they are not equal.
+               if(!right.hasOwnProperty(prop)) return false;
+               // If any of their properties are not equal, they are not equal.
+               if(!isEqual(left[prop], right[prop], false)) return false;
+           }
+</PRE><PRE>           for(prop in right) {
+               // final check to make sure right doesn't have some extra properties that make them not equal.
+               if(left.hasOwnProperty(prop) != right.hasOwnProperty(prop)) return false;
+           }
+</PRE><PRE>           return true;
+       }
+       return $ax.getBool(left) == $ax.getBool(right);
+   };
+</PRE><PRE>   var _binOpOverride = function(left, right, func) {
+       left = left();
+       if(left == undefined) return false;
+       var res = func(left, right);
+       return res == undefined ? false : res;
+   };
+</PRE><PRE>   var _binOpNum = function(left, right, func) {
+       var left = left();
+       var right = right();
+       if(checkOps(left, right)) return false;
+</PRE><PRE>       return func(left, Number(right));
+   };
+</PRE><PRE>   var _exprHandlers = {};
+   _exprHandlers.array = function(expr, eventInfo) {
+       var returnVal = [];
+       for(var i = 0; i &lt; expr.items.length; i++) {
+           returnVal[returnVal.length] = _evaluateExpr(expr.items[i], eventInfo);
+       }
+       return returnVal;
+   };
+</PRE><PRE>   _exprHandlers.binaryOp = function(expr, eventInfo) {
+       var left = function() { return expr.leftExpr &amp;&amp; _evaluateExpr(expr.leftExpr, eventInfo); };
+       var right = function() { return expr.rightExpr &amp;&amp; _evaluateExpr(expr.rightExpr, eventInfo); };
+</PRE><PRE>       if(left == undefined || right == undefined) return false;
+       return _binOpHandlers[expr.op](left, right);
+   };
+</PRE><PRE>   _exprHandlers.block = function(expr, eventInfo) {
+       var subExprs = expr.subExprs;
+       for(var i = 0; i &lt; subExprs.length; i++) {
+           _evaluateExpr(subExprs[i], eventInfo); //ignore the result
+       }
+   };
+</PRE><PRE>   _exprHandlers.booleanLiteral = function(expr) {
+       return expr.value;
+   };
+</PRE><PRE>   _exprHandlers.nullLiteral = function() { return null; };
+</PRE><PRE>   _exprHandlers.pathLiteral = function(expr, eventInfo) {
+       if(expr.isThis) return [eventInfo.srcElement];
+       if(expr.isFocused &amp;&amp; window.lastFocusedControl) {
+           $ax('#' + window.lastFocusedControl).focus();
+           return [window.lastFocusedControl];
+       }
+       if(expr.isTarget) return [eventInfo.targetElement];
+</PRE><PRE>       return $ax.getElementIdsFromPath(expr.value, eventInfo);
+   };
+</PRE><PRE>   _exprHandlers.panelDiagramLiteral = function(expr, eventInfo) {
+       var elementIds = $ax.getElementIdsFromPath(expr.panelPath, eventInfo);
+       var elementIdsWithSuffix = [];
+       var suffix = '_state' + expr.panelIndex;
+       for(var i = 0; i &lt; elementIds.length; i++) {
+           elementIdsWithSuffix[i] = $ax.repeater.applySuffixToElementId(elementIds[i], suffix);
+       }
+       return String($jobj(elementIdsWithSuffix).data('label'));
+   };
+</PRE><PRE>   _exprHandlers.fcall = function(expr, eventInfo) {
+       var oldTarget = eventInfo.targetElement;
+       var targets = [];
+       var fcallArgs = [];
+       var exprArgs = expr.arguments;
+       for(var i = 0; i &lt; expr.arguments.length; i++) {
+           var exprArg = exprArgs[i];
+           var fcallArg = <I>;</I>
+           if(targets.length) {
+               for(var j = 0; j &lt; targets.length; j++) {
+                   if(exprArg == null) {
+                       fcallArgs[j][i] = null;
+                       continue;
+                   }
+                   eventInfo.targetElement = targets[j];
+                   fcallArg = _evaluateExpr(exprArg, eventInfo);
+                   if(typeof (fcallArg) == 'undefined') return <I>;</I>
+                   fcallArgs[j][i] = fcallArg;
+               }
+           } else {
+               if(exprArg == null) {
+                   fcallArgs[i] = null;
+                   continue;
+               }
+               fcallArg = _evaluateExpr(exprArg, eventInfo);
+               if(typeof (fcallArg) == 'undefined') return <I>;</I>
+               fcallArgs[i] = fcallArg;
+           }
+</PRE><PRE>           // We do support null exprArgs...
+           // TODO: This makes 2 assumptions that may change in the future. 1. The pathLiteral is the always the first arg. 2. there is always only 1 pathLiteral
+           if(exprArg &amp;&amp; exprArg.exprType == 'pathLiteral') {
+               targets = fcallArg;
+</PRE><PRE>               // fcallArgs is now an array of an array of args
+               for(j = 0; j &lt; targets.length; j++) fcallArgs[j] = [[fcallArg[j]]];
+           }
+       }
+</PRE><PRE>       // we want to preserve the target element from outside this function.
+       eventInfo.targetElement = oldTarget;
+</PRE><PRE>       var retval = <I>;</I>
+       if(targets.length) {
+           // Go backwards so retval is the first item.
+           for(i = targets.length - 1; i &gt;= 0; i--) {
+               var args = fcallArgs[i];
+               // Add event info to the end
+               args[args.length] = eventInfo;
+               retval = _exprFunctions[expr.functionName].apply(this, args);
+           }
+       } else fcallArgs[fcallArgs.length] = eventInfo;
+       return targets.length ? retval : _exprFunctions[expr.functionName].apply(this, fcallArgs);
+   };
+</PRE><PRE>   _exprHandlers.globalVariableLiteral = function(expr) {
+       return expr.variableName;
+   };
+</PRE><PRE>   _exprHandlers.keyPressLiteral = function(expr) {
+       var keyInfo = {};
+       keyInfo.keyCode = expr.keyCode;
+       keyInfo.ctrl = expr.ctrl;
+       keyInfo.alt = expr.alt;
+       keyInfo.shift = expr.shift;
+</PRE><PRE>       return keyInfo;
+   };
+</PRE><PRE>   _exprHandlers.adaptiveViewLiteral = function(expr) {
+       return expr.id;
+   };
+</PRE><PRE>   _exprHandlers.optionLiteral = function(expr) {
+       return expr.value;
+   }
+</PRE><PRE>   var _substituteSTOs = function(expr, eventInfo) {
+       //first evaluate the local variables
+       var scope = {};
+       for(var varName in expr.localVariables) {
+           scope[varName] = $ax.expr.evaluateExpr(expr.localVariables[varName], eventInfo);
+       }
+</PRE><PRE>       // TODO: [ben] Date and data object (obj with info for url or image) both need to return non-strings.
+       var i = 0;
+       var retval;
+       var retvalString = expr.value.replace(/\[\[(?!\[)(.*?)\]\](?=\]*)/g, function(match) {
+           var sto = expr.stos[i++];
+           if(sto.sto == 'error') return match;
+           try {
+               var result = $ax.evaluateSTO(sto, scope, eventInfo);
+           } catch(e) {
+               return match;
+           }
+</PRE><PRE>           if((result instanceof Object) &amp;&amp; i == 1 &amp;&amp; expr.value.substring(0, 2) == '[[' &amp;&amp;
+               expr.value.substring(expr.value.length - 2) == ']]') {
+               // If the result was an object, this was the first result, and the whole thing was this expresion.
+               retval = result;
+           }
+           return ((result instanceof Object) &amp;&amp; (result.label || result.text)) || result;
+       });
+       // If more than one group returned, the object is not valid
+       if(i != 1) retval = false;
+       return retval || retvalString;
+   };
+</PRE><PRE>   _exprHandlers.htmlLiteral = function (expr, eventInfo) {
+       eventInfo.htmlLiteral = true;
+       var html = _substituteSTOs(expr, eventInfo);
+       eventInfo.htmlLiteral = false
+       return html;
+   };
+</PRE><PRE>   _exprHandlers.stringLiteral = function(expr, eventInfo) {
+       return _substituteSTOs(expr, eventInfo);
+   };
+</PRE><PRE>   var _exprFunctions = {};
+</PRE><PRE>   _exprFunctions.SetCheckState = function(elementIds, value) {
+       var toggle = value == 'toggle';
+       var boolValue = Boolean(value) &amp;&amp; value != 'false';
+</PRE><PRE>       for(var i = 0; i &lt; elementIds.length; i++) {
+           var query = $ax('#' + elementIds[i]);
+           query.selected(toggle ? !query.selected() : boolValue);
+       }
+   };
+</PRE><PRE>   _exprFunctions.SetSelectedOption = function(elementIds, value) {
+       for(var i = 0; i &lt; elementIds.length; i++) {
+           var elementId = elementIds[i];
+           var obj = $jobj($ax.INPUT(elementId));
+</PRE><PRE>           if(obj.val() == value) return;
+           obj.val(value);
+</PRE><PRE>           if($ax.event.HasSelectionChanged($ax.getObjectFromElementId(elementId))) $ax.event.raiseSyntheticEvent(elementId, 'onSelectionChange');
+       }
+   };
+</PRE><PRE>   _exprFunctions.SetGlobalVariableValue = function(varName, value) {
+       $ax.globalVariableProvider.setVariableValue(varName, value);
+   };
+</PRE><PRE>   _exprFunctions.SetWidgetFormText = function(elementIds, value) {
+       for(var i = 0; i &lt; elementIds.length; i++) {
+           var elementId = elementIds[i];
+           var inputId = $ax.repeater.applySuffixToElementId(elementId, '_input');
+</PRE><PRE>           var obj = $jobj(inputId);
+           if(obj.val() == value || (value == <I>&amp;&amp; $ax.placeholderManager.isActive(elementId))) return;</I>
+           obj.val(value);
+           $ax.placeholderManager.updatePlaceholder(elementId, !value);
+           if($ax.event.HasTextChanged($ax.getObjectFromElementId(elementId))) $ax.event.TryFireTextChanged(elementId);
+       }
+   };
+</PRE><PRE>   _exprFunctions.SetFocusedWidgetText = function(elementId, value) {
+       if(window.lastFocusedControl) {
+           var elementId = window.lastFocusedControl;
+           var type = $obj(elementId).type;
+           if ($ax.public.fn.IsTextBox(type) || $ax.public.fn.IsTextArea(type)) _exprFunctions.SetWidgetFormText([elementId], value);
+           else _exprFunctions.SetWidgetRichText([elementId], value, true);
+       }
+   };
+</PRE><PRE>   _exprFunctions.GetRtfElementHeight = function(rtfElement) {
+       if(rtfElement.innerHTML == <I>) rtfElement.innerHTML = ' ';</I>
+       return rtfElement.offsetHeight;
+   };
+</PRE><PRE>   _exprFunctions.SetWidgetRichText = function(ids, value, plain) {
+       // Converts dates, widgetinfo, and the like to strings.
+       value = _exprFunctions.ToString(value);
+</PRE><PRE>       //Replace any newlines with line breaks
+       var finalValue = value.replace(/\r\n/g, '').replace(/\n/g, '');
+</PRE><PRE>       for(var i = 0; i &lt; ids.length; i++) {
+           var id = ids[i];
+</PRE><PRE>           // If calling this on button shape, get the id of the rich text panel inside instead
+           var type = $obj(id).type;
+           if(type != 'richTextPanel' &amp;&amp; type != 'hyperlink') {
+               id = $jobj(id).find('.text')[0].id;
+           }
+</PRE><PRE>           var element = window.document.getElementById(id);
+           $ax.visibility.SetVisible(element, value != <I>);</I></PRE><PRE>           $ax.style.transformTextWithVerticalAlignment(id, function() {
+               var spans = $jobj(id).find('span');
+               if(plain) {
+                   // Wrap in span and p, style them accordingly.
+                   var span = $('');
+                   if(spans.length &gt; 0) {
+                       span.attr('style', $(spans[0]).attr('style'));
+                       span.attr('id', $(spans[0]).attr('id'));
+                   }
+</PRE><PRE>                   // Can't set value as text because '' doesn't actually do a line break
+                   // Can't set vaule as html because it doesn't like '&lt;' and ignores all after it
+                   // Create tags yourself
+                   var lines = value.split(/\r\n|\n/);
+                   if(lines.length == 1) span.text(value);
+                   else {
+                       for(var i = 0; i &lt; lines.length; i++) {
+                           if (i != 0) span.append($(''));
+                           var line = lines[i];
+                           if(line.length == 0) continue;
+</PRE><PRE>                           var subSpan = $('&lt;span /&gt;');
+                           subSpan.text(line);
+                           span.append(subSpan);
+                       }
+                   }
+</PRE>
+                    var p = $('');
+<PRE>                   var ps = $jobj(id).find('p');
+                   if(ps.length &gt; 0) {
+                       p.attr('style', $(ps[0]).attr('style'));
+                       p.attr('id', $(ps[0]).attr('id'));
+                   }
+                   p.append(span);
+</PRE>
+                    finalValue = $('').append(p).html();
+<PRE>               }
+</PRE><PRE>               element.innerHTML = finalValue;
+           });
+</PRE><PRE>           if(!plain) $ax.style.CacheOriginalText(id, true);
+       }
+   };
+</PRE><PRE>   _exprFunctions.GetCheckState = function(ids) {
+       return $ax('#' + ids[0]).selected();
+   };
+</PRE><PRE>   _exprFunctions.GetSelectedOption = function (ids) {
+       var inputs = $jobj($ax.INPUT(ids[0]));
+       return inputs.length ? inputs[0].value : <I>;</I>
+   };
+</PRE><PRE>   _exprFunctions.GetNum = function(str) {
+       //Setting a GlobalVariable to some blank text then setting a widget to the value of that variable would result in 0 not &quot;&quot;
+       //I have fixed this another way so commenting this should be fine now
+       //if (!str) return &quot;&quot;;
+       return isNaN(str) ? str : Number(str);
+   };
+</PRE><PRE>   _exprFunctions.GetGlobalVariableValue = function(id) {
+       return $ax.globalVariableProvider.getVariableValue(id);
+   };
+</PRE><PRE>   _exprFunctions.GetGlobalVariableLength = function(id) {
+       return _exprFunctions.GetGlobalVariableValue(id).length;
+   };
+</PRE><PRE>   _exprFunctions.GetWidgetText = function(ids) {
+       if($ax.placeholderManager.isActive(ids[0])) return <I>;</I>
+       var input = $ax.INPUT(ids[0]);
+       return $ax('#' + ($jobj(input).length ? input : ids[0])).text();
+   };
+</PRE><PRE>   _exprFunctions.GetFocusedWidgetText = function() {
+       if(window.lastFocusedControl) {
+           return $ax('#' + window.lastFocusedControl).text();
+       } else {
+           return &quot;&quot;;
+       }
+   };
+</PRE><PRE>   _exprFunctions.GetWidgetValueLength = function(ids) {
+       var id = ids[0];
+       if(!id) return undefined;
+       if($ax.placeholderManager.isActive(id)) return 0;
+       var obj = $jobj($ax.INPUT(id));
+       if(!obj.length) obj = $jobj(id);
+       var val = obj[0].value || _exprFunctions.GetWidgetText([id]);
+       return val.length;
+   };
+</PRE><PRE>   _exprFunctions.GetPanelState = function(ids) {
+       var id = ids[0];
+       if(!id) return undefined;
+       var stateId = $ax.visibility.GetPanelState(id);
+       return stateId &amp;&amp; String($jobj(stateId).data('label'));
+   };
+</PRE><PRE>   _exprFunctions.GetWidgetVisibility = function(ids) {
+       var id = ids[0];
+       if(!id) return undefined;
+       return $ax.visibility.IsIdVisible(id);
+   };
+</PRE><PRE>   // *****************  Validation Functions ***************** //
+</PRE><PRE>   _exprFunctions.IsValueAlpha = function(val) {
+       var isAlphaRegex = new RegExp(&quot;^[a-z\\s]+$&quot;, &quot;gi&quot;);
+       return isAlphaRegex.test(val);
+   };
+</PRE><PRE>   _exprFunctions.IsValueNumeric = function(val) {
+       var isNumericRegex = new RegExp(&quot;^[0-9,\\.\\s]+$&quot;, &quot;gi&quot;);
+       return isNumericRegex.test(val);
+   };
+</PRE><PRE>   _exprFunctions.IsValueAlphaNumeric = function(val) {
+       var isAlphaNumericRegex = new RegExp(&quot;^[0-9a-z\\s]+$&quot;, &quot;gi&quot;);
+       return isAlphaNumericRegex.test(val);
+   };
+</PRE><PRE>   _exprFunctions.IsValueOneOf = function(val, values) {
+       for(var i = 0; i &lt; values.length; i++) {
+           var option = values[i];
+           if(val == option) return true;
+       }
+       //by default, return false
+       return false;
+   };
+</PRE><PRE>   _exprFunctions.IsValueNotAlpha = function(val) {
+       return !_exprFunctions.IsValueAlpha(val);
+   };
+</PRE><PRE>   _exprFunctions.IsValueNotNumeric = function(val) {
+       return !_exprFunctions.IsValueNumeric(val);
+   };
+</PRE><PRE>   _exprFunctions.IsValueNotAlphaNumeric = function(val) {
+       return !_exprFunctions.IsValueAlphaNumeric(val);
+   };
+</PRE><PRE>   _exprFunctions.IsValueNotOneOf = function(val, values) {
+       return !_exprFunctions.IsValueOneOf(val, values);
+   };
+</PRE><PRE>   _exprFunctions.GetKeyPressed = function(eventInfo) {
+       return eventInfo.keyInfo;
+   };
+</PRE><PRE>   _exprFunctions.GetCursorRectangles = function() {
+       var rects = new Object();
+       rects.lastRect = new $ax.drag.Rectangle($ax.lastMouseLocation.x, $ax.lastMouseLocation.y, 1, 1);
+       rects.currentRect = new $ax.drag.Rectangle($ax.mouseLocation.x, $ax.mouseLocation.y, 1, 1);
+       return rects;
+   };
+</PRE><PRE>   _exprFunctions.GetWidgetRectangles = function (elementIds, eventInfo) {
+       var elementId = elementIds[0];
+       var rects = new Object();
+       var jObj = $jobj(elementId);
+       var axObj = $ax('#' + elementId);
+       var invalid = jObj.length == 0;
+       var parent = jObj;
+       // Or are in valid if no obj can be found, or if it is not visible.
+       while(parent.length != 0 &amp;&amp; !parent.is('body')) {
+           if(parent.css('display') == 'none') {
+               invalid = true;
+               break;
+           }
+           parent = parent.parent();
+       }
+       if(invalid) {
+           rects.lastRect = rects.currentRect = new $ax.drag.Rectangle(-1, -1, -1, -1);
+           return rects;
+       }
+</PRE><PRE>       rects.lastRect = new $ax.drag.Rectangle(
+               axObj.left(),
+               axObj.top(),
+               axObj.width(),
+               axObj.height());
+</PRE><PRE>       rects.currentRect = rects.lastRect;
+       return rects;
+   };
+</PRE><PRE>   _exprFunctions.GetWidget = function(elementId) {
+       return $ax.getWidgetInfo(elementId[0]);
+   };
+</PRE><PRE>   _exprFunctions.GetAdaptiveView = function() {
+       return $ax.adaptive.currentViewId || <I>;</I>
+   };
+</PRE><PRE>   _exprFunctions.IsEntering = function(movingRects, targetRects) {
+       return !movingRects.lastRect.IntersectsWith(targetRects.currentRect) &amp;&amp; movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+   };
+</PRE><PRE>   _exprFunctions.IsLeaving = function(movingRects, targetRects) {
+       return movingRects.lastRect.IntersectsWith(targetRects.currentRect) &amp;&amp; !movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+   };
+</PRE><PRE>   var _IsOver = _exprFunctions.IsOver = function(movingRects, targetRects) {
+       return movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+   };
+</PRE><PRE>   _exprFunctions.IsNotOver = function(movingRects, targetRects) {
+       return !_IsOver(movingRects, targetRects);
+   };
+</PRE><PRE>   _exprFunctions.ValueContains = function(inputString, value) {
+       return inputString.indexOf(value) &gt; -1;
+   };
+</PRE><PRE>   _exprFunctions.ValueNotContains = function(inputString, value) {
+       return !_exprFunctions.ValueContains(inputString, value);
+   };
+</PRE><PRE>   _exprFunctions.ToString = function(value) {
+       if(value.isWidget) {
+           return value.text;
+       }
+       return String(value);
+   };
+</PRE><PRE>   var _evaluateExpr = $ax.expr.evaluateExpr = function(expr, eventInfo, toString) {
+       if(expr === undefined || expr === null) return undefined;
+       var result = _exprHandlers[expr.exprType](expr, eventInfo);
+       return toString ? _exprFunctions.ToString(result) : result;
+   };
+</PRE><P>
+});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

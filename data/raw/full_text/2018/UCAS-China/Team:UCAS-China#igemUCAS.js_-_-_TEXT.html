@@ -1,0 +1,98 @@
+Team:UCAS-China/igemUCAS.js
+/*!
+* igemUCAS JavaScript Library v0.18.22 * Copyright UCAS iGEM team */
+( function( global, factory ) { var iU = global.iU = factory(global); iU(); } ) (window, function( window ) {  var    document = window.document,
+getUid = (function(){    var now = -1;    return function(){     now ++;     return (function(n){      return '_'+n+'_';     })(now);    };   })(),
+configs = {    heading_padding: 60,    subheading_padding: 60,    block_padding: 20,    default_padding: 20,    script_max_width: 400,    line_height: (function(){     var test = document.createElement("span");     test.innerHTML = "a";     test.className = "script";     document.body.appendChild(test);     var h = test.offsetHeight;     document.body.removeChild(test);     return h;    })()   };
+function css( elem, styles ){   if( !(elem && styles) )    return ;
+for(var prop in styles){    var      key = "",     change = false;
+for(var j = 0; j < prop.length; j ++){     if( prop[j] == '-' )      change = true;     else{      key += change ? prop[j].toUpperCase() : prop[j];      change = false;     }    }
+if( typeof styles[ prop ] == "function" )     elem.addEventListener(key, styles[prop]);    else     elem.style[ key ] = styles[ prop ];   }  }
+function Component( node, left, top ){   this.node = node;   this.node.id = getUid();   this.left = left;   this.top  = top;  }  Component.prototype = {   constructor: Component,   position: function(left, top){    this.left = left;    this.top  = top;   },   render: function(offsetX){    if(offsetX === +offsetX){     configs.position(this.node, offsetX+this.left, this.top );     css(this.node,{"visibility":"visible"});    }    else     css(this.node,{"visibility":"hidden"});   }  }
+function Flow(){   this.node = configs.toDOM("div",".script");   this.node.style.visibility = "hidden";   configs.enroll(this.node);  }  Flow.prototype = {   constructor: Flow,   write: function( p ){    this.node.appendChild(p);   },   cut: function( width, height ){    if( !this.node )     return null;
+var     product  = this.node,     children = [],     careful  = null,     divPoint = undefined,     node     = null;
+for(var i = 0; i < product.children.length ; i ++ )     children.push( product.children[i] );
+product.innerHTML = "";    for(var i = 0; i < children.length; i ++){     product.appendChild(children[i]);     product.style.width = width + "px";     if(product.offsetHeight > height){      divPoint = i+1;      careful  = children[i];      break;     }    }    if( careful ){     var      node   = this.node.cloneNode(),      copy     = careful.cloneNode(),      words   = [],      childNodes = [];     node.innerHTML = "";
+copy.id = "copy";
+for(var i = 0; i < careful.childNodes.length; i ++ )      childNodes.push( careful.childNodes[i] );
+careful.innerHTML = "";     copy.innerHTML = "";     for(var i = 0; i < childNodes.length; i ++){      careful.appendChild( childNodes[i] );      if( product.offsetHeight > height ){       if( childNodes[i].tagName ){        careful.removeChild( childNodes[i] );        copy.appendChild( childNodes[i] );       }       else{        var         words = childNodes[i].textContent.split(/\s/);        childNodes[i].textContent = "";
+for(var j = 0; j < words.length-1; j ++){         careful.lastChild.textContent = words.slice(0, j+1).join(" ");         if( product.offsetHeight > height ){          careful.lastChild.textContent = words.slice(0, j).join(" ") + "\n";          var           nt = document.createTextNode( words.slice(j).join(" ") );          copy.appendChild(nt);          break;         }        }       }       for(var j = i+1; j < childNodes.length; j ++)        copy.appendChild( childNodes[j] );
+break;      }     }     if( copy )      node.appendChild( copy );
+for(var i = divPoint; i < children.length ; i ++ )      node.appendChild( children[i] );    }    this.node = node;
+if(this.node)     configs.enroll(this.node);    return new Component(product);   }  };
+function Graphics( img, caption ){   this.state  = "preparing";   this.img   = img;   this.caption= caption;
+var    _this = this;   if( !this.img.height ){    if(this.img.tagName.toLowerCase() == "img"){     this.img.onload = function(){      _this.loaded();      if( _this.sealSlide )       _this.sealSlide();     };    }    else{     this.img.onloadedmetadata = function(){      _this.loaded();      if( _this.sealSlide )       _this.sealSlide();     };    }
+this.img.onerr  = function(){     _this.state = "dispose";    };   }   else    this.loaded();
+}  Graphics.prototype = {   constructor: Graphics,   loaded: function(){    configs.enroll(this.img);    if(this.caption)     configs.enroll(this.caption);    this.ratio = this.img.height / this.img.width;    this.state = "ready";   },   adaptWidth: function( width ){    css(this.img,{"width":width+"px"});    this.height  = this.img.offsetHeight;    this.width   = this.img.offsetWidth;    if(this.caption)     this.height += css(this.caption, {"width": this.width+"px"});   },   toComp: function( left, top ){    var     res = [new Component(this.img, left, top)];    if(this.caption)     res.push( new Component(this.caption, left, top+this.img.offsetHeight) );    return res;   }  };
+function Slide( title, kind ){   this.state = "preparing";   this.headline = configs.toDOM("strong",".title");   this.headline.innerHTML = title;   configs.enroll( this.headline );   this.comps   = [];
+this.init();   this.flow    = new Flow();   this.scripts = [];   this.graphics= [];   this.kind = kind;
+var    _this = this;   this.seal = function(){_this._seal();};  }  Slide.prototype = {   constructor: Slide,   init: function(){    var     halfHeight= this.headline.offsetHeight/ 2,     halfWidth = this.headline.offsetWidth / 2;
+css(this.headline,{     "position": "absolute",     "top":   "calc(-1% + "+halfWidth+"px)",     "left":  (-halfWidth+halfHeight) + "px",     "visibility": "hidden"    });
+if( !configs.graphicsArea ){     configs.graphicsArea = configs.toDOM("div","graphicsArea");
+configs.enroll( configs.graphicsArea );     var      left = halfHeight * 2;     css(configs.graphicsArea,{      "visibility": "hidden",      "position": "absolute",      "background-color": "blue",      "left": left + "px",      "top": "3%",      "width": "calc(98% - "+left+"px)",      "height":"94%"     });
+configs.span2width = (function( unit_width ){      return function(span){       return span * unit_width;      };     })( configs.graphicsArea.offsetWidth/12 );
+configs.position = function( node, left, top ){      css(node,{       "position": "absolute",       "top":   (top+20) + "px" ,       "left":  (left+50)+ "px"      });      return configs.graphicsArea.offsetHeight - node.offsetHeight - top;     };    }   },   addText:function( left, top, width ){    var     comp = this.flow.cut( width - 2*configs.default_padding, configs.graphicsArea.offsetHeight - top );    if(comp){     comp.position( left+configs.default_padding, top);     this.comps.push( comp );    }   },   addImage: function( left, top, width ){    var     g = this.graphics.shift();    if(!g || g.state == "dispose")     return 0;    g.adaptWidth( width );    Array.prototype.push.apply(this.comps, g.toComp( left, top));    return g.height;   },   _seal: function(){    for(var i = 0; i < this.graphics.length; i ++)     if(this.graphics[i].state == "preparing"){      this.graphics[i].sealSlide = this.seal;      return ;     }    this.state = "formatting";
+var w, h;
+switch( this.kind ){     case 1:      w = configs.span2width( 6 );      this.addText(0, this.addImage(w, 0, w), w);      this.addText(w, 0, w);     case 2:      w = configs.span2width( 4 );      h = this.addImage(0, 0, 2*w);      this.addText(   0, h, w);      this.addText(   w, h, w);      this.addText( 2*w, 0, w);     case 3:      w = configs.span2width( 6 );      h = this.addImage(0, 0, 2*w);      this.addText(   0, h, w);      this.addText(   w, h, w);     case 0:     default:      w = configs.span2width( 6 );      this.addText(0, 0, w);      this.addText(w, this.addImage(w, 0, w), w);
+}    this.state = "completed";   },   render: function( posX ){    css( this.headline, {"visibility": ((posX === +posX) ? "visible" : "hidden" )} );
+for(var i = 0; i < this.comps.length; i ++)     this.comps[i].render(posX);   },   toString: function(){    var s = this.state + ":";    for(var i in this.comps)     s += i.toString() + "()";    return s;   }  };
+function Book( nav ){   var    interface = configs.toDOM( "div", "iU_book", true );
+configs.enroll = function( node ){    node.style.visibility = "hidden";    interface.appendChild(node);   };
+this.nav      = nav;   this.currentPath   = null;   this.currentSlide  = null;   this.captionHolder = null;  }  Book.prototype = {   constructor: Book,   newSlide: function( node ){    if( this.currentSlide )     this.currentSlide.seal();
+if(!node)     return ;
+if( (node.attributes||{})["path"])     this.currentPath =  node.attributes["path"].value;
+var     title = (node.innerHTML||""),     path  = (this.currentPath+"."+title).toLowerCase(),     kind  = node.attributes["normal"]? 1 :       node.attributes["large" ]? 2 :       node.attributes["full"  ]? 3 : 0;
+var     slide = new Slide( title, kind );    this.nav.addPath(path, slide);    this.currentSlide = slide;   },   image:  function( node ){    if( node.tagName.toLowerCase() == "ins" ){     this.captionHolder = configs.toDOM("div", ".caption");     this.captionHolder.innerHTML = node.innerHTML;    }    else{     this.currentSlide.graphics.push( new Graphics(node, this.captionHolder) );     this.captionHolder = null;    }   },   script: function( node ){    this.currentSlide.flow.write(node);   },   toString: function(){    var s = "";    for(var i in this.slides)     s += "["+i+"] "+this.slides[i].toString()+"\n";    return s;   }  };
+function Navigation( logo, sponsors ){   this.surface = configs.toDOM("div","iU_nav", true);
+this.headings = [];   this.init(logo, sponsors);   this.logo      = logo;   this.sponsors  = sponsors;
+this.slideNow  = null;   this.subheading= null;   this.blocks    = null;
+this.slides    = {};
+this.offset = 0;   this.scroll = function( ev ){    ev   = ev || window.event;    if( ev.preventDefault )     ev.preventDefault();
+_this.offset -= ev.wheelDelta || ev.detail || 0;    _this.offset  = Math.max(_this.offset, 0);   }   this.currentPath = undefined;  }  Navigation.prototype = {   constructor: Navigation,   init:  function( logo, sponsors ){    this.header = configs.toDOM("div", "header");    logo.id = "logo";    this.header.appendChild( logo );
+this.ptrH = configs.toDOM("div","ptrH");    css(this.ptrH,{     "visibility": "hidden",     "position": "absolute"    });    this.header.appendChild( this.ptrH );
+this.ptrS = configs.toDOM("div", "prtS");    css(this.ptrS,{     "visibility": "hidden",     "position": "absolute"    });    this.header .appendChild( this.ptrS  );    this.surface.appendChild( this.header);
+var     footer = configs.toDOM("div","footer");    this.surface.appendChild(footer);
+var     strSponsors = configs.toDOM("span","strSponsors");    strSponsors.innerHTML = "Sponsors";    footer.appendChild(strSponsors);
+for(var i = 0; i < sponsors.length; i ++){     sponsors[i].className = "sponsor";     footer.appendChild(sponsors[i]);    }
+this.switchs = configs.toDOM("div","switchs");    this.surface.appendChild(this.switchs);   },   switchSubheading: function( newSub ){    if( this.subheading != newSub){     if( this.subheading )      this.subheading.className = "HiddenCatalog";
+this.subheading = newSub;     newSub.className = "VisibleCatalog";    }   },   addPath:function( path, slide ){    this.slides[ path ] = slide;
+var     sep = path.split(/\s*\.\s*/);    if( !(sep[0] && sep[1] && sep[2]) )     return false;
+var     fst = sep[0].toUpperCase(),     sec = sep[1].toUpperCase(),     thr = sep[2].toUpperCase(),     _this = this,     h = this.headings,     tgtH = null,     tgtS = null;
+for(var i = 0; i < h.length; i ++)     if( h[i].innerHTML == fst )      tgtH = h[i];
+if( !tgtH ){     tgtH = configs.toDOM("span", ".H1");     tgtH.innerHTML = fst;
+tgtH._catalog  = configs.toDOM("div", ".HiddenCatalog")     this.header.appendChild(tgtH._catalog);
+tgtH.addEventListener("mouseover",(function(cata){      return function(){       _this.switchSubheading(cata);      };     })(tgtH._catalog) );
+this.header.appendChild(tgtH);     this.headings.push(tgtH);
+var accum = [ this.logo.offsetLeft + this.logo.offsetWidth + configs.heading_padding ];     for(var i = 0; i < this.headings.length; i ++){      css(this.headings[i],{       "left": accum[i] + "px"      });      accum[i+1] = accum[i] + this.headings[i].clientWidth + configs.heading_padding;     }    }
+var s = tgtH._catalog.children;    for(var i = 0; i < s.length; i ++)     if( s[i].innerHTML == sec )      tgtS = s[i];
+if( !tgtS ){     tgtS = configs.toDOM("span", ".H2");     tgtS.innerHTML = sec;
+tgtS._blocks = configs.toDOM("div", ".HiddenBlocks");     this.switchs.appendChild(tgtS._blocks);
+tgtS.addEventListener("mouseover",(function(blocks){      return function(){       if(_this.blocks)        _this.blocks.className = "HiddenBlocks";
+_this.blocks = blocks;       blocks.className = "VisibleBlocks";      };     })(tgtS._blocks) );
+tgtH._catalog.appendChild(tgtS);     s = tgtH._catalog.children;
+var accum = [ this.logo.offsetLeft + this.logo.offsetWidth + configs.heading_padding ];     for(var i = 0; i < s.length; i ++){      css(s[i],{       "left": accum[i] + "px"      });      accum[i+1] = accum[i] + s[i].clientWidth + configs.subheading_padding;     }    }
+var     block = configs.toDOM("div",".H3");    block.name = thr;    block.addEventListener("mouseover",(function(path){     return function(){      _this.jumpTo( path );     }    })(path) );    tgtS._blocks.appendChild(block);
+var b = tgtS._blocks.children, accum = [ 0 ];    for(var i = 0; i < b.length; i ++ )     accum[i+1] = accum[i] + b[i].clientWidth + configs.block_padding;
+var left  = Math.round( (window.innerWidth - accum.pop())/2);    for(var i = 0; i < b.length; i ++ )     css(b[i],{      "left": (left + accum[i]) + "px"     })   },   jumpTo: function( path ){    var     slideNext = this.slides[ path ];
+if( !slideNext || slideNext == this.slideNow)     return ;
+path = path.toUpperCase();    var     sep = path.split(/\s*\.\s*/),     fst = sep[0],     sec = sep[1],     thr = sep[2];
+var c, t, s;
+for(var i = 0; i < this.headings.length; i ++)     if(this.headings[i].innerHTML == fst ){      t = this.headings[i]._catalog;      c = t.children;      for(var j = 0; j < c.length; j ++){       if( c[j].innerHTML == sec ){        s = c[j];        break;       }      }      break;         }
+this.switchSubheading(t);
+if(this.blocks)     this.blocks.className = "HiddenBlocks";
+this.blocks = s._blocks;    this.blocks.className = "VisibleBlocks";
+var     bc = this.blocks.children;
+for(var i = 0; i < bc.length; i ++){     if( bc[i].name == thr )      css(bc[i],{"background-color":"#92ffff"});     else      css(bc[i],{"background-color":"#898F94"});    }
+if(this.slideNow)     this.slideNow.render(null);
+this.slideNow = slideNext;    this.slideNow.render(0);    return true;   }  };
+function igemUCAS(){   console.log("igemUCAS.js v0.18.22");   var     iU_root = document.getElementById("igemUCAS");
+if( !iU_root )    return console.log("Error: root igemUCAS div not found. Terminating.");
+iU_root.style.visibility = "hidden";   iU_root.style["z-index"] = "-100";
+configs.toDOM = function( type, id, toRoot ){    var     elem = document.createElement( type||"div" );    if( typeof id == "string" && id.length){     var      s = id.split(/\s+/);     for(var i = 0 ;i < s.length; i ++){      if( s[i].charAt(0) == ".")       elem.className = s[i].substr(1);      else       elem.id = s[i];     }    }    if(toRoot)     iU_root.parentNode.appendChild( elem );    return elem;   };
+var    icons   = iU_root.children[0].children;    cover   = icons[0],    logo   = icons[1],    content  = [],    sponsors  = [];   for(var i = 2; i < icons.length; i ++)    sponsors.push( icons[i] );
+for(var i = 1; i < iU_root.children.length; i ++)    content.push( iU_root.children[i] );
+var    nav   = new Navigation( logo, sponsors ),    book   = new Book( nav );
+iU_root.parentNode.removeChild(iU_root);
+for(var i = 0; i < content.length; i ++){    var     node = content[i];
+switch( (node.tagName||"").toLowerCase() ){     case "dfn":      book.newSlide( node ); break;     case "p": case "b": case "span":      book.script(node); break;     case "img": case "video": case "ins":      book.image(node);  break;    }   }   book.newSlide();
+nav.jumpTo("project.description.description");   setTimeout(function(){console.log( book.toString() )},2000);  }  return igemUCAS; });

@@ -1,0 +1,939 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_HUST-China_afarkas_github_io_webshim_js-webshim_minified_polyfiller_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:HUST-China/afarkas.github.io/webshim/js-webshim/minified/polyfiller.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* Acorn Media Player - jQuery plugin
+*
+* Copyright (C) 2013 Ionut Cristian Colceriu
+*
+* Licensed under the MIT:
+*   <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>
+*
+* www.ghinda.net
+* contact@ghinda.net
+*
+* Contributors:
+* <A rel="nofollow" class="external free" href="https://github.com/stephenoldham">https://github.com/stephenoldham</A>
+* <A rel="nofollow" class="external free" href="https://github.com/leslash">https://github.com/leslash</A>
+*
+*/
+</PRE><P>(function($) {
+	$.fn.acornMediaPlayer = function(options) {
+		/*
+		 * Define default plugin options
+		 */
+		var defaults = {
+			theme: 'access',
+			nativeSliders: false,
+			volumeSlider: 'horizontal',
+			captionsOn: false,
+			tooltipsOn: true
+		};
+		options = $.extend(defaults, options);
+</P><P>		/*
+		 * Function for generating a unique identifier using the current date and time
+		 * Used for generating an ID for the media elmenet when none is available
+		 */
+		var uniqueID = function() {
+			var currentDate = new Date();
+			return currentDate.getTime();
+		};
+</P><P>		/*
+		 * Detect support for localStorage
+		 */
+		function supports_local_storage() {
+			try {
+				return 'localStorage' in window &amp;&amp; window.localStorage !== null;
+			} catch(e){
+				return false;
+			}
+		}
+</P><P>		/* Detect Touch support
+		 */
+		var is_touch_device = 'ontouchstart' in document.documentElement;
+</P><P>		/*
+		 * Get the volume value from localStorage
+		 * If no value is present, define as maximum
+		 */
+		var volume = (supports_local_storage) ? localStorage.getItem('acornvolume') : 1;
+		if(!volume) {
+			volume = 1;
+		}
+</P><P>		/*
+		 * Main plugin function
+		 * It will be called on each element in the matched set
+		 */
+		var acornPlayer = function() {
+			// set the acorn object, will contain the needed DOM nodes and others
+			var acorn = {
+				$self: $(this)
+			};
+</P><P>			var loadedMetadata; // Is the metadata loaded
+			var seeking; // The user is seeking the media
+			var wasPlaying; // Media was playing when the seeking started
+			var fullscreenMode; // The media is in fullscreen mode
+			var captionsActive; // Captions are active
+</P><P>			// check for autoplay attribute, to resolve Firefox/jQuery bug with autoplay video elements
+			// and disable the native autoplay
+			// <A rel="nofollow" class="external free" href="http://bugs.jquery.com/ticket/9174">http://bugs.jquery.com/ticket/9174</A>
+			var autoplay = acorn.$self.prop('autoplay');
+</P><P>			// disable native autoplay
+			acorn.$self.prop('autoplay', false);
+</P><P>
+			/* Define all the texts used
+			 * This makes it easier to maintain, make translations, etc.
+			*/
+			var text = {
+				play: 'Play',
+				playTitle: 'Start the playback',
+				pause: 'Pause',
+				pauseTitle: 'Pause the playback',
+				mute: 'Mute',
+				unmute: 'Unmute',
+				fullscreen: 'Fullscreen',
+				fullscreenTitle: 'Toggle fullscreen mode',
+				volumeTitle: 'Volume control',
+				seekTitle: 'Video seek control',
+				captions: 'Captions',
+				captionsTitle: 'Show captions',
+				captionsChoose: 'Choose caption',
+				transcript: 'Transcript',
+				transcriptTitle: 'Show transcript'
+			};
+</P><P>			// main wrapper element
+</P>
+			var $wrapper = $('').addClass(options.theme);
+<P>			/*
+			 * Define attribute tabindex on the main element to make it readchable by keyboard
+			 * Useful when &quot;aria-describedby&quot; is present
+			 *
+			 * It makes more sense for screen reader users to first reach the actual &lt;video&gt; or &lt;audio&gt; elment and read of description of it,
+			 * than directly reach the Media Player controls, without knowing what they control.
+			 */
+			acorn.$self.attr('tabindex', '0');
+</P><P>			/*
+			 * Check if the main element has an ID attribute
+			 * If not present, generate one
+			 */
+			acorn.id = acorn.$self.attr('id');
+			if(!acorn.id) {
+				acorn.id = 'acorn' + uniqueID();
+				acorn.$self.attr('id', acorn.id);
+			}
+</P><P>			/*
+			 * Markup for the fullscreen button
+			 * If the element is not &lt;video&gt; we leave if blank, as the button if useless on &lt;audio&gt; elements
+			 */
+			var fullscreenBtnMarkup = (acorn.$self.is('video')) ? '&lt;button class=&quot;acorn-fullscreen-button&quot; title=&quot;' + text.fullscreenTitle + '&quot; aria-controls=&quot;' + acorn.id + '&quot;&gt;' + text.fullscreen + '&lt;/button&gt;' : <I>;</I></P><P>			/*
+			 * Markup for player tooltips
+			 * If tooltips are not required we leave it blank
+			 */
+</P>
+			var tooltipMarkup = (options.tooltipsOn) ? '<DIV class="acorn-tooltip"><DIV>' : <I>;</I><P>			/*
+			 * Complete markup
+			 */
+</P>
+			var template = '<DIV class="acorn-controls">' +
+<P>								'&lt;button class=&quot;acorn-play-button&quot; title=&quot;' + text.playTitle + '&quot; aria-controls=&quot;' + acorn.id + '&quot;&gt;' + text.play + '&lt;/button&gt;' +
+								'&lt;input type=&quot;range&quot; class=&quot;acorn-seek-slider&quot; title=&quot;' + text.seekTitle + '&quot; value=&quot;0&quot; min=&quot;0&quot; max=&quot;150&quot; step=&quot;0.1&quot; aria-controls=&quot;' + acorn.id + '&quot;/&gt;' +
+								'<SPAN class="acorn-timer">00:00</SPAN>' +
+</P>
+								'<DIV class="acorn-volume-box">' +
+<P>									'&lt;button class=&quot;acorn-volume-button&quot; title=&quot;' + text.mute + '&quot; aria-controls=&quot;' + acorn.id + '&quot;&gt;' + text.mute + '&lt;/button&gt;' +
+									'&lt;input type=&quot;range&quot; class=&quot;acorn-volume-slider&quot; title=&quot;' + text.volumeTitle + '&quot; value=&quot;1&quot; min=&quot;0&quot; max=&quot;1&quot; step=&quot;0.05&quot; aria-controls=&quot;' + acorn.id + '&quot;/&gt;' +
+</P>
+								'</DIV>' +
+<P>								fullscreenBtnMarkup +
+								'&lt;button class=&quot;acorn-caption-button&quot; title=&quot;' + text.captionsTitle + '&quot;  aria-controls=&quot;' + acorn.id + '&quot;&gt;' + text.captions + '&lt;/button&gt;' +
+</P>
+								'' +
+<P>								'&lt;button class=&quot;acorn-transcript-button&quot; title=&quot;' + text.transcriptTitle + '&quot;&gt;' + text.transcript + '&lt;/button&gt;' +
+</P>
+							'</DIV>' +
+<P>							tooltipMarkup;
+</P>
+			var captionMarkup = '';
+			var transcriptMarkup = '';
+<P>			/*
+			 * Append the HTML markup
+			 */
+</P><P>			// append the wrapper
+			acorn.$self.after($wrapper);
+</P><P>			// For iOS support, I have to clone the node, remove the original, and get a reference to the new one.
+			// This is because iOS doesn't want to play videos that have just been `moved around`.
+			// More details on the issue: <A rel="nofollow" class="external free" href="http://bugs.jquery.com/ticket/8015">http://bugs.jquery.com/ticket/8015</A>
+			$wrapper[0].appendChild( acorn.$self[0].cloneNode(true) );
+</P><P>			acorn.$self.remove();
+			acorn.$self = $wrapper.find('video, audio');
+</P><P>			// append the controls and loading mask
+</P>
+			acorn.$self.after(template).after('');
+<P>			/*
+			 * Define the newly created DOM nodes
+			 */
+			acorn.$container = acorn.$self.parent('.acorn-player');
+</P><P>			acorn.$controls = $('.acorn-controls', acorn.$container);
+			acorn.$playBtn = $('.acorn-play-button', acorn.$container);
+			acorn.$seek = $('.acorn-seek-slider', acorn.$container);
+			acorn.$timer = $('.acorn-timer', acorn.$container);
+			acorn.$volume = $('.acorn-volume-slider', acorn.$container);
+			acorn.$volumeBtn = $('.acorn-volume-button', acorn.$container);
+			acorn.$fullscreenBtn = $('.acorn-fullscreen-button', acorn.$container);
+			acorn.$tooltip = $('.acorn-tooltip', acorn.$container);
+</P><P>			/*
+			 * Append the markup for the Captions and Transcript
+			 * and define newly created DOM nodes for these
+			 */
+			acorn.$controls.after(captionMarkup);
+			acorn.$container.after(transcriptMarkup);
+</P><P>			acorn.$transcript = acorn.$container.next('.acorn-transcript');
+			acorn.$transcriptBtn = $('.acorn-transcript-button', acorn.$container);
+</P><P>			acorn.$caption = $('.acorn-caption', acorn.$container);
+			acorn.$captionBtn = $('.acorn-caption-button', acorn.$container);
+			acorn.$captionSelector = $('.acorn-caption-selector', acorn.$container);
+</P><P>			/*
+			 * Time formatting function
+			 * Takes the number of seconds as a parameter and return a readable format &quot;minutes:seconds&quot;
+			 * Used with the number of seconds returned by &quot;currentTime&quot;
+			 */
+			var timeFormat = function(sec) {
+				var m = Math.floor(sec/60)&lt;10?&quot;0&quot; + Math.floor(sec/60):Math.floor(sec/60);
+				var s = Math.floor(sec-(m*60))&lt;10?&quot;0&quot; + Math.floor(sec-(m*60)):Math.floor(sec-(m*60));
+				return m + &quot;:&quot; + s;
+			};
+</P><P>			/*
+			 * PLAY/PAUSE Behaviour
+			 *
+			 * Function for the Play button
+			 * It triggers the native Play or Pause events
+			 */
+			var playMedia = function() {
+				if(!acorn.$self.prop('paused')) {
+					acorn.$self.trigger('pause');
+				} else {
+					acorn.$self.trigger('play');
+				}
+				return false;
+			};
+</P><P>			/*
+			 * Functions for native playback events (Play, Pause, Ended)
+			 * These are attached to the native media events.
+			 *
+			 * Even if the user is still using some form of native playback control (such as using the Context Menu)
+			 * it will not break the behviour of our player.
+			 */
+			var startPlayback = function() {
+				acorn.$playBtn.text(text.pause).attr('title', text.pauseTitle);
+				acorn.$playBtn.addClass('acorn-paused-button');
+</P><P>				// if the metadata is not loaded yet, add the loading class
+				if(!loadedMetadata) $wrapper.addClass('show-loading');
+			};
+</P><P>			var stopPlayback = function() {
+				acorn.$playBtn.text(text.play).attr('title', text.playTitle);
+				acorn.$playBtn.removeClass('acorn-paused-button');
+			};
+</P><P>			/*
+			 * SEEK SLIDER Behaviour
+			 *
+			 * Updates the Timer and Seek Slider values
+			 * Is called on each &quot;timeupdate&quot;
+			 */
+			var seekUpdate = function() {
+				var currenttime = acorn.$self.prop('currentTime');
+				acorn.$timer.text(timeFormat(currenttime));
+</P><P>				// If the user is not manualy seeking
+				if(!seeking) {
+					// Check type of sliders (Range &lt;input&gt; or jQuery UI)
+					if(options.nativeSliders) {
+						acorn.$seek.val(currenttime);
+					} else {
+						acorn.$seek.slider('value', currenttime);
+					}
+				}
+</P><P>				// If captions are active, update them
+				if(captionsActive) {
+					updateCaption();
+				}
+			};
+</P><P>			/*
+			 * Time formatting function
+			 * Takes the number of seconds as a paramenter
+			 *
+			 * Used with &quot;aria-valuetext&quot; on the Seek Slider to provide a human readable time format to AT
+			 * Returns &quot;X minutes Y seconds&quot;
+			 */
+			var ariaTimeFormat = function(sec) {
+				var m = Math.floor(sec/60)&lt;10?&quot;&quot; + Math.floor(sec/60):Math.floor(sec/60);
+				var s = Math.floor(sec-(m*60))&lt;10?&quot;&quot; + Math.floor(sec-(m*60)):Math.floor(sec-(m*60));
+				var formatedTime, min;
+</P><P>				var mins = 'minutes';
+				var secs = 'seconds';
+</P><P>				if(m == 1) {
+					min = 'minute';
+				}
+				if(s == 1) {
+					sec = 'second';
+				}
+</P><P>				if(m === 0) {
+					formatedTime = s + ' ' + secs;
+				} else {
+					formatedTime = m + ' ' + mins + ' ' + s + ' ' + secs;
+				}
+</P><P>				return formatedTime;
+			};
+</P><P>			/*
+			 * jQuery UI slider uses preventDefault when clicking any element
+			 * so it stops the Blur event from being fired.
+			 * This causes problems with the Caption Selector.
+			 * We trigger the Blur event manually.
+			 */
+			var blurCaptionBtn = function() {
+				acorn.$captionBtn.trigger('blur');
+			};
+</P><P>			/*
+			 * Triggered when the user starts to seek manually
+			 * Pauses the media during seek and changes the &quot;currentTime&quot; to the slider's value
+			 */
+			var startSeek = function(e, ui) {
+				if(!acorn.$self.prop('paused')) {
+					wasPlaying = true;
+				}
+				acorn.$self.trigger('pause');
+				seeking = true;
+</P><P>				var seekLocation;
+				if(options.nativeSliders) {
+					seekLocation = acorn.$seek.val();
+				} else {
+					seekLocation = ui.value;
+				}
+</P><P>				acorn.$self.prop('currentTime', seekLocation);
+</P><P>				// manually blur the Caption Button
+				blurCaptionBtn();
+			};
+</P><P>			/*
+			 * Triggered when user stoped manual seek
+			 * If the media was playing when seek started, it triggeres the playback,
+			 * and updates ARIA attributes
+			 */
+			var endSeek = function(e, ui) {
+				if(wasPlaying) {
+					acorn.$self.trigger('play');
+					wasPlaying = false;
+				}
+				seeking = false;
+				if (!options.nativeSliders) {
+					$(ui.handle).attr({
+						'aria-valuenow': parseInt(ui.value, 10),
+						'aria-valuetext': ariaTimeFormat(ui.value),
+						'aria-label': 'Video seek control'
+					});
+				}
+			};
+</P><P>			/*
+			 * Transforms element into ARIA Slider adding attributes and &quot;tabindex&quot;
+			 * Used on jQuery UI sliders
+			 *
+			 * Will not needed once the jQuery UI slider gets built-in ARIA
+			 */
+			var initSliderAccess = function (elem, opts) {
+				var accessDefaults = {
+				 'role': 'slider',
+				 'aria-valuenow': parseInt(opts.value, 10),
+				 'aria-valuemin': parseInt(opts.min, 10),
+				 'aria-valuemax': parseInt(opts.max, 10),
+				 'aria-valuetext': opts.valuetext,
+				 'aria-label': opts.label,
+				 'tabindex': '0'
+				};
+				elem.attr(accessDefaults);
+			};
+</P><P>			/*
+			 * Init jQuery UI slider
+			 */
+			var initSeek = function() {
+</P><P>				// get existing classes
+				var seekClass = acorn.$seek.attr('class');
+</P><P>				// create the new markup
+</P>
+				var	divSeek = '';
+<P>				acorn.$seek.after(divSeek).remove();
+</P><P>				// get the newly created DOM node
+				acorn.$seek = $('.' + seekClass, acorn.$container);
+</P><P>				// create the buffer element
+</P>
+				var bufferBar = '';
+<P>				acorn.$seek.append(bufferBar);
+</P><P>				// get the buffer element DOM node
+				acorn.$buffer = $('.acorn-buffer', acorn.$container);
+</P><P>				// set up the slider options for the jQuery UI slider
+				var sliderOptions = {
+					value: 0,
+					step: 1,
+					orientation: 'horizontal',
+					range: 'min',
+					min: 0,
+					max: 100
+				};
+				// init the jQuery UI slider
+				acorn.$seek.slider(sliderOptions);
+</P><P>			};
+</P><P>			/*
+			 * Seek slider update, after metadata is loaded
+			 * Attach events, add the &quot;duration&quot; attribute and generate the jQuery UI Seek Slider
+			 */
+			var updateSeek = function() {
+				// Get the duration of the media
+				var duration = acorn.$self.prop('duration');
+</P><P>				// Check for the nativeSliders option
+				if(options.nativeSliders) {
+					acorn.$seek.attr('max', duration);
+					//use input instead of change event (see: <A rel="nofollow" class="external free" href="https://github.com/aFarkas/webshim/issues/297">https://github.com/aFarkas/webshim/issues/297</A>)
+					acorn.$seek.bind('change', startSeek);
+</P><P>					acorn.$seek.bind('mousedown', startSeek);
+					acorn.$seek.bind('mouseup', endSeek);
+</P><P>				} else {
+</P><P>					// set up the slider options for the jQuery UI slider
+					var sliderOptions = {
+						value: 0,
+						step: 1,
+						orientation: 'horizontal',
+						range: 'min',
+						min: 0,
+						max: duration,
+						slide: startSeek,
+						stop: endSeek,
+						label: 'Video seek control'
+					};
+					// init the jQuery UI slider
+					acorn.$seek.slider('option', sliderOptions);
+</P><P>					// add valuetext value to the slider options for better ARIA values
+					sliderOptions.valuetext = ariaTimeFormat(sliderOptions.value);
+					// accessify the slider
+					initSliderAccess(acorn.$seek.find('.ui-slider-handle'), sliderOptions);
+</P><P>					// manully blur the Caption Button when clicking the handle
+					$('.ui-slider-handle', acorn.$seek).click(blurCaptionBtn);
+</P><P>					// show buffering progress on progress
+					acorn.$self.bind('progress', showBuffer);
+				}
+</P><P>				// remove the loading class
+				$wrapper.removeClass('show-loading');
+</P><P>			};
+</P><P>			/*
+			 * Show buffering progress
+			 */
+			var showBuffer = function(e) {
+				var max = parseInt(acorn.$self.prop('duration'), 10);
+				var tr = acorn.$self.prop('buffered');
+				if(tr &amp;&amp; tr.length) {
+					var buffer = parseInt(tr.end(0) - tr.start(0), 10);
+					var bufferWidth = (buffer*100)/max;
+</P><P>					acorn.$buffer.css('width', bufferWidth + '%');
+				}
+			};
+</P><P>			/*
+			 * VOLUME BUTTON and SLIDER Behaviour
+			 *
+			 * Change volume using the Volume Slider
+			 * Also update ARIA attributes and set the volume value as a localStorage item
+			 */
+			var changeVolume = function(e, ui) {
+				// get the slider value
+				volume = ui.value;
+				// set the value as a localStorage item
+				localStorage.setItem('acornvolume', volume);
+</P><P>				// check if the volume was muted before
+				if(acorn.$self.prop('muted')) {
+					acorn.$self.prop('muted', false);
+					acorn.$volumeBtn.removeClass('acorn-volume-mute');
+					acorn.$volumeBtn.text(text.mute).attr('title', text.mute);
+				}
+</P><P>				// set the new volume on the media
+				acorn.$self.prop('volume', volume);
+</P><P>				// set the ARIA attributes
+				acorn.$volume.$handle.attr('aria-valuenow', Math.round(volume*100));
+				acorn.$volume.$handle.attr('aria-valuetext', Math.round(volume*100) + ' percent');
+				acorn.$volume.$handle.attr('aria-label', 'Volume control');
+				// manually trigger the Blur event on the Caption Button
+				blurCaptionBtn();
+			};
+</P><P>			/*
+			 * Mute and Unmute volume
+			 * Also add classes and change label on the Volume Button
+			 */
+			var muteVolume = function() {
+				if(acorn.$self.prop('muted') === true) {
+					acorn.$self.prop('muted', false);
+					if(options.nativeSliders) {
+						acorn.$volume.val(volume);
+					} else {
+						acorn.$volume.slider('value', volume);
+					}
+</P><P>					acorn.$volumeBtn.removeClass('acorn-volume-mute');
+					acorn.$volumeBtn.text(text.mute).attr('title', text.mute);
+				} else {
+					acorn.$self.prop('muted', true);
+</P><P>					if(options.nativeSliders) {
+						acorn.$volume.val('0');
+					} else {
+						acorn.$volume.slider('value', '0');
+					}
+</P><P>					acorn.$volumeBtn.addClass('acorn-volume-mute');
+					acorn.$volumeBtn.text(text.unmute).attr('title', text.unmute);
+				}
+			};
+</P><P>			/*
+			 * Init the Volume Button and Slider
+			 *
+			 * Attach events, create the jQuery UI Slider for the Volume Slider and add ARIA support
+			 */
+			var initVolume = function() {
+				if(options.nativeSliders) {
+					acorn.$volume.bind('change', function() {
+						acorn.$self.prop('muted',false);
+						volume = acorn.$volume.val();
+						acorn.$self.prop('volume', volume);
+					});
+				} else {
+					var volumeClass = acorn.$volume.attr('class');
+</P>
+					var	divVolume = '';
+<P>					acorn.$volume.after(divVolume).remove();
+</P><P>					acorn.$volume = $('.' + volumeClass, acorn.$container);
+</P><P>					var volumeSliderOptions = {
+						value: volume,
+						orientation: options.volumeSlider,
+						range: &quot;min&quot;,
+						max: 1,
+						min: 0,
+						step: 0.1,
+						animate: true,
+						slide: changeVolume,
+						label: &quot;Volume control&quot;
+					};
+</P><P>					acorn.$volume.slider(volumeSliderOptions);
+</P><P>					acorn.$volume.$handle = acorn.$volume.find('.ui-slider-handle');
+</P><P>					// change and add values to volumeSliderOptions for better values in the ARIA attributes
+					volumeSliderOptions.max = 100;
+					volumeSliderOptions.value = volumeSliderOptions.value * 100;
+					volumeSliderOptions.valuetext = volumeSliderOptions.value + ' percent';
+					initSliderAccess(acorn.$volume.$handle, volumeSliderOptions);
+</P><P>					// manully blur the Caption Button when clicking the handle
+					$('.ui-slider-handle', acorn.$volume).click(blurCaptionBtn);
+				}
+</P><P>				acorn.$volumeBtn.click(muteVolume);
+			};
+</P><P>			/*
+			 * FULLSCREEN Behviour
+			 *
+			 * Resize the video while in Fullscreen Mode
+			 * Attached to window.resize
+			 */
+			var resizeFullscreenVideo = function() {
+				acorn.$self.attr({
+					'width': $(window).width(),
+					'height': $(window).height()
+				});
+			};
+</P><P>			/*
+			 * Enter and exit Fullscreen Mode
+			 *
+			 * Resizes the Width &amp; Height of the &lt;video&gt; element
+			 * and add classes to the controls and wrapper
+			 */
+			var goFullscreen = function() {
+				var isPolyfill = acorn.$self.hasClass('nonnative-api-active');
+				if(fullscreenMode) {
+					// exit fullscreen
+					if(!isPolyfill &amp;&amp; acorn.$self[0].cancelFullScreen) {
+						acorn.$self[0].cancelFullScreen();
+					} else if(!isPolyfill &amp;&amp; acorn.$self[0].webkitCancelFullScreen) {
+						acorn.$self[0].webkitCancelFullScreen();
+					} else if(!isPolyfill &amp;&amp; acorn.$self[0].mozCancelFullScreen) {
+							acorn.$self[0].mozCancelFullScreen();
+					} else {
+						// if no fullscreen api support, use full-page mode
+						$('body').css('overflow', <I>);</I></P><P>
+						acorn.$controls.removeClass('fullscreen-controls');
+						acorn.$self.parent().removeClass('has-fullscreen-video');
+					}
+</P><P>					fullscreenMode = false;
+</P><P>				} else {
+					// enter fullscreen
+					if(!isPolyfill &amp;&amp; acorn.$self[0].requestFullscreen) {
+						acorn.$self[0].requestFullscreen();
+					} else if(!isPolyfill &amp;&amp; acorn.$self[0].webkitRequestFullscreen) {
+						acorn.$self[0].webkitRequestFullscreen();
+					} else if(!isPolyfill &amp;&amp; acorn.$self[0].mozRequestFullScreen) {
+							acorn.$self[0].mozRequestFullScreen();
+					} else {
+						$('body').css('overflow', 'hidden');
+</P><P>						acorn.$self.addClass('fullscreen-video');
+</P><P>						acorn.$self.parent().addClass('has-fullscreen-video');
+</P><P>						acorn.$controls.addClass('fullscreen-controls');
+					}
+</P><P>					fullscreenMode = true;
+</P><P>				}
+			};
+</P><P>			/*
+</P><PRE>            * Tooltip Controls
+            *
+            * Show/Hide tooltip for all buttons with title attribute
+            */
+           var showTooltip = function(e) {
+               if($(this).attr('title')){
+                   acorn.$tooltip.html($(this).attr('title')).addClass('show-tooltip');
+               }
+           }
+           var hideTooltip = function(e) {
+               if($(this).attr('title')){
+                   acorn.$tooltip.removeClass('show-tooltip');
+               }
+           }
+</PRE><P>			/*
+			 * CAPTIONS Behaviour
+			 *
+			 * Turning off the captions
+			 * When selecting &quot;None&quot; from the Caption Selector or when the caption fails to load
+			 */
+			var captions;
+			var captionBtnActiveClass = 'acorn-caption-active';
+			var captionBtnLoadingClass = 'acorn-caption-loading';
+			var transcriptBtnActiveClass = 'acorn-transcript-active';
+</P><P>			var captionRadioName = 'acornCaptions' + uniqueID();
+</P><P>			var captionOff = function() {
+				captions = <I>;</I>
+				acorn.$caption.hide();
+				captionsActive = false;
+</P><P>				acorn.$transcriptBtn.removeClass(transcriptBtnActiveClass).hide();
+				acorn.$transcript.hide();
+</P><P>				acorn.$captionBtn.removeClass(captionBtnActiveClass);
+			};
+</P><P>			/*
+			 * Update caption based on &quot;currentTime&quot;
+			 * Borrowed and adapted from Bruce Lawson's “Accessible HTML5 Video with JavaScripted captions”
+			 * <A rel="nofollow" class="external free" href="http://dev.opera.com/articles/view/accessible-html5-video-with-javascripted-captions/">http://dev.opera.com/articles/view/accessible-html5-video-with-javascripted-captions/</A>
+			 */
+			var updateCaption = function() {
+				// how soon is now?
+				var now = acorn.$self.prop('currentTime'),
+					text = <I>,</I>
+					i,
+					captionsLength = captions.length;
+</P><P>				for (i = 0; i &lt; captionsLength; i++) {
+					if (now &gt;= captions[i].start &amp;&amp; now &lt;= captions[i].end) {
+						text = captions[i].content; // yes? then load it into a variable called text
+						break;
+					}
+				}
+</P><P>				acorn.$caption.html(text); // and put contents of text into caption div
+			};
+</P><P>			/*
+			 * Initialize the Caption Selector
+			 * Used when multiple &lt;track&gt;s are present
+			 */
+			var initCaptionSelector = function() {
+				// calculate the position relative to the parent controls element
+				var setUpCaptionSelector = function() {
+					var pos = acorn.$captionBtn.offset();
+					var top = pos.top - acorn.$captionSelector.outerHeight(true);
+					var left = pos.left - ((acorn.$captionSelector.outerWidth(true) - acorn.$captionBtn.outerWidth(true))/2);
+</P><P>					var parentPos = acorn.$controls.offset();
+</P><P>					left = left - parentPos.left;
+					top = top - parentPos.top;
+</P><P>					acorn.$captionSelector.css({
+							'top': top,
+							'left': left
+						});
+				};
+</P><P>				acorn.$fullscreenBtn.click(setUpCaptionSelector);
+				$(window).resize(function() {
+					setUpCaptionSelector();
+				});
+</P><P>				setUpCaptionSelector();
+</P><P>				/*
+				 * Show and hide the caption selector based on focus rather than hover.
+				 * This benefits both touchscreen and AT users.
+				 */
+				var hideSelector; // timeout for hiding the Caption Selector
+				var showCaptionSelector = function() {
+					if(hideSelector) {
+						clearTimeout(hideSelector);
+					}
+					acorn.$captionSelector.show();
+				};
+				var hideCaptionSelector = function() {
+					hideSelector = setTimeout(function() {
+						acorn.$captionSelector.hide();
+					}, 200);
+				};
+</P><P>				/* Little TEMPORARY hack to focus the caption button on click
+				   This is because Webkit does not focus the button on click */
+				acorn.$captionBtn.click(function() {
+					$(this).focus();
+				});
+</P><P>				acorn.$captionBtn.bind('focus', showCaptionSelector);
+				acorn.$captionBtn.bind('blur', hideCaptionSelector);
+</P><P>				$('input[name=' + captionRadioName + ']', acorn.$container).bind('focus', showCaptionSelector);
+				$('input[name=' + captionRadioName + ']', acorn.$container).bind('blur', hideCaptionSelector);
+</P><P>				/*
+				 * Make the Caption Selector focusable and attach events to it
+				 * If we wouldn't do this, when we'd use the scroll on the Caption Selector, it would dissapear
+				 */
+				acorn.$captionSelector.attr('tabindex', '-1');
+				acorn.$captionSelector.bind('focus', showCaptionSelector);
+				acorn.$captionSelector.bind('blur', hideCaptionSelector);
+			};
+</P><P>			/*
+			 * Current caption loader
+			 * Loads a SRT file and uses it as captions
+			 * Takes the url as a parameter
+			 */
+			var loadCaption = function(url) {
+				// add a loading class to the Caption Button when starting to load the caption
+				acorn.$captionBtn.addClass(captionBtnLoadingClass);
+				// make an AJAX request to load the file
+				$.ajax({
+					url: url,
+					success: function(data) {
+						/*
+						 * On success use a SRT parser on the loaded data
+						 * Using JavaScript SRT parser by Silvia Pfeiffer &lt;silvia@siliva-pfeiffer.de&gt;
+						 * parseSrt included at the end of this file
+						 */
+						captions = parseSrt(data);
+</P><P>						// show the Transcript Button
+						acorn.$transcriptBtn.show();
+</P><P>						/*
+						 * Generate the markup for the transcript
+						 * Markup based on Bruce Lawson's “Accessible HTML5 Video with JavaScripted captions”
+						 * <A rel="nofollow" class="external free" href="http://dev.opera.com/articles/view/accessible-html5-video-with-javascripted-captions/">http://dev.opera.com/articles/view/accessible-html5-video-with-javascripted-captions/</A>
+						 */
+						var transcriptText = <I>;</I>
+						$(captions).each(function() {
+							transcriptText += '<SPAN data-begin="' + parseInt(this.start, 10) + '" data-end="+ parseInt(this.end, 10) +">' + this.content.replace(&quot;'&quot;,&quot;&quot;) + '</SPAN>';
+						});
+						// append the generated markup
+						acorn.$transcript.html(transcriptText);
+</P><P>						// show caption
+						acorn.$caption.show();
+						captionsActive = true;
+</P><P>						// in case the media is paused and timeUpdate is not triggered, trigger it
+						if(acorn.$self.prop('paused')) {
+							updateCaption();
+						}
+</P><P>						acorn.$captionBtn.addClass(captionBtnActiveClass).removeClass(captionBtnLoadingClass);
+					},
+					error: function() {
+						// if an error occurs while loading the caption, turn captions off
+						captionOff();
+						// if a console is available, log error
+						if(console) {
+							console.log('Error loading captions');
+						}
+					}
+				});
+			};
+</P><P>			/*
+			 * Show or hide the Transcript based on the presence of the active class
+			 */
+			var showTranscript = function() {
+				if($(this).hasClass(transcriptBtnActiveClass)) {
+					acorn.$transcript.hide();
+				} else {
+					acorn.$transcript.show();
+				}
+				$(this).toggleClass(transcriptBtnActiveClass);
+			};
+</P><P>			/*
+			 * Caption loading and initialization
+			 */
+			var initCaption = function() {
+				// get all &lt;track&gt; elements
+				acorn.$track = $('track', acorn.$self);
+</P><P>				// if there is at least one &lt;track&gt; element, show the Caption Button
+				if(acorn.$track.length) {
+					acorn.$captionBtn.show();
+				}
+</P><P>				// check if there is more than one &lt;track&gt; element
+				// if there is more than one track element we'll create the Caption Selector
+				if(acorn.$track.length&gt;1) {
+					// set a different &quot;title&quot; attribute
+					acorn.$captionBtn.attr('title', text.captionsChoose);
+</P><P>					// markup for the Caption Selector
+</P>
+					var captionList = '<UL><LI>&lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;' + captionRadioName + '&quot; checked=&quot;true&quot; /&gt;None&lt;/label&gt;</LI>';
+<P>					acorn.$track.each(function() {
+						var tracksrc = $(this).attr('src');
+</P>
+						captionList += '<LI>&lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;' + captionRadioName + '&quot; data-url=&quot;' + $(this).attr('src') + '&quot; /&gt;' + $(this).attr('label') + '&lt;/label&gt;</LI>';
+<P>					});
+</P>
+					captionList += '</UL>';
+<P>					// append the generated markup
+					acorn.$captionSelector.html(captionList);
+</P><P>					// change selected caption
+					var changeCaption = function() {
+						// get the original &lt;track&gt; &quot;src&quot; attribute from the custom &quot;data-url&quot; attribute of the radio input
+						var tracksrc = $(this).attr('data-url');
+						if(tracksrc) {
+							loadCaption(tracksrc);
+						} else {
+							// if there's not &quot;data-url&quot; attribute, turn off the caption
+							captionOff();
+						}
+					};
+</P><P>					// attach event handler
+					$('input[name=' + captionRadioName + ']', acorn.$container).change(changeCaption);
+</P><P>					// initialize Caption Selector
+					initCaptionSelector();
+</P><P>					// load first caption if captionsOn is true
+					var firstCaption = acorn.$track.first().attr('src');
+					if(options.captionsOn) {
+						loadCaption(firstCaption);
+						$('input[name=' + captionRadioName + ']', acorn.$container).prop('checked', false);
+						$('input[name=' + captionRadioName + ']:eq(1)', acorn.$container).prop('checked', true);
+					};
+				} else if(acorn.$track.length) {
+					// if there's only one &lt;track&gt; element
+					// load the specific caption when activating the Caption Button
+					var tracksrc = acorn.$track.attr('src');
+</P><P>					acorn.$captionBtn.bind('click', function() {
+						if(acorn.$captionBtn.hasClass(captionBtnActiveClass)) {
+							captionOff();
+						} else {
+							loadCaption(tracksrc);
+							acorn.$captionBtn.addClass(captionBtnActiveClass);
+						}
+					});
+</P><P>					// load default caption if captionsOn is true
+					if(options.captionsOn) loadCaption(tracksrc);
+				}
+</P><P>				// attach event to Transcript Button
+				acorn.$transcriptBtn.bind('click', showTranscript);
+			};
+</P><P>			/*
+			 * Initialization self-invoking function
+			 * Runs other initialization functions, attaches events, removes native controls
+			 */
+			var init = function() {
+				// attach playback handlers
+				acorn.$playBtn.bind( (is_touch_device) ? 'touchstart' : 'click', playMedia);
+</P><P>				if (document.createElement('video').canPlayType) {
+					acorn.$self.bind((is_touch_device) ? 'touchstart' : 'click', playMedia);
+				}
+</P><P>				acorn.$self.bind('play', startPlayback);
+				acorn.$self.bind('pause', stopPlayback);
+				acorn.$self.bind('ended', stopPlayback);
+</P><P>				// update the Seek Slider when timeupdate is triggered
+				acorn.$self.bind('timeupdate', seekUpdate);
+</P><P>				// bind Fullscreen Button
+				acorn.$fullscreenBtn.click(goFullscreen);
+</P><P>				// bind Tooltip Events
+</P><PRE>               if(options.tooltipsOn){
+                   acorn.$controls.find('button').mouseover(showTooltip).mouseout(hideTooltip);
+               }
+</PRE><P>				// initialize volume controls
+				initVolume();
+</P><P>				if(!options.nativeSliders) initSeek();
+</P><P>				// once the metadata has loaded
+				acorn.$self.bind('loadedmetadata', function() {
+					/* I use an interval to make sure the video has the right readyState
+					 * to bypass a known webkit bug that causes loadedmetadata to be triggered
+					 * before the duration is available
+					 */
+					var t = window.setInterval(function() {
+								if (acorn.$self.prop('readyState') &gt; 0) {
+									loadedMetadata = true;
+									updateSeek();
+</P><P>									clearInterval(t);
+								}
+							}, 500);
+</P><P>					initCaption();
+				});
+</P><P>				// trigger update seek manualy for the first time, for iOS support
+				//updateSeek();
+</P><P>				// remove the native controls
+				acorn.$self.prop('controls', false);
+</P><P>				if(acorn.$self.is('audio')) {
+					/*
+					 * If the media is &lt;audio&gt;, we're adding the 'audio-player' class to the element.
+					 * This is because Opera 10.62 does not allow the &lt;audio&gt; element to be targeted by CSS
+					 * and this can cause problems with themeing.
+					 */
+					acorn.$container.addClass('audio-player');
+				}
+</P><P>				if($.fn.updatePolyfill){
+					$wrapper.updatePolyfill();
+				}
+</P><P>				// if an autoplay attribute was set, play the video
+				if(autoplay) acorn.$self.trigger('play');
+			}();
+</P><P>		};
+</P><P>		// iterate and reformat each matched element
+		return this.each(acornPlayer);
+	};
+</P><P>})(jQuery);
+</P><P>/*
+</P><PRE>* parseSrt function
+* JavaScript SRT parser by Silvia Pfeiffer &lt;silvia@siliva-pfeiffer.de&gt;
+* <A rel="nofollow" class="external free" href="http://silvia-pfeiffer.de/">http://silvia-pfeiffer.de/</A>
+*
+* Tri-licensed under MPL 1.1/GPL 2.0/LGPL 2.1
+*  <A rel="nofollow" class="external free" href="http://www.gnu.org/licenses/gpl.html">http://www.gnu.org/licenses/gpl.html</A>
+*  <A rel="nofollow" class="external free" href="http://www.gnu.org/licenses/lgpl.html">http://www.gnu.org/licenses/lgpl.html</A>
+*  <A rel="nofollow" class="external free" href="http://www.mozilla.org/MPL/">http://www.mozilla.org/MPL/</A>
+*
+* The Initial Developer of the Original Code is Mozilla Corporation.
+* Portions created by the Initial Developer are Copyright (C) 2009
+* the Initial Developer. All Rights Reserved.
+*
+* Contributor(s):
+*  Silvia Pfeiffer &lt;silvia@siliva-pfeiffer.de&gt;
+*
+*
+*/
+</PRE><P>function parseSrt(data) {
+	var srt = data.replace(/\r+/g, <I>); // remove dos newlines</I>
+	srt = srt.replace(/^\s+|\s+$/g, <I>); // trim white space start and end</I>
+	srt = srt.replace(/&lt;[a-zA-Z\/][^&gt;]*&gt;/g, <I>); // remove all html tags for security reasons</I></P><P>	// get captions
+	var captions = [];
+	var caplist = srt.split('\n\n');
+	for (var i = 0; i &lt; caplist.length; i=i+1) {
+		var caption = &quot;&quot;;
+		var content, start, end, s;
+		caption = caplist[i];
+		s = caption.split(/\n/);
+		if (s[0].match(/^\d+$/) &amp;&amp; s[1].match(/\d+:\d+:\d+/)) {
+			// ignore caption number in s[0]
+			// parse time string
+			var m = s[1].match(/(\d+):(\d+):(\d+)(?:,(\d+))?\s*--?&gt;\s*(\d+):(\d+):(\d+)(?:,(\d+))?/);
+			if (m) {
+				start =
+				(parseInt(m[1], 10) * 60 * 60) +
+				(parseInt(m[2], 10) * 60) +
+				(parseInt(m[3], 10)) +
+				(parseInt(m[4], 10) / 1000);
+				end =
+				(parseInt(m[5], 10) * 60 * 60) +
+				(parseInt(m[6], 10) * 60) +
+				(parseInt(m[7], 10)) +
+				(parseInt(m[8], 10) / 1000);
+			} else {
+				// Unrecognized timestring
+				continue;
+			}
+			// concatenate text lines to html text
+			content = s.slice(2).join(&quot;&quot;);
+		} else {
+			// file format error or comment lines
+			continue;
+		}
+		captions.push({start: start, end: end, content: content});
+	}
+</P><P>	return captions;
+</P>
+}</DIV></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

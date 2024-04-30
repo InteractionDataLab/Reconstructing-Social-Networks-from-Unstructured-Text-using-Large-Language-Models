@@ -1,0 +1,157 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Evry_arbor_src_physics_worker_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Evry/arbor/src/physics/worker.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Evry/arbor/src/physics/worker.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/physics/worker.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Evry/arbor/src/physics/worker.js&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Evry/arbor/src/physics/worker.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Evry/arbor/src/physics/worker.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>//
+// worker.js
+//
+// wraps physics.js in an onMessage/postMessage protocol that the
+// Kernel object can deal with
+//
+importScripts('atoms.js');
+importScripts('barnes-hut.js');  
+importScripts('physics.js');  
+// alias over the missing jquery utils so we can run in a worker
+$ = {
+</P><PRE> each:function(obj, callback){
+   if ($.isArray(obj)){
+     for (var i=0, j=obj.length; i&lt;j; i++) callback(i, obj[i])
+   }else{
+     for (var k in obj) callback(k, obj[k])
+   }
+ },
+ map:function(arr, fn){
+   var out = []
+   $.each(arr, function(i, elt){
+     var result = fn(elt, i)
+     if (result!==undefined) out.push(result)
+   })
+   return out
+ },
+</PRE><PRE> isArray:function(obj){
+   return (obj.constructor.toString().indexOf(&quot;Array&quot;) != -1)
+ },
+</PRE><PRE> inArray:function(elt, arr){
+   for (var i=0, j=arr.length; i&lt;j; i++) if (arr[i]===elt) return i;
+   return -1
+ }    
+</PRE><P>}
+// endalias
+var PhysicsWorker = function(){
+</P><PRE> var _timeout = 20
+ var _physics = null
+ var _physicsInterval = null
+ var _lastTick = null
+ 
+ var times = []
+ var last = new Date().valueOf()
+ 
+ var that = {  
+   init:function(param){
+     that.timeout(param.timeout)
+     _physics = Physics(param.dt, param.stiffness, param.repulsion, param.friction, that.tock)
+     return that
+   },
+   timeout:function(newTimeout){
+     if (newTimeout!=_timeout){
+       _timeout = newTimeout
+       if (_physicsInterval!==null){
+         that.stop()
+         that.go()
+       }
+     }
+   },
+   go:function(){
+     if (_physicsInterval!==null) return
+</PRE><PRE>     // postMessage('starting')
+     _lastTick=null
+     _physicsInterval = setInterval(that.tick, _timeout)
+   },
+   stop:function(){
+     if (_physicsInterval===null) return
+     clearInterval(_physicsInterval);
+     _physicsInterval = null;
+     // postMessage('stopping')
+   },
+   tick:function(){
+     // iterate the system
+     _physics.tick()    
+</PRE><PRE>     // but stop the simulation when energy of the system goes below a threshold
+     var sysEnergy = _physics.systemEnergy()
+     if ((sysEnergy.mean + sysEnergy.max)/2 &lt; 0.05){
+       if (_lastTick===null) _lastTick=new Date().valueOf()
+       if (new Date().valueOf()-_lastTick&gt;1000){
+         that.stop()
+       }else{
+         // postMessage('pausing')
+       }
+     }else{
+       _lastTick = null
+     }
+     
+   },
+</PRE><PRE>   tock:function(sysData){
+     sysData.type = &quot;geometry&quot;
+     postMessage(sysData)
+   },
+   
+   modifyNode:function(id, mods){
+     _physics.modifyNode(id, mods)  
+     that.go()
+   },
+</PRE><PRE>   modifyPhysics:function(param){
+     _physics.modifyPhysics(param)
+   },
+   
+   update:function(changes){
+     var epoch = _physics._update(changes)
+   }
+ }
+ 
+ return that
+</PRE><P>}
+</P><P>
+var physics = PhysicsWorker()
+</P><P>onmessage = function(e){
+</P><PRE> if (!e.data.type){
+   postMessage(&quot;Â¿kÃ©rnÃ¨l?&quot;)
+   return
+ }
+ 
+ if (e.data.type=='physics'){
+   var param = e.data.physics
+   physics.init(e.data.physics)
+   return
+ }
+ 
+ switch(e.data.type){
+   case &quot;modify&quot;:
+     physics.modifyNode(e.data.id, e.data.mods)
+     break
+</PRE><PRE>   case &quot;changes&quot;:
+     physics.update(e.data.changes)
+     physics.go()
+     break
+     
+   case &quot;start&quot;:
+     physics.go()
+     break
+     
+   case &quot;stop&quot;:
+     physics.stop()
+     break
+     
+   case &quot;sys&quot;:
+     var param = e.data.param || {}
+     if (!isNaN(param.timeout)) physics.timeout(param.timeout)
+     physics.modifyPhysics(param)
+     physics.go()
+     break
+   }  
+</PRE><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Evry/arbor/src/physics/worker.js">http://2012.igem.org/Team:Evry/arbor/src/physics/worker.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Evry/arbor/src/physics/worker.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Evry/arbor/src/physics/worker.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Evry/arbor/src/physics/worker.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Evry/arbor/src/physics/worker.js&amp;oldid=124698" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

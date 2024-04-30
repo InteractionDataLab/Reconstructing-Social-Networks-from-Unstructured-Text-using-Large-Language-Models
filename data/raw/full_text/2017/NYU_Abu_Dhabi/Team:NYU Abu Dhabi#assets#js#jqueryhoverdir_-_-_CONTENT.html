@@ -1,0 +1,161 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_NYU_Abu_Dhabi_assets_js_jqueryhoverdir skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:NYU Abu Dhabi/assets/js/jqueryhoverdir</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* jquery.hoverdir.js v1.1.0
+* <A rel="nofollow" class="external free" href="http://www.codrops.com">http://www.codrops.com</A>
+*
+* Licensed under the MIT license.
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>
+* 
+* Copyright 2012, Codrops
+* <A rel="nofollow" class="external free" href="http://www.codrops.com">http://www.codrops.com</A>
+*/
+</PRE><DL><DT>( function( $, window, undefined ) {</DT></DL><P>	'use strict';
+</P><P>	$.HoverDir = function( options, element ) {
+</P><P>		this.$el = $( element );
+		this._init( options );
+</P><P>	};
+</P><P>	// the options
+	$.HoverDir.defaults = {
+		speed : 300,
+		easing : 'ease',
+		hoverDelay : 0,
+		inverse : false
+	};
+</P><P>	$.HoverDir.prototype = {
+</P><P>		_init : function( options ) {
+</P><P>			// options
+			this.options = $.extend( true, {}, $.HoverDir.defaults, options );
+			// transition properties
+			this.transitionProp = 'all ' + this.options.speed + 'ms ' + this.options.easing;
+			// support for CSS transitions
+			this.support = Modernizr.csstransitions;
+			// load the events
+			this._loadEvents();
+</P><P>		},
+		_loadEvents : function() {
+</P><P>			var self = this;
+</P><P>			this.$el.on( 'mouseenter.hoverdir, mouseleave.hoverdir', function( event ) {
+</P><P>				var $el = $( this ),
+					$hoverElem = $el.find( 'div' ),
+					direction = self._getDir( $el, { x : event.pageX, y : event.pageY } ),
+					styleCSS = self._getStyle( direction );
+</P><P>				if( event.type === 'mouseenter' ) {
+</P><P>					$hoverElem.hide().css( styleCSS.from );
+					clearTimeout( self.tmhover );
+</P><P>					self.tmhover = setTimeout( function() {
+</P><P>						$hoverElem.show( 0, function() {
+</P><P>							var $el = $( this );
+							if( self.support ) {
+								$el.css( 'transition', self.transitionProp );
+							}
+							self._applyAnimation( $el, styleCSS.to, self.options.speed );
+</P><P>						} );
+</P><P>					
+					}, self.options.hoverDelay );
+</P><P>				}
+				else {
+</P><P>					if( self.support ) {
+						$hoverElem.css( 'transition', self.transitionProp );
+					}
+					clearTimeout( self.tmhover );
+					self._applyAnimation( $hoverElem, styleCSS.from, self.options.speed );
+</P><P>				}
+</P><P>			} );
+</P><P>		},
+		// credits : <A rel="nofollow" class="external free" href="http://stackoverflow.com/a/3647634">http://stackoverflow.com/a/3647634</A>
+		_getDir : function( $el, coordinates ) {
+</P><P>			// the width and height of the current div
+			var w = $el.width(),
+				h = $el.height(),
+</P><P>				// calculate the x and y to get an angle to the center of the div from that x and y.
+				// gets the x value relative to the center of the DIV and &quot;normalize&quot; it
+				x = ( coordinates.x - $el.offset().left - ( w/2 )) * ( w &gt; h ? ( h/w ) : 1 ),
+				y = ( coordinates.y - $el.offset().top  - ( h/2 )) * ( h &gt; w ? ( w/h ) : 1 ),
+</P><P>				// the angle and the direction from where the mouse came in/went out clockwise (TRBL=0123);
+				// first calculate the angle of the point,
+				// add 180 deg to get rid of the negative values
+				// divide by 90 to get the quadrant
+				// add 3 and do a modulo by 4  to shift the quadrants to a proper clockwise TRBL (top/right/bottom/left) **/
+				direction = Math.round( ( ( ( Math.atan2(y, x) * (180 / Math.PI) ) + 180 ) / 90 ) + 3 ) % 4;
+</P><P>			return direction;
+</P><P>		},
+		_getStyle : function( direction ) {
+</P><P>			var fromStyle, toStyle,
+				slideFromTop = { left : '0px', top : '-100%' },
+				slideFromBottom = { left : '0px', top : '100%' },
+				slideFromLeft = { left : '-100%', top : '0px' },
+				slideFromRight = { left : '100%', top : '0px' },
+				slideTop = { top : '0px' },
+				slideLeft = { left : '0px' };
+</P><P>			switch( direction ) {
+				case 0:
+					// from top
+					fromStyle = !this.options.inverse ? slideFromTop : slideFromBottom;
+					toStyle = slideTop;
+					break;
+				case 1:
+					// from right
+					fromStyle = !this.options.inverse ? slideFromRight : slideFromLeft;
+					toStyle = slideLeft;
+					break;
+				case 2:
+					// from bottom
+					fromStyle = !this.options.inverse ? slideFromBottom : slideFromTop;
+					toStyle = slideTop;
+					break;
+				case 3:
+					// from left
+					fromStyle = !this.options.inverse ? slideFromLeft : slideFromRight;
+					toStyle = slideLeft;
+					break;
+			};
+</P><P>			return { from : fromStyle, to : toStyle };
+</P><P>		},
+		// apply a transition or fallback to jquery animate based on Modernizr.csstransitions support
+		_applyAnimation : function( el, styleCSS, speed ) {
+</P><P>			$.fn.applyStyle = this.support ? $.fn.css : $.fn.animate;
+			el.stop().applyStyle( styleCSS, $.extend( true, [], { duration : speed + 'ms' } ) );
+</P><P>		},
+</P><P>	};
+</P><P>	var logError = function( message ) {
+</P><P>		if ( window.console ) {
+</P><P>			window.console.error( message );
+</P><P>		}
+</P><P>	};
+</P><P>	$.fn.hoverdir = function( options ) {
+</P><P>		var instance = $.data( this, 'hoverdir' );
+</P><P>		if ( typeof options === 'string' ) {
+</P><P>			var args = Array.prototype.slice.call( arguments, 1 );
+</P><P>			this.each(function() {
+</P><P>				if ( !instance ) {
+</P><P>					logError( &quot;cannot call methods on hoverdir prior to initialization; &quot; +
+					&quot;attempted to call method '&quot; + options + &quot;'&quot; );
+					return;
+</P><P>				}
+</P><P>				if ( !$.isFunction( instance[options] ) || options.charAt(0) === &quot;_&quot; ) {
+</P><P>					logError( &quot;no such method '&quot; + options + &quot;' for hoverdir instance&quot; );
+					return;
+</P><P>				}
+</P><P>				instance[ options ].apply( instance, args );
+</P><P>			});
+</P><P>		} 
+		else {
+</P><P>			this.each(function() {
+</P><P>				if ( instance ) {
+</P><P>					instance._init();
+</P><P>				}
+				else {
+</P><P>					instance = $.data( this, 'hoverdir', new $.HoverDir( options, this ) );
+</P><P>				}
+</P><P>			});
+</P><P>		}
+</P><P>		return instance;
+</P><P>	};
+</P><P>} )( jQuery, window );
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

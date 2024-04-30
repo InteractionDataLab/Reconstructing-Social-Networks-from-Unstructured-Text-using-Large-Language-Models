@@ -1,0 +1,29 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Freiburg software/Code/MenuItem.java
+From 2009.igem.org
+Home
+The Team
+The Project
+The Code
+User Guide
+Notebook
+Miscellaneous
+org.synbiowave.menu.MenuItem
+/*     Copyright: synbiowave           License: GPL           Authors: Paul Staab           Version: 0.1            DESCRIPTION:      This class can be used do generate SynBioWave-Menus, to generate JSON-Strings      out of it and menus back of JSON-String.      Each item can contain options and recusivly other MenuItems later displayed as      subitems. */  package org.synbiowave.menu;  import java.util.ArrayList; import java.util.Iterator; import java.util.LinkedHashMap; import java.util.List; import java.util.Map; import java.util.Map.Entry; import org.json.simple.JSONObject; import org.json.simple.JSONValue;  public class MenuItem {  private LinkedHashMap<String, String> options = new LinkedHashMap<String, String>();  private List<MenuItem> subItemList = new ArrayList<MenuItem>();   /**   * generates a menu from a JSONObject   * @param JSON JSONObject   * @throws Exception   */  public MenuItem(JSONObject JSON) throws Exception   {    readJSON(JSON);  }    /**   * generates a menu form a JSON-String   * @param JSONString JSON-conform String    * @throws Exception   */  public MenuItem(String JSONString) throws Exception   {    readJSON(JSONString);  }    /**   * generates a menu item   * @param type Type of the menu item   * @param label Label of the menu item   */  public MenuItem(String type, String label, String key)  {   this.options.put("type", type);   this.options.put("label", label);   this.options.put("key", key + label);  }    /**   * Returns a saved option of the menu item   * @param key option like "type","label" or "key" * @return Value of the option   */  public String getOption(String name)  {   return this.options.get(name);  }    public String setOption(String name, String value)  {   return this.options.put(name, value);  }    /**   * Getter for the SubItems included in this menu item   * @return   */  public List<MenuItem> getSubItemList()  {   return this.subItemList;  }    /**   * Creates a new Sub-MenuItem   * @param type Type of the Sub-MenuItem   * @param label Label of the Sub-MenuItem   * @param key Key of the Sub-MenuItem; use generateKey();   * @return Sub-MenuItem   */  public MenuItem createSubItem(String type, String label, String key)  {   MenuItem subitem = new MenuItem(type, label, key);   subItemList.add(subitem);   return subItemList.get(subItemList.lastIndexOf(subitem));  }    /**   * Adds a existing MenuItem as a SubItem to this MenuItem   * @param menuItem the MenuItem a append   * @return this   */  public MenuItem appendSubItem(MenuItem menuItem)  {   this.subItemList.add(menuItem);   return this;  }   /**   * Removes all Sub-MenuItems   */  public void removeAllSubItems()  {   subItemList.removeAll(subItemList);   }    /**   * Adds all Sub-MenuItem of menu to this Menu Item   * @param menu   */  public void importMenu(MenuItem menu)  {   for (MenuItem importItem : menu.getSubItemList())    {    boolean exists = false;    for (MenuItem exisitingItem : this.getSubItemList())    {     if (importItem.getOption("label").contentEquals(exisitingItem.getOption("label")))     {      exisitingItem.importMenu(importItem);      exists = true;      continue;     }      }    if ( ! exists )    {     this.appendSubItem(importItem);    }    }  }    private void readJSON(String jsonText) throws Exception  {   jsonText = jsonText.replaceAll("'", "\"");   Object obj = JSONValue.parse(jsonText);   readJSON((JSONObject)obj);  }    private void readJSON(JSONObject JSON) throws Exception  {   Iterator<String> iterator1 = JSON.keySet().iterator();   while (iterator1.hasNext())   {    String key = iterator1.next();    if ( JSON.get(key).getClass() == new String().getClass() )    {     this.options.put(key, (String)JSON.get(key));    }          else if ( JSON.get(key).getClass() == new JSONObject().getClass() )    {     JSONObject subitem = (JSONObject)JSON.get(key);     Iterator<Entry<String, JSONObject>> iterator2 = subitem.entrySet().iterator();     while( iterator2.hasNext() )     {      Map.Entry<String, JSONObject> entry = iterator2.next();      MenuItem submenu = new MenuItem(entry.getValue());      this.subItemList.add(submenu);     }    }   }  }   /**   * Generates a JSON-String representing the Information of this MenuItem   * @return JSON-String   */  public String writeJson()  {   Map<String,String> obj = new LinkedHashMap<String, String>();   obj.putAll(options);   if ( subItemList.size() > 0 )    {    Map<String,String> obj2 = new LinkedHashMap<String, String>();    Iterator<MenuItem> iterator = subItemList.iterator();    while ( iterator.hasNext() )     {     MenuItem next = iterator.next();     obj2.put(next.getOption("key"), next.writeJson() );    }    obj.put("subitem", JSONValue.toJSONString(obj2));   }   return repairJSON(JSONValue.toJSONString(obj));  }    private String repairJSON(String JSON)  {   return JSON.replaceAll("\"", "'")    //JSONStringer produces invalid JSON...    .replaceAll("\\\\+", "")     //with MUCH escaping like \\\\\\\\\\\\\\\\" .replaceAll("\\{\\'\\{", "\\{\\{")   //and to much quotes ...    .replaceAll("\\}\\'\\}", "\\}\\}")    .replaceAll(":\\'\\{", ":\\{")    .replaceAll("\\}\\'\\}", "\\}\\}")    .replaceAll("\\}\\',", "\\},")    .replaceAll("\\,\\'\\{", ",\\{");  } }
+Retrieved from " http://2009.igem.org/Team:Freiburg_software/Code/MenuItem.java "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

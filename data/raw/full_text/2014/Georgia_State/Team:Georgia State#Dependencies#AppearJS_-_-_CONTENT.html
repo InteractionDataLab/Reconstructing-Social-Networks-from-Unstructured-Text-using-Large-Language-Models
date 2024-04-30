@@ -1,0 +1,125 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Georgia_State_Dependencies_AppearJS"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Georgia_State/Dependencies/AppearJS">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Georgia_State/Dependencies/AppearJS&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Georgia_State/Dependencies/AppearJS&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Georgia_State/Dependencies/AppearJS&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Georgia_State/Dependencies/AppearJS" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Georgia State/Dependencies/AppearJS</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/*
+</P><PRE>* jQuery.appear
+* <A href="https://github.com/bas2k/jquery.appear/" class="external free" rel="nofollow">https://github.com/bas2k/jquery.appear/</A>
+* <A href="http://code.google.com/p/jquery-appear/" class="external free" rel="nofollow">http://code.google.com/p/jquery-appear/</A>
+*
+* Copyright (c) 2009 Michael Hixson
+* Copyright (c) 2012 Alexander Brovikov
+* Licensed under the MIT license (<A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>)
+*/
+</PRE><P>(function($) {
+	$.fn.appear = function(fn, options) {
+</P><P>		var settings = $.extend({
+</P><P>			//arbitrary data to pass to fn
+			data: undefined,
+</P><P>			//call fn only on the first appear?
+			one: true,
+</P><P>			// X &amp; Y accuracy
+			accX: 0,
+			accY: 0
+</P><P>		}, options);
+</P><P>		return this.each(function() {
+</P><P>			var t = $(this);
+</P><P>			//whether the element is currently visible
+			t.appeared = false;
+</P><P>			if (!fn) {
+</P><P>				//trigger the custom event
+				t.trigger('appear', settings.data);
+				return;
+			}
+</P><P>			var w = $(window);
+</P><P>			//fires the appear event when appropriate
+			var check = function() {
+</P><P>				//is the element hidden?
+				if (!t.is(':visible')) {
+</P><P>					//it became hidden
+					t.appeared = false;
+					return;
+				}
+</P><P>				//is the element inside the visible window?
+				var a = w.scrollLeft();
+				var b = w.scrollTop();
+				var o = t.offset();
+				var x = o.left;
+				var y = o.top;
+</P><P>				var ax = settings.accX;
+				var ay = settings.accY;
+				var th = t.height();
+				var wh = w.height();
+				var tw = t.width();
+				var ww = w.width();
+</P><P>				if (y + th + ay &gt;= b &amp;&amp;
+					y &lt;= b + wh + ay &amp;&amp;
+					x + tw + ax &gt;= a &amp;&amp;
+					x &lt;= a + ww + ax) {
+</P><P>					//trigger the custom event
+					if (!t.appeared) t.trigger('appear', settings.data);
+</P><P>				} else {
+</P><P>					//it scrolled out of view
+					t.appeared = false;
+				}
+			};
+</P><P>			//create a modified fn with some additional logic
+			var modifiedFn = function() {
+</P><P>				//mark the element as visible
+				t.appeared = true;
+</P><P>				//is this supposed to happen only once?
+				if (settings.one) {
+</P><P>					//remove the check
+					w.unbind('scroll', check);
+					var i = $.inArray(check, $.fn.appear.checks);
+					if (i &gt;= 0) $.fn.appear.checks.splice(i, 1);
+				}
+</P><P>				//trigger the original fn
+				fn.apply(this, arguments);
+			};
+</P><P>			//bind the modified fn to the element
+			if (settings.one) t.one('appear', settings.data, modifiedFn);
+			else t.bind('appear', settings.data, modifiedFn);
+</P><P>			//check whenever the window scrolls
+			w.scroll(check);
+</P><P>			//check whenever the dom changes
+			$.fn.appear.checks.push(check);
+</P><P>			//check now
+			(check)();
+		});
+	};
+</P><P>	//keep a queue of appearance checks
+	$.extend($.fn.appear, {
+</P><P>		checks: [],
+		timeout: null,
+</P><P>		//process the queue
+		checkAll: function() {
+			var length = $.fn.appear.checks.length;
+			if (length &gt; 0) while (length--) ($.fn.appear.checks[length])();
+		},
+</P><P>		//check the queue asynchronously
+		run: function() {
+			if ($.fn.appear.timeout) clearTimeout($.fn.appear.timeout);
+			$.fn.appear.timeout = setTimeout($.fn.appear.checkAll, 20);
+		}
+	});
+</P><P>	//run checks when these methods are called
+	$.each(['append', 'prepend', 'after', 'before', 'attr',
+		'removeAttr', 'addClass', 'removeClass', 'toggleClass',
+		'remove', 'css', 'show', 'hide'], function(i, n) {
+		var old = $.fn[n];
+		if (old) {
+			$.fn[n] = function() {
+				var r = old.apply(this, arguments);
+				$.fn.appear.run();
+				return r;
+			}
+		}
+	});
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:Georgia_State/Dependencies/AppearJS">http://2014.igem.org/Team:Georgia_State/Dependencies/AppearJS</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Georgia_State/Dependencies/AppearJS" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Georgia_State/Dependencies/AppearJS" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Georgia_State/Dependencies/AppearJS&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Georgia_State/Dependencies/AppearJS&amp;oldid=124140" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

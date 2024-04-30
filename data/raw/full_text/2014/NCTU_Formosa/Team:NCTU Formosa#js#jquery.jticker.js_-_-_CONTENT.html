@@ -1,0 +1,211 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_NCTU_Formosa_js_jquery_jticker_js"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:NCTU_Formosa/js/jquery.jticker.js">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:NCTU_Formosa/js/jquery.jticker.js&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:NCTU_Formosa/js/jquery.jticker.js&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:NCTU_Formosa/js/jquery.jticker.js&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:NCTU_Formosa/js/jquery.jticker.js" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:NCTU Formosa/js/jquery.jticker.js</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>// jquery.ticker.js
+// 0.9.1 - beta
+// Stephen Band
+//
+// Project and documentation site:
+// <A href="http://webdev.stephband.info/jticker/" class="external free" rel="nofollow">http://webdev.stephband.info/jticker/</A>
+//
+// Dependencies:
+// jQuery 1.2.3 - (www.jquery.com)
+//
+// Instantiate and play with:
+// jQuery(element).ticker({options}).trigger(&quot;play&quot;);
+</P><P>
+(function(jQuery) {
+</P><P>// VAR
+</P><P>var name = &quot;ticker&quot;;   // Name of the plugin
+</P><P>// FUNCTIONS
+</P><P>function indexify(i, length) {
+</P><PRE>   return (i &gt;= length) ? indexify(i-length, length) : ((i &lt; 0) ? indexify(i+length, length) : i) ;
+</PRE><P>}
+</P><P>function advanceItem(elem) {
+</P><PRE>   var data = elem.data(name);
+   var length;
+   for (var i=0; i&lt;200; i++) {
+       if (!data.content[i]) {length = i; break;} 
+   }
+   data.nextItem      = indexify((data.nextItem || 0), length);
+   data.currentItem   = data.nextItem;
+   data.elemIndex     = [data.currentItem];
+   data.charIndex     = 0;
+   data.nextItem++;
+</PRE><P>}
+</P><P>function makeFamily(elem) {
+</P><PRE>   var obj = {elem: elem.clone().empty()};
+   var children = elem.children();
+   if (children.length) {
+       children.each(function(i){
+           obj[i] = makeFamily(jQuery(this));
+       });
+       return obj;
+   }
+   else {
+       obj.text = elem.text()
+       return obj;
+   }
+</PRE><P>}
+</P><P>function checkFamily(content, index) {
+</P><PRE>   var newIndex;
+   if (content[index[0]]) {
+       if (content[index[0]].text) {return content[index[0]];}
+       else if (index.length == 1) {return true;}
+       else {
+           newIndex = jQuery.makeArray(index);
+           return checkFamily(content[newIndex[0]], newIndex.splice(1, newIndex.length));
+       }
+   }
+   else {return false;}
+</PRE><P>}  
+</P><P>function incrementIndex(index) {
+</P><PRE>   if (index.length &gt; 1)   {index[index.length-1]++;
+                            return index;}
+   else                    {return false;}
+</PRE><P>}
+</P><P>function buildIndex(content, index) {
+</P><PRE>   if (index === false)    {return false;}
+   var obj = checkFamily(content, index);
+   if (obj === false)      {return buildIndex(content, incrementIndex(index.slice(0, index.length-1)));}
+   else if (obj === true)  {index[index.length] = 0;
+                            return buildIndex(content, index);}
+   else                    {return index;}
+</PRE><P>}
+</P><P>function buildFamily(elem, content, index, data) {
+</P><PRE>   var newIndex, newElem;
+   var child = elem.children().eq(index[0]);
+   
+   if (!index.length) {
+       return {
+           readout: elem,
+           text: content.text
+       };
+   }
+   else if (child.length)  {newElem = child;}
+   else                    {newElem = content[index[0]].elem.appendTo(elem);}
+   
+   newIndex = jQuery.makeArray(index).slice(1, index.length);
+   return buildFamily(newElem, content[index[0]], newIndex, data);
+</PRE><P>}
+</P><P>function initElem(elem) {
+</P><PRE>   var data = elem.data(name);
+   jQuery(&quot;*&quot;, elem).empty();
+   elem.empty();
+   data.start = 0;
+   data.sum = 0;
+   if (data.cursorIndex) {cursorIndex = 0;}
+</PRE><P>}
+</P><P>function initChild(elem) {
+</P><PRE>   var data = elem.data(name);
+   data.start = data.sum;
+</PRE><P>}
+</P><P>function ticker(elem, threadIndex, data) {
+</P><PRE>   var index, letter;
+   
+   // Switch cursor
+   if (data.cursorIndex !== false)  {data.cursorIndex = indexify(data.cursorIndex+1, data.cursorList.length);
+                                     data.cursor.html(data.cursorList[data.cursorIndex]);}
+   else                             {data.cursor.html(data.cursorList);}
+</PRE><PRE>   // Add character to readout
+   index = data.charIndex - data.start;
+   letter = data.text.charAt(index-1);
+   data.cursor.before(letter);
+   
+   if (data.charIndex &gt;= data.sum) {
+       data.cursor.remove();
+       data.elemIndex = incrementIndex(data.elemIndex);
+       return tape(elem, threadIndex);
+   }
+   else {
+       return setTimeout(function(){
+           if (data.eventIndex == threadIndex) {
+               data.charIndex++;
+               ticker(elem, threadIndex, data);
+           }
+           threadIndex = null;
+       }, data.rate);   
+   }
+</PRE><P>}
+</P><P>function tape(elem, threadIndex) {
+</P><PRE>   var data = elem.data(name);
+</PRE><PRE>   if (data.eventIndex == threadIndex) {
+       
+       data.elemIndex = buildIndex(data.content, data.elemIndex);
+       //console.log('INDEX '+data.elemIndex);
+       
+       if (data.elemIndex === false) {
+           return setTimeout(function(){
+               if (data.running &amp;&amp; (data.eventIndex == threadIndex)) {
+                   advanceItem(elem);
+                   return tape(elem, threadIndex);
+               }
+               threadIndex = null;
+           }, data.delay);
+       }
+       else if (!data.charIndex)                       {initElem(elem);}
+       else                                            {initChild(elem);}
+</PRE><PRE>       jQuery.extend(data, buildFamily(elem, data.content, data.elemIndex));
+       data.sum = data.sum + data.text.length;
+       data.readout.append(data.cursor);
+       return ticker(elem, threadIndex, data);
+   }
+</PRE><P>}
+</P><P>// PLUGIN DEFINITION
+</P><P>jQuery.fn[name] = function(options) {
+</P><PRE>   // Add or overwrite options onto defaults
+   var o = jQuery.extend({}, jQuery.fn.ticker.defaults, options);
+</PRE><PRE>   // Iterate matched elements
+   return this.each(function() {
+</PRE><PRE>       var elem = jQuery(this);
+       
+       elem
+       .data(name, {
+           rate:           o.rate,
+           delay:          o.delay,
+           content:        makeFamily(elem),
+           cursor:         o.cursor,
+           cursorList:     o.cursorList,
+           cursorIndex:    (typeof(o.cursorList) == &quot;object&quot;) ? 0 : false,
+           nextItem:       0,
+           eventIndex:     0
+       })
+       .bind(&quot;stop&quot;, function(e){
+           var data = elem.data(name);
+           data.running = false;           
+       })
+       .bind(&quot;play&quot;, function(e){
+           var data = elem.data(name);
+           data.eventIndex++;
+           data.running = true;
+           data.nextItem = (e.item || data.nextItem);
+           advanceItem(elem);
+           tape(elem, data.eventIndex);
+       })
+       .bind(&quot;control&quot;, function(e){
+           var data = elem.data(name);
+           jQuery().extend(data, {
+               nextItem:   e.item,
+               rate:       e.rate,
+               delay:      e.delay
+           });
+       })
+       .children()
+       .remove();
+   });
+</PRE><P>};
+</P><P>// PLUGIN DEFAULTS
+</P><P>jQuery.fn[name].defaults = {
+</P><PRE>   rate:           40,         // 打字機出字的速度
+   delay:          2000,       // 自動播放時訊息與訊息中的間隔時間
+   cursorList:     &quot;_&quot;,        // 這裡不要動
+   cursor:         jQuery('&lt;span class=&quot;cursor&quot; /&gt;')
+</PRE><P>}
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:NCTU_Formosa/js/jquery.jticker.js">http://2014.igem.org/Team:NCTU_Formosa/js/jquery.jticker.js</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:NCTU_Formosa/js/jquery.jticker.js" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:NCTU_Formosa/js/jquery.jticker.js" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:NCTU_Formosa/js/jquery.jticker.js&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:NCTU_Formosa/js/jquery.jticker.js&amp;oldid=159772" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,57 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Cornell/javascripts/mycodraw
+From 2013.igem.org
+var P_TURN = 0.1; var P_SPLIT = 0.1; var P_TRAIL = 0.1; var P_DIE = 0.01; var mc = 0x44; var myc = [mc, mc, mc]; var invertFood = false; var invertMyc = true; var antialias = true; var l = 50; var trailStrength = 0.1; var bleedHue = 0; var overEat = 1;
+var w; var h; var food; var draw; var drawi; var drawc; var cx; var cy;
+var tips; var trls; var dirs; var trns; var spts; var jins; var tins; var trqs; var trcs; var trailCounts;
+var ts;
+function mycoDraw() {  var canvas = document.getElementById("mycodraw");
+if(navigator.userAgent.indexOf('Firefox') != -1 || navigator.userAgent.indexOf('MSIE') != -1)  {   canvas.style.display = "none";   document.getElementById("fallback").style.display = "block";   return;  }
+w = canvas.children[0].width;  h = canvas.children[0].height;  canvas.width = w;  canvas.height = h;  drawc = canvas.getContext("2d");  drawc.fillStyle = "#F2F2F2";  drawc.fillRect(0, 0, canvas.width, canvas.height);  drawi = drawc.getImageData(0, 0, w, h);  draw = drawi.data;  for(var d = 0; d < 32; d++)  {   var dt = 31-d;   for(var y = d; y < h; y = y + h - 2*d)   {    for(var x = d; x < (w-d); x++)    {     var i = (x + y*w)*4;     draw[i+3] = 256-(dt*dt/4);    }   }   for(var x = d; x < w; x = x + w - 2*d)   {    for(var y = d; y < (h-d); y++)    {     var i = (x + y*w)*4;     draw[i+3] = Math.min(draw[i+3], 256-(dt*dt/4));    }   }  }
+var src_canvas = document.createElement('canvas');  src_canvas.width = w;  src_canvas.height = h;  var foodc = src_canvas.getContext("2d");  foodc.drawImage(canvas.children[0], 0, 0);  food = foodc.getImageData(0, 0, w, h).data;
+cx = w/2;  cy = h/2;
+tips = new Array();  trls = new Array();  dirs = new Array();  trns = new Array();  spts = new Array();  jins = new Array();  tins = new Array();  trqs = new Array();  trcs = new Array();  trailCounts = new Array();  ts = new Array();
+for(var i = 0; i < 100; i++)  {   tips.push([Math.random()*w,Math.random()*h]);   trls.push(new Array(l));   dirs.push(Math.floor(Math.random()*360));   trns.push(Math.random() > 0.5);   spts.push(10);   trailCounts.push(0);  }  var speed = 100;  var limit = 0;  var bt = 0;  for(var t = 0; tips.length > 0 && limit < 1000; t = (l > 0 ? (t+1)%l : 0))  {   limit++;   ts.push(t);   ts.push(bt);   if(t == 0)    bt = (bt + 1)%10; //   updateTips();   setTimeout(updateTips, Math.floor(speed + 0.5));   speed = speed * 0.999;  } }
+function updateTips() {  var t = ts.shift();  var bt = ts.shift();
+for(var i = tips.length-1; i >= 0; i--)  {   var p = tips[i];   var trl = trls[i];   if(l > 0) trl[t] = p.slice(0);   spts[i] = spts[i] - 1;
+var vals = colorPoint(p, null, 1.0, dirs[i]); //the main strand-coloring call
+var out = vals[0];   if(out > 0.45) //turns the tips around if they hit the edge   { var dx = p[0] - cx;    var dy = p[1] - cy;    var theta = Math.floor(Math.abs((Math.atan(dy/dx)/Math.PI)*180));    if(dx > 0 == dy < 0)    { theta = 180*(dx > 0 ? 1 : 2) - theta; }    if(dx > 0 && dy > 0)    { theta = theta + 180; }    dirs[i] = theta;   }   var wp = vals[1];   var ref = [vals[2], vals[3], vals[4]];
+if(trailCounts[i] == 0 && Math.random() < P_TRAIL && vals[3] > 0.4 && vals[4] > 0.5 && ( Math.abs(vals[2] - bleedHue) < 0.05 ||      Math.abs(Math.abs(vals[2]-1.0) - bleedHue) < 0.05)    )   {    trailCounts[i] = l;    jins.push(0);    tins.push(t);    trqs.push(trls[i].slice(0));    trcs.push(ref);   }   else   { trailCounts[i] = Math.max(trailCounts[i]-1, 0); }
+if(Math.random() < P_TURN*wp*wp*wp*wp) { trns[i] = !trns[i]; }   if(Math.random() < (P_SPLIT*wp)/(parseFloat(tips.length)/50.0) && spts[i] < 1.0)   {    spts[i] = 10;    trls.push(trls[i].slice(0));    tips.push(p.slice(0));    dirs.push(dirs[i]);    trns.push(!trns[i]);    spts.push(10);    trailCounts.push(0);   }   if(out < 0.1 && Math.random() < P_DIE*(1.0-wp))   {    tips.splice(i, 1);    trls.splice(i, 1);    dirs.splice(i, 1);    trns.splice(i, 1);    spts.splice(i, 1);    trailCounts.splice(i, 1);   }   else   {    var turn = Math.floor(Math.random()*5);    dirs[i] = (dirs[i] + (trns[i] ? turn : -1*turn))%360;    var xd = wp*Math.cos(((dirs[i])/180.0)*Math.PI);    var yd = wp*Math.sin(((dirs[i])/180.0)*Math.PI);    tips[i] = [p[0] + xd, p[1] + yd];   }  }  if(l > 0) //trail-coloring  {   for(var i = tins.length - 1; i >= 0; i--)   {    colorPoint(trqs[i][(tins[i]+(l-1)-jins[i])%l], trcs[i], trailStrength*(1.0-((1.0*jins[i])/(1.0*l))), 0);    jins[i] = jins[i]+1;    if(jins[i] == l) //this trail is completed    {     jins.splice(i, 1);     tins.splice(i, 1);     trqs.splice(i, 1);     trcs.splice(i, 1);    }   }  }  drawc.putImageData(drawi, 0, 0); }
+function colorPoint(p, ref, strength, dir)                                                  {                                                                                                                             var rets = new Array(5);  if(p == null)   return rets;  var dx1 = p[0]-0.5;  var dx2 = p[0]+0.5;  var dy1 = p[1]-0.5;  var dy2 = p[1]+0.5;  var x1 = Math.floor(dx1 - (dx1 < 0 ? 1 : 0));  var x2 = Math.floor(dx2 - (dx2 < 0 ? 1 : 0));  var y1 = Math.floor(dy1 - (dy1 < 0 ? 1 : 0));  var y2 = Math.floor(dy2 - (dy2 < 0 ? 1 : 0));  var x = [x2, x1, x1, x2, x1-1, x1, x2, x2+1];  var y = [y2, y2, y1, y1, 0, 0, 0, 0];  var mx = ((x1+x2)/2.0) + 0.5;  var my = ((y1+y2)/2.0) + 0.5;  var p1 = (dx2-mx)*(dy2-my);  var p2 = (mx-dx1)*(dy2-my);  var p3 = (dx2-mx)*(my-dy1);  var p4 = (mx-dx1)*(my-dy1);  var pj = [p1, p2, p3, p4, 0, 0, 0, 0];  if((0 <= dir && dir < 90) || (180 <= dir && dir < 270))  {   y[4] = y2;   y[5] = y2+1;   y[6] = y1-1;   y[7] = y1;   pj[4] = p2*overEat;   pj[5] = p2*overEat;   pj[6] = p4*overEat;   pj[7] = p4*overEat;  }  else  {   y[4] = y1;   y[5] = y1-1;   y[6] = y2+1;   y[7] = y2;   pj[4] = p3*overEat;   pj[5] = p3*overEat;   pj[6] = p1*overEat;   pj[7] = p1*overEat;  }  if(!antialias)  {   var ps = new Array();   for(var j = 0; j < 4; j++)    ps.push(pj[j]);   ps.sort();   for(var j = 0; j < 4; j++)    if(pj[j] == ps[3])     pj[j] = 1.0;    else     pj[j] = 0.0;  }  var rgb = new Array();  var wd = 0.0;  var wp = 0.0;  if(ref == null)  {   rgb.push(getPixel(food, x2, y2));   rgb.push(getPixel(food, x1, y2));   rgb.push(getPixel(food, x1, y1));   rgb.push(getPixel(food, x2, y1));   var hue = 0;   var saturation = 0;   var brightness = 0;   for(var j = 0; j < 4; j++)   {    var hsb = RGBtoHSB(rgb[j]);    hue += hsb[0]*pj[j];    saturation += hsb[1]*pj[j];    brightness += hsb[2]*pj[j];   }
+rets[2] = hue;   rets[3] = saturation;   rets[4] = brightness;
+var dr = 0;   var dg = 0;   var db = 0;   for(var j = 0; j < 4; j++)   {    dr += pj[j]*parseFloat(Math.floor(rgb[j][0]));    dg += pj[j]*parseFloat(Math.floor(rgb[j][0]));    db += pj[j]*parseFloat(Math.floor(rgb[j][0]));   }   var r = parseFloat(Math.floor(dr));   var g = parseFloat(Math.floor(dg));   var b = parseFloat(Math.floor(db));
+wd = Math.min(256.0, parseFloat(Math.floor(((r + g + b)/3.0))) + 25.6);   wp = wd/256.0;
+if(false) wp = 1.0 - wp; //invertFood  }  var inside = new Array(8);  for(var j = 0; j < 8; j++)  {   inside[j] = x[j] < w && y[j] < h;   inside[j] = inside[j] && x[j] >= 0 && y[j] >= 0;
+if(inside[j])   {    if(ref == null) // if this is a strand-drawing call    {     var origColor = getPixel(food, x[j], y[j]);      var addColor = addRGB(origColor, myc, pj[j]);      var addedColor = subRGB(addColor, origColor, 1.0);      var imgd = getPixel(food, x[j], y[j]);      for(var k = 0; k < 3; k++) imgd[k] = addColor[k];      setPixel(food, imgd, x[j], y[j]);      if(j < 5)      {       imgd = getPixel(draw, x[j], y[j]);       var subbedColor = subRGB(imgd, addedColor, 1.0);       for(var k = 0; k < 3; k++) imgd[k] = subbedColor[k];       setPixel(draw, imgd, x[j], y[j]);      }    }    else //if this is a trail-drawing call    {     var imgd = getPixel(draw, x[j], y[j]);     var addedColor = addHSB(imgd, ref, strength);     for(var k = 0; k < 3; k++) imgd[k] = addedColor[k];     setPixel(draw, imgd, x[j], y[j]);    }   }  }  var out = 0;  for(var j = 0; j < 4; j++)   if(!inside[j]) out += 0.25;  rets[0] = out;  rets[1] = wp;  return rets;                                                                                                         }
+function addRGB(c1, c2, weight) {  return [Math.min(c1[0] + Math.floor(c2[0]*weight + 0.5), 0xFF),    Math.min(c1[1] + Math.floor(c2[1]*weight + 0.5), 0xFF),    Math.min(c1[2] + Math.floor(c2[2]*weight + 0.5), 0xFF)]; }
+function subRGB(c1, c2, weight) {  return [Math.min(c1[0] - Math.floor(c2[0]*weight + 0.5), 0xFF),    Math.min(c1[1] - Math.floor(c2[1]*weight + 0.5), 0xFF),    Math.min(c1[2] - Math.floor(c2[2]*weight + 0.5), 0xFF)]; }
+function addHSB(cd, cr, weight) {  hd = RGBtoHSB(cd);  hr = RGBtoHSB(cr);  return HSBtoRGB([bleedHue,      Math.max((hd[1] + hr[1]*weight)/(1.0+weight), hd[1]),      hd[2]]); }
+function RGBtoHSB(rgb) {  var r = rgb[0]/255;  var g = rgb[1]/255;  var b = rgb[2]/255;  var min = Math.min(r, g, b);  var max = Math.max(r, g, b);  var del = max - min;  var hsb = new Array(3);  hsb[2] = max;  if(del == 0)  {   hsb[0] = 0;   hsb[1] = 0;  }  else  {   hsb[1] = del/max;
+var delR = (((max - r)/6) + (del/2))/del   var delG = (((max - g)/6) + (del/2))/del   var delB = (((max - b)/6) + (del/2))/del
+if(r == max) hsb[0] = delB - delG;   else if(g == max) hsb[0] = (1/3) + delR - delB;   else if(b == max) hsb [0] = (2/3) + delG + delR;
+if(hsb[0] < 0) hsb[0] = hsb[0] + 1;   if(hsb[0] > 1) hsb[0] = hsb[0] - 1;  }  return hsb; }
+function HSBtoRGB(hsb) {  var h = hsb[0];  var s = hsb[1];  var v = hsb[2];
+var r = v;  var g = v;  var b = v;
+if(s != 0)  {   var sh = h*6;   if(sh == 6) sh = 0;   var hi = Math.floor(sh);   var v1 = v * (1 - s);   var v2 = v * (1 - s * (sh - hi));   var v3 = v * (1 - s * (1 - (sh - hi)));
+if  ( hi == 0 ) {r = v;  g = v3;  b = v1; }   else if ( hi == 1 ) {r = v2; g = v;  b = v1; }   else if ( hi == 2 ) {r = v1; g = v;  b = v3; }   else if ( hi == 3 ) {r = v1; g = v2;  b = v; }   else if ( hi == 4 ) {r = v3; g = v1;  b = v; }   else    {r = v;  g = v1;  b = v2; }  }  return [Math.floor(r*255), Math.floor(g*255), Math.floor(b*255)]; }
+function getPixel(data, x, y) {  var i = (x + y*w)*4;  return [data[i], data[i+1], data[i+2], data[i+3]]; }
+function setPixel(data, pix, x, y) {  var i = (x + y*w)*4;  for(var j = 0; j < 3; j++)   data[i+j] = pix[j]; }
+function pausecomp(ms) {  ms += new Date().getTime();  while (new Date() < ms){} }
+Retrieved from " http://2013.igem.org/Team:Cornell/javascripts/mycodraw "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

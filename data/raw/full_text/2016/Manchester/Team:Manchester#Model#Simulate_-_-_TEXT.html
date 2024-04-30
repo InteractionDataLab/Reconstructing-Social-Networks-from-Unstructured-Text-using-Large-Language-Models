@@ -1,0 +1,136 @@
+Team:Manchester/Model/Simulate
+Manchester iGEM 2016
+Team
+Team
+Attributions
+Project
+Overview
+Cell-free Mechanism
+Inducible Gene Switch
+Proof of Concept
+Notebook
+Protocol
+Safety
+Achievement
+Overview
+Judging Criteria
+Collaborations
+Parts
+Human Practices
+Overview
+Charities
+Industries
+Outreach
+Professional Bodies
+Integrated Practices
+Engagement
+HP Gold
+HP Silver
+Modelling
+Overview
+Modelling Integration
+Results
+Model Explorer
+Safety
+System Simulation
+Contents
+ODEs applicability
+Equations at equilibrium
+Concentration Time Graphs
+Solving ODEs
+Why we chose our 4 models
+Extension to ensemble modelling
+Constraints - Improving Data
+Constraints - Illustration of concept
+How our code works: Constraints
+ODE
+ODEs applicability to enzyme kinetics
+Ordinary Differential Equations (ODEs) are at the heart of modeling enzyme kinetics. They are equations describing the rate of change of a variable e.g. product concentration. To illustrate their applicability consider the following reaction scheme:
+Consider the rate of change of the enzyme complex (AEA). There are 3 possibilities:
+$$A+E_A \rightarrow AE_A $$ $$AE_A \rightarrow A + E_A$$ $$AE_A \rightarrow H + E_A$$
+It can break down into H and EA or it could break down into A and EA or it could be formed by A and EA. The first two possibilities will happen proportional to the amount of AEA. the latter possibility is proportional to the product of the concentrations as it’s proportional to the number of collisions.
+Given that the rate of change of AEA is the amount made minus the amount consumed. Therefore you get the following equation, where k's represent the probability of each process.  $$\dot{AE_A} = k_1[A][E_A]-(k_2+k_3)[AE_A]$$
+Equations at equilibrium
+The equations described above are called mass action equations and their rate constants are not widely documented. What are actually documented are constants that describe a reaction scheme under the assumption that all enzyme complexes are at steady state (the rate of change is zero).  In doing this you are able to remove enzyme and enzyme complex concentrations entirely from your equations. This is ideal as these concentrations are hard to measure in the lab.
+In most cases these equations have been derived and documented, especially when you note the equations are modular (you can chop the reaction scheme up into a series of smaller reaction schemes). If you have an abnormal reaction pathway you may need to derive it for yourself.
+Generating concentration time graphs
+The experimental data available to us was concentration time graphs, ODEs are perfect for creating these. We mainly used a MATLAB solver which uses a predictor-corrector method. We also have a nth order ODE solver written in C++ and that uses RK4.
+It will now be explained how knowing the rate of change of your concentrations can lead to concentration over time in practice via such methods. The Forward Euler method will be used to illustrate.
+You must know your starting concentrations, these are your “initial conditions” and represent your starting concentration of reagents (mM). The differential equation is used to find the rate of change at this point. You take a small step in time along this gradient. Then you recalculate the gradient at the new point before taking another small step and so on. See below figure for a visual representation.
+Figure representing the euler method the dots represent recalculation points
+A question we tried to answer is what reaction scheme is our cell free mechanism actually following. What follows are the possibilities we investigated for the reaction scheme. How to then predict which models are closest to the truth is explained in the network mechanism analysis.
+Before we proceed it’s important to know that our schemes are broken up in two steps.  Step 1 alcohol/glucose as a substrate with H2O2 as a product step 2 H2O2 as a substrate with ABTSoxidised as a product. The final selection is shown in the chart below where pairing from each column is suitable e.g. Reversible Michaelis-Menten and Bi-uni. The reason for these distinctions apart from saying "Irreversible Michaelis-Menten is too far removed from reality" is that they make no sense as the other step this will soon become clear.
+Type of reaction
+GOx reaction
+HRP reaction
+Irreversible Michaelis-Menten
+n
+n
+Reversible Michaelis-Menten
+y
+n
+Bi-Uni Michaelis-Menten
+n
+y
+Uni-Bi Michaelis-Menten
+y
+n
+Ping-Pong
+n
+y
+For all the equations and variable definitions follow this link, Note:
+$$\text{T} = \frac{\prod_{i=1}^nP_i}{\prod_{j=1}^kS_j}$$ $$\nu = \frac{dP}{dt}=\text{rate of change of product}$$
+Irreversible Michaelis-Menten.  This model has very poor physical relevance to our experiment so it's not discussed here. While useful for initial testing the irreversible nature easily hides properties of the system and this is highly undesirable.
+Reversible Michaelis-Menten:
+This reaction scheme is saying alcohol and AOx can combine to make H2O2 and that this reaction can happen reversibly and so some sort of equilibrium will occur.
+The mass action scheme is:
+As you can see the two schemes are very similar. We know that Ethanal is actually the second product in this reaction. Our question is, does it make a difference to the kinetics? This question can be assessed with the use of ensemble outputs and comparison to results using the Uni-Bi Michaelis-Menten rate law.
+Uni-Bi Michaelis-Menten:
+This reaction is saying that alcohol and AOx can combine to make H2O2 and Ethanal and that this can occur reversibly The mass action scheme is:
+This mechanism does include Ethanal. The order the substrates dissociate does matter, as you can imagine if Ethanal does break off first you will end up with a large amount of Ethanal forcing the back reaction, this would be alleviated if H2O2 could break off first as then H2O2 would be more available for the next use. In literature there are two equations for this, however the ordered case is the random order case in the limit some of its rates go to zero. We assumed that if this were the case the sampling of our system would account for this, sampling many tiny parameters, rather than us making that judgement ourselves.
+Bi-Uni Michaelis-Menten:
+This reaction is saying H2O2 and ABTS and HRP can combine to make ABTSoxidised with HRP acting as a catalyst.
+The mass action scheme is:
+This mechanism takes into account that there are two substrates, the same implementation was used as in Uni-Bi Michaelis-Menten. Physically it is saying there is some mechanism by which HRP acts directly as a catalyst in one step. Ping pong proposes something different.
+Ping-Pong:
+This reaction is saying H2O2 and HRP can combine oxidising HRP and reducing H2O2, The resultant H2O molecule takes no further place in this reaction but now the ABTS does. In this next step the reaction is saying ABTS and HRP* react reducing HRP and oxidising ABTS, The result is oxidised ABTS and HRP being regenerated as the catalyst for the first the stage again.
+The mass action scheme is:
+There is another alternative for a Ping-Pong scheme and that is HRP and ABTS combine first oxidising the ABTS and reducing the HRP. The H2O2 would come along later and reform the HRP catalyst. This wasn’t considered as you would expect to see a jump in ABTSoxidised at the start of your reaction and this wasn’t observed.
+Practical considerations
+Solving ODEs code
+As mentioned in the theory section MATLAB has its own solvers .We used ode45.
+The C++ code uses the 4th order Runge Kutta method. Its a nth order solver. Requiring n initial conditions for the n equations.
+Note that all the above assumes your using first order differential equations only. However if you have a nth order differential equation it can be written as a system of first order equations. This mathematical step will need to be done first.
+Discussion of why we chose our 4 models
+When modelling the cell free system of the AlcoPatch there are a bank of potential rate equations, each with a differing underlying mechanism, for each of the two steps.
+GOx reaction
+HRP reaction
+Irreversible Michaelis-Menten
+Irreversible Michaelis-Menten
+Reversible Michaelis-Menten
+Reversible Michaelis-Menten
+Random order Uni-Bi Michaelis-Menten
+Random order Bi-Uni Michaelis-Menten
+This many potential equations mean there are 9 different combinations of rate laws. More generally the this can be expressed as:  $$n_{permutation}=\prod_{i=1}^{n_{steps}}n_{equations,i}$$
+This can very quickly lead to huge numbers, a 5 step reaction pathway with 5 potential equations per step has 3125 possible combinations. The first step when building the reaction pathway is to eliminate any infeasible reaction schemes. Just removing one potential reaction per step reduces this number by 2101. A short amount of critical consideration to remove equations is much better spent than trying to use brute force on a larger number of equations.
+We chose four as they encapsulate the two questions we are asking, does Ethanal/GDL make a difference? And does the concentration of ABTS have an effect? These four are irreversible Michaelis-Menten both steps, reversible Michaelis-Menten both steps. Reversible Michaelis-Menten followed by Random order Bi-Uni and Random order Uni-Bi followed by Random order Bi-Uni. Ping pong was not used further due to time constraints.
+Extension to ensemble modelling
+Extending to ensemble modelling is simple. You simply loop through the process multiple times using different rate constants generated from your PDFs and save all the resulting concentration vs time arrays.
+Thermodynamic Constraints
+Improving data
+In some situations there are constraints (representing physical limitations) that can be applied to the parameters to further improve your data set. These constraints come from thermodynamic laws, one well known example is the Haldane relationship which relates kinetic parameters to the equilibrium constant.
+$$K_{eq} = \frac{V_f}{V_b} \frac{K_{m,b}}{K_{m,f}}$$
+For our system we also noticed the Kcat/Km ratio was constant.
+As such only parameters that were consistent with this ratio were used.
+In doing this kind of step you not only save computer time but also can provide a tighter prediction on what you would expect to observe if the model is accurate.
+Below you will find a figure showing the difference to the simulation using a data set consistent with our constraint (filtered) and a data set not filtered by a constraint.
+The above figures illustrate the difference in simulation results when applying constraints to your parameters. One is a concentration graph with no constraints applied, the other is a concentration graph with constraints applied. As you can see the constrained simulation produces less results that take much longer to reach steady state, this was consistent with experimental data.
+How constraint code works
+Link to github homepage
+The code works not exactly like you would expect from the theory explanation. Specifically the constraint is not applied to the original PDFs to create a new PDF consistent with the constraint, to do this you need to look into multivariate distributions. We actually took the much easier option of while running the simulation sampling from both Kcat and Km distributions (Kcat/Km is the constraint.) Only keeping values that are within 0.5 standard deviations of the Kcat/Km value  where standard deviation was calculated from the literature ratio. The Kcat/Km was drawn from literature data.
+The downside of our simpler method is that we waste computer time. As we only had one constraint this wasn’t much of a problem, however if you have many constraints you will have to look into multivariate techniques, or overcome the slowness with high performance computing (supercomputers).
+Illustration of concept
+Below some imaginary constraints are given by the 2 blue curves. Any point which falls between the 2 curves would be accepted (in green) and any point which lies outside these bounds is rejected (in red). This is repeated until enough suitable points are generated. So to run the required number of simulations.
+Sponsors
+Follow us on
+Email: uomigem16@gmail.com

@@ -1,0 +1,205 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Nevada_flexi-background_js_UniversityofNevada"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Nevada/flexi-background.js.UniversityofNevada">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Nevada/flexi-background.js.UniversityofNevada&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Nevada/flexi-background.js.UniversityofNevada&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Nevada/flexi-background.js.UniversityofNevada&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Nevada/flexi-background.js.UniversityofNevada" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Nevada/flexi-background.js.UniversityofNevada</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2014.igem.org</H3><P>/*
+File: flexi-background.js
+</P><P>Author:
+	Michael Bester &lt;<A href="http://kimili.com" class="external free" rel="nofollow">http://kimili.com</A>&gt;</P><P>About: Version
+	2.0
+</P><P>Description:
+	Javascript to set up full-screen flexible backgrounds in all widely used browsers.
+</P><P>License:
+	Copyright 2010, Michael Bester.
+	Released under the MIT license &lt;<A href="http://opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://opensource.org/licenses/mit-license.php</A>&gt;</P><UL><LI>/
+</LI></UL><P>(function(){
+</P><P>	/**
+		CONFIGURATION:
+		Define the size of our background image
+	*/
+	var bgImageSize = {
+		width	: 1200,
+		height	: 750
+	};
+</P><P>	/*	END CONFIGURATION */
+</P><P>	/**
+		Detect support for CSS background-size. No need for any more javascript if background-size is supported.
+		Property detection adapted from the most excellent Modernizr &lt;<A href="http://modernizr.com" class="external free" rel="nofollow">http://modernizr.com</A>&gt;
+	*/
+	if ((function(){
+		var el 		= document.createElement('div'),
+			bs 		= 'backgroundSize',
+			ubs		= bs.charAt(0).toUpperCase() + bs.substr(1),
+			props	= [bs, 'Webkit' + ubs, 'Moz' + ubs, 'O' + ubs];
+</P><P>		for ( var i in props ) {
+			if ( el.style[props[i]] !== undefined ) {
+				return true;
+			}
+		}
+		return false;
+	}())) {
+		return;
+	};
+</P><P>	/**
+		We also want to leave IE6 and below out in the cold with this
+	*/
+	if ( false /*@cc_on || @_jscript_version &lt; 5.7 @*/ ) {
+		return;
+	}
+</P><P>	/**
+		If we've gotten here, we don't have background-size support,
+		so we'll have to mimic it with Javascript.
+		Let's set up some variables
+	*/
+	var elBody,
+		imageID		= 'expando',
+		tallClass	= 'tall',
+		wideClass	= 'wide',
+		elBgImage, elWrapper, img, url, imgAR,
+</P><P>		/**
+			Since we're not relying on a library, we'll need some utility functions
+			First, basic cross browser event adders
+		*/
+		addEvent = function(el, evnt, func) {
+			if (el.addEventListener) {
+				el.addEventListener(evnt, func, false);
+			} else if (el.attachEvent) {
+				return el.attachEvent(&quot;on&quot; + evnt, func);
+			} else {
+				el['on' + evnt] = func;
+			}
+		},
+</P><P>		domLoaded = function(callback) {
+			/* Internet Explorer */
+			/*@cc_on
+			@if (@_win32 || @_win64)
+			document.write('&lt;script id=&quot;ieScriptLoad&quot; defer src=&quot;//:&quot;&gt;&lt;\/script&gt;');
+			document.getElementById('ieScriptLoad').onreadystatechange = function() {
+				if (this.readyState == 'complete') {
+					callback();
+				}
+			};
+			@end @*/
+			/* Mozilla, Chrome, Opera */
+			if (document.addEventListener) {
+				document.addEventListener('DOMContentLoaded', callback, false);
+			}
+			/* Safari, iCab, Konqueror */
+			if (/KHTML|WebKit|iCab/i.test(navigator.userAgent)) {
+				var DOMLoadTimer = setInterval(function () {
+					if (/loaded|complete/i.test(document.readyState)) {
+						callback();
+						clearInterval(DOMLoadTimer);
+					}
+				}, 10);
+			}
+		},
+</P><P>		/**
+		 	Next, a way to properly get the computed style of an element
+			Courtesy of Robert Nyman - <A href="http://robertnyman.com/2006/04/24/get-the-rendered-style-of-an-element/" class="external free" rel="nofollow">http://robertnyman.com/2006/04/24/get-the-rendered-style-of-an-element/</A>
+		*/
+		getStyle = function(el, css){
+			var strValue = &quot;&quot;;
+			if (document.defaultView &amp;&amp; document.defaultView.getComputedStyle){
+				strValue = document.defaultView.getComputedStyle(el, &quot;&quot;).getPropertyValue(css);
+			}
+			else if (el.currentStyle){
+				css = css.replace(/\-(\w)/g, function (strMatch, p1){
+					return p1.toUpperCase();
+				});
+				strValue = el.currentStyle[css];
+			}
+			return strValue;
+		},
+</P><P>		/**
+			Finally, some element class manipulation functions
+		*/
+		classRegex = function(cls) {
+			return new RegExp('(\\s|^)'+cls+'(\\s|$)');
+		},
+</P><P>		hasClass = function(el, cls) {
+			return el.className.match(classRegex(cls));
+		},
+</P><P>		addClass = function(el, cls) {
+			if ( ! hasClass(el, cls)) {
+				el.className += ' ' + cls;
+			}
+		},
+</P><P>		removeClass = function(el, cls) {
+			if (hasClass(el, cls)) {
+				el.className = el.className.replace(classRegex(cls), <I>);</I>
+			}
+		},
+</P><P>		/*
+			Now we can move on with the core functionality of Flexibackground
+		*/
+		initialize = function() {
+</P><P>			// No need for any of this if the screen isn't bigger than the background image
+			if (screen.availWidth &lt;= bgImageSize.width &amp;&amp; screen.availHeight &lt;= bgImageSize.height) {
+				return;
+			}
+</P><P>			// Grab elements we'll reference throughout
+			elBody		= document.getElementsByTagName('body')[0];
+</P><P>			// Parse out the URL of the background image and drop out if we don't have one
+			url = getStyle(elBody, 'backgroundImage').replace(/^url\((&quot;|')?|(&quot;|')?\);?$/g, <I>) || false;</I>
+			if (!url || url === &quot;none&quot; || url === &quot;&quot;) {
+				return;
+			}
+</P><P>			// Get the aspect ratio of the image
+			imgAR = bgImageSize.width / bgImageSize.height;
+</P><P>			// Create a new image element
+			elBgImage 		= document.createElement('img');
+			elBgImage.src 	= url;
+			elBgImage.id 	= imageID;
+</P><P>			// Create a wrapper and append the image to it.
+			// The wrapper ensures we don't get scrollbars.
+			elWrapper = document.createElement('div');
+			elWrapper.style.overflow	= 'hidden';
+			elWrapper.style.width	= '100%';
+			elWrapper.style.height	= '100%';
+			elWrapper.style.zIndex	= '-1';
+</P><P>			elWrapper.appendChild(elBgImage);
+			elBody.appendChild(elWrapper);
+</P><P>			// Fix the wrapper into position
+			elWrapper.style.position	= 'fixed';
+			elWrapper.style.top		= 0;
+			elWrapper.style.left		= 0;
+</P><P>			// Set up a resize listener to add/remove classes from the body 
+			addEvent(window, 'resize', resizeAction);
+</P><P>			// Set it up by triggering a resize
+			resizeAction();
+</P><P>		},
+</P><P>		/**
+			Set up the action that happens on resize
+		*/
+		resizeAction = function() {
+			var win = {
+				height	: window.innerHeight || document.documentElement.clientHeight,
+				width	: window.innerWidth || document.documentElement.clientWidth
+			},
+</P><P>			// The current aspect ratio of the window
+			winAR = win.width / win.height;
+</P><P>			// Determine if we need to show the image and whether it needs to stretch tall or wide
+			if (win.width &lt; bgImageSize.width &amp;&amp; win.height &lt; bgImageSize.height) {
+				removeClass(elBody, wideClass);
+				removeClass(elBody, tallClass);
+			} else if (winAR &lt; imgAR) {
+				removeClass(elBody, wideClass);
+				addClass(elBody, tallClass);
+				// Center the image
+				elBgImage.style.left = Math.min(((win.width - bgImageSize.width) / 2), 0);
+			} else if (winAR &gt; imgAR) {
+				addClass(elBody, wideClass);
+				removeClass(elBody, tallClass);
+				elBgImage.style.left = 0;
+			}
+		};
+</P><P>	// When the document is ready, run this thing.
+	domLoaded(initialize);
+</P><P>})();
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2014.igem.org/Team:Nevada/flexi-background.js.UniversityofNevada">http://2014.igem.org/Team:Nevada/flexi-background.js.UniversityofNevada</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Nevada/flexi-background.js.UniversityofNevada" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Nevada/flexi-background.js.UniversityofNevada" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Nevada/flexi-background.js.UniversityofNevada&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Nevada/flexi-background.js.UniversityofNevada&amp;oldid=37575" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2014.igem.org:Privacy_policy" title="2014.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2014.igem.org:General_disclaimer" title="2014.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

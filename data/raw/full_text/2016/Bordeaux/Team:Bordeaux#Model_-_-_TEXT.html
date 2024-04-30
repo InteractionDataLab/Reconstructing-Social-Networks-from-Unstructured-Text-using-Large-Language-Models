@@ -1,0 +1,127 @@
+Team:Bordeaux/Model
+Sleep with EpiC elegans
+HOME
+TEAM
+Meet us!
+Collaborations
+PROJECT
+Description
+Safety
+LABWORK
+Experiments
+Results
+Notebook
+PARTS
+BIOINFO WORK
+Model
+Software
+HUMAN PRACTICES
+Human Practices Summary
+Ethical aspects on CRISPR-CAS9
+Popularization and Education
+Integrated Practices
+Public Engagement
+PRESS
+GOALS
+Achievements
+Attributions
+The multi-agent model
+The definition
+Why have we chosen this model?
+Overview
+Our programming choices
+Creation of the environment and the agents
+How does it work?
+Bacterial growth
+Plasmid loss
+Assessment
+Our actual version
+Prospects
+Computational modelling has often been sought to solve and predict biological phenomena, and it has notably been applied to bacterial behaviour simulation.   As it is now, almost all iGEM teams use bacteria to engineer their bio-bricks and to make each year even more wonderful projects for the iGEM community. However, we also all have to keep in mind the safety issues, and confine our bacteria properly to avoid letting them spread in the laboratory.
+How could we estimate a risk of contamination?
+It was while considering this matter that the iGEM Bordeaux Team developed a simulation model aiming to :
+estimate the number of bacteria that could proliferate on a lab bench.
+see what percentage of these bacteria were able to maintain their plasmid.
+This work will be developed in different sections. We will first justify our approach of the simulation, then describe our model and explain bacterial growth and plasmid transmission. We will finally make an assessment of our model, explain our approach to validate it and give our perspectives for this project.
+1.  Multi-agent modelling
+The definition
+In informatics, a multi-agent system aims to represent intelligent agents which interact with one another and with a specific environment. In our case, our agents are bacteria, dispersed randomly on a grid (our environment).                The bacteria are submitted to successive actions such as growth or division, and have specific attributes such as a an individual cell mass, or more importantly a plasmid.               Our model aims to provide friendly users with information about bacterial growth. If you wish to evaluate a risk of contamination, or to experiment with parameters to characterise bacterial plasmid transfer or plasmid maintenance, you are welcome to test it out!
+Why have we chosen this model?
+As stated before, our modelling choice was to implement a multi-agent systems. Multi-agent modelling is frequently used to model biological phenomena. It stands out against continuous mathematical modelling, which is often used for predictions at a population level [1] .
+Multi-agent modelling offers different advantages :
+Stochasticity : contrary to mathematical deterministic equations, it is much easier to induce randomness in multi-agents models.
+Heterogeneity within a population.
+Interaction between the different agents
+2. Overview
+Our programming choices
+Our main concern in this project was the rapidity of the simulation. Indeed, bacteria can quickly develop, and our processor may have to face a horde of ever-growing agents. Hence, we chose to implement our simulation in C++.
+Our program's dependencies are detailed in the software section .
+Creating the agents and environment
+Initially, an empty lattice is created, containing n number of squares. This number is determined by the height and length of the lattice provided by the user, and set by default at 1000x1000. A square is identified by its id in the lattice and can contain bacteria. If there is more than one bacterium, the bacteria are  piled up in the square, with of course a limit to the piling,also set by the user.
+The bacterial agents are then created, and randomly set in different squares. Each bacterial cell possesses certain characteristics such as a mass, a volume,  an identifier of the square the cell is in etc.
+Figure 1: Grid with randomly placed bacteria
+3. How does it work?
+Bacterial growth
+This model can de divided into two main parts : the growth of the bacterial population and the transmission and maintenance of plasmids in the population.
+For the growth of our bacterium agents, we tried two different implementations. The first one is an adaptation of bacterial growth implemented for the first time in Bacsim [2] and based on Donachie and Robison model for cell division. The second is adapted from the Indisim methodology [3] for bacterial growth simulation.
+Bacterial growth based on Donachie's model
+Figure 1 shows the schedule of activities bacteria repeat once every time-step and will serve to further explain them.
+Figure 2: Flowchart with the bacterial growth steps
+Donachie's model is based on the dependence of the median cell's volume on growth rate during exponential growth. Each cell volume depends on the cell's growth rate, which itself depends on substrate uptake and metabolism. So the formula we used for the volume is V = Vμ∗2μ⁄ln(2) where μ is the growth rate updated at every step.
+Hence, after substrate uptake and metabolism, the growth rate of each bacterium is updated, and its new volume is calculated.
+At this point, if the bacterium volume falls below a minimum volume, the bacterium dies and the agent is deleted from the lattice.
+On the other side, if the bacterial volume becomes superior to the volume at division, the bacterium divides in one of the unoccupied squares of its "division neighbourhood" if there are any. For example, in figure 2 you can see a representation of one part of the environment/grid with some bacteria in it. The possible squares where the central bacterial cell can give a daughter cell are marked in red.
+Figure 3: Possible positions for the daughter cell
+Bacterial growth based on Indisim methodology
+Contrary to the precedent model which is based on the cell volume dependence to its growth rate, this model takes into account biomass growth dependence.
+Bacterial growth, as modelled by Indisim, can be divided into different steps :
+nutrient uptake
+metabolism
+eventual reproduction
+eventual death
+For nutrient uptake, a bacterium can take nutrients from the square where it is located. Two factors are then taken into consideration : the nutrients capability to reach the cell surface and the cell's ability to metabolize those nutrients.
+Nutrient are consumed in accordance to the following formula :  U(max) = Z(cmα), where :
+U(max) is the maximum number of nutrient particles that can be taken by the bacterium.
+Z is a random variable with mean Umax and standard deviation σ.
+c is a constant
+m is the mass of the bacterium
+If U ≥ kS , where k is the percentage of nutrients that will actually be consummed by the cell ,then the actual uptake by the bacterium is U = kS. On the other hand, if kS < U then only S − U nutrient particles remain in the square.
+The nutrients absorbed are then metabolized into biomass. For modelling metabolism, we use a metabolism constant, Y, which represents the rate of synthetized biomass units per metabolised nutrient particles. After metabolism, the bacterium grows, and the new bacterial mass is m+B, where B = UY.
+The reproduction step in Indisim differs from the precedent one, as the bacterium won't divide instantly when reaching a specific mass. There will be a time-lapse before the bacterium can divide.
+For our simulations, we set the default parameters found in the Indisim simulation on the growth of bacteria on agar plates, but these parameters can be modified by the user.
+Plasmid loss
+Bacterial plasmids are extra-chromosomal genetic elements that can be transferred from one bacterium to another.  We chose with this model to implement the horizontal and vertical transfer of genes between these bacteria.
+The vertical transfer of genes is the transmission of a plasmid from a cell to its daughter cell after division. During the division, it is assumed that the daughter bacterium can fail to receive the plasmid with a given probability p : this phenomenon is known as segregative loss.  As the probability is directly taken from data from the scientific press [4] , and as its source doesn't take into account the copy number of plasmid, we also chose not to.
+Horizontal gene transfer, also known as conjugation is the direct transfer of genetic material between two bacterium located near each other. Conjugation happens for each plasmid-bearing cell at each time-step. If there is a plasmid free cell in a neighbour square, conjugation can occurs at a rate also taken from press to fit experimental data. It is also considered as an instantaneous event, thus being a simplification of the real process.
+Figure 4: Segregation loss
+Figure 5: Conjugation at rate c
+We also consider plasmid cost for a bacterium. Indeed, when there is no antibiotic in the environment, plasmid-free bacteria have an advantage over plasmid-bearing ones.
+4.  Assessment
+Our actual version
+Our actual version implements in a simple way bacterial growth and plasmid transmission and loss. A graphical interface allows the user to set different parameters and to run a simulation which outputs a figure plotting the number of bacteria as a function of time (as you can see below):
+Figure 6: Simulation using the Indisim-method based on bacterial growth. Parameters were : simulation time = 600 min, time-step = 4.19 min, initial number of bacteria = 10000. Others parameters were the ones set by default.
+Furthermore, we also tried to put to the test the data given by the simulation. We used for that experimental data [5] of different densities of donor bacteria and recipients on agar slides at stationnary phase in function of initial cell densities.
+Unfortunately, the figures obtained were not conclusive. We did not obtain similar curves between simulation and experimental data. This could be due to two main facts :
+first, the simulation time chosen (10 hours ) was not important enough to see likeness between the two sets of data.
+second, we set our bacteria into two states ( donors or recipients ) and didn't take into account the « transconjugant » state.
+A bacterium becomes a transconjugant when it acquires a plasmid. Its properties are then different from a donor bacterium.
+Prospects
+As for now, we created a simple multi-agent model for bacterial growth and interactions. This model can be used as a base to more specific simulations on those subjects. Nevertheless, if we could continue this project we would tackle a few issues, such as :
+Create a transconjugant state and its repercussions.
+Create a plasmid agent with its own properties, that would allow to test more specific cases.
+Optimize the memory allocation to obtain results more quickly.
+We hope that this project can help future Igem teams to develop bacterial simulation models! If one of you fellow igemer end up on this page (and if you are interested by this project), you are welcome to contact us!
+Our code can be found on github , and installation instructions on the software section .
+We would also like to thanks fellow iGEM teams for helping us on our model, and providing us with the 3D illustrations! You can find their wikis below :
+Thank you iGEM Insa-Lyon, iGEM Aix-Marseille and iGEM Toulouse!
+References
+A first approach to individual-based modeling of the bacterial conjugation dynamics. , Prestes Garcia, Antonio (2011), Thesis (Master thesis), Facultad de Informática (UPM).
+BacSim, a simulator for individual-based modelling of bacterial colony growth, Kreft JU, Booth G, Wimpenny JW - Microbiology (Volume 144, pp. 3275-87, December 1998)
+INDISIM, an individual-based discrete simulation model to study bacterial cultures , Ginovart M, López D, Valls J. - Theor Biol. (Volume 214, pp. 305-19, January 2002)
+Modelling the spatial dynamics of plasmid transfer and persistence. , Krone SM1, Lu R, Fox R, Suzuki H, Top EM.- Microbiology 2007 Aug;153(Pt 8):2803-16.
+Dynamics of plasmid transfer on surfaces , Simonsen L. - J Gen Microbiol. (Volume 136(6), pp. 1001-1007, June 1990)
+How to find us ?
+Feel free to email us to provide some feedback on our project, have some information on the team and our work, or to just say hello !
+Facebook Twitter Wordpress
+Mail: igembdx@gmail.com
+Copyright © iGEM Bordeaux 2016

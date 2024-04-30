@@ -1,0 +1,826 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Manchester_Resources_pagePiling_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Manchester/Resources/pagePiling.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* pagepiling.js 1.5.4
+*
+* <A rel="nofollow" class="external free" href="https://github.com/alvarotrigo/pagePiling.js">https://github.com/alvarotrigo/pagePiling.js</A>
+* @license MIT licensed
+*
+* Copyright (C) 2016 alvarotrigo.com - A project by Alvaro Trigo
+*/
+</PRE><P>(function ($, document, window, undefined) {
+</P><PRE>   'use strict';
+</PRE><PRE>   $.fn.pagepiling = function (custom) {
+       var PP = $.fn.pagepiling;
+       var container = $(this);
+       var lastScrolledDestiny;
+       var lastAnimation = 0;
+       var isTouch = (('ontouchstart' in window) || (navigator.msMaxTouchPoints &gt; 0) || (navigator.maxTouchPoints));
+       var touchStartY = 0, touchStartX = 0, touchEndY = 0, touchEndX = 0;
+       var scrollings = [];
+</PRE><PRE>       //Defines the delay to take place before being able to scroll to the next section
+       //BE CAREFUL! Not recommened to change it under 400 for a good behavior in laptops and
+       //Apple devices (laptops, mouses...)
+       var scrollDelay = 600;
+</PRE><PRE>       // Create some defaults, extending them with any options that were provided
+       var options = $.extend(true, {
+           direction: 'vertical',
+           menu: null,
+           verticalCentered: true,
+           sectionsColor: [],
+           anchors: [],
+           scrollingSpeed: 700,
+           easing: 'easeInQuart',
+           loopBottom: false,
+           loopTop: false,
+           css3: true,
+           navigation: {
+               textColor: '#000',
+               bulletsColor: '#000',
+               position: 'right',
+               tooltips: []
+           },
+           normalScrollElements: null,
+           normalScrollElementTouchThreshold: 5,
+           touchSensitivity: 5,
+           keyboardScrolling: true,
+           sectionSelector: '.section',
+           animateAnchor: false,
+</PRE><PRE>           //events
+           afterLoad: null,
+           onLeave: null,
+           afterRender: null
+       }, custom);
+</PRE><PRE>       //easeInQuart animation included in the plugin
+       $.extend($.easing,{ easeInQuart: function (x, t, b, c, d) { return c*(t/=d)*t*t*t + b; }});
+</PRE><PRE>       /**
+       * Defines the scrolling speed
+       */
+       PP.setScrollingSpeed = function(value){
+          options.scrollingSpeed = value;
+       };
+</PRE><PRE>       /**
+       * Adds or remove the possiblity of scrolling through sections by using the mouse wheel or the trackpad.
+       */
+       PP.setMouseWheelScrolling = function (value){
+           if(value){
+               addMouseWheelHandler();
+           }else{
+               removeMouseWheelHandler();
+           }
+       };
+</PRE><PRE>       /**
+       * Adds or remove the possiblity of scrolling through sections by using the mouse wheel/trackpad or touch gestures.
+       */
+       PP.setAllowScrolling = function (value){
+           if(value){
+               PP.setMouseWheelScrolling(true);
+               addTouchHandler();
+           }else{
+               PP.setMouseWheelScrolling(false);
+               removeTouchHandler();
+           }
+       };
+</PRE><PRE>       /**
+       * Adds or remove the possiblity of scrolling through sections by using the keyboard arrow keys
+       */
+       PP.setKeyboardScrolling = function (value){
+           options.keyboardScrolling = value;
+       };
+</PRE><PRE>       /**
+       * Moves sectio up
+       */
+       PP.moveSectionUp = function () {
+           var prev = $('.pp-section.active').prev('.pp-section');
+</PRE><PRE>           //looping to the bottom if there's no more sections above
+           if (!prev.length &amp;&amp; options.loopTop) {
+               prev = $('.pp-section').last();
+           }
+</PRE><PRE>           if (prev.length) {
+               scrollPage(prev);
+           }
+       };
+</PRE><PRE>       /**
+       * Moves sectio down
+       */
+       PP.moveSectionDown = function () {
+           var next = $('.pp-section.active').next('.pp-section');
+</PRE><PRE>           //looping to the top if there's no more sections below
+           if(!next.length &amp;&amp; options.loopBottom){
+               next = $('.pp-section').first();
+           }
+</PRE><PRE>           if (next.length) {
+               scrollPage(next);
+           }
+       };
+</PRE><PRE>       /**
+       * Moves the site to the given anchor or index
+       */
+       PP.moveTo = function (section){
+           var destiny = <I>;</I></PRE><PRE>           if(isNaN(section)){
+               destiny = $(document).find('[data-anchor=&quot;'+section+'&quot;]');
+           }else{
+               destiny = $('.pp-section').eq( (section -1) );
+           }
+</PRE><PRE>           if(destiny.length &gt; 0){
+               scrollPage(destiny);
+           }
+       };
+</PRE><PRE>       //adding internal class names to void problem with common ones
+       $(options.sectionSelector).each(function(){
+           $(this).addClass('pp-section');
+       });
+</PRE><PRE>       //if css3 is not supported, it will use jQuery animations
+       if(options.css3){
+           options.css3 = support3d();
+       }
+</PRE><PRE>       $(container).css({
+           'overflow' : 'hidden',
+           '-ms-touch-action': 'none',  /* Touch detection for Windows 8 */
+           'touch-action': 'none'       /* IE 11 on Windows Phone 8.1*/
+       });
+</PRE><PRE>       //init
+       PP.setAllowScrolling(true);
+</PRE><PRE>       //creating the navigation dots
+       if (!$.isEmptyObject(options.navigation) ) {
+           addVerticalNavigation();
+       }
+</PRE><PRE>        var zIndex = $('.pp-section').length;
+</PRE><PRE>       $('.pp-section').each(function (index) {
+           $(this).data('data-index', index);
+           $(this).css('z-index', zIndex);
+</PRE><PRE>           //if no active section is defined, the 1st one will be the default one
+           if (!index &amp;&amp; $('.pp-section.active').length === 0) {
+               $(this).addClass('active');
+           }
+</PRE><PRE>           if (typeof options.anchors[index] !== 'undefined') {
+               $(this).attr('data-anchor', options.anchors[index]);
+           }
+</PRE><PRE>           if (typeof options.sectionsColor[index] !== 'undefined') {
+               $(this).css('background-color', options.sectionsColor[index]);
+           }
+</PRE><PRE>           if(options.verticalCentered &amp;&amp; !$(this).hasClass('pp-scrollable')){
+               addTableClass($(this));
+           }
+</PRE><PRE>           zIndex = zIndex - 1;
+       }).promise().done(function(){
+           //vertical centered of the navigation + first bullet active
+           if(options.navigation){
+               $('#pp-nav').css('margin-top', '-' + ($('#pp-nav').height()/2) + 'px');
+               $('#pp-nav').find('li').eq($('.pp-section.active').index('.pp-section')).find('a').addClass('active');
+           }
+</PRE><PRE>           $(window).on('load', function() {
+               scrollToAnchor();
+           });
+</PRE><PRE>           $.isFunction( options.afterRender ) &amp;&amp; options.afterRender.call( this);
+       });
+</PRE><PRE>       /**
+       * Enables vertical centering by wrapping the content and the use of table and table-cell
+       */
+       function addTableClass(element){
+           element.addClass('pp-table').wrapInner('&lt;div class=&quot;pp-tableCell&quot; style=&quot;height:100%&quot; /&gt;');
+       }
+</PRE><PRE>      /**
+       * Retuns `up` or `down` depending on the scrolling movement to reach its destination
+       * from the current section.
+       */
+       function getYmovement(destiny){
+           var fromIndex = $('.pp-section.active').index('.pp-section');
+           var toIndex = destiny.index('.pp-section');
+</PRE><PRE>           if(fromIndex &gt; toIndex){
+               return 'up';
+           }
+           return 'down';
+       }
+</PRE><PRE>       /**
+       * Scrolls the page to the given destination
+       */
+       function scrollPage(destination, animated) {
+           var v ={
+               destination: destination,
+               animated: animated,
+               activeSection: $('.pp-section.active'),
+               anchorLink: destination.data('anchor'),
+               sectionIndex: destination.index('.pp-section'),
+               toMove: destination,
+               yMovement: getYmovement(destination),
+               leavingSection: $('.pp-section.active').index('.pp-section') + 1
+           };
+</PRE><PRE>           //quiting when activeSection is the target element
+           if(v.activeSection.is(destination)){ return; }
+</PRE><PRE>           if(typeof v.animated === 'undefined'){
+               v.animated = true;
+           }
+</PRE><PRE>           if(typeof v.anchorLink !== 'undefined'){
+               setURLHash(v.anchorLink, v.sectionIndex);
+           }
+</PRE><PRE>           v.destination.addClass('active').siblings().removeClass('active');
+</PRE><PRE>           v.sectionsToMove = getSectionsToMove(v);
+</PRE><PRE>           //scrolling down (moving sections up making them disappear)
+           if (v.yMovement === 'down') {
+               v.translate3d = getTranslate3d();
+               v.scrolling = '-100%';
+</PRE><PRE>               if(!options.css3){
+                   v.sectionsToMove.each(function(index){
+                       if(index != v.activeSection.index('.pp-section')){
+                           $(this).css(getScrollProp(v.scrolling));
+                       }
+                   });
+               }
+</PRE><PRE>               v.animateSection = v.activeSection;
+           }
+</PRE><PRE>           //scrolling up (moving section down to the viewport)
+           else {
+               v.translate3d = 'translate3d(0px, 0px, 0px)';
+               v.scrolling = '0';
+</PRE><PRE>               v.animateSection = destination;
+           }
+</PRE><PRE>           $.isFunction(options.onLeave) &amp;&amp; options.onLeave.call(this, v.leavingSection, (v.sectionIndex + 1), v.yMovement);
+</PRE><PRE>           performMovement(v);
+</PRE><PRE>           activateMenuElement(v.anchorLink);
+           activateNavDots(v.anchorLink, v.sectionIndex);
+           lastScrolledDestiny = v.anchorLink;
+</PRE><PRE>           var timeNow = new Date().getTime();
+           lastAnimation = timeNow;
+       }
+</PRE><PRE>       /**
+       * Performs the movement (by CSS3 or by jQuery)
+       */
+       function performMovement(v){
+           if(options.css3){
+               transformContainer(v.animateSection, v.translate3d, v.animated);
+</PRE><PRE>               v.sectionsToMove.each(function(){
+                   transformContainer($(this), v.translate3d, v.animated);
+               });
+</PRE><PRE>               setTimeout(function () {
+                   afterSectionLoads(v);
+               }, options.scrollingSpeed);
+           }else{
+               v.scrollOptions = getScrollProp(v.scrolling);
+</PRE><PRE>               if(v.animated){
+                   v.animateSection.animate(
+                       v.scrollOptions,
+                   options.scrollingSpeed, options.easing, function () {
+                       readjustSections(v);
+                       afterSectionLoads(v);
+                   });
+               }else{
+                   v.animateSection.css(getScrollProp(v.scrolling));
+                   setTimeout(function(){
+                       readjustSections(v);
+                       afterSectionLoads(v);
+                   },400);
+               }
+           }
+       }
+</PRE><PRE>       /**
+       * Actions to execute after a secion is loaded
+       */
+       function afterSectionLoads(v){
+           //callback (afterLoad) if the site is not just resizing and readjusting the slides
+           $.isFunction(options.afterLoad) &amp;&amp; options.afterLoad.call(this, v.anchorLink, (v.sectionIndex + 1));
+       }
+</PRE><PRE>       function getSectionsToMove(v){
+           var sectionToMove;
+</PRE><PRE>           if(v.yMovement === 'down'){
+               sectionToMove = $('.pp-section').map(function(index){
+                   if (index &lt; v.destination.index('.pp-section')){
+                       return $(this);
+                   }
+               });
+           }else{
+               sectionToMove = $('.pp-section').map(function(index){
+                   if (index &gt; v.destination.index('.pp-section')){
+                       return $(this);
+                   }
+               });
+           }
+</PRE><PRE>           return sectionToMove;
+       }
+</PRE><PRE>       /**
+       * Returns the sections to re-adjust in the background after the section loads.
+       */
+       function readjustSections(v){
+           if(v.yMovement === 'up'){
+               v.sectionsToMove.each(function(index){
+                   $(this).css(getScrollProp(v.scrolling));
+               });
+           }
+       }
+</PRE><PRE>       /**
+       * Gets the property used to create the scrolling effect when using jQuery animations
+       * depending on the plugin direction option.
+       */
+       function getScrollProp(propertyValue){
+           if(options.direction === 'vertical'){
+               return {'top': propertyValue};
+           }
+           return {'left': propertyValue};
+       }
+</PRE><PRE>       /**
+       * Scrolls the site without anymations (usually used in the background without the user noticing it)
+       */
+       function silentScroll(section, offset){
+           if (options.css3) {
+               transformContainer(section, getTranslate3d(), false);
+           }
+           else{
+               section.css(getScrollProp(offset));
+           }
+       }
+</PRE><PRE>       /**
+       * Sets the URL hash for a section with slides
+       */
+       function setURLHash(anchorLink, sectionIndex){
+           if(options.anchors.length){
+               location.hash = anchorLink;
+</PRE><PRE>               setBodyClass(location.hash);
+           }else{
+               setBodyClass(String(sectionIndex));
+           }
+       }
+</PRE><PRE>       /**
+       * Sets a class for the body of the page depending on the active section / slide
+       */
+       function setBodyClass(text){
+           //removing the #
+           text = text.replace('#',<I>);</I></PRE><PRE>           //removing previous anchor classes
+           $('body')[0].className = $('body')[0].className.replace(/\b\s?pp-viewing-[^\s]+\b/g, <I>);</I></PRE><PRE>           //adding the current anchor
+           $('body').addClass('pp-viewing-' + text);
+       }
+</PRE><PRE>       //TO DO
+       function scrollToAnchor(){
+           //getting the anchor link in the URL and deleting the `#`
+           var value =  window.location.hash.replace('#', <I>);</I>
+           var sectionAnchor = value;
+           var section = $(document).find('.pp-section[data-anchor=&quot;'+sectionAnchor+'&quot;]');
+</PRE><PRE>           if(section.length &gt; 0){  //if theres any #
+               scrollPage(section, options.animateAnchor);
+           }
+       }
+</PRE><PRE>       /**
+       * Determines if the transitions between sections still taking place.
+       * The variable `scrollDelay` adds a &quot;save zone&quot; for devices such as Apple laptops and Apple magic mouses
+       */
+       function isMoving(){
+           var timeNow = new Date().getTime();
+           // Cancel scroll if currently animating or within quiet period
+           if (timeNow - lastAnimation &lt; scrollDelay + options.scrollingSpeed) {
+               return true;
+           }
+           return false;
+       }
+</PRE><PRE>       //detecting any change on the URL to scroll to the given anchor link
+       //(a way to detect back history button as we play with the hashes on the URL)
+       $(window).on('hashchange', hashChangeHandler);
+</PRE><PRE>       /**
+       * Actions to do when the hash (#) in the URL changes.
+       */
+       function hashChangeHandler(){
+           var value =  window.location.hash.replace('#', <I>).split('/');</I>
+           var sectionAnchor = value[0];
+</PRE><PRE>           if(sectionAnchor.length){
+               /*in order to call scrollpage() only once for each destination at a time
+               It is called twice for each scroll otherwise, as in case of using anchorlinks `hashChange`
+               event is fired on every scroll too.*/
+               if (sectionAnchor &amp;&amp; sectionAnchor !== lastScrolledDestiny)  {
+                   var section;
+</PRE><PRE>                   if(isNaN(sectionAnchor)){
+                       section = $(document).find('[data-anchor=&quot;'+sectionAnchor+'&quot;]');
+                   }else{
+                       section = $('.pp-section').eq( (sectionAnchor -1) );
+                   }
+                   scrollPage(section);
+               }
+           }
+       }
+</PRE><PRE>       /**
+       * Cross browser transformations
+       */
+       function getTransforms(translate3d) {
+           return {
+               '-webkit-transform': translate3d,
+                   '-moz-transform': translate3d,
+                   '-ms-transform': translate3d,
+                   'transform': translate3d
+           };
+       }
+</PRE><PRE>       /**
+        * Adds a css3 transform property to the container class with or without animation depending on the animated param.
+        */
+       function transformContainer(element, translate3d, animated) {
+           element.toggleClass('pp-easing', animated);
+</PRE><PRE>           element.css(getTransforms(translate3d));
+       }
+</PRE><PRE>       /**
+        * Sliding with arrow keys, both, vertical and horizontal
+        */
+       $(document).keydown(function (e) {
+           if(options.keyboardScrolling &amp;&amp; !isMoving()){
+               //Moving the main page with the keyboard arrows if keyboard scrolling is enabled
+               switch (e.which) {
+                       //up
+                   case 38:
+                   case 33:
+                       PP.moveSectionUp();
+                       break;
+</PRE><PRE>                       //down
+                   case 40:
+                   case 34:
+                       PP.moveSectionDown();
+                       break;
+</PRE><PRE>                       //Home
+                   case 36:
+                       PP.moveTo(1);
+                       break;
+</PRE><PRE>                       //End
+                   case 35:
+                       PP.moveTo($('.pp-section').length);
+                       break;
+</PRE><PRE>                       //left
+                   case 37:
+                       PP.moveSectionUp();
+                       break;
+</PRE><PRE>                       //right
+                   case 39:
+                       PP.moveSectionDown();
+                       break;
+</PRE><PRE>                   default:
+                       return; // exit this handler for other keys
+               }
+           }
+       });
+</PRE><PRE>       /**
+       * If `normalScrollElements` is used, the mouse wheel scrolling will scroll normally
+       * over the defined elements in the option.
+       */
+       if(options.normalScrollElements){
+           $(document).on('mouseenter', options.normalScrollElements, function () {
+               PP.setMouseWheelScrolling(false);
+           });
+</PRE><PRE>           $(document).on('mouseleave', options.normalScrollElements, function(){
+               PP.setMouseWheelScrolling(true);
+           });
+       }
+</PRE><PRE>       /**
+        * Detecting mousewheel scrolling
+        *
+        * <A rel="nofollow" class="external free" href="http://blogs.sitepointstatic.com/examples/tech/mouse-wheel/index.html">http://blogs.sitepointstatic.com/examples/tech/mouse-wheel/index.html</A>
+        * <A rel="nofollow" class="external free" href="http://www.sitepoint.com/html5-javascript-mouse-wheel/">http://www.sitepoint.com/html5-javascript-mouse-wheel/</A>
+        */
+       var prevTime = new Date().getTime();
+</PRE><PRE>       function MouseWheelHandler(e) {
+       	var curTime = new Date().getTime();
+</PRE><PRE>       	// cross-browser wheel delta
+           e = e || window.event;
+           var value = e.wheelDelta || -e.deltaY || -e.detail;
+           var delta = Math.max(-1, Math.min(1, value));
+</PRE><PRE>           var horizontalDetection = typeof e.wheelDeltaX !== 'undefined' || typeof e.deltaX !== 'undefined';
+           var isScrollingVertically = (Math.abs(e.wheelDeltaX) &lt; Math.abs(e.wheelDelta)) || (Math.abs(e.deltaX ) &lt; Math.abs(e.deltaY) || !horizontalDetection);
+</PRE><P>			//Limiting the array to 150 (lets not waste memory!)
+</P><PRE>           if(scrollings.length &gt; 149){
+               scrollings.shift();
+           }
+</PRE><PRE>           //keeping record of the previous scrollings
+           scrollings.push(Math.abs(value));
+</PRE><PRE>           //time difference between the last scroll and the current one
+           var timeDiff = curTime-prevTime;
+           prevTime = curTime;
+</PRE><PRE>           //haven't they scrolled in a while?
+           //(enough to be consider a different scrolling action to scroll another section)
+           if(timeDiff &gt; 200){
+               //emptying the array, we dont care about old scrollings for our averages
+               scrollings = [];
+           }
+</PRE><PRE>           if(!isMoving()){
+               var activeSection = $('.pp-section.active');
+               var scrollable = isScrollable(activeSection);
+</PRE><PRE>               var averageEnd = getAverage(scrollings, 10);
+               var averageMiddle = getAverage(scrollings, 70);
+               var isAccelerating = averageEnd &gt;= averageMiddle;
+</PRE><PRE>               if(isAccelerating &amp;&amp; isScrollingVertically){
+</PRE><P>	                //scrolling down?
+	                if (delta &lt; 0) {
+	                    scrolling('down', scrollable);
+</P><P>	                //scrolling up?
+	                }else if(delta&gt;0){
+	                    scrolling('up', scrollable);
+	                }
+	            }
+</P><PRE>               return false;
+           }
+        }
+</PRE><PRE>       /**
+       * Gets the average of the last `number` elements of the given array.
+       */
+       function getAverage(elements, number){
+           var sum = 0;
+</PRE><PRE>           //taking `number` elements from the end to make the average, if there are not enought, 1
+           var lastElements = elements.slice(Math.max(elements.length - number, 1));
+</PRE><PRE>           for(var i = 0; i &lt; lastElements.length; i++){
+               sum = sum + lastElements[i];
+           }
+</PRE><PRE>           return Math.ceil(sum/number);
+       }
+</PRE><PRE>       /**
+       * Determines the way of scrolling up or down:
+       * by 'automatically' scrolling a section or by using the default and normal scrolling.
+       */
+       function scrolling(type, scrollable){
+           var check;
+           var scrollSection;
+</PRE><PRE>           if(type == 'down'){
+               check = 'bottom';
+               scrollSection = PP.moveSectionDown;
+           }else{
+               check = 'top';
+               scrollSection = PP.moveSectionUp;
+           }
+</PRE><PRE>           if(scrollable.length &gt; 0 ){
+               //is the scrollbar at the start/end of the scroll?
+               if(isScrolled(check, scrollable)){
+                   scrollSection();
+               }else{
+                   return true;
+               }
+           }else{
+               //moved up/down
+               scrollSection();
+           }
+       }
+</PRE><PRE>       /**
+       * Return a boolean depending on whether the scrollable element is at the end or at the start of the scrolling
+       * depending on the given type.
+       */
+       function isScrolled(type, scrollable){
+           if(type === 'top'){
+               return !scrollable.scrollTop();
+           }else if(type === 'bottom'){
+               return scrollable.scrollTop() + 1 + scrollable.innerHeight() &gt;= scrollable[0].scrollHeight;
+           }
+       }
+</PRE><PRE>        /**
+       * Determines whether the active section or slide is scrollable through and scrolling bar
+       */
+       function isScrollable(activeSection){
+           return activeSection.filter('.pp-scrollable');
+       }
+</PRE><PRE>       /**
+       * Removes the auto scrolling action fired by the mouse wheel and tackpad.
+       * After this function is called, the mousewheel and trackpad movements won't scroll through sections.
+       */
+       function removeMouseWheelHandler(){
+           if (container.get(0).addEventListener) {
+               container.get(0).removeEventListener('mousewheel', MouseWheelHandler, false); //IE9, Chrome, Safari, Oper
+               container.get(0).removeEventListener('wheel', MouseWheelHandler, false); //Firefox
+           } else {
+               container.get(0).detachEvent('onmousewheel', MouseWheelHandler); //IE 6/7/8
+           }
+       }
+</PRE><PRE>       /**
+       * Adds the auto scrolling action for the mouse wheel and tackpad.
+       * After this function is called, the mousewheel and trackpad movements will scroll through sections
+       */
+       function addMouseWheelHandler(){
+           if (container.get(0).addEventListener) {
+               container.get(0).addEventListener('mousewheel', MouseWheelHandler, false); //IE9, Chrome, Safari, Oper
+               container.get(0).addEventListener('wheel', MouseWheelHandler, false); //Firefox
+           } else {
+               container.get(0).attachEvent('onmousewheel', MouseWheelHandler); //IE 6/7/8
+           }
+       }
+</PRE><PRE>       /**
+       * Adds the possibility to auto scroll through sections on touch devices.
+       */
+       function addTouchHandler(){
+           if(isTouch){
+               //Microsoft pointers
+               var MSPointer = getMSPointer();
+</PRE><PRE>               container.off('touchstart ' +  MSPointer.down).on('touchstart ' + MSPointer.down, touchStartHandler);
+               container.off('touchmove ' + MSPointer.move).on('touchmove ' + MSPointer.move, touchMoveHandler);
+           }
+       }
+</PRE><PRE>       /**
+       * Removes the auto scrolling for touch devices.
+       */
+       function removeTouchHandler(){
+           if(isTouch){
+               //Microsoft pointers
+               var MSPointer = getMSPointer();
+</PRE><PRE>               container.off('touchstart ' + MSPointer.down);
+               container.off('touchmove ' + MSPointer.move);
+           }
+       }
+</PRE><PRE>       /*
+       * Returns and object with Microsoft pointers (for IE&lt;11 and for IE &gt;= 11)
+       * <A rel="nofollow" class="external free" href="http://msdn.microsoft.com/en-us/library/ie/dn304886(v=vs.85).aspx">http://msdn.microsoft.com/en-us/library/ie/dn304886(v=vs.85).aspx</A>
+       */
+       function getMSPointer(){
+           var pointer;
+</PRE><PRE>           //IE &gt;= 11 &amp; rest of browsers
+           if(window.PointerEvent){
+               pointer = { down: 'pointerdown', move: 'pointermove', up: 'pointerup'};
+           }
+</PRE><PRE>           //IE &lt; 11
+           else{
+               pointer = { down: 'MSPointerDown', move: 'MSPointerMove', up: 'MSPointerUp'};
+           }
+</PRE><PRE>           return pointer;
+       }
+</PRE><PRE>       /**
+       * Gets the pageX and pageY properties depending on the browser.
+       * <A rel="nofollow" class="external free" href="https://github.com/alvarotrigo/fullPage.js/issues/194#issuecomment-34069854">https://github.com/alvarotrigo/fullPage.js/issues/194#issuecomment-34069854</A>
+       */
+       function getEventsPage(e){
+           var events = new Array();
+</PRE><PRE>           events.y = (typeof e.pageY !== 'undefined' &amp;&amp; (e.pageY || e.pageX) ? e.pageY : e.touches[0].pageY);
+           events.x = (typeof e.pageX !== 'undefined' &amp;&amp; (e.pageY || e.pageX) ? e.pageX : e.touches[0].pageX);
+</PRE><PRE>           return events;
+       }
+</PRE><PRE>       /**
+       * As IE &gt;= 10 fires both touch and mouse events when using a mouse in a touchscreen
+       * this way we make sure that is really a touch event what IE is detecting.
+       */
+       function isReallyTouch(e){
+           //if is not IE   ||  IE is detecting `touch` or `pen`
+           return typeof e.pointerType === 'undefined' || e.pointerType != 'mouse';
+       }
+</PRE><PRE>       /**
+       * Getting the starting possitions of the touch event
+       */
+       function touchStartHandler(event){
+           var e = event.originalEvent;
+</PRE><PRE>           if(isReallyTouch(e)){
+               var touchEvents = getEventsPage(e);
+               touchStartY = touchEvents.y;
+               touchStartX = touchEvents.x;
+           }
+       }
+</PRE><PRE>       /* Detecting touch events
+       */
+       function touchMoveHandler(event){
+           var e = event.originalEvent;</PRE><PRE>           // additional: if one of the normalScrollElements isn't within options.normalScrollElementTouchThreshold hops up the DOM chain
+           if ( !checkParentForNormalScrollElement(event.target) &amp;&amp; isReallyTouch(e) ) {
+</PRE><PRE>               var activeSection = $('.pp-section.active');
+               var scrollable = isScrollable(activeSection);
+</PRE><PRE>               if(!scrollable.length){
+                   event.preventDefault();
+               }
+</PRE><PRE>               if (!isMoving()) {
+                   var touchEvents = getEventsPage(e);
+                   touchEndY = touchEvents.y;
+                   touchEndX = touchEvents.x;
+</PRE><PRE>                 //$('body').append('<SPAN style="position:fixed; top: 250px; left: 20px; z-index:88; font-size: 25px; color: #000;">touchEndY: ' + touchEndY  + '&lt;/div&gt;');
+</SPAN></PRE><PRE>                   //X movement bigger than Y movement?
+                   if (options.direction === 'horizontal' &amp;&amp; Math.abs(touchStartX - touchEndX) &gt; (Math.abs(touchStartY - touchEndY))) {
+                       //is the movement greater than the minimum resistance to scroll?
+                       if (Math.abs(touchStartX - touchEndX) &gt; (container.width() / 100 * options.touchSensitivity)) {
+                           if (touchStartX &gt; touchEndX) {
+                               scrolling('down', scrollable);
+                           } else if (touchEndX &gt; touchStartX) {
+                               scrolling('up', scrollable);
+                           }
+                       }
+                   } else {
+                       if (Math.abs(touchStartY - touchEndY) &gt; (container.height() / 100 * options.touchSensitivity)) {
+                           if (touchStartY &gt; touchEndY) {
+                               scrolling('down', scrollable);
+                           } else if (touchEndY &gt; touchStartY) {
+                               scrolling('up', scrollable);
+                           }
+                       }
+                   }
+               }
+           }
+       }
+</PRE><PRE>       /**
+        * recursive function to loop up the parent nodes to check if one of them exists in options.normalScrollElements
+        * Currently works well for iOS - Android might need some testing
+        * @param  {Element} el  target element / jquery selector (in subsequent nodes)
+        * @param  {int}     hop current hop compared to options.normalScrollElementTouchThreshold
+        * @return {boolean} true if there is a match to options.normalScrollElements
+        */
+       function checkParentForNormalScrollElement (el, hop) {
+           hop = hop || 0;
+           var parent = $(el).parent();
+</PRE><PRE>           if (hop &lt; options.normalScrollElementTouchThreshold &amp;&amp;
+               parent.is(options.normalScrollElements) ) {
+               return true;
+           } else if (hop == options.normalScrollElementTouchThreshold) {
+               return false;
+           } else {
+               return checkParentForNormalScrollElement(parent, ++hop);
+           }
+       }
+</PRE><PRE>       /**
+       * Creates a vertical navigation bar.
+       */
+       function addVerticalNavigation(){
+</PRE>
+            $('body').append('');
+<PRE>           var nav = $('#pp-nav');
+</PRE><PRE>           nav.css('color', options.navigation.textColor);
+</PRE><PRE>           nav.addClass(options.navigation.position);
+</PRE><PRE>           for(var cont = 0; cont &lt; $('.pp-section').length; cont++){
+               var link = <I>;</I>
+               if(options.anchors.length){
+                   link = options.anchors[cont];
+               }
+               if(options.navigation.tooltips !== 'undefined'){
+                   var tooltip = options.navigation.tooltips[cont];
+                   if(typeof tooltip === 'undefined'){
+                       tooltip = <I>;</I>
+                   }
+               }
+</PRE>
+                nav.find('ul').append('<LI data-tooltip="' + tooltip + '">&lt;a href=&quot;#' + link + '&quot;&gt;&lt;/a&gt;</LI>');
+<PRE>           }
+</PRE><PRE>           nav.find('span').css('border-color', options.navigation.bulletsColor);
+       }
+</PRE><PRE>       /**
+       * Scrolls to the section when clicking the navigation bullet
+       */
+       $(document).on('click touchstart', '#pp-nav a', function(e){
+           e.preventDefault();
+           var index = $(this).parent().index();
+</PRE><PRE>           scrollPage($('.pp-section').eq(index));
+       });
+</PRE><PRE>       /**
+       * Navigation tooltips
+       */
+       $(document).on({
+           mouseenter: function(){
+               var tooltip = $(this).data('tooltip');
+</PRE>
+                $('<DIV class="pp-tooltip ' + options.navigation.position +'">' + tooltip + '</DIV>').hide().appendTo($(this)).fadeIn(200);
+<PRE>           },
+           mouseleave: function(){
+               $(this).find('.pp-tooltip').fadeOut(200, function() {
+                   $(this).remove();
+               });
+           }
+       }, '#pp-nav li');
+</PRE><PRE>        /**
+        * Activating the website navigation dots according to the given slide name.
+        */
+       function activateNavDots(name, sectionIndex){
+           if(options.navigation){
+               $('#pp-nav').find('.active').removeClass('active');
+               if(name){
+                   $('#pp-nav').find('a[href=&quot;#' + name + '&quot;]').addClass('active');
+               }else{
+                   $('#pp-nav').find('li').eq(sectionIndex).find('a').addClass('active');
+               }
+           }
+       }
+</PRE><PRE>       /**
+        * Activating the website main menu elements according to the given slide name.
+        */
+       function activateMenuElement(name){
+           if(options.menu){
+               $(options.menu).find('.active').removeClass('active');
+               $(options.menu).find('[data-menuanchor=&quot;'+name+'&quot;]').addClass('active');
+           }
+       }
+</PRE><PRE>       /**
+       * Checks for translate3d support
+       * @return boolean
+       * <A rel="nofollow" class="external free" href="http://stackoverflow.com/questions/5661671/detecting-transform-translate3d-support">http://stackoverflow.com/questions/5661671/detecting-transform-translate3d-support</A>
+       */
+       function support3d() {
+           var el = document.createElement('p'),
+               has3d,
+               transforms = {
+                   'webkitTransform':'-webkit-transform',
+                   'OTransform':'-o-transform',
+                   'msTransform':'-ms-transform',
+                   'MozTransform':'-moz-transform',
+                   'transform':'transform'
+               };
+</PRE><PRE>           // Add it to the body to get the computed style.
+           document.body.insertBefore(el, null);
+</PRE><PRE>           for (var t in transforms) {
+               if (el.style[t] !== undefined) {
+                   el.style[t] = 'translate3d(1px,1px,1px)';
+                   has3d = window.getComputedStyle(el).getPropertyValue(transforms[t]);
+               }
+           }
+</PRE><PRE>           document.body.removeChild(el);
+</PRE><PRE>           return (has3d !== undefined &amp;&amp; has3d.length &gt; 0 &amp;&amp; has3d !== 'none');
+       }
+</PRE><PRE>       /**
+       * Gets the translate3d property to apply when using css3:true depending on the `direction` option.
+       */
+       function getTranslate3d(){
+           if (options.direction !== 'vertical') {
+                 return 'translate3d(-100%, 0px, 0px)';
+           }
+</PRE><PRE>           return 'translate3d(0px, -100%, 0px)';
+       }
+</PRE><PRE>   };
+</PRE><P>})(jQuery, document, window);</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

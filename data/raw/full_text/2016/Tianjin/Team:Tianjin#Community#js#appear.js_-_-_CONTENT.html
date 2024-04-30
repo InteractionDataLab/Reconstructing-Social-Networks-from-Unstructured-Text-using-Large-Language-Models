@@ -1,0 +1,124 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tianjin_Community_js_appear_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tianjin/Community/js/appear.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* jQuery.appear
+* <A rel="nofollow" class="external free" href="https://github.com/bas2k/jquery.appear/">https://github.com/bas2k/jquery.appear/</A>
+* <A rel="nofollow" class="external free" href="http://code.google.com/p/jquery-appear/">http://code.google.com/p/jquery-appear/</A>
+* <A rel="nofollow" class="external free" href="http://bas2k.ru/">http://bas2k.ru/</A>
+*
+* Copyright (c) 2009 Michael Hixson
+* Copyright (c) 2012-2014 Alexander Brovikov
+* Licensed under the MIT license (<A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>)
+*/
+</PRE><P>(function($) {
+</P><PRE>   $.fn.appear = function(fn, options) {
+</PRE><PRE>       var settings = $.extend({
+</PRE><PRE>           //arbitrary data to pass to fn
+           data: undefined,
+</PRE><PRE>           //call fn only on the first appear?
+           one: true,
+</PRE><PRE>           // X &amp; Y accuracy
+           accX: 0,
+           accY: 0
+</PRE><PRE>       }, options);
+</PRE><PRE>       return this.each(function() {
+</PRE><PRE>           var t = $(this);
+</PRE><PRE>           //whether the element is currently visible
+           t.appeared = false;
+</PRE><PRE>           if (!fn) {
+</PRE><PRE>               //trigger the custom event
+               t.trigger('appear', settings.data);
+               return;
+           }
+</PRE><PRE>           var w = $(window);
+</PRE><PRE>           //fires the appear event when appropriate
+           var check = function() {
+</PRE><PRE>               //is the element hidden?
+               if (!t.is(':visible')) {
+</PRE><PRE>                   //it became hidden
+                   t.appeared = false;
+                   return;
+               }
+</PRE><PRE>               //is the element inside the visible window?
+               var a = w.scrollLeft();
+               var b = w.scrollTop();
+               var o = t.offset();
+               var x = o.left;
+               var y = o.top;
+</PRE><PRE>               var ax = settings.accX;
+               var ay = settings.accY;
+               var th = t.height();
+               var wh = w.height();
+               var tw = t.width();
+               var ww = w.width();
+</PRE><PRE>               if (y + th + ay &gt;= b &amp;&amp;
+                   y &lt;= b + wh + ay &amp;&amp;
+                   x + tw + ax &gt;= a &amp;&amp;
+                   x &lt;= a + ww + ax) {
+</PRE><PRE>                   //trigger the custom event
+                   if (!t.appeared) t.trigger('appear', settings.data);
+</PRE><PRE>               } else {
+</PRE><PRE>                   //it scrolled out of view
+                   t.appeared = false;
+               }
+           };
+</PRE><PRE>           //create a modified fn with some additional logic
+           var modifiedFn = function() {
+</PRE><PRE>               //mark the element as visible
+               t.appeared = true;
+</PRE><PRE>               //is this supposed to happen only once?
+               if (settings.one) {
+</PRE><PRE>                   //remove the check
+                   w.unbind('scroll', check);
+                   var i = $.inArray(check, $.fn.appear.checks);
+                   if (i &gt;= 0) $.fn.appear.checks.splice(i, 1);
+               }
+</PRE><PRE>               //trigger the original fn
+               fn.apply(this, arguments);
+           };
+</PRE><PRE>           //bind the modified fn to the element
+           if (settings.one) t.one('appear', settings.data, modifiedFn);
+           else t.bind('appear', settings.data, modifiedFn);
+</PRE><PRE>           //check whenever the window scrolls
+           w.scroll(check);
+</PRE><PRE>           //check whenever the dom changes
+           $.fn.appear.checks.push(check);
+</PRE><PRE>           //check now
+           (check)();
+       });
+   };
+</PRE><PRE>   //keep a queue of appearance checks
+   $.extend($.fn.appear, {
+</PRE><PRE>       checks: [],
+       timeout: null,
+</PRE><PRE>       //process the queue
+       checkAll: function() {
+           var length = $.fn.appear.checks.length;
+           if (length &gt; 0) while (length--) ($.fn.appear.checks[length])();
+       },
+</PRE><PRE>       //check the queue asynchronously
+       run: function() {
+           if ($.fn.appear.timeout) clearTimeout($.fn.appear.timeout);
+           $.fn.appear.timeout = setTimeout($.fn.appear.checkAll, 20);
+       }
+   });
+</PRE><PRE>   //run checks when these methods are called
+   $.each(['append', 'prepend', 'after', 'before', 'attr',
+       'removeAttr', 'addClass', 'removeClass', 'toggleClass',
+       'remove', 'css', 'show', 'hide'], function(i, n) {
+       var old = $.fn[n];
+       if (old) {
+           $.fn[n] = function() {
+               var r = old.apply(this, arguments);
+               $.fn.appear.run();
+               return r;
+           }
+       }
+   });
+</PRE><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

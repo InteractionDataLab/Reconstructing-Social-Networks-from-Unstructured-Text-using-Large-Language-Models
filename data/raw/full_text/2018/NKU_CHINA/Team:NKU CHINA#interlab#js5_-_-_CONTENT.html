@@ -1,0 +1,2757 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_NKU_CHINA_interlab_js5 skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:NKU CHINA/interlab/js5</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>(function(factory) {
+</P><PRE>   if (typeof define === 'function' &amp;&amp; define.amd) {
+       define(['jquery'], factory);
+   } else if (typeof module === 'object' &amp;&amp; module.exports) {
+       module.exports = factory(require('jquery'));
+   } else {
+       factory(jQuery);
+   }
+</PRE><P>}(function($) {
+</P><PRE>   var instanceNum = 0,
+       $html = $('html'),
+       $document = $(document),
+       $window = $(window);
+</PRE><PRE>   function SimpleLightbox(options) {
+</PRE><PRE>       this.init.apply(this, arguments);
+</PRE><PRE>   }
+</PRE><PRE>   SimpleLightbox.defaults = {
+</PRE><PRE>       // add custom classes to lightbox elements
+       elementClass: <I>,</I>
+       elementLoadingClass: 'slbLoading',
+       htmlClass: 'slbActive',
+       closeBtnClass: <I>,</I>
+       nextBtnClass: <I>,</I>
+       prevBtnClass: <I>,</I>
+       loadingTextClass: <I>,</I></PRE><PRE>       // customize / localize controls captions
+       closeBtnCaption: 'Close',
+       nextBtnCaption: 'Next',
+       prevBtnCaption: 'Previous',
+       loadingCaption: 'Loading...',
+</PRE><PRE>       bindToItems: true, // set click event handler to trigger lightbox on provided $items
+       closeOnOverlayClick: true,
+       closeOnEscapeKey: true,
+       nextOnImageClick: true,
+       showCaptions: true,
+</PRE><PRE>       captionAttribute: 'title', // choose data source for library to glean image caption from
+       urlAttribute: 'href', // where to expect large image
+</PRE><PRE>       startAt: 0, // start gallery at custom index
+       loadingTimeout: 100, // time after loading element will appear
+</PRE><PRE>       appendTarget: 'body', // append elsewhere if needed
+</PRE><PRE>       beforeSetContent: null, // convenient hooks for extending library behavoiur
+       beforeClose: null,
+       beforeDestroy: null,
+</PRE><PRE>       videoRegex: new RegExp(/youtube.com|vimeo.com/) // regex which tests load url for iframe content
+</PRE><PRE>   };
+</PRE><PRE>   $.extend(SimpleLightbox.prototype, {
+</PRE><PRE>       init: function(options) {
+</PRE><PRE>           this.options = $.extend({}, SimpleLightbox.defaults, options);
+           this.ens = '.slb' + (++instanceNum);
+           this.items = [];
+           this.captions = [];
+</PRE><PRE>           var self = this;
+</PRE><PRE>           if (this.options.$items) {
+</PRE><PRE>               this.$items = this.options.$items;
+</PRE><PRE>               this.$items.each(function() {
+</PRE><PRE>                   var $item = $(this);
+</PRE><PRE>                   self.items.push($item.attr(self.options.urlAttribute));
+                   self.captions.push($item.attr(self.options.captionAttribute));
+</PRE><PRE>               });
+</PRE><PRE>               this.options.bindToItems &amp;&amp; this.$items.on('click' + this.ens, function(e) {
+</PRE><PRE>                   e.preventDefault();
+                   self.showPosition(self.$items.index($(e.currentTarget)));
+</PRE><PRE>               });
+</PRE><PRE>           } else if (this.options.items) {
+</PRE><PRE>               this.items = this.options.items;
+</PRE><PRE>           }
+</PRE><PRE>           if (this.options.captions) {
+               this.captions = this.options.captions;
+           }
+</PRE><PRE>       },
+</PRE><PRE>       next: function() {
+</PRE><PRE>           return this.showPosition(this.currentPosition + 1);
+</PRE><PRE>       },
+</PRE><PRE>       prev: function() {
+</PRE><PRE>           return this.showPosition(this.currentPosition - 1);
+</PRE><PRE>       },
+</PRE><PRE>       normalizePosition: function(position) {
+</PRE><PRE>           if (position &gt;= this.items.length) {
+               position = 0;
+           } else if (position &lt; 0) {
+               position = this.items.length - 1;
+           }
+</PRE><PRE>           return position;
+</PRE><PRE>       },
+</PRE><PRE>       showPosition: function(position) {
+</PRE><PRE>           var self = this;
+</PRE><PRE>           this.currentPosition = this.normalizePosition(position);
+</PRE><PRE>           return this.setupLightboxHtml().prepareItem(this.currentPosition, this.setContent).show();
+</PRE><PRE>       },
+</PRE><PRE>       loading: function(on) {
+</PRE><PRE>           var self = this;
+</PRE><PRE>           if (on) {
+</PRE><PRE>               this.loadingTimeout = setTimeout(function() {
+</PRE><PRE>                   self.$el.addClass(self.options.elementLoadingClass);
+</PRE>
+                    self.$content.html('<P class="slbLoadingText ' + self.options.loadingTextClass + '">' + self.options.loadingCaption + '</P>');
+<PRE>                   self.show();
+</PRE><PRE>               }, this.options.loadingTimeout);
+</PRE><PRE>           } else {
+</PRE><PRE>               this.$el &amp;&amp; this.$el.removeClass(this.options.elementLoadingClass);
+               clearTimeout(this.loadingTimeout);
+</PRE><PRE>           }
+</PRE><PRE>       },
+</PRE><PRE>       prepareItem: function(position, callback) {
+</PRE><PRE>           var self = this,
+               url = this.items[position];
+</PRE><PRE>           this.loading(true);
+</PRE><PRE>           if (this.options.videoRegex.test(url)) {
+</PRE>
+                callback.call(self, $('<DIV class="slbIframeCont">&lt;iframe class=&quot;slbIframe&quot; frameborder=&quot;0&quot; allowfullscreen src=&quot;' + url + '&quot;&gt;&lt;/iframe&gt;</DIV>'));
+<PRE>           } else {
+</PRE>
+                var $imageCont = $('<DIV class="slbImageWrap">&lt;img class=&quot;slbImage&quot; src=&quot;' + url + '&quot; /&gt;</DIV>');
+<PRE>               this.$currentImage = $imageCont.find('.slbImage');
+</PRE><PRE>               if (this.options.showCaptions &amp;&amp; this.captions[position]) {
+</PRE>
+                    $imageCont.append('<DIV class="slbCaption">' + this.captions[position] + '</DIV>');
+<PRE>               }
+</PRE><PRE>               this.loadImage(url, function() {
+</PRE><PRE>                   self.setImageDimensions();
+</PRE><PRE>                   callback.call(self, $imageCont);
+</PRE><PRE>                   self.loadImage(self.items[self.normalizePosition(self.currentPosition + 1)]);
+</PRE><PRE>               });
+</PRE><PRE>           }
+</PRE><PRE>           return this;
+</PRE><PRE>       },
+</PRE><PRE>       loadImage: function(url, callback) {
+</PRE><PRE>           if (!this.options.videoRegex.test(url)) {
+</PRE><PRE>               var image = new Image();
+               callback &amp;&amp; (image.onload = callback);
+               image.src = url;
+</PRE><PRE>           }
+</PRE><PRE>       },
+</PRE><PRE>       setupLightboxHtml: function() {
+</PRE><PRE>           var o = this.options;
+</PRE><PRE>           if (!this.$el) {
+</PRE><PRE>               this.$el = $(
+</PRE>
+                    '<DIV class="slbElement ' + o.elementClass + '">' +
+                        '' +
+                        '<DIV class="slbWrapOuter">' +
+                            '<DIV class="slbWrap">' +
+                                '<DIV class="slbContentOuter">' +
+                                    '' +
+<PRE>                                   '&lt;button type=&quot;button&quot; title=&quot;' + o.closeBtnCaption + '&quot; class=&quot;slbCloseBtn ' + o.closeBtnClass + '&quot;&gt;×&lt;/button&gt;' +
+</PRE>
+                                '</DIV>' +
+                            '</DIV>' +
+                        '</DIV>' +
+                    '</DIV>'
+<PRE>               );
+</PRE><PRE>               if (this.items.length &gt; 1) {
+</PRE><PRE>                   $(
+</PRE>
+                        '<DIV class="slbArrows">' +
+<PRE>                           '&lt;button type=&quot;button&quot; title=&quot;' + o.prevBtnCaption + '&quot; class=&quot;prev slbArrow' + o.prevBtnClass + '&quot;&gt;' + o.prevBtnCaption + '&lt;/button&gt;' +
+                           '&lt;button type=&quot;button&quot; title=&quot;' + o.nextBtnCaption + '&quot; class=&quot;next slbArrow' + o.nextBtnClass + '&quot;&gt;' + o.nextBtnCaption + '&lt;/button&gt;' +
+</PRE>
+                        '</DIV>'
+<PRE>                   ).appendTo(this.$el.find('.slbContentOuter'));
+</PRE><PRE>               }
+</PRE><PRE>               this.$content = this.$el.find('.slbContent');
+</PRE><PRE>           }
+</PRE><PRE>           this.$content.empty();
+</PRE><PRE>           return this;
+</PRE><PRE>       },
+</PRE><PRE>       show: function() {
+</PRE><PRE>           if (!this.modalInDom) {
+</PRE><PRE>               this.$el.appendTo($(this.options.appendTarget));
+               $html.addClass(this.options.htmlClass);
+               this.setupLightboxEvents();
+</PRE><PRE>               this.modalInDom = true;
+</PRE><PRE>           }
+</PRE><PRE>           return this;
+</PRE><PRE>       },
+</PRE><PRE>       setContent: function(content) {
+</PRE><PRE>           var $content = $(content);
+</PRE><PRE>           this.loading(false);
+</PRE><PRE>           this.setupLightboxHtml();
+           this.options.beforeSetContent &amp;&amp; this.options.beforeSetContent($content, this);
+           this.$content.html($content);
+</PRE><PRE>           return this;
+</PRE><PRE>       },
+</PRE><PRE>       setImageDimensions: function() {
+</PRE><PRE>           this.$currentImage &amp;&amp; this.$currentImage.css('max-height', $window.height() + 'px');
+</PRE><PRE>       },
+</PRE><PRE>       setupLightboxEvents: function() {
+</PRE><PRE>           var self = this;
+</PRE><PRE>           if (!this.lightboxEventsSetuped) {
+</PRE><PRE>               this.$el.on('click' + this.ens, function(e) {
+</PRE><PRE>                   var $target = $(e.target);
+</PRE><PRE>                   if ($target.is('.slbCloseBtn') || (self.options.closeOnOverlayClick &amp;&amp; $target.is('.slbWrap'))) {
+</PRE><PRE>                       self.close();
+</PRE><PRE>                   } else if ($target.is('.slbArrow')) {
+</PRE><PRE>                       $target.hasClass('next') ? self.next() : self.prev();
+</PRE><PRE>                   } else if (self.options.nextOnImageClick &amp;&amp; self.items.length &gt; 1 &amp;&amp; $target.is('.slbImage')) {
+</PRE><PRE>                       self.next();
+</PRE><PRE>                   }
+</PRE><PRE>               });
+</PRE><PRE>               $document.on('keyup' + this.ens, function(e) {
+</PRE><PRE>                   self.options.closeOnEscapeKey &amp;&amp; e.keyCode === 27 &amp;&amp; self.close();
+</PRE><PRE>                   if (self.items.length &gt; 1) {
+                       (e.keyCode === 39 || e.keyCode === 68) &amp;&amp; self.next();
+                       (e.keyCode === 37 || e.keyCode === 65) &amp;&amp; self.prev();
+                   }
+</PRE><PRE>               });
+</PRE><PRE>               $window.on('resize' + this.ens, function() {
+</PRE><PRE>                   self.setImageDimensions();
+</PRE><PRE>               });
+</PRE><PRE>               this.lightboxEventsSetuped = true;
+</PRE><PRE>           }
+</PRE><PRE>       },
+</PRE><PRE>       close: function() {
+</PRE><PRE>           if (this.modalInDom) {
+</PRE><PRE>               this.options.beforeClose &amp;&amp; this.options.beforeClose(this);
+</PRE><PRE>               this.$el &amp;&amp; this.$el.off(this.ens);
+               $document.off(this.ens);
+               $window.off(this.ens);
+               this.lightboxEventsSetuped = false;
+</PRE><PRE>               this.$el.detach();
+               $html.removeClass(this.options.htmlClass);
+               this.modalInDom = false;
+           }
+</PRE><PRE>       },
+</PRE><PRE>       destroy: function() {
+</PRE><PRE>           this.close();
+           this.options.beforeDestroy &amp;&amp; this.options.beforeDestroy(this);
+           this.$items &amp;&amp; this.$items.off(this.ens);
+           this.$el &amp;&amp; this.$el.remove();
+</PRE><PRE>       }
+</PRE><PRE>   });
+</PRE><PRE>   SimpleLightbox.open = function(options) {
+</PRE><PRE>       var instance = new SimpleLightbox(options);
+</PRE><PRE>       return options.content ? instance.setContent(options.content).show() : instance.showPosition(instance.options.startAt);
+</PRE><PRE>   };
+</PRE><PRE>   $.fn.simpleLightbox = function(options) {
+</PRE><PRE>       var lightboxInstance,
+           $items = this;
+</PRE><PRE>       return this.each(function() {
+           if (!$.data(this, 'simpleLightbox')) {
+               lightboxInstance = lightboxInstance || new SimpleLightbox($.extend({}, options, {$items: $items}));
+               $.data(this, 'simpleLightbox', lightboxInstance);
+           }
+       });
+</PRE><PRE>   };
+</PRE><PRE>   $.simpleLightbox = $.SimpleLightbox = SimpleLightbox;
+</PRE><PRE>   return $;
+</PRE><P>}));
+</P><P>/*
+</P><PRE>*  jQuery OwlCarousel v1.3.3
+*
+*  Copyright (c) 2013 Bartosz Wojciechowski
+*  <A rel="nofollow" class="external free" href="http://www.owlgraphic.com/owlcarousel/">http://www.owlgraphic.com/owlcarousel/</A>
+*
+*  Licensed under MIT
+*
+*/
+</PRE><P>/*JS Lint helpers: */
+/*global dragMove: false, dragEnd: false, $, jQuery, alert, window, document */
+/*jslint nomen: true, continue:true */
+</P><P>if (typeof Object.create !== &quot;function&quot;) {
+</P><PRE>   Object.create = function (obj) {
+       function F() {}
+       F.prototype = obj;
+       return new F();
+   };
+</PRE><P>}
+(function ($, window, document) {
+</P><PRE>   var Carousel = {
+       init : function (options, el) {
+           var base = this;
+</PRE><PRE>           base.$elem = $(el);
+           base.options = $.extend({}, $.fn.owlCarousel.options, base.$elem.data(), options);
+</PRE><PRE>           base.userOptions = options;
+           base.loadContent();
+       },
+</PRE><PRE>       loadContent : function () {
+           var base = this, url;
+</PRE><PRE>           function getData(data) {
+               var i, content = &quot;&quot;;
+               if (typeof base.options.jsonSuccess === &quot;function&quot;) {
+                   base.options.jsonSuccess.apply(this, [data]);
+               } else {
+                   for (i in data.owl) {
+                       if (data.owl.hasOwnProperty(i)) {
+                           content += data.owl[i].item;
+                       }
+                   }
+                   base.$elem.html(content);
+               }
+               base.logIn();
+           }
+</PRE><PRE>           if (typeof base.options.beforeInit === &quot;function&quot;) {
+               base.options.beforeInit.apply(this, [base.$elem]);
+           }
+</PRE><PRE>           if (typeof base.options.jsonPath === &quot;string&quot;) {
+               url = base.options.jsonPath;
+               $.getJSON(url, getData);
+           } else {
+               base.logIn();
+           }
+       },
+</PRE><PRE>       logIn : function () {
+           var base = this;
+</PRE><PRE>           base.$elem.data(&quot;owl-originalStyles&quot;, base.$elem.attr(&quot;style&quot;));
+           base.$elem.data(&quot;owl-originalClasses&quot;, base.$elem.attr(&quot;class&quot;));
+</PRE><PRE>           base.$elem.css({opacity: 0});
+           base.orignalItems = base.options.items;
+           base.checkBrowser();
+           base.wrapperWidth = 0;
+           base.checkVisible = null;
+           base.setVars();
+       },
+</PRE><PRE>       setVars : function () {
+           var base = this;
+           if (base.$elem.children().length === 0) {return false; }
+           base.baseClass();
+           base.eventTypes();
+           base.$userItems = base.$elem.children();
+           base.itemsAmount = base.$userItems.length;
+           base.wrapItems();
+           base.$owlItems = base.$elem.find(&quot;.owl-item&quot;);
+           base.$owlWrapper = base.$elem.find(&quot;.owl-wrapper&quot;);
+           base.playDirection = &quot;next&quot;;
+           base.prevItem = 0;
+           base.prevArr = [0];
+           base.currentItem = 0;
+           base.customEvents();
+           base.onStartup();
+       },
+</PRE><PRE>       onStartup : function () {
+           var base = this;
+           base.updateItems();
+           base.calculateAll();
+           base.buildControls();
+           base.updateControls();
+           base.response();
+           base.moveEvents();
+           base.stopOnHover();
+           base.owlStatus();
+</PRE><PRE>           if (base.options.transitionStyle !== false) {
+               base.transitionTypes(base.options.transitionStyle);
+           }
+           if (base.options.autoPlay === true) {
+               base.options.autoPlay = 5000;
+           }
+           base.play();
+</PRE><PRE>           base.$elem.find(&quot;.owl-wrapper&quot;).css(&quot;display&quot;, &quot;block&quot;);
+</PRE><PRE>           if (!base.$elem.is(&quot;:visible&quot;)) {
+               base.watchVisibility();
+           } else {
+               base.$elem.css(&quot;opacity&quot;, 1);
+           }
+           base.onstartup = false;
+           base.eachMoveUpdate();
+           if (typeof base.options.afterInit === &quot;function&quot;) {
+               base.options.afterInit.apply(this, [base.$elem]);
+           }
+       },
+</PRE><PRE>       eachMoveUpdate : function () {
+           var base = this;
+</PRE><PRE>           if (base.options.lazyLoad === true) {
+               base.lazyLoad();
+           }
+           if (base.options.autoHeight === true) {
+               base.autoHeight();
+           }
+           base.onVisibleItems();
+</PRE><PRE>           if (typeof base.options.afterAction === &quot;function&quot;) {
+               base.options.afterAction.apply(this, [base.$elem]);
+           }
+       },
+</PRE><PRE>       updateVars : function () {
+           var base = this;
+           if (typeof base.options.beforeUpdate === &quot;function&quot;) {
+               base.options.beforeUpdate.apply(this, [base.$elem]);
+           }
+           base.watchVisibility();
+           base.updateItems();
+           base.calculateAll();
+           base.updatePosition();
+           base.updateControls();
+           base.eachMoveUpdate();
+           if (typeof base.options.afterUpdate === &quot;function&quot;) {
+               base.options.afterUpdate.apply(this, [base.$elem]);
+           }
+       },
+</PRE><PRE>       reload : function () {
+           var base = this;
+           window.setTimeout(function () {
+               base.updateVars();
+           }, 0);
+       },
+</PRE><PRE>       watchVisibility : function () {
+           var base = this;
+</PRE><PRE>           if (base.$elem.is(&quot;:visible&quot;) === false) {
+               base.$elem.css({opacity: 0});
+               window.clearInterval(base.autoPlayInterval);
+               window.clearInterval(base.checkVisible);
+           } else {
+               return false;
+           }
+           base.checkVisible = window.setInterval(function () {
+               if (base.$elem.is(&quot;:visible&quot;)) {
+                   base.reload();
+                   base.$elem.animate({opacity: 1}, 200);
+                   window.clearInterval(base.checkVisible);
+               }
+           }, 500);
+       },
+</PRE><PRE>       wrapItems : function () {
+           var base = this;
+</PRE>
+            base.$userItems.wrapAll(&quot;<DIV>&quot;).wrap(&quot;&quot;);
+            base.$elem.find(&quot;.owl-wrapper&quot;).wrap(&quot;<DIV>&quot;);
+<PRE>           base.wrapperOuter = base.$elem.find(&quot;.owl-wrapper-outer&quot;);
+           base.$elem.css(&quot;display&quot;, &quot;block&quot;);
+       },
+</PRE><PRE>       baseClass : function () {
+           var base = this,
+               hasBaseClass = base.$elem.hasClass(base.options.baseClass),
+               hasThemeClass = base.$elem.hasClass(base.options.theme);
+</PRE><PRE>           if (!hasBaseClass) {
+               base.$elem.addClass(base.options.baseClass);
+           }
+</PRE><PRE>           if (!hasThemeClass) {
+               base.$elem.addClass(base.options.theme);
+           }
+       },
+</PRE><PRE>       updateItems : function () {
+           var base = this, width, i;
+</PRE><PRE>           if (base.options.responsive === false) {
+               return false;
+           }
+           if (base.options.singleItem === true) {
+               base.options.items = base.orignalItems = 1;
+               base.options.itemsCustom = false;
+               base.options.itemsDesktop = false;
+               base.options.itemsDesktopSmall = false;
+               base.options.itemsTablet = false;
+               base.options.itemsTabletSmall = false;
+               base.options.itemsMobile = false;
+               return false;
+           }
+</PRE><PRE>           width = $(base.options.responsiveBaseWidth).width();
+</PRE><PRE>           if (width &gt; (base.options.itemsDesktop[0] || base.orignalItems)) {
+               base.options.items = base.orignalItems;
+           }
+           if (base.options.itemsCustom !== false) {
+               //Reorder array by screen size
+               base.options.itemsCustom.sort(function (a, b) {return a[0] - b[0]; });
+</PRE><PRE>               for (i = 0; i &lt; base.options.itemsCustom.length; i += 1) {
+                   if (base.options.itemsCustom[i][0] &lt;= width) {
+                       base.options.items = base.options.itemsCustom[i][1];
+                   }
+               }
+</PRE><PRE>           } else {
+</PRE><PRE>               if (width &lt;= base.options.itemsDesktop[0] &amp;&amp; base.options.itemsDesktop !== false) {
+                   base.options.items = base.options.itemsDesktop[1];
+               }
+</PRE><PRE>               if (width &lt;= base.options.itemsDesktopSmall[0] &amp;&amp; base.options.itemsDesktopSmall !== false) {
+                   base.options.items = base.options.itemsDesktopSmall[1];
+               }
+</PRE><PRE>               if (width &lt;= base.options.itemsTablet[0] &amp;&amp; base.options.itemsTablet !== false) {
+                   base.options.items = base.options.itemsTablet[1];
+               }
+</PRE><PRE>               if (width &lt;= base.options.itemsTabletSmall[0] &amp;&amp; base.options.itemsTabletSmall !== false) {
+                   base.options.items = base.options.itemsTabletSmall[1];
+               }
+</PRE><PRE>               if (width &lt;= base.options.itemsMobile[0] &amp;&amp; base.options.itemsMobile !== false) {
+                   base.options.items = base.options.itemsMobile[1];
+               }
+           }
+</PRE><PRE>           //if number of items is less than declared
+           if (base.options.items &gt; base.itemsAmount &amp;&amp; base.options.itemsScaleUp === true) {
+               base.options.items = base.itemsAmount;
+           }
+       },
+</PRE><PRE>       response : function () {
+           var base = this,
+               smallDelay,
+               lastWindowWidth;
+</PRE><PRE>           if (base.options.responsive !== true) {
+               return false;
+           }
+           lastWindowWidth = $(window).width();
+</PRE><PRE>           base.resizer = function () {
+               if ($(window).width() !== lastWindowWidth) {
+                   if (base.options.autoPlay !== false) {
+                       window.clearInterval(base.autoPlayInterval);
+                   }
+                   window.clearTimeout(smallDelay);
+                   smallDelay = window.setTimeout(function () {
+                       lastWindowWidth = $(window).width();
+                       base.updateVars();
+                   }, base.options.responsiveRefreshRate);
+               }
+           };
+           $(window).resize(base.resizer);
+       },
+</PRE><PRE>       updatePosition : function () {
+           var base = this;
+           base.jumpTo(base.currentItem);
+           if (base.options.autoPlay !== false) {
+               base.checkAp();
+           }
+       },
+</PRE><PRE>       appendItemsSizes : function () {
+           var base = this,
+               roundPages = 0,
+               lastItem = base.itemsAmount - base.options.items;
+</PRE><PRE>           base.$owlItems.each(function (index) {
+               var $this = $(this);
+               $this
+                   .css({&quot;width&quot;: base.itemWidth})
+                   .data(&quot;owl-item&quot;, Number(index));
+</PRE><PRE>               if (index % base.options.items === 0 || index === lastItem) {
+                   if (!(index &gt; lastItem)) {
+                       roundPages += 1;
+                   }
+               }
+               $this.data(&quot;owl-roundPages&quot;, roundPages);
+           });
+       },
+</PRE><PRE>       appendWrapperSizes : function () {
+           var base = this,
+               width = base.$owlItems.length * base.itemWidth;
+</PRE><PRE>           base.$owlWrapper.css({
+               &quot;width&quot;: width * 2,
+               &quot;left&quot;: 0
+           });
+           base.appendItemsSizes();
+       },
+</PRE><PRE>       calculateAll : function () {
+           var base = this;
+           base.calculateWidth();
+           base.appendWrapperSizes();
+           base.loops();
+           base.max();
+       },
+</PRE><PRE>       calculateWidth : function () {
+           var base = this;
+           base.itemWidth = Math.round(base.$elem.width() / base.options.items);
+       },
+</PRE><PRE>       max : function () {
+           var base = this,
+               maximum = ((base.itemsAmount * base.itemWidth) - base.options.items * base.itemWidth) * -1;
+           if (base.options.items &gt; base.itemsAmount) {
+               base.maximumItem = 0;
+               maximum = 0;
+               base.maximumPixels = 0;
+           } else {
+               base.maximumItem = base.itemsAmount - base.options.items;
+               base.maximumPixels = maximum;
+           }
+           return maximum;
+       },
+</PRE><PRE>       min : function () {
+           return 0;
+       },
+</PRE><PRE>       loops : function () {
+           var base = this,
+               prev = 0,
+               elWidth = 0,
+               i,
+               item,
+               roundPageNum;
+</PRE><PRE>           base.positionsInArray = [0];
+           base.pagesInArray = [];
+</PRE><PRE>           for (i = 0; i &lt; base.itemsAmount; i += 1) {
+               elWidth += base.itemWidth;
+               base.positionsInArray.push(-elWidth);
+</PRE><PRE>               if (base.options.scrollPerPage === true) {
+                   item = $(base.$owlItems[i]);
+                   roundPageNum = item.data(&quot;owl-roundPages&quot;);
+                   if (roundPageNum !== prev) {
+                       base.pagesInArray[prev] = base.positionsInArray[i];
+                       prev = roundPageNum;
+                   }
+               }
+           }
+       },
+</PRE><PRE>       buildControls : function () {
+           var base = this;
+           if (base.options.navigation === true || base.options.pagination === true) {
+               base.owlControls = $(&quot;&lt;div class=\&quot;owl-controls\&quot;/&gt;&quot;).toggleClass(&quot;clickable&quot;, !base.browser.isTouch).appendTo(base.$elem);
+           }
+           if (base.options.pagination === true) {
+               base.buildPagination();
+           }
+           if (base.options.navigation === true) {
+               base.buildButtons();
+           }
+       },
+</PRE><PRE>       buildButtons : function () {
+           var base = this,
+               buttonsWrapper = $(&quot;&lt;div class=\&quot;owl-buttons\&quot;/&gt;&quot;);
+           base.owlControls.append(buttonsWrapper);
+</PRE><PRE>           base.buttonPrev = $(&quot;&lt;div/&gt;&quot;, {
+               &quot;class&quot; : &quot;owl-prev&quot;,
+               &quot;html&quot; : base.options.navigationText[0] || &quot;&quot;
+           });
+</PRE><PRE>           base.buttonNext = $(&quot;&lt;div/&gt;&quot;, {
+               &quot;class&quot; : &quot;owl-next&quot;,
+               &quot;html&quot; : base.options.navigationText[1] || &quot;&quot;
+           });
+</PRE><PRE>           buttonsWrapper
+               .append(base.buttonPrev)
+               .append(base.buttonNext);
+</PRE><PRE>           buttonsWrapper.on(&quot;touchstart.owlControls mousedown.owlControls&quot;, &quot;div[class^=\&quot;owl\&quot;]&quot;, function (event) {
+               event.preventDefault();
+           });
+</PRE><PRE>           buttonsWrapper.on(&quot;touchend.owlControls mouseup.owlControls&quot;, &quot;div[class^=\&quot;owl\&quot;]&quot;, function (event) {
+               event.preventDefault();
+               if ($(this).hasClass(&quot;owl-next&quot;)) {
+                   base.next();
+               } else {
+                   base.prev();
+               }
+           });
+       },
+</PRE><PRE>       buildPagination : function () {
+           var base = this;
+</PRE><PRE>           base.paginationWrapper = $(&quot;&lt;div class=\&quot;owl-pagination\&quot;/&gt;&quot;);
+           base.owlControls.append(base.paginationWrapper);
+</PRE><PRE>           base.paginationWrapper.on(&quot;touchend.owlControls mouseup.owlControls&quot;, &quot;.owl-page&quot;, function (event) {
+               event.preventDefault();
+               if (Number($(this).data(&quot;owl-page&quot;)) !== base.currentItem) {
+                   base.goTo(Number($(this).data(&quot;owl-page&quot;)), true);
+               }
+           });
+       },
+</PRE><PRE>       updatePagination : function () {
+           var base = this,
+               counter,
+               lastPage,
+               lastItem,
+               i,
+               paginationButton,
+               paginationButtonInner;
+</PRE><PRE>   if (base.options.pagination === false) {
+               return false;
+           }
+</PRE><PRE>           base.paginationWrapper.html(&quot;&quot;);
+</PRE><PRE>           counter = 0;
+           lastPage = base.itemsAmount - base.itemsAmount % base.options.items;
+</PRE><PRE>           for (i = 0; i &lt; base.itemsAmount; i += 1) {
+               if (i % base.options.items === 0) {
+                   counter += 1;
+                   if (lastPage === i) {
+                       lastItem = base.itemsAmount - base.options.items;
+                   }
+                   paginationButton = $(&quot;&lt;div/&gt;&quot;, {
+                       &quot;class&quot; : &quot;owl-page&quot;
+                   });
+                   paginationButtonInner = $(&quot;&quot;, {
+                       &quot;text&quot;: base.options.paginationNumbers === true ? counter : &quot;&quot;,
+                       &quot;class&quot;: base.options.paginationNumbers === true ? &quot;owl-numbers&quot; : &quot;&quot;
+                   });
+                   paginationButton.append(paginationButtonInner);
+</PRE><PRE>                   paginationButton.data(&quot;owl-page&quot;, lastPage === i ? lastItem : i);
+                   paginationButton.data(&quot;owl-roundPages&quot;, counter);
+</PRE><PRE>                   base.paginationWrapper.append(paginationButton);
+               }
+           }
+           base.checkPagination();
+       },
+       checkPagination : function () {
+           var base = this;
+           if (base.options.pagination === false) {
+               return false;
+           }
+           base.paginationWrapper.find(&quot;.owl-page&quot;).each(function () {
+               if ($(this).data(&quot;owl-roundPages&quot;) === $(base.$owlItems[base.currentItem]).data(&quot;owl-roundPages&quot;)) {
+                   base.paginationWrapper
+                       .find(&quot;.owl-page&quot;)
+                       .removeClass(&quot;active&quot;);
+                   $(this).addClass(&quot;active&quot;);
+               }
+           });
+       },
+</PRE><PRE>       checkNavigation : function () {
+           var base = this;
+</PRE><PRE>    if (base.options.navigation === false) {
+               return false;
+           }
+           if (base.options.rewindNav === false) {
+               if (base.currentItem === 0 &amp;&amp; base.maximumItem === 0) {
+                   base.buttonPrev.addClass(&quot;disabled&quot;);
+                   base.buttonNext.addClass(&quot;disabled&quot;);
+               } else if (base.currentItem === 0 &amp;&amp; base.maximumItem !== 0) {
+                   base.buttonPrev.addClass(&quot;disabled&quot;);
+                   base.buttonNext.removeClass(&quot;disabled&quot;);
+               } else if (base.currentItem === base.maximumItem) {
+                   base.buttonPrev.removeClass(&quot;disabled&quot;);
+                   base.buttonNext.addClass(&quot;disabled&quot;);
+               } else if (base.currentItem !== 0 &amp;&amp; base.currentItem !== base.maximumItem) {
+                   base.buttonPrev.removeClass(&quot;disabled&quot;);
+                   base.buttonNext.removeClass(&quot;disabled&quot;);
+               }
+           }
+       },
+</PRE><PRE>       updateControls : function () {
+           var base = this;
+           base.updatePagination();
+           base.checkNavigation();
+           if (base.owlControls) {
+               if (base.options.items &gt;= base.itemsAmount) {
+                   base.owlControls.hide();
+               } else {
+                   base.owlControls.show();
+               }
+           }
+       },
+</PRE><PRE>       destroyControls : function () {
+           var base = this;
+           if (base.owlControls) {
+               base.owlControls.remove();
+           }
+       },
+</PRE><PRE>       next : function (speed) {
+           var base = this;
+</PRE><PRE>           if (base.isTransition) {
+               return false;
+           }
+</PRE><PRE>           base.currentItem += base.options.scrollPerPage === true ? base.options.items : 1;
+           if (base.currentItem &gt; base.maximumItem + (base.options.scrollPerPage === true ? (base.options.items - 1) : 0)) {
+               if (base.options.rewindNav === true) {
+                   base.currentItem = 0;
+                   speed = &quot;rewind&quot;;
+               } else {
+                   base.currentItem = base.maximumItem;
+                   return false;
+               }
+           }
+           base.goTo(base.currentItem, speed);
+       },
+</PRE><PRE>       prev : function (speed) {
+           var base = this;
+</PRE><PRE>           if (base.isTransition) {
+               return false;
+           }
+</PRE><PRE>           if (base.options.scrollPerPage === true &amp;&amp; base.currentItem &gt; 0 &amp;&amp; base.currentItem &lt; base.options.items) {
+               base.currentItem = 0;
+           } else {
+               base.currentItem -= base.options.scrollPerPage === true ? base.options.items : 1;
+           }
+           if (base.currentItem &lt; 0) {
+               if (base.options.rewindNav === true) {
+                   base.currentItem = base.maximumItem;
+                   speed = &quot;rewind&quot;;
+               } else {
+                   base.currentItem = 0;
+                   return false;
+               }
+           }
+           base.goTo(base.currentItem, speed);
+       },
+</PRE><PRE>       goTo : function (position, speed, drag) {
+           var base = this,
+               goToPixel;
+</PRE><PRE>           if (base.isTransition) {
+               return false;
+           }
+           if (typeof base.options.beforeMove === &quot;function&quot;) {
+               base.options.beforeMove.apply(this, [base.$elem]);
+           }
+           if (position &gt;= base.maximumItem) {
+               position = base.maximumItem;
+           } else if (position &lt;= 0) {
+               position = 0;
+           }
+</PRE><PRE>           base.currentItem = base.owl.currentItem = position;
+           if (base.options.transitionStyle !== false &amp;&amp; drag !== &quot;drag&quot; &amp;&amp; base.options.items === 1 &amp;&amp; base.browser.support3d === true) {
+               base.swapSpeed(0);
+               if (base.browser.support3d === true) {
+                   base.transition3d(base.positionsInArray[position]);
+               } else {
+                   base.css2slide(base.positionsInArray[position], 1);
+               }
+               base.afterGo();
+               base.singleItemTransition();
+               return false;
+           }
+           goToPixel = base.positionsInArray[position];
+</PRE><PRE>           if (base.browser.support3d === true) {
+               base.isCss3Finish = false;
+</PRE><PRE>               if (speed === true) {
+                   base.swapSpeed(&quot;paginationSpeed&quot;);
+                   window.setTimeout(function () {
+                       base.isCss3Finish = true;
+                   }, base.options.paginationSpeed);
+</PRE><PRE>               } else if (speed === &quot;rewind&quot;) {
+                   base.swapSpeed(base.options.rewindSpeed);
+                   window.setTimeout(function () {
+                       base.isCss3Finish = true;
+                   }, base.options.rewindSpeed);
+</PRE><PRE>               } else {
+                   base.swapSpeed(&quot;slideSpeed&quot;);
+                   window.setTimeout(function () {
+                       base.isCss3Finish = true;
+                   }, base.options.slideSpeed);
+               }
+               base.transition3d(goToPixel);
+           } else {
+               if (speed === true) {
+                   base.css2slide(goToPixel, base.options.paginationSpeed);
+               } else if (speed === &quot;rewind&quot;) {
+                   base.css2slide(goToPixel, base.options.rewindSpeed);
+               } else {
+                   base.css2slide(goToPixel, base.options.slideSpeed);
+               }
+           }
+           base.afterGo();
+       },
+</PRE><PRE>       jumpTo : function (position) {
+           var base = this;
+           if (typeof base.options.beforeMove === &quot;function&quot;) {
+               base.options.beforeMove.apply(this, [base.$elem]);
+           }
+           if (position &gt;= base.maximumItem || position === -1) {
+               position = base.maximumItem;
+           } else if (position &lt;= 0) {
+               position = 0;
+           }
+           base.swapSpeed(0);
+           if (base.browser.support3d === true) {
+               base.transition3d(base.positionsInArray[position]);
+           } else {
+               base.css2slide(base.positionsInArray[position], 1);
+           }
+           base.currentItem = base.owl.currentItem = position;
+           base.afterGo();
+       },
+</PRE><PRE>       afterGo : function () {
+           var base = this;
+</PRE><PRE>           base.prevArr.push(base.currentItem);
+           base.prevItem = base.owl.prevItem = base.prevArr[base.prevArr.length - 2];
+           base.prevArr.shift(0);
+</PRE><PRE>           if (base.prevItem !== base.currentItem) {
+               base.checkPagination();
+               base.checkNavigation();
+               base.eachMoveUpdate();
+</PRE><PRE>               if (base.options.autoPlay !== false) {
+                   base.checkAp();
+               }
+           }
+           if (typeof base.options.afterMove === &quot;function&quot; &amp;&amp; base.prevItem !== base.currentItem) {
+               base.options.afterMove.apply(this, [base.$elem]);
+           }
+       },
+</PRE><PRE>       stop : function () {
+           var base = this;
+           base.apStatus = &quot;stop&quot;;
+           window.clearInterval(base.autoPlayInterval);
+       },
+</PRE><PRE>       checkAp : function () {
+           var base = this;
+           if (base.apStatus !== &quot;stop&quot;) {
+               base.play();
+           }
+       },
+</PRE><PRE>       play : function () {
+           var base = this;
+           base.apStatus = &quot;play&quot;;
+           if (base.options.autoPlay === false) {
+               return false;
+           }
+           window.clearInterval(base.autoPlayInterval);
+           base.autoPlayInterval = window.setInterval(function () {
+               base.next(true);
+           }, base.options.autoPlay);
+       },
+</PRE><PRE>       swapSpeed : function (action) {
+           var base = this;
+           if (action === &quot;slideSpeed&quot;) {
+               base.$owlWrapper.css(base.addCssSpeed(base.options.slideSpeed));
+           } else if (action === &quot;paginationSpeed&quot;) {
+               base.$owlWrapper.css(base.addCssSpeed(base.options.paginationSpeed));
+           } else if (typeof action !== &quot;string&quot;) {
+               base.$owlWrapper.css(base.addCssSpeed(action));
+           }
+       },
+</PRE><PRE>       addCssSpeed : function (speed) {
+           return {
+               &quot;-webkit-transition&quot;: &quot;all &quot; + speed + &quot;ms ease&quot;,
+               &quot;-moz-transition&quot;: &quot;all &quot; + speed + &quot;ms ease&quot;,
+               &quot;-o-transition&quot;: &quot;all &quot; + speed + &quot;ms ease&quot;,
+               &quot;transition&quot;: &quot;all &quot; + speed + &quot;ms ease&quot;
+           };
+       },
+</PRE><PRE>       removeTransition : function () {
+           return {
+               &quot;-webkit-transition&quot;: &quot;&quot;,
+               &quot;-moz-transition&quot;: &quot;&quot;,
+               &quot;-o-transition&quot;: &quot;&quot;,
+               &quot;transition&quot;: &quot;&quot;
+           };
+       },
+</PRE><PRE>       doTranslate : function (pixels) {
+           return {
+               &quot;-webkit-transform&quot;: &quot;translate3d(&quot; + pixels + &quot;px, 0px, 0px)&quot;,
+               &quot;-moz-transform&quot;: &quot;translate3d(&quot; + pixels + &quot;px, 0px, 0px)&quot;,
+               &quot;-o-transform&quot;: &quot;translate3d(&quot; + pixels + &quot;px, 0px, 0px)&quot;,
+               &quot;-ms-transform&quot;: &quot;translate3d(&quot; + pixels + &quot;px, 0px, 0px)&quot;,
+               &quot;transform&quot;: &quot;translate3d(&quot; + pixels + &quot;px, 0px,0px)&quot;
+           };
+       },
+</PRE><PRE>       transition3d : function (value) {
+           var base = this;
+           base.$owlWrapper.css(base.doTranslate(value));
+       },
+</PRE><PRE>       css2move : function (value) {
+           var base = this;
+           base.$owlWrapper.css({&quot;left&quot; : value});
+       },
+</PRE><PRE>       css2slide : function (value, speed) {
+           var base = this;
+</PRE><PRE>           base.isCssFinish = false;
+           base.$owlWrapper.stop(true, true).animate({
+               &quot;left&quot; : value
+           }, {
+               duration : speed || base.options.slideSpeed,
+               complete : function () {
+                   base.isCssFinish = true;
+               }
+           });
+       },
+</PRE><PRE>       checkBrowser : function () {
+           var base = this,
+               translate3D = &quot;translate3d(0px, 0px, 0px)&quot;,
+               tempElem = document.createElement(&quot;div&quot;),
+               regex,
+               asSupport,
+               support3d,
+               isTouch;
+</PRE><PRE>           tempElem.style.cssText = &quot;  -moz-transform:&quot; + translate3D +
+                                 &quot;; -ms-transform:&quot;     + translate3D +
+                                 &quot;; -o-transform:&quot;      + translate3D +
+                                 &quot;; -webkit-transform:&quot; + translate3D +
+                                 &quot;; transform:&quot;         + translate3D;
+           regex = /translate3d\(0px, 0px, 0px\)/g;
+           asSupport = tempElem.style.cssText.match(regex);
+           support3d = (asSupport !== null &amp;&amp; asSupport.length === 1);
+</PRE><PRE>           isTouch = &quot;ontouchstart&quot; in window || window.navigator.msMaxTouchPoints;
+</PRE><PRE>           base.browser = {
+               &quot;support3d&quot; : support3d,
+               &quot;isTouch&quot; : isTouch
+           };
+       },
+</PRE><PRE>       moveEvents : function () {
+           var base = this;
+           if (base.options.mouseDrag !== false || base.options.touchDrag !== false) {
+               base.gestures();
+               base.disabledEvents();
+           }
+       },
+</PRE><PRE>       eventTypes : function () {
+           var base = this,
+               types = [&quot;s&quot;, &quot;e&quot;, &quot;x&quot;];
+</PRE><PRE>           base.ev_types = {};
+</PRE><PRE>           if (base.options.mouseDrag === true &amp;&amp; base.options.touchDrag === true) {
+               types = [
+                   &quot;touchstart.owl mousedown.owl&quot;,
+                   &quot;touchmove.owl mousemove.owl&quot;,
+                   &quot;touchend.owl touchcancel.owl mouseup.owl&quot;
+               ];
+           } else if (base.options.mouseDrag === false &amp;&amp; base.options.touchDrag === true) {
+               types = [
+                   &quot;touchstart.owl&quot;,
+                   &quot;touchmove.owl&quot;,
+                   &quot;touchend.owl touchcancel.owl&quot;
+               ];
+           } else if (base.options.mouseDrag === true &amp;&amp; base.options.touchDrag === false) {
+               types = [
+                   &quot;mousedown.owl&quot;,
+                   &quot;mousemove.owl&quot;,
+                   &quot;mouseup.owl&quot;
+               ];
+           }
+</PRE><PRE>           base.ev_types.start = types[0];
+           base.ev_types.move = types[1];
+           base.ev_types.end = types[2];
+       },
+</PRE><PRE>       disabledEvents :  function () {
+           var base = this;
+           base.$elem.on(&quot;dragstart.owl&quot;, function (event) { event.preventDefault(); });
+           base.$elem.on(&quot;mousedown.disableTextSelect&quot;, function (e) {
+               return $(e.target).is('input, textarea, select, option');
+           });
+       },
+</PRE><PRE>       gestures : function () {
+           /*jslint unparam: true*/
+           var base = this,
+               locals = {
+                   offsetX : 0,
+                   offsetY : 0,
+                   baseElWidth : 0,
+                   relativePos : 0,
+                   position: null,
+                   minSwipe : null,
+                   maxSwipe: null,
+                   sliding : null,
+                   dargging: null,
+                   targetElement : null
+               };
+</PRE><PRE>           base.isCssFinish = true;
+</PRE><PRE>           function getTouches(event) {
+               if (event.touches !== undefined) {
+                   return {
+                       x : event.touches[0].pageX,
+                       y : event.touches[0].pageY
+                   };
+               }
+</PRE><PRE>               if (event.touches === undefined) {
+                   if (event.pageX !== undefined) {
+                       return {
+                           x : event.pageX,
+                           y : event.pageY
+                       };
+                   }
+                   if (event.pageX === undefined) {
+                       return {
+                           x : event.clientX,
+                           y : event.clientY
+                       };
+                   }
+               }
+           }
+</PRE><PRE>           function swapEvents(type) {
+               if (type === &quot;on&quot;) {
+                   $(document).on(base.ev_types.move, dragMove);
+                   $(document).on(base.ev_types.end, dragEnd);
+               } else if (type === &quot;off&quot;) {
+                   $(document).off(base.ev_types.move);
+                   $(document).off(base.ev_types.end);
+               }
+           }
+</PRE><PRE>           function dragStart(event) {
+               var ev = event.originalEvent || event || window.event,
+                   position;
+</PRE><PRE>               if (ev.which === 3) {
+                   return false;
+               }
+               if (base.itemsAmount &lt;= base.options.items) {
+                   return;
+               }
+               if (base.isCssFinish === false &amp;&amp; !base.options.dragBeforeAnimFinish) {
+                   return false;
+               }
+               if (base.isCss3Finish === false &amp;&amp; !base.options.dragBeforeAnimFinish) {
+                   return false;
+               }
+</PRE><PRE>               if (base.options.autoPlay !== false) {
+                   window.clearInterval(base.autoPlayInterval);
+               }
+</PRE><PRE>               if (base.browser.isTouch !== true &amp;&amp; !base.$owlWrapper.hasClass(&quot;grabbing&quot;)) {
+                   base.$owlWrapper.addClass(&quot;grabbing&quot;);
+               }
+</PRE><PRE>               base.newPosX = 0;
+               base.newRelativeX = 0;
+</PRE><PRE>               $(this).css(base.removeTransition());
+</PRE><PRE>               position = $(this).position();
+               locals.relativePos = position.left;
+</PRE><PRE>               locals.offsetX = getTouches(ev).x - position.left;
+               locals.offsetY = getTouches(ev).y - position.top;
+</PRE><PRE>               swapEvents(&quot;on&quot;);
+</PRE><PRE>               locals.sliding = false;
+               locals.targetElement = ev.target || ev.srcElement;
+           }
+</PRE><PRE>           function dragMove(event) {
+               var ev = event.originalEvent || event || window.event,
+                   minSwipe,
+                   maxSwipe;
+</PRE><PRE>               base.newPosX = getTouches(ev).x - locals.offsetX;
+               base.newPosY = getTouches(ev).y - locals.offsetY;
+               base.newRelativeX = base.newPosX - locals.relativePos;
+</PRE><PRE>               if (typeof base.options.startDragging === &quot;function&quot; &amp;&amp; locals.dragging !== true &amp;&amp; base.newRelativeX !== 0) {
+                   locals.dragging = true;
+                   base.options.startDragging.apply(base, [base.$elem]);
+               }
+</PRE><PRE>               if ((base.newRelativeX &gt; 8 || base.newRelativeX &lt; -8) &amp;&amp; (base.browser.isTouch === true)) {
+                   if (ev.preventDefault !== undefined) {
+                       ev.preventDefault();
+                   } else {
+                       ev.returnValue = false;
+                   }
+                   locals.sliding = true;
+               }
+</PRE><PRE>               if ((base.newPosY &gt; 10 || base.newPosY &lt; -10) &amp;&amp; locals.sliding === false) {
+                   $(document).off(&quot;touchmove.owl&quot;);
+               }
+</PRE><PRE>               minSwipe = function () {
+                   return base.newRelativeX / 5;
+               };
+</PRE><PRE>               maxSwipe = function () {
+                   return base.maximumPixels + base.newRelativeX / 5;
+               };
+</PRE><PRE>               base.newPosX = Math.max(Math.min(base.newPosX, minSwipe()), maxSwipe());
+               if (base.browser.support3d === true) {
+                   base.transition3d(base.newPosX);
+               } else {
+                   base.css2move(base.newPosX);
+               }
+           }
+</PRE><PRE>           function dragEnd(event) {
+               var ev = event.originalEvent || event || window.event,
+                   newPosition,
+                   handlers,
+                   owlStopEvent;
+</PRE><PRE>               ev.target = ev.target || ev.srcElement;
+</PRE><PRE>               locals.dragging = false;
+</PRE><PRE>               if (base.browser.isTouch !== true) {
+                   base.$owlWrapper.removeClass(&quot;grabbing&quot;);
+               }
+</PRE><PRE>               if (base.newRelativeX &lt; 0) {
+                   base.dragDirection = base.owl.dragDirection = &quot;left&quot;;
+               } else {
+                   base.dragDirection = base.owl.dragDirection = &quot;right&quot;;
+               }
+</PRE><PRE>               if (base.newRelativeX !== 0) {
+                   newPosition = base.getNewPosition();
+                   base.goTo(newPosition, false, &quot;drag&quot;);
+                   if (locals.targetElement === ev.target &amp;&amp; base.browser.isTouch !== true) {
+                       $(ev.target).on(&quot;click.disable&quot;, function (ev) {
+                           ev.stopImmediatePropagation();
+                           ev.stopPropagation();
+                           ev.preventDefault();
+                           $(ev.target).off(&quot;click.disable&quot;);
+                       });
+                       handlers = $._data(ev.target, &quot;events&quot;).click;
+                       owlStopEvent = handlers.pop();
+                       handlers.splice(0, 0, owlStopEvent);
+                   }
+               }
+               swapEvents(&quot;off&quot;);
+           }
+           base.$elem.on(base.ev_types.start, &quot;.owl-wrapper&quot;, dragStart);
+       },
+</PRE><PRE>       getNewPosition : function () {
+           var base = this,
+               newPosition = base.closestItem();
+</PRE><PRE>           if (newPosition &gt; base.maximumItem) {
+               base.currentItem = base.maximumItem;
+               newPosition  = base.maximumItem;
+           } else if (base.newPosX &gt;= 0) {
+               newPosition = 0;
+               base.currentItem = 0;
+           }
+           return newPosition;
+       },
+       closestItem : function () {
+           var base = this,
+               array = base.options.scrollPerPage === true ? base.pagesInArray : base.positionsInArray,
+               goal = base.newPosX,
+               closest = null;
+</PRE><PRE>           $.each(array, function (i, v) {
+               if (goal - (base.itemWidth / 20) &gt; array[i + 1] &amp;&amp; goal - (base.itemWidth / 20) &lt; v &amp;&amp; base.moveDirection() === &quot;left&quot;) {
+                   closest = v;
+                   if (base.options.scrollPerPage === true) {
+                       base.currentItem = $.inArray(closest, base.positionsInArray);
+                   } else {
+                       base.currentItem = i;
+                   }
+               } else if (goal + (base.itemWidth / 20) &lt; v &amp;&amp; goal + (base.itemWidth / 20) &gt; (array[i + 1] || array[i] - base.itemWidth) &amp;&amp; base.moveDirection() === &quot;right&quot;) {
+                   if (base.options.scrollPerPage === true) {
+                       closest = array[i + 1] || array[array.length - 1];
+                       base.currentItem = $.inArray(closest, base.positionsInArray);
+                   } else {
+                       closest = array[i + 1];
+                       base.currentItem = i + 1;
+                   }
+               }
+           });
+           return base.currentItem;
+       },
+</PRE><PRE>       moveDirection : function () {
+           var base = this,
+               direction;
+           if (base.newRelativeX &lt; 0) {
+               direction = &quot;right&quot;;
+               base.playDirection = &quot;next&quot;;
+           } else {
+               direction = &quot;left&quot;;
+               base.playDirection = &quot;prev&quot;;
+           }
+           return direction;
+       },
+</PRE><PRE>       customEvents : function () {
+           /*jslint unparam: true*/
+           var base = this;
+           base.$elem.on(&quot;owl.next&quot;, function () {
+               base.next();
+           });
+           base.$elem.on(&quot;owl.prev&quot;, function () {
+               base.prev();
+           });
+           base.$elem.on(&quot;owl.play&quot;, function (event, speed) {
+               base.options.autoPlay = speed;
+               base.play();
+               base.hoverStatus = &quot;play&quot;;
+           });
+           base.$elem.on(&quot;owl.stop&quot;, function () {
+               base.stop();
+               base.hoverStatus = &quot;stop&quot;;
+           });
+           base.$elem.on(&quot;owl.goTo&quot;, function (event, item) {
+               base.goTo(item);
+           });
+           base.$elem.on(&quot;owl.jumpTo&quot;, function (event, item) {
+               base.jumpTo(item);
+           });
+       },
+</PRE><PRE>       stopOnHover : function () {
+           var base = this;
+           if (base.options.stopOnHover === true &amp;&amp; base.browser.isTouch !== true &amp;&amp; base.options.autoPlay !== false) {
+               base.$elem.on(&quot;mouseover&quot;, function () {
+                   base.stop();
+               });
+               base.$elem.on(&quot;mouseout&quot;, function () {
+                   if (base.hoverStatus !== &quot;stop&quot;) {
+                       base.play();
+                   }
+               });
+           }
+       },
+</PRE><PRE>       lazyLoad : function () {
+           var base = this,
+               i,
+               $item,
+               itemNumber,
+               $lazyImg,
+               follow;
+</PRE><PRE>           if (base.options.lazyLoad === false) {
+               return false;
+           }
+           for (i = 0; i &lt; base.itemsAmount; i += 1) {
+               $item = $(base.$owlItems[i]);
+</PRE><PRE>               if ($item.data(&quot;owl-loaded&quot;) === &quot;loaded&quot;) {
+                   continue;
+               }
+</PRE><PRE>               itemNumber = $item.data(&quot;owl-item&quot;);
+               $lazyImg = $item.find(&quot;.lazyOwl&quot;);
+</PRE><PRE>               if (typeof $lazyImg.data(&quot;src&quot;) !== &quot;string&quot;) {
+                   $item.data(&quot;owl-loaded&quot;, &quot;loaded&quot;);
+                   continue;
+               }
+               if ($item.data(&quot;owl-loaded&quot;) === undefined) {
+                   $lazyImg.hide();
+                   $item.addClass(&quot;loading&quot;).data(&quot;owl-loaded&quot;, &quot;checked&quot;);
+               }
+               if (base.options.lazyFollow === true) {
+                   follow = itemNumber &gt;= base.currentItem;
+               } else {
+                   follow = true;
+               }
+               if (follow &amp;&amp; itemNumber &lt; base.currentItem + base.options.items &amp;&amp; $lazyImg.length) {
+                   base.lazyPreload($item, $lazyImg);
+               }
+           }
+       },
+</PRE><PRE>       lazyPreload : function ($item, $lazyImg) {
+           var base = this,
+               iterations = 0,
+               isBackgroundImg;
+</PRE><PRE>           if ($lazyImg.prop(&quot;tagName&quot;) === &quot;DIV&quot;) {
+               $lazyImg.css(&quot;background-image&quot;, &quot;url(&quot; + $lazyImg.data(&quot;src&quot;) + &quot;)&quot;);
+               isBackgroundImg = true;
+           } else {
+               $lazyImg[0].src = $lazyImg.data(&quot;src&quot;);
+           }
+</PRE><PRE>           function showImage() {
+               $item.data(&quot;owl-loaded&quot;, &quot;loaded&quot;).removeClass(&quot;loading&quot;);
+               $lazyImg.removeAttr(&quot;data-src&quot;);
+               if (base.options.lazyEffect === &quot;fade&quot;) {
+                   $lazyImg.fadeIn(400);
+               } else {
+                   $lazyImg.show();
+               }
+               if (typeof base.options.afterLazyLoad === &quot;function&quot;) {
+                   base.options.afterLazyLoad.apply(this, [base.$elem]);
+               }
+           }
+</PRE><PRE>           function checkLazyImage() {
+               iterations += 1;
+               if (base.completeImg($lazyImg.get(0)) || isBackgroundImg === true) {
+                   showImage();
+               } else if (iterations &lt;= 100) {//if image loads in less than 10 seconds 
+                   window.setTimeout(checkLazyImage, 100);
+               } else {
+                   showImage();
+               }
+           }
+</PRE><PRE>         checkLazyImage();
+       },
+</PRE><PRE>       autoHeight : function () {
+           var base = this,
+               $currentimg = $(base.$owlItems[base.currentItem]).find(&quot;img&quot;),
+               iterations;
+</PRE><PRE>           function addHeight() {
+               var $currentItem = $(base.$owlItems[base.currentItem]).height();
+               base.wrapperOuter.css(&quot;height&quot;, $currentItem + &quot;px&quot;);
+               if (!base.wrapperOuter.hasClass(&quot;autoHeight&quot;)) {
+                   window.setTimeout(function () {
+                       base.wrapperOuter.addClass(&quot;autoHeight&quot;);
+                   }, 0);
+               }
+           }
+</PRE><PRE>           function checkImage() {
+               iterations += 1;
+               if (base.completeImg($currentimg.get(0))) {
+                   addHeight();
+               } else if (iterations &lt;= 100) { //if image loads in less than 10 seconds 
+                   window.setTimeout(checkImage, 100);
+               } else {
+                   base.wrapperOuter.css(&quot;height&quot;, &quot;&quot;); //Else remove height attribute
+               }
+           }
+</PRE><PRE>           if ($currentimg.get(0) !== undefined) {
+               iterations = 0;
+               checkImage();
+           } else {
+               addHeight();
+           }
+       },
+</PRE><PRE>       completeImg : function (img) {
+           var naturalWidthType;
+</PRE><PRE>           if (!img.complete) {
+               return false;
+           }
+           naturalWidthType = typeof img.naturalWidth;
+           if (naturalWidthType !== &quot;undefined&quot; &amp;&amp; img.naturalWidth === 0) {
+               return false;
+           }
+           return true;
+       },
+</PRE><PRE>       onVisibleItems : function () {
+           var base = this,
+               i;
+</PRE><PRE>           if (base.options.addClassActive === true) {
+               base.$owlItems.removeClass(&quot;active&quot;);
+           }
+           base.visibleItems = [];
+           for (i = base.currentItem; i &lt; base.currentItem + base.options.items; i += 1) {
+               base.visibleItems.push(i);
+</PRE><PRE>               if (base.options.addClassActive === true) {
+                   $(base.$owlItems[i]).addClass(&quot;active&quot;);
+               }
+           }
+           base.owl.visibleItems = base.visibleItems;
+       },
+</PRE><PRE>       transitionTypes : function (className) {
+           var base = this;
+           //Currently available: &quot;fade&quot;, &quot;backSlide&quot;, &quot;goDown&quot;, &quot;fadeUp&quot;
+           base.outClass = &quot;owl-&quot; + className + &quot;-out&quot;;
+           base.inClass = &quot;owl-&quot; + className + &quot;-in&quot;;
+       },
+</PRE><PRE>       singleItemTransition : function () {
+           var base = this,
+               outClass = base.outClass,
+               inClass = base.inClass,
+               $currentItem = base.$owlItems.eq(base.currentItem),
+               $prevItem = base.$owlItems.eq(base.prevItem),
+               prevPos = Math.abs(base.positionsInArray[base.currentItem]) + base.positionsInArray[base.prevItem],
+               origin = Math.abs(base.positionsInArray[base.currentItem]) + base.itemWidth / 2,
+               animEnd = 'webkitAnimationEnd oAnimationEnd MSAnimationEnd animationend';
+</PRE><PRE>           base.isTransition = true;
+</PRE><PRE>           base.$owlWrapper
+               .addClass('owl-origin')
+               .css({
+                   &quot;-webkit-transform-origin&quot; : origin + &quot;px&quot;,
+                   &quot;-moz-perspective-origin&quot; : origin + &quot;px&quot;,
+                   &quot;perspective-origin&quot; : origin + &quot;px&quot;
+               });
+           function transStyles(prevPos) {
+               return {
+                   &quot;position&quot; : &quot;relative&quot;,
+                   &quot;left&quot; : prevPos + &quot;px&quot;
+               };
+           }
+</PRE><PRE>           $prevItem
+               .css(transStyles(prevPos, 10))
+               .addClass(outClass)
+               .on(animEnd, function () {
+                   base.endPrev = true;
+                   $prevItem.off(animEnd);
+                   base.clearTransStyle($prevItem, outClass);
+               });
+</PRE><PRE>           $currentItem
+               .addClass(inClass)
+               .on(animEnd, function () {
+                   base.endCurrent = true;
+                   $currentItem.off(animEnd);
+                   base.clearTransStyle($currentItem, inClass);
+               });
+       },
+</PRE><PRE>       clearTransStyle : function (item, classToRemove) {
+           var base = this;
+           item.css({
+               &quot;position&quot; : &quot;&quot;,
+               &quot;left&quot; : &quot;&quot;
+           }).removeClass(classToRemove);
+</PRE><PRE>           if (base.endPrev &amp;&amp; base.endCurrent) {
+               base.$owlWrapper.removeClass('owl-origin');
+               base.endPrev = false;
+               base.endCurrent = false;
+               base.isTransition = false;
+           }
+       },
+</PRE><PRE>       owlStatus : function () {
+           var base = this;
+           base.owl = {
+               &quot;userOptions&quot;   : base.userOptions,
+               &quot;baseElement&quot;   : base.$elem,
+               &quot;userItems&quot;     : base.$userItems,
+               &quot;owlItems&quot;      : base.$owlItems,
+               &quot;currentItem&quot;   : base.currentItem,
+               &quot;prevItem&quot;      : base.prevItem,
+               &quot;visibleItems&quot;  : base.visibleItems,
+               &quot;isTouch&quot;       : base.browser.isTouch,
+               &quot;browser&quot;       : base.browser,
+               &quot;dragDirection&quot; : base.dragDirection
+           };
+       },
+</PRE><PRE>       clearEvents : function () {
+           var base = this;
+           base.$elem.off(&quot;.owl owl mousedown.disableTextSelect&quot;);
+           $(document).off(&quot;.owl owl&quot;);
+           $(window).off(&quot;resize&quot;, base.resizer);
+       },
+</PRE><PRE>       unWrap : function () {
+           var base = this;
+           if (base.$elem.children().length !== 0) {
+               base.$owlWrapper.unwrap();
+               base.$userItems.unwrap().unwrap();
+               if (base.owlControls) {
+                   base.owlControls.remove();
+               }
+           }
+           base.clearEvents();
+           base.$elem
+               .attr(&quot;style&quot;, base.$elem.data(&quot;owl-originalStyles&quot;) || &quot;&quot;)
+               .attr(&quot;class&quot;, base.$elem.data(&quot;owl-originalClasses&quot;));
+       },
+</PRE><PRE>       destroy : function () {
+           var base = this;
+           base.stop();
+           window.clearInterval(base.checkVisible);
+           base.unWrap();
+           base.$elem.removeData();
+       },
+</PRE><PRE>       reinit : function (newOptions) {
+           var base = this,
+               options = $.extend({}, base.userOptions, newOptions);
+           base.unWrap();
+           base.init(options, base.$elem);
+       },
+</PRE><PRE>       addItem : function (htmlString, targetPosition) {
+           var base = this,
+               position;
+</PRE><PRE>           if (!htmlString) {return false; }
+</PRE><PRE>           if (base.$elem.children().length === 0) {
+               base.$elem.append(htmlString);
+               base.setVars();
+               return false;
+           }
+           base.unWrap();
+           if (targetPosition === undefined || targetPosition === -1) {
+               position = -1;
+           } else {
+               position = targetPosition;
+           }
+           if (position &gt;= base.$userItems.length || position === -1) {
+               base.$userItems.eq(-1).after(htmlString);
+           } else {
+               base.$userItems.eq(position).before(htmlString);
+           }
+</PRE><PRE>           base.setVars();
+       },
+</PRE><PRE>       removeItem : function (targetPosition) {
+           var base = this,
+               position;
+</PRE><PRE>           if (base.$elem.children().length === 0) {
+               return false;
+           }
+           if (targetPosition === undefined || targetPosition === -1) {
+               position = -1;
+           } else {
+               position = targetPosition;
+           }
+</PRE><PRE>           base.unWrap();
+           base.$userItems.eq(position).remove();
+           base.setVars();
+       }
+</PRE><PRE>   };
+</PRE><PRE>   $.fn.owlCarousel = function (options) {
+       return this.each(function () {
+           if ($(this).data(&quot;owl-init&quot;) === true) {
+               return false;
+           }
+           $(this).data(&quot;owl-init&quot;, true);
+           var carousel = Object.create(Carousel);
+           carousel.init(options, this);
+           $.data(this, &quot;owlCarousel&quot;, carousel);
+       });
+   };
+</PRE><PRE>   $.fn.owlCarousel.options = {
+</PRE><PRE>       items : 5,
+       itemsCustom : false,
+       itemsDesktop : [1199, 4],
+       itemsDesktopSmall : [979, 3],
+       itemsTablet : [768, 2],
+       itemsTabletSmall : false,
+       itemsMobile : [479, 1],
+       singleItem : false,
+       itemsScaleUp : false,
+</PRE><PRE>       slideSpeed : 200,
+       paginationSpeed : 800,
+       rewindSpeed : 1000,
+</PRE><PRE>       autoPlay : false,
+       stopOnHover : false,
+</PRE><PRE>       navigation : false,
+       navigationText : [&quot;prev&quot;, &quot;next&quot;],
+       rewindNav : true,
+       scrollPerPage : false,
+</PRE><PRE>       pagination : true,
+       paginationNumbers : false,
+</PRE><PRE>       responsive : true,
+       responsiveRefreshRate : 200,
+       responsiveBaseWidth : window,
+</PRE><PRE>       baseClass : &quot;owl-carousel&quot;,
+       theme : &quot;owl-theme&quot;,
+</PRE><PRE>       lazyLoad : false,
+       lazyFollow : true,
+       lazyEffect : &quot;fade&quot;,
+</PRE><PRE>       autoHeight : false,
+</PRE><PRE>       jsonPath : false,
+       jsonSuccess : false,
+</PRE><PRE>       dragBeforeAnimFinish : true,
+       mouseDrag : true,
+       touchDrag : true,
+</PRE><PRE>       addClassActive : false,
+       transitionStyle : false,
+</PRE><PRE>       beforeUpdate : false,
+       afterUpdate : false,
+       beforeInit : false,
+       afterInit : false,
+       beforeMove : false,
+       afterMove : false,
+       afterAction : false,
+       startDragging : false,
+       afterLazyLoad: false
+   };
+</PRE><P>}(jQuery, window, document));
+</P><P>/*
+</P><PRE>* jQuery FlexSlider v2.2.0
+* Copyright 2012 WooThemes
+* Contributing Author: Tyler Smith
+*/
+</PRE><P>(function ($) {
+</P><PRE> //FlexSlider: Object Instance
+ $.flexslider = function(el, options) {
+   var slider = $(el);
+</PRE><PRE>   // making variables public
+   slider.vars = $.extend({}, $.flexslider.defaults, options);
+</PRE><PRE>   var namespace = slider.vars.namespace,
+       msGesture = window.navigator &amp;&amp; window.navigator.msPointerEnabled &amp;&amp; window.MSGesture,
+       touch = (( &quot;ontouchstart&quot; in window ) || msGesture || window.DocumentTouch &amp;&amp; document instanceof DocumentTouch) &amp;&amp; slider.vars.touch,
+       // depricating this idea, as devices are being released with both of these events
+       //eventType = (touch) ? &quot;touchend&quot; : &quot;click&quot;,
+       eventType = &quot;click touchend MSPointerUp&quot;,
+       watchedEvent = &quot;&quot;,
+       watchedEventClearTimer,
+       vertical = slider.vars.direction === &quot;vertical&quot;,
+       reverse = slider.vars.reverse,
+       carousel = (slider.vars.itemWidth &gt; 0),
+       fade = slider.vars.animation === &quot;fade&quot;,
+       asNav = slider.vars.asNavFor !== &quot;&quot;,
+       methods = {},
+       focused = true;
+</PRE><PRE>   // Store a reference to the slider object
+   $.data(el, &quot;flexslider&quot;, slider);
+</PRE><PRE>   // Private slider methods
+   methods = {
+     init: function() {
+       slider.animating = false;
+       // Get current slide and make sure it is a number
+       slider.currentSlide = parseInt( ( slider.vars.startAt ? slider.vars.startAt : 0) );
+       if ( isNaN( slider.currentSlide ) ) slider.currentSlide = 0;
+       slider.animatingTo = slider.currentSlide;
+       slider.atEnd = (slider.currentSlide === 0 || slider.currentSlide === slider.last);
+       slider.containerSelector = slider.vars.selector.substr(0,slider.vars.selector.search(' '));
+       slider.slides = $(slider.vars.selector, slider);
+       slider.container = $(slider.containerSelector, slider);
+       slider.count = slider.slides.length;
+       // SYNC:
+       slider.syncExists = $(slider.vars.sync).length &gt; 0;
+       // SLIDE:
+       if (slider.vars.animation === &quot;slide&quot;) slider.vars.animation = &quot;swing&quot;;
+       slider.prop = (vertical) ? &quot;top&quot; : &quot;marginLeft&quot;;
+       slider.args = {};
+       // SLIDESHOW:
+       slider.manualPause = false;
+       slider.stopped = false;
+       //PAUSE WHEN INVISIBLE
+       slider.started = false;
+       slider.startTimeout = null;
+       // TOUCH/USECSS:
+       slider.transitions = !slider.vars.video &amp;&amp; !fade &amp;&amp; slider.vars.useCSS &amp;&amp; (function() {
+         var obj = document.createElement('div'),
+             props = ['perspectiveProperty', 'WebkitPerspective', 'MozPerspective', 'OPerspective', 'msPerspective'];
+         for (var i in props) {
+           if ( obj.style[ props[i] ] !== undefined ) {
+             slider.pfx = props[i].replace('Perspective',<I>).toLowerCase();</I>
+             slider.prop = &quot;-&quot; + slider.pfx + &quot;-transform&quot;;
+             return true;
+           }
+         }
+         return false;
+       }());
+       // CONTROLSCONTAINER:
+       if (slider.vars.controlsContainer !== &quot;&quot;) slider.controlsContainer = $(slider.vars.controlsContainer).length &gt; 0 &amp;&amp; $(slider.vars.controlsContainer);
+       // MANUAL:
+       if (slider.vars.manualControls !== &quot;&quot;) slider.manualControls = $(slider.vars.manualControls).length &gt; 0 &amp;&amp; $(slider.vars.manualControls);
+</PRE><PRE>       // RANDOMIZE:
+       if (slider.vars.randomize) {
+         slider.slides.sort(function() { return (Math.round(Math.random())-0.5); });
+         slider.container.empty().append(slider.slides);
+       }
+</PRE><PRE>       slider.doMath();
+</PRE><PRE>       // INIT
+       slider.setup(&quot;init&quot;);
+</PRE><PRE>       // CONTROLNAV:
+       if (slider.vars.controlNav) methods.controlNav.setup();
+</PRE><PRE>       // DIRECTIONNAV:
+       if (slider.vars.directionNav) methods.directionNav.setup();
+</PRE><PRE>       // KEYBOARD:
+       if (slider.vars.keyboard &amp;&amp; ($(slider.containerSelector).length === 1 || slider.vars.multipleKeyboard)) {
+         $(document).bind('keyup', function(event) {
+           var keycode = event.keyCode;
+           if (!slider.animating &amp;&amp; (keycode === 39 || keycode === 37)) {
+             var target = (keycode === 39) ? slider.getTarget('next') :
+                          (keycode === 37) ? slider.getTarget('prev') : false;
+             slider.flexAnimate(target, slider.vars.pauseOnAction);
+           }
+         });
+       }
+       // MOUSEWHEEL:
+       if (slider.vars.mousewheel) {
+         slider.bind('mousewheel', function(event, delta, deltaX, deltaY) {
+           event.preventDefault();
+           var target = (delta &lt; 0) ? slider.getTarget('next') : slider.getTarget('prev');
+           slider.flexAnimate(target, slider.vars.pauseOnAction);
+         });
+       }
+</PRE><PRE>       // PAUSEPLAY
+       if (slider.vars.pausePlay) methods.pausePlay.setup();
+</PRE><PRE>       //PAUSE WHEN INVISIBLE
+       if (slider.vars.slideshow &amp;&amp; slider.vars.pauseInvisible) methods.pauseInvisible.init();
+</PRE><PRE>       // SLIDSESHOW
+       if (slider.vars.slideshow) {
+         if (slider.vars.pauseOnHover) {
+           slider.hover(function() {
+             if (!slider.manualPlay &amp;&amp; !slider.manualPause) slider.pause();
+           }, function() {
+             if (!slider.manualPause &amp;&amp; !slider.manualPlay &amp;&amp; !slider.stopped) slider.play();
+           });
+         }
+         // initialize animation
+         //If we're visible, or we don't use PageVisibility API
+         if(!slider.vars.pauseInvisible || !methods.pauseInvisible.isHidden()) {
+           (slider.vars.initDelay &gt; 0) ? slider.startTimeout = setTimeout(slider.play, slider.vars.initDelay) : slider.play();
+         }
+       }
+</PRE><PRE>       // ASNAV:
+       if (asNav) methods.asNav.setup();
+</PRE><PRE>       // TOUCH
+       if (touch &amp;&amp; slider.vars.touch) methods.touch();
+</PRE><PRE>       // FADE&amp;&amp;SMOOTHHEIGHT || SLIDE:
+       if (!fade || (fade &amp;&amp; slider.vars.smoothHeight)) $(window).bind(&quot;resize orientationchange focus&quot;, methods.resize);
+</PRE><PRE>       slider.find(&quot;img&quot;).attr(&quot;draggable&quot;, &quot;false&quot;);
+</PRE><PRE>       // API: start() Callback
+       setTimeout(function(){
+         slider.vars.start(slider);
+       }, 200);
+     },
+     asNav: {
+       setup: function() {
+         slider.asNav = true;
+         slider.animatingTo = Math.floor(slider.currentSlide/slider.move);
+         slider.currentItem = slider.currentSlide;
+         slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(slider.currentItem).addClass(namespace + &quot;active-slide&quot;);
+         if(!msGesture){
+             slider.slides.click(function(e){
+               e.preventDefault();
+               var $slide = $(this),
+                   target = $slide.index();
+               var posFromLeft = $slide.offset().left - $(slider).scrollLeft(); // Find position of slide relative to left of slider container
+               if( posFromLeft &lt;= 0 &amp;&amp; $slide.hasClass( namespace + 'active-slide' ) ) {
+                 slider.flexAnimate(slider.getTarget(&quot;prev&quot;), true);
+               } else if (!$(slider.vars.asNavFor).data('flexslider').animating &amp;&amp; !$slide.hasClass(namespace + &quot;active-slide&quot;)) {
+                 slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+                 slider.flexAnimate(target, slider.vars.pauseOnAction, false, true, true);
+               }
+             });
+         }else{
+             el._slider = slider;
+             slider.slides.each(function (){
+                 var that = this;
+                 that._gesture = new MSGesture();
+                 that._gesture.target = that;
+                 that.addEventListener(&quot;MSPointerDown&quot;, function (e){
+                     e.preventDefault();
+                     if(e.currentTarget._gesture)
+                         e.currentTarget._gesture.addPointer(e.pointerId);
+                 }, false);
+                 that.addEventListener(&quot;MSGestureTap&quot;, function (e){
+                     e.preventDefault();
+                     var $slide = $(this),
+                         target = $slide.index();
+                     if (!$(slider.vars.asNavFor).data('flexslider').animating &amp;&amp; !$slide.hasClass('active')) {
+                         slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+                         slider.flexAnimate(target, slider.vars.pauseOnAction, false, true, true);
+                     }
+                 });
+             });
+         }
+       }
+     },
+     controlNav: {
+       setup: function() {
+         if (!slider.manualControls) {
+           methods.controlNav.setupPaging();
+         } else { // MANUALCONTROLS:
+           methods.controlNav.setupManual();
+         }
+       },
+       setupPaging: function() {
+         var type = (slider.vars.controlNav === &quot;thumbnails&quot;) ? 'control-thumbs' : 'control-paging',
+             j = 1,
+             item,
+             slide;
+</PRE>
+          slider.controlNavScaffold = $('');
+<PRE>         if (slider.pagingCount &gt; 1) {
+           for (var i = 0; i &lt; slider.pagingCount; i++) {
+             slide = slider.slides.eq(i);
+             item = (slider.vars.controlNav === &quot;thumbnails&quot;) ? '&lt;img src=&quot;' + slide.attr( 'data-thumb' ) + '&quot;/&gt;' : '&lt;a&gt;' + j + '&lt;/a&gt;';
+             if ( 'thumbnails' === slider.vars.controlNav &amp;&amp; true === slider.vars.thumbCaptions ) {
+               var captn = slide.attr( 'data-thumbcaption' );
+               if ( <I> != captn &amp;&amp; undefined != captn ) item += '<SPAN class="' + namespace + 'caption">' + captn + '</SPAN>';</I>
+             }
+</PRE>
+              slider.controlNavScaffold.append('<LI>' + item + '</LI>');
+<PRE>             j++;
+           }
+         }
+</PRE><PRE>         // CONTROLSCONTAINER:
+         (slider.controlsContainer) ? $(slider.controlsContainer).append(slider.controlNavScaffold) : slider.append(slider.controlNavScaffold);
+         methods.controlNav.set();
+</PRE><PRE>         methods.controlNav.active();
+</PRE><PRE>         slider.controlNavScaffold.delegate('a, img', eventType, function(event) {
+           event.preventDefault();
+</PRE><PRE>           if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+             var $this = $(this),
+                 target = slider.controlNav.index($this);
+</PRE><PRE>             if (!$this.hasClass(namespace + 'active')) {
+               slider.direction = (target &gt; slider.currentSlide) ? &quot;next&quot; : &quot;prev&quot;;
+               slider.flexAnimate(target, slider.vars.pauseOnAction);
+             }
+           }
+</PRE><PRE>           // setup flags to prevent event duplication
+           if (watchedEvent === &quot;&quot;) {
+             watchedEvent = event.type;
+           }
+           methods.setToClearWatchedEvent();
+</PRE><PRE>         });
+       },
+       setupManual: function() {
+         slider.controlNav = slider.manualControls;
+         methods.controlNav.active();
+</PRE><PRE>         slider.controlNav.bind(eventType, function(event) {
+           event.preventDefault();
+</PRE><PRE>           if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+             var $this = $(this),
+                 target = slider.controlNav.index($this);
+</PRE><PRE>             if (!$this.hasClass(namespace + 'active')) {
+               (target &gt; slider.currentSlide) ? slider.direction = &quot;next&quot; : slider.direction = &quot;prev&quot;;
+               slider.flexAnimate(target, slider.vars.pauseOnAction);
+             }
+           }
+</PRE><PRE>           // setup flags to prevent event duplication
+           if (watchedEvent === &quot;&quot;) {
+             watchedEvent = event.type;
+           }
+           methods.setToClearWatchedEvent();
+         });
+       },
+       set: function() {
+         var selector = (slider.vars.controlNav === &quot;thumbnails&quot;) ? 'img' : 'a';
+         slider.controlNav = $('.' + namespace + 'control-nav li ' + selector, (slider.controlsContainer) ? slider.controlsContainer : slider);
+       },
+       active: function() {
+         slider.controlNav.removeClass(namespace + &quot;active&quot;).eq(slider.animatingTo).addClass(namespace + &quot;active&quot;);
+       },
+       update: function(action, pos) {
+         if (slider.pagingCount &gt; 1 &amp;&amp; action === &quot;add&quot;) {
+</PRE>
+            slider.controlNavScaffold.append($('<LI>&lt;a&gt;' + slider.count + '&lt;/a&gt;</LI>'));
+<PRE>         } else if (slider.pagingCount === 1) {
+           slider.controlNavScaffold.find('li').remove();
+         } else {
+           slider.controlNav.eq(pos).closest('li').remove();
+         }
+         methods.controlNav.set();
+         (slider.pagingCount &gt; 1 &amp;&amp; slider.pagingCount !== slider.controlNav.length) ? slider.update(pos, action) : methods.controlNav.active();
+       }
+     },
+     directionNav: {
+       setup: function() {
+</PRE>
+          var directionNavScaffold = $('<UL class="' + namespace + 'direction-nav"><LI>&lt;a class=&quot;' + namespace + 'prev&quot; href=&quot;#&quot;&gt;' + slider.vars.prevText + '&lt;/a&gt;</LI><LI>&lt;a class=&quot;' + namespace + 'next&quot; href=&quot;#&quot;&gt;' + slider.vars.nextText + '&lt;/a&gt;</LI></UL>');
+<PRE>         // CONTROLSCONTAINER:
+         if (slider.controlsContainer) {
+           $(slider.controlsContainer).append(directionNavScaffold);
+           slider.directionNav = $('.' + namespace + 'direction-nav li a', slider.controlsContainer);
+         } else {
+           slider.append(directionNavScaffold);
+           slider.directionNav = $('.' + namespace + 'direction-nav li a', slider);
+         }
+</PRE><PRE>         methods.directionNav.update();
+</PRE><PRE>         slider.directionNav.bind(eventType, function(event) {
+           event.preventDefault();
+           var target;
+</PRE><PRE>           if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+             target = ($(this).hasClass(namespace + 'next')) ? slider.getTarget('next') : slider.getTarget('prev');
+             slider.flexAnimate(target, slider.vars.pauseOnAction);
+           }
+</PRE><PRE>           // setup flags to prevent event duplication
+           if (watchedEvent === &quot;&quot;) {
+             watchedEvent = event.type;
+           }
+           methods.setToClearWatchedEvent();
+         });
+       },
+       update: function() {
+         var disabledClass = namespace + 'disabled';
+         if (slider.pagingCount === 1) {
+           slider.directionNav.addClass(disabledClass).attr('tabindex', '-1');
+         } else if (!slider.vars.animationLoop) {
+           if (slider.animatingTo === 0) {
+             slider.directionNav.removeClass(disabledClass).filter('.' + namespace + &quot;prev&quot;).addClass(disabledClass).attr('tabindex', '-1');
+           } else if (slider.animatingTo === slider.last) {
+             slider.directionNav.removeClass(disabledClass).filter('.' + namespace + &quot;next&quot;).addClass(disabledClass).attr('tabindex', '-1');
+           } else {
+             slider.directionNav.removeClass(disabledClass).removeAttr('tabindex');
+           }
+         } else {
+           slider.directionNav.removeClass(disabledClass).removeAttr('tabindex');
+         }
+       }
+     },
+     pausePlay: {
+       setup: function() {
+</PRE>
+          var pausePlayScaffold = $('<DIV class="' + namespace + 'pauseplay">&lt;a&gt;&lt;/a&gt;</DIV>');
+<PRE>         // CONTROLSCONTAINER:
+         if (slider.controlsContainer) {
+           slider.controlsContainer.append(pausePlayScaffold);
+           slider.pausePlay = $('.' + namespace + 'pauseplay a', slider.controlsContainer);
+         } else {
+           slider.append(pausePlayScaffold);
+           slider.pausePlay = $('.' + namespace + 'pauseplay a', slider);
+         }
+</PRE><PRE>         methods.pausePlay.update((slider.vars.slideshow) ? namespace + 'pause' : namespace + 'play');
+</PRE><PRE>         slider.pausePlay.bind(eventType, function(event) {
+           event.preventDefault();
+</PRE><PRE>           if (watchedEvent === &quot;&quot; || watchedEvent === event.type) {
+             if ($(this).hasClass(namespace + 'pause')) {
+               slider.manualPause = true;
+               slider.manualPlay = false;
+               slider.pause();
+             } else {
+               slider.manualPause = false;
+               slider.manualPlay = true;
+               slider.play();
+             }
+           }
+</PRE><PRE>           // setup flags to prevent event duplication
+           if (watchedEvent === &quot;&quot;) {
+             watchedEvent = event.type;
+           }
+           methods.setToClearWatchedEvent();
+         });
+       },
+       update: function(state) {
+         (state === &quot;play&quot;) ? slider.pausePlay.removeClass(namespace + 'pause').addClass(namespace + 'play').html(slider.vars.playText) : slider.pausePlay.removeClass(namespace + 'play').addClass(namespace + 'pause').html(slider.vars.pauseText);
+       }
+     },
+     touch: function() {
+       var startX,
+         startY,
+         offset,
+         cwidth,
+         dx,
+         startT,
+         scrolling = false,
+         localX = 0,
+         localY = 0,
+         accDx = 0;
+</PRE><PRE>       if(!msGesture){
+           el.addEventListener('touchstart', onTouchStart, false);
+</PRE><PRE>           function onTouchStart(e) {
+             if (slider.animating) {
+               e.preventDefault();
+             } else if ( ( window.navigator.msPointerEnabled ) || e.touches.length === 1 ) {
+               slider.pause();
+               // CAROUSEL:
+               cwidth = (vertical) ? slider.h : slider. w;
+               startT = Number(new Date());
+               // CAROUSEL:
+</PRE><PRE>               // Local vars for X and Y points.
+               localX = e.touches[0].pageX;
+               localY = e.touches[0].pageY;
+</PRE><PRE>               offset = (carousel &amp;&amp; reverse &amp;&amp; slider.animatingTo === slider.last) ? 0 :
+                        (carousel &amp;&amp; reverse) ? slider.limit - (((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo) :
+                        (carousel &amp;&amp; slider.currentSlide === slider.last) ? slider.limit :
+                        (carousel) ? ((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.currentSlide :
+                        (reverse) ? (slider.last - slider.currentSlide + slider.cloneOffset) * cwidth : (slider.currentSlide + slider.cloneOffset) * cwidth;
+               startX = (vertical) ? localY : localX;
+               startY = (vertical) ? localX : localY;
+</PRE><PRE>               el.addEventListener('touchmove', onTouchMove, false);
+               el.addEventListener('touchend', onTouchEnd, false);
+             }
+           }
+</PRE><PRE>           function onTouchMove(e) {
+             // Local vars for X and Y points.
+</PRE><PRE>             localX = e.touches[0].pageX;
+             localY = e.touches[0].pageY;
+</PRE><PRE>             dx = (vertical) ? startX - localY : startX - localX;
+             scrolling = (vertical) ? (Math.abs(dx) &lt; Math.abs(localX - startY)) : (Math.abs(dx) &lt; Math.abs(localY - startY));
+</PRE><PRE>             var fxms = 500;
+</PRE><PRE>             if ( ! scrolling || Number( new Date() ) - startT &gt; fxms ) {
+               e.preventDefault();
+               if (!fade &amp;&amp; slider.transitions) {
+                 if (!slider.vars.animationLoop) {
+                   dx = dx/((slider.currentSlide === 0 &amp;&amp; dx &lt; 0 || slider.currentSlide === slider.last &amp;&amp; dx &gt; 0) ? (Math.abs(dx)/cwidth+2) : 1);
+                 }
+                 slider.setProps(offset + dx, &quot;setTouch&quot;);
+               }
+             }
+           }
+</PRE><PRE>           function onTouchEnd(e) {
+             // finish the touch by undoing the touch session
+             el.removeEventListener('touchmove', onTouchMove, false);
+</PRE><PRE>             if (slider.animatingTo === slider.currentSlide &amp;&amp; !scrolling &amp;&amp; !(dx === null)) {
+               var updateDx = (reverse) ? -dx : dx,
+                   target = (updateDx &gt; 0) ? slider.getTarget('next') : slider.getTarget('prev');
+</PRE><PRE>               if (slider.canAdvance(target) &amp;&amp; (Number(new Date()) - startT &lt; 550 &amp;&amp; Math.abs(updateDx) &gt; 50 || Math.abs(updateDx) &gt; cwidth/2)) {
+                 slider.flexAnimate(target, slider.vars.pauseOnAction);
+               } else {
+                 if (!fade) slider.flexAnimate(slider.currentSlide, slider.vars.pauseOnAction, true);
+               }
+             }
+             el.removeEventListener('touchend', onTouchEnd, false);
+</PRE><PRE>             startX = null;
+             startY = null;
+             dx = null;
+             offset = null;
+           }
+       }else{
+           el.style.msTouchAction = &quot;none&quot;;
+           el._gesture = new MSGesture();
+           el._gesture.target = el;
+           el.addEventListener(&quot;MSPointerDown&quot;, onMSPointerDown, false);
+           el._slider = slider;
+           el.addEventListener(&quot;MSGestureChange&quot;, onMSGestureChange, false);
+           el.addEventListener(&quot;MSGestureEnd&quot;, onMSGestureEnd, false);
+</PRE><PRE>           function onMSPointerDown(e){
+               e.stopPropagation();
+               if (slider.animating) {
+                   e.preventDefault();
+               }else{
+                   slider.pause();
+                   el._gesture.addPointer(e.pointerId);
+                   accDx = 0;
+                   cwidth = (vertical) ? slider.h : slider. w;
+                   startT = Number(new Date());
+                   // CAROUSEL:
+</PRE><PRE>                   offset = (carousel &amp;&amp; reverse &amp;&amp; slider.animatingTo === slider.last) ? 0 :
+                       (carousel &amp;&amp; reverse) ? slider.limit - (((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo) :
+                           (carousel &amp;&amp; slider.currentSlide === slider.last) ? slider.limit :
+                               (carousel) ? ((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.currentSlide :
+                                   (reverse) ? (slider.last - slider.currentSlide + slider.cloneOffset) * cwidth : (slider.currentSlide + slider.cloneOffset) * cwidth;
+               }
+           }
+</PRE><PRE>           function onMSGestureChange(e) {
+               e.stopPropagation();
+               var slider = e.target._slider;
+               if(!slider){
+                   return;
+               }
+               var transX = -e.translationX,
+                   transY = -e.translationY;
+</PRE><PRE>               //Accumulate translations.
+               accDx = accDx + ((vertical) ? transY : transX);
+               dx = accDx;
+               scrolling = (vertical) ? (Math.abs(accDx) &lt; Math.abs(-transX)) : (Math.abs(accDx) &lt; Math.abs(-transY));
+</PRE><PRE>               if(e.detail === e.MSGESTURE_FLAG_INERTIA){
+                   setImmediate(function (){
+                       el._gesture.stop();
+                   });
+</PRE><PRE>                   return;
+               }
+</PRE><PRE>               if (!scrolling || Number(new Date()) - startT &gt; 500) {
+                   e.preventDefault();
+                   if (!fade &amp;&amp; slider.transitions) {
+                       if (!slider.vars.animationLoop) {
+                           dx = accDx / ((slider.currentSlide === 0 &amp;&amp; accDx &lt; 0 || slider.currentSlide === slider.last &amp;&amp; accDx &gt; 0) ? (Math.abs(accDx) / cwidth + 2) : 1);
+                       }
+                       slider.setProps(offset + dx, &quot;setTouch&quot;);
+                   }
+               }
+           }
+</PRE><PRE>           function onMSGestureEnd(e) {
+               e.stopPropagation();
+               var slider = e.target._slider;
+               if(!slider){
+                   return;
+               }
+               if (slider.animatingTo === slider.currentSlide &amp;&amp; !scrolling &amp;&amp; !(dx === null)) {
+                   var updateDx = (reverse) ? -dx : dx,
+                       target = (updateDx &gt; 0) ? slider.getTarget('next') : slider.getTarget('prev');
+</PRE><PRE>                   if (slider.canAdvance(target) &amp;&amp; (Number(new Date()) - startT &lt; 550 &amp;&amp; Math.abs(updateDx) &gt; 50 || Math.abs(updateDx) &gt; cwidth/2)) {
+                       slider.flexAnimate(target, slider.vars.pauseOnAction);
+                   } else {
+                       if (!fade) slider.flexAnimate(slider.currentSlide, slider.vars.pauseOnAction, true);
+                   }
+               }
+</PRE><PRE>               startX = null;
+               startY = null;
+               dx = null;
+               offset = null;
+               accDx = 0;
+           }
+       }
+     },
+     resize: function() {
+       if (!slider.animating &amp;&amp; slider.is(':visible')) {
+         if (!carousel) slider.doMath();
+</PRE><PRE>         if (fade) {
+           // SMOOTH HEIGHT:
+           methods.smoothHeight();
+         } else if (carousel) { //CAROUSEL:
+           slider.slides.width(slider.computedW);
+           slider.update(slider.pagingCount);
+           slider.setProps();
+         }
+         else if (vertical) { //VERTICAL:
+           slider.viewport.height(slider.h);
+           slider.setProps(slider.h, &quot;setTotal&quot;);
+         } else {
+           // SMOOTH HEIGHT:
+           if (slider.vars.smoothHeight) methods.smoothHeight();
+           slider.newSlides.width(slider.computedW);
+           slider.setProps(slider.computedW, &quot;setTotal&quot;);
+         }
+       }
+     },
+     smoothHeight: function(dur) {
+       if (!vertical || fade) {
+         var $obj = (fade) ? slider : slider.viewport;
+         (dur) ? $obj.animate({&quot;height&quot;: slider.slides.eq(slider.animatingTo).height()}, dur) : $obj.height(slider.slides.eq(slider.animatingTo).height());
+       }
+     },
+     sync: function(action) {
+       var $obj = $(slider.vars.sync).data(&quot;flexslider&quot;),
+           target = slider.animatingTo;
+</PRE><PRE>       switch (action) {
+         case &quot;animate&quot;: $obj.flexAnimate(target, slider.vars.pauseOnAction, false, true); break;
+         case &quot;play&quot;: if (!$obj.playing &amp;&amp; !$obj.asNav) { $obj.play(); } break;
+         case &quot;pause&quot;: $obj.pause(); break;
+       }
+     },
+     pauseInvisible: {
+       visProp: null,
+       init: function() {
+         var prefixes = ['webkit','moz','ms','o'];
+</PRE><PRE>         if ('hidden' in document) return 'hidden';
+         for (var i = 0; i &lt; prefixes.length; i++) {
+           if ((prefixes[i] + 'Hidden') in document) 
+           methods.pauseInvisible.visProp = prefixes[i] + 'Hidden';
+         }
+         if (methods.pauseInvisible.visProp) {
+           var evtname = methods.pauseInvisible.visProp.replace(/[H|h]idden/,<I>) + 'visibilitychange';</I>
+           document.addEventListener(evtname, function() {
+             if (methods.pauseInvisible.isHidden()) {
+               if(slider.startTimeout) clearTimeout(slider.startTimeout); //If clock is ticking, stop timer and prevent from starting while invisible
+               else slider.pause(); //Or just pause
+             }
+             else {
+               if(slider.started) slider.play(); //Initiated before, just play
+               else (slider.vars.initDelay &gt; 0) ? setTimeout(slider.play, slider.vars.initDelay) : slider.play(); //Didn't init before: simply init or wait for it
+             }
+           });
+         }       
+       },
+       isHidden: function() {
+         return document[methods.pauseInvisible.visProp] || false;
+       }
+     },
+     setToClearWatchedEvent: function() {
+       clearTimeout(watchedEventClearTimer);
+       watchedEventClearTimer = setTimeout(function() {
+         watchedEvent = &quot;&quot;;
+       }, 3000);
+     }
+   }
+</PRE><PRE>   // public methods
+   slider.flexAnimate = function(target, pause, override, withSync, fromNav) {
+     if (!slider.vars.animationLoop &amp;&amp; target !== slider.currentSlide) {
+       slider.direction = (target &gt; slider.currentSlide) ? &quot;next&quot; : &quot;prev&quot;;
+     }
+</PRE><PRE>     if (asNav &amp;&amp; slider.pagingCount === 1) slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+</PRE><PRE>     if (!slider.animating &amp;&amp; (slider.canAdvance(target, fromNav) || override) &amp;&amp; slider.is(&quot;:visible&quot;)) {
+       if (asNav &amp;&amp; withSync) {
+         var master = $(slider.vars.asNavFor).data('flexslider');
+         slider.atEnd = target === 0 || target === slider.count - 1;
+         master.flexAnimate(target, true, false, true, fromNav);
+         slider.direction = (slider.currentItem &lt; target) ? &quot;next&quot; : &quot;prev&quot;;
+         master.direction = slider.direction;
+</PRE><PRE>         if (Math.ceil((target + 1)/slider.visible) - 1 !== slider.currentSlide &amp;&amp; target !== 0) {
+           slider.currentItem = target;
+           slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(target).addClass(namespace + &quot;active-slide&quot;);
+           target = Math.floor(target/slider.visible);
+         } else {
+           slider.currentItem = target;
+           slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(target).addClass(namespace + &quot;active-slide&quot;);
+           return false;
+         }
+       }
+</PRE><PRE>       slider.animating = true;
+       slider.animatingTo = target;
+</PRE><PRE>       // SLIDESHOW:
+       if (pause) slider.pause();
+</PRE><PRE>       // API: before() animation Callback
+       slider.vars.before(slider);
+</PRE><PRE>       // SYNC:
+       if (slider.syncExists &amp;&amp; !fromNav) methods.sync(&quot;animate&quot;);
+</PRE><PRE>       // CONTROLNAV
+       if (slider.vars.controlNav) methods.controlNav.active();
+</PRE><PRE>       // !CAROUSEL:
+       // CANDIDATE: slide active class (for add/remove slide)
+       if (!carousel) slider.slides.removeClass(namespace + 'active-slide').eq(target).addClass(namespace + 'active-slide');
+</PRE><PRE>       // INFINITE LOOP:
+       // CANDIDATE: atEnd
+       slider.atEnd = target === 0 || target === slider.last;
+</PRE><PRE>       // DIRECTIONNAV:
+       if (slider.vars.directionNav) methods.directionNav.update();
+</PRE><PRE>       if (target === slider.last) {
+         // API: end() of cycle Callback
+         slider.vars.end(slider);
+         // SLIDESHOW &amp;&amp; !INFINITE LOOP:
+         if (!slider.vars.animationLoop) slider.pause();
+       }
+</PRE><PRE>       // SLIDE:
+       if (!fade) {
+         var dimension = (vertical) ? slider.slides.filter(':first').height() : slider.computedW,
+             margin, slideString, calcNext;
+</PRE><PRE>         // INFINITE LOOP / REVERSE:
+         if (carousel) {
+           //margin = (slider.vars.itemWidth &gt; slider.w) ? slider.vars.itemMargin * 2 : slider.vars.itemMargin;
+           margin = slider.vars.itemMargin;
+           calcNext = ((slider.itemW + margin) * slider.move) * slider.animatingTo;
+           slideString = (calcNext &gt; slider.limit &amp;&amp; slider.visible !== 1) ? slider.limit : calcNext;
+         } else if (slider.currentSlide === 0 &amp;&amp; target === slider.count - 1 &amp;&amp; slider.vars.animationLoop &amp;&amp; slider.direction !== &quot;next&quot;) {
+           slideString = (reverse) ? (slider.count + slider.cloneOffset) * dimension : 0;
+         } else if (slider.currentSlide === slider.last &amp;&amp; target === 0 &amp;&amp; slider.vars.animationLoop &amp;&amp; slider.direction !== &quot;prev&quot;) {
+           slideString = (reverse) ? 0 : (slider.count + 1) * dimension;
+         } else {
+           slideString = (reverse) ? ((slider.count - 1) - target + slider.cloneOffset) * dimension : (target + slider.cloneOffset) * dimension;
+         }
+         slider.setProps(slideString, &quot;&quot;, slider.vars.animationSpeed);
+         if (slider.transitions) {
+           if (!slider.vars.animationLoop || !slider.atEnd) {
+             slider.animating = false;
+             slider.currentSlide = slider.animatingTo;
+           }
+           slider.container.unbind(&quot;webkitTransitionEnd transitionend&quot;);
+           slider.container.bind(&quot;webkitTransitionEnd transitionend&quot;, function() {
+             slider.wrapup(dimension);
+           });
+         } else {
+           slider.container.animate(slider.args, slider.vars.animationSpeed, slider.vars.easing, function(){
+             slider.wrapup(dimension);
+           });
+         }
+       } else { // FADE:
+         if (!touch) {
+           //slider.slides.eq(slider.currentSlide).fadeOut(slider.vars.animationSpeed, slider.vars.easing);
+           //slider.slides.eq(target).fadeIn(slider.vars.animationSpeed, slider.vars.easing, slider.wrapup);
+</PRE><PRE>           slider.slides.eq(slider.currentSlide).css({&quot;zIndex&quot;: 1}).animate({&quot;opacity&quot;: 0}, slider.vars.animationSpeed, slider.vars.easing);
+           slider.slides.eq(target).css({&quot;zIndex&quot;: 2}).animate({&quot;opacity&quot;: 1}, slider.vars.animationSpeed, slider.vars.easing, slider.wrapup);
+</PRE><PRE>         } else {
+           slider.slides.eq(slider.currentSlide).css({ &quot;opacity&quot;: 0, &quot;zIndex&quot;: 1 });
+           slider.slides.eq(target).css({ &quot;opacity&quot;: 1, &quot;zIndex&quot;: 2 });
+           slider.wrapup(dimension);
+         }
+       }
+       // SMOOTH HEIGHT:
+       if (slider.vars.smoothHeight) methods.smoothHeight(slider.vars.animationSpeed);
+     }
+   }
+   slider.wrapup = function(dimension) {
+     // SLIDE:
+     if (!fade &amp;&amp; !carousel) {
+       if (slider.currentSlide === 0 &amp;&amp; slider.animatingTo === slider.last &amp;&amp; slider.vars.animationLoop) {
+         slider.setProps(dimension, &quot;jumpEnd&quot;);
+       } else if (slider.currentSlide === slider.last &amp;&amp; slider.animatingTo === 0 &amp;&amp; slider.vars.animationLoop) {
+         slider.setProps(dimension, &quot;jumpStart&quot;);
+       }
+     }
+     slider.animating = false;
+     slider.currentSlide = slider.animatingTo;
+     // API: after() animation Callback
+     slider.vars.after(slider);
+   }
+</PRE><PRE>   // SLIDESHOW:
+   slider.animateSlides = function() {
+     if (!slider.animating &amp;&amp; focused ) slider.flexAnimate(slider.getTarget(&quot;next&quot;));
+   }
+   // SLIDESHOW:
+   slider.pause = function() {
+     clearInterval(slider.animatedSlides);
+     slider.animatedSlides = null;
+     slider.playing = false;
+     // PAUSEPLAY:
+     if (slider.vars.pausePlay) methods.pausePlay.update(&quot;play&quot;);
+     // SYNC:
+     if (slider.syncExists) methods.sync(&quot;pause&quot;);
+   }
+   // SLIDESHOW:
+   slider.play = function() {
+     if (slider.playing) clearInterval(slider.animatedSlides);
+     slider.animatedSlides = slider.animatedSlides || setInterval(slider.animateSlides, slider.vars.slideshowSpeed);
+     slider.started = slider.playing = true;
+     // PAUSEPLAY:
+     if (slider.vars.pausePlay) methods.pausePlay.update(&quot;pause&quot;);
+     // SYNC:
+     if (slider.syncExists) methods.sync(&quot;play&quot;);
+   }
+   // STOP:
+   slider.stop = function () {
+     slider.pause();
+     slider.stopped = true;
+   }
+   slider.canAdvance = function(target, fromNav) {
+     // ASNAV:
+     var last = (asNav) ? slider.pagingCount - 1 : slider.last;
+     return (fromNav) ? true :
+            (asNav &amp;&amp; slider.currentItem === slider.count - 1 &amp;&amp; target === 0 &amp;&amp; slider.direction === &quot;prev&quot;) ? true :
+            (asNav &amp;&amp; slider.currentItem === 0 &amp;&amp; target === slider.pagingCount - 1 &amp;&amp; slider.direction !== &quot;next&quot;) ? false :
+            (target === slider.currentSlide &amp;&amp; !asNav) ? false :
+            (slider.vars.animationLoop) ? true :
+            (slider.atEnd &amp;&amp; slider.currentSlide === 0 &amp;&amp; target === last &amp;&amp; slider.direction !== &quot;next&quot;) ? false :
+            (slider.atEnd &amp;&amp; slider.currentSlide === last &amp;&amp; target === 0 &amp;&amp; slider.direction === &quot;next&quot;) ? false :
+            true;
+   }
+   slider.getTarget = function(dir) {
+     slider.direction = dir;
+     if (dir === &quot;next&quot;) {
+       return (slider.currentSlide === slider.last) ? 0 : slider.currentSlide + 1;
+     } else {
+       return (slider.currentSlide === 0) ? slider.last : slider.currentSlide - 1;
+     }
+   }
+</PRE><PRE>   // SLIDE:
+   slider.setProps = function(pos, special, dur) {
+     var target = (function() {
+       var posCheck = (pos) ? pos : ((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo,
+           posCalc = (function() {
+             if (carousel) {
+               return (special === &quot;setTouch&quot;) ? pos :
+                      (reverse &amp;&amp; slider.animatingTo === slider.last) ? 0 :
+                      (reverse) ? slider.limit - (((slider.itemW + slider.vars.itemMargin) * slider.move) * slider.animatingTo) :
+                      (slider.animatingTo === slider.last) ? slider.limit : posCheck;
+             } else {
+               switch (special) {
+                 case &quot;setTotal&quot;: return (reverse) ? ((slider.count - 1) - slider.currentSlide + slider.cloneOffset) * pos : (slider.currentSlide + slider.cloneOffset) * pos;
+                 case &quot;setTouch&quot;: return (reverse) ? pos : pos;
+                 case &quot;jumpEnd&quot;: return (reverse) ? pos : slider.count * pos;
+                 case &quot;jumpStart&quot;: return (reverse) ? slider.count * pos : pos;
+                 default: return pos;
+               }
+             }
+           }());
+</PRE><PRE>           return (posCalc * -1) + &quot;px&quot;;
+         }());
+</PRE><PRE>     if (slider.transitions) {
+       target = (vertical) ? &quot;translate3d(0,&quot; + target + &quot;,0)&quot; : &quot;translate3d(&quot; + target + &quot;,0,0)&quot;;
+       dur = (dur !== undefined) ? (dur/1000) + &quot;s&quot; : &quot;0s&quot;;
+       slider.container.css(&quot;-&quot; + slider.pfx + &quot;-transition-duration&quot;, dur);
+     }
+</PRE><PRE>     slider.args[slider.prop] = target;
+     if (slider.transitions || dur === undefined) slider.container.css(slider.args);
+   }
+</PRE><PRE>   slider.setup = function(type) {
+     // SLIDE:
+     if (!fade) {
+       var sliderOffset, arr;
+</PRE><PRE>       if (type === &quot;init&quot;) {
+</PRE>
+          slider.viewport = $('').css({&quot;overflow&quot;: &quot;hidden&quot;, &quot;position&quot;: &quot;relative&quot;}).appendTo(slider).append(slider.container);
+<PRE>         // INFINITE LOOP:
+         slider.cloneCount = 0;
+         slider.cloneOffset = 0;
+         // REVERSE:
+         if (reverse) {
+           arr = $.makeArray(slider.slides).reverse();
+           slider.slides = $(arr);
+           slider.container.empty().append(slider.slides);
+         }
+       }
+       // INFINITE LOOP &amp;&amp; !CAROUSEL:
+       if (slider.vars.animationLoop &amp;&amp; !carousel) {
+         slider.cloneCount = 2;
+         slider.cloneOffset = 1;
+         // clear out old clones
+         if (type !== &quot;init&quot;) slider.container.find('.clone').remove();
+         slider.container.append(slider.slides.first().clone().addClass('clone').attr('aria-hidden', 'true')).prepend(slider.slides.last().clone().addClass('clone').attr('aria-hidden', 'true'));
+       }
+       slider.newSlides = $(slider.vars.selector, slider);
+</PRE><PRE>       sliderOffset = (reverse) ? slider.count - 1 - slider.currentSlide + slider.cloneOffset : slider.currentSlide + slider.cloneOffset;
+       // VERTICAL:
+       if (vertical &amp;&amp; !carousel) {
+         slider.container.height((slider.count + slider.cloneCount) * 200 + &quot;%&quot;).css(&quot;position&quot;, &quot;absolute&quot;).width(&quot;100%&quot;);
+         setTimeout(function(){
+           slider.newSlides.css({&quot;display&quot;: &quot;block&quot;});
+           slider.doMath();
+           slider.viewport.height(slider.h);
+           slider.setProps(sliderOffset * slider.h, &quot;init&quot;);
+         }, (type === &quot;init&quot;) ? 100 : 0);
+       } else {
+         slider.container.width((slider.count + slider.cloneCount) * 200 + &quot;%&quot;);
+         slider.setProps(sliderOffset * slider.computedW, &quot;init&quot;);
+         setTimeout(function(){
+           slider.doMath();
+           slider.newSlides.css({&quot;width&quot;: slider.computedW, &quot;float&quot;: &quot;left&quot;, &quot;display&quot;: &quot;block&quot;});
+           // SMOOTH HEIGHT:
+           if (slider.vars.smoothHeight) methods.smoothHeight();
+         }, (type === &quot;init&quot;) ? 100 : 0);
+       }
+     } else { // FADE:
+       slider.slides.css({&quot;width&quot;: &quot;100%&quot;, &quot;float&quot;: &quot;left&quot;, &quot;marginRight&quot;: &quot;-100%&quot;, &quot;position&quot;: &quot;relative&quot;});
+       if (type === &quot;init&quot;) {
+         if (!touch) {
+           //slider.slides.eq(slider.currentSlide).fadeIn(slider.vars.animationSpeed, slider.vars.easing);
+           slider.slides.css({ &quot;opacity&quot;: 0, &quot;display&quot;: &quot;block&quot;, &quot;zIndex&quot;: 1 }).eq(slider.currentSlide).css({&quot;zIndex&quot;: 2}).animate({&quot;opacity&quot;: 1},slider.vars.animationSpeed,slider.vars.easing);
+         } else {
+           slider.slides.css({ &quot;opacity&quot;: 0, &quot;display&quot;: &quot;block&quot;, &quot;webkitTransition&quot;: &quot;opacity &quot; + slider.vars.animationSpeed / 1000 + &quot;s ease&quot;, &quot;zIndex&quot;: 1 }).eq(slider.currentSlide).css({ &quot;opacity&quot;: 1, &quot;zIndex&quot;: 2});
+         }
+       }
+       // SMOOTH HEIGHT:
+       if (slider.vars.smoothHeight) methods.smoothHeight();
+     }
+     // !CAROUSEL:
+     // CANDIDATE: active slide
+     if (!carousel) slider.slides.removeClass(namespace + &quot;active-slide&quot;).eq(slider.currentSlide).addClass(namespace + &quot;active-slide&quot;);
+   }
+</PRE><PRE>   slider.doMath = function() {
+     var slide = slider.slides.first(),
+         slideMargin = slider.vars.itemMargin,
+         minItems = slider.vars.minItems,
+         maxItems = slider.vars.maxItems;
+</PRE><PRE>     slider.w = (slider.viewport===undefined) ? slider.width() : slider.viewport.width();
+     slider.h = slide.height();
+     slider.boxPadding = slide.outerWidth() - slide.width();
+</PRE><PRE>     // CAROUSEL:
+     if (carousel) {
+       slider.itemT = slider.vars.itemWidth + slideMargin;
+       slider.minW = (minItems) ? minItems * slider.itemT : slider.w;
+       slider.maxW = (maxItems) ? (maxItems * slider.itemT) - slideMargin : slider.w;
+       slider.itemW = (slider.minW &gt; slider.w) ? (slider.w - (slideMargin * (minItems - 1)))/minItems :
+                      (slider.maxW &lt; slider.w) ? (slider.w - (slideMargin * (maxItems - 1)))/maxItems :
+                      (slider.vars.itemWidth &gt; slider.w) ? slider.w : slider.vars.itemWidth;
+</PRE><PRE>       slider.visible = Math.floor(slider.w/(slider.itemW));
+       slider.move = (slider.vars.move &gt; 0 &amp;&amp; slider.vars.move &lt; slider.visible ) ? slider.vars.move : slider.visible;
+       slider.pagingCount = Math.ceil(((slider.count - slider.visible)/slider.move) + 1);
+       slider.last =  slider.pagingCount - 1;
+       slider.limit = (slider.pagingCount === 1) ? 0 :
+                      (slider.vars.itemWidth &gt; slider.w) ? (slider.itemW * (slider.count - 1)) + (slideMargin * (slider.count - 1)) : ((slider.itemW + slideMargin) * slider.count) - slider.w - slideMargin;
+     } else {
+       slider.itemW = slider.w;
+       slider.pagingCount = slider.count;
+       slider.last = slider.count - 1;
+     }
+     slider.computedW = slider.itemW - slider.boxPadding;
+   }
+</PRE><PRE>   slider.update = function(pos, action) {
+     slider.doMath();
+</PRE><PRE>     // update currentSlide and slider.animatingTo if necessary
+     if (!carousel) {
+       if (pos &lt; slider.currentSlide) {
+         slider.currentSlide += 1;
+       } else if (pos &lt;= slider.currentSlide &amp;&amp; pos !== 0) {
+         slider.currentSlide -= 1;
+       }
+       slider.animatingTo = slider.currentSlide;
+     }
+</PRE><PRE>     // update controlNav
+     if (slider.vars.controlNav &amp;&amp; !slider.manualControls) {
+       if ((action === &quot;add&quot; &amp;&amp; !carousel) || slider.pagingCount &gt; slider.controlNav.length) {
+         methods.controlNav.update(&quot;add&quot;);
+       } else if ((action === &quot;remove&quot; &amp;&amp; !carousel) || slider.pagingCount &lt; slider.controlNav.length) {
+         if (carousel &amp;&amp; slider.currentSlide &gt; slider.last) {
+           slider.currentSlide -= 1;
+           slider.animatingTo -= 1;
+         }
+         methods.controlNav.update(&quot;remove&quot;, slider.last);
+       }
+     }
+     // update directionNav
+     if (slider.vars.directionNav) methods.directionNav.update();
+</PRE><PRE>   }
+</PRE><PRE>   slider.addSlide = function(obj, pos) {
+     var $obj = $(obj);
+</PRE><PRE>     slider.count += 1;
+     slider.last = slider.count - 1;
+</PRE><PRE>     // append new slide
+     if (vertical &amp;&amp; reverse) {
+       (pos !== undefined) ? slider.slides.eq(slider.count - pos).after($obj) : slider.container.prepend($obj);
+     } else {
+       (pos !== undefined) ? slider.slides.eq(pos).before($obj) : slider.container.append($obj);
+     }
+</PRE><PRE>     // update currentSlide, animatingTo, controlNav, and directionNav
+     slider.update(pos, &quot;add&quot;);
+</PRE><PRE>     // update slider.slides
+     slider.slides = $(slider.vars.selector + ':not(.clone)', slider);
+     // re-setup the slider to accomdate new slide
+     slider.setup();
+</PRE><PRE>     //FlexSlider: added() Callback
+     slider.vars.added(slider);
+   }
+   slider.removeSlide = function(obj) {
+     var pos = (isNaN(obj)) ? slider.slides.index($(obj)) : obj;
+</PRE><PRE>     // update count
+     slider.count -= 1;
+     slider.last = slider.count - 1;
+</PRE><PRE>     // remove slide
+     if (isNaN(obj)) {
+       $(obj, slider.slides).remove();
+     } else {
+       (vertical &amp;&amp; reverse) ? slider.slides.eq(slider.last).remove() : slider.slides.eq(obj).remove();
+     }
+</PRE><PRE>     // update currentSlide, animatingTo, controlNav, and directionNav
+     slider.doMath();
+     slider.update(pos, &quot;remove&quot;);
+</PRE><PRE>     // update slider.slides
+     slider.slides = $(slider.vars.selector + ':not(.clone)', slider);
+     // re-setup the slider to accomdate new slide
+     slider.setup();
+</PRE><PRE>     // FlexSlider: removed() Callback
+     slider.vars.removed(slider);
+   }
+</PRE><PRE>   //FlexSlider: Initialize
+   methods.init();
+ }
+</PRE><PRE> // Ensure the slider isn't focussed if the window loses focus.
+ $( window ).blur( function ( e ) {
+   focused = false;
+ }).focus( function ( e ) {
+   focused = true;
+ });
+</PRE><PRE> //FlexSlider: Default Settings
+ $.flexslider.defaults = {
+   namespace: &quot;flex-&quot;,             //{NEW} String: Prefix string attached to the class of every element generated by the plugin
+   selector: &quot;.slides &gt; li&quot;,       //{NEW} Selector: Must match a simple pattern. '{container} &gt; {slide}' -- Ignore pattern at your own peril
+   animation: &quot;fade&quot;,              //String: Select your animation type, &quot;fade&quot; or &quot;slide&quot;
+   easing: &quot;swing&quot;,                //{NEW} String: Determines the easing method used in jQuery transitions. jQuery easing plugin is supported!
+   direction: &quot;horizontal&quot;,        //String: Select the sliding direction, &quot;horizontal&quot; or &quot;vertical&quot;
+   reverse: false,                 //{NEW} Boolean: Reverse the animation direction
+   animationLoop: true,            //Boolean: Should the animation loop? If false, directionNav will received &quot;disable&quot; classes at either end
+   smoothHeight: false,            //{NEW} Boolean: Allow height of the slider to animate smoothly in horizontal mode
+   startAt: 0,                     //Integer: The slide that the slider should start on. Array notation (0 = first slide)
+   slideshow: true,                //Boolean: Animate slider automatically
+   slideshowSpeed: 7000,           //Integer: Set the speed of the slideshow cycling, in milliseconds
+   animationSpeed: 600,            //Integer: Set the speed of animations, in milliseconds
+   initDelay: 0,                   //{NEW} Integer: Set an initialization delay, in milliseconds
+   randomize: false,               //Boolean: Randomize slide order
+   thumbCaptions: false,           //Boolean: Whether or not to put captions on thumbnails when using the &quot;thumbnails&quot; controlNav.
+</PRE><PRE>   // Usability features
+   pauseOnAction: true,            //Boolean: Pause the slideshow when interacting with control elements, highly recommended.
+   pauseOnHover: false,            //Boolean: Pause the slideshow when hovering over slider, then resume when no longer hovering
+   pauseInvisible: true,   		//{NEW} Boolean: Pause the slideshow when tab is invisible, resume when visible. Provides better UX, lower CPU usage.
+   useCSS: true,                   //{NEW} Boolean: Slider will use CSS3 transitions if available
+   touch: true,                    //{NEW} Boolean: Allow touch swipe navigation of the slider on touch-enabled devices
+   video: false,                   //{NEW} Boolean: If using video in the slider, will prevent CSS3 3D Transforms to avoid graphical glitches
+</PRE><PRE>   // Primary Controls
+   controlNav: true,               //Boolean: Create navigation for paging control of each clide? Note: Leave true for manualControls usage
+   directionNav: true,             //Boolean: Create navigation for previous/next navigation? (true/false)
+   prevText: &quot;Previous&quot;,           //String: Set the text for the &quot;previous&quot; directionNav item
+   nextText: &quot;Next&quot;,               //String: Set the text for the &quot;next&quot; directionNav item
+</PRE><PRE>   // Secondary Navigation
+   keyboard: true,                 //Boolean: Allow slider navigating via keyboard left/right keys
+   multipleKeyboard: false,        //{NEW} Boolean: Allow keyboard navigation to affect multiple sliders. Default behavior cuts out keyboard navigation with more than one slider present.
+   mousewheel: false,              //{UPDATED} Boolean: Requires jquery.mousewheel.js (<A rel="nofollow" class="external free" href="https://github.com/brandonaaron/jquery-mousewheel">https://github.com/brandonaaron/jquery-mousewheel</A>) - Allows slider navigating via mousewheel
+   pausePlay: false,               //Boolean: Create pause/play dynamic element
+   pauseText: &quot;Pause&quot;,             //String: Set the text for the &quot;pause&quot; pausePlay item
+   playText: &quot;Play&quot;,               //String: Set the text for the &quot;play&quot; pausePlay item
+</PRE><PRE>   // Special properties
+   controlsContainer: &quot;&quot;,          //{UPDATED} jQuery Object/Selector: Declare which container the navigation elements should be appended too. Default container is the FlexSlider element. Example use would be $(&quot;.flexslider-container&quot;). Property is ignored if given element is not found.
+   manualControls: &quot;&quot;,             //{UPDATED} jQuery Object/Selector: Declare custom control navigation. Examples would be $(&quot;.flex-control-nav li&quot;) or &quot;#tabs-nav li img&quot;, etc. The number of elements in your controlNav should match the number of slides/tabs.
+   sync: &quot;&quot;,                       //{NEW} Selector: Mirror the actions performed on this slider with another slider. Use with care.
+   asNavFor: &quot;&quot;,                   //{NEW} Selector: Internal property exposed for turning the slider into a thumbnail navigation for another slider
+</PRE><PRE>   // Carousel Options
+   itemWidth: 0,                   //{NEW} Integer: Box-model width of individual carousel items, including horizontal borders and padding.
+   itemMargin: 0,                  //{NEW} Integer: Margin between carousel items.
+   minItems: 1,                    //{NEW} Integer: Minimum number of carousel items that should be visible. Items will resize fluidly when below this.
+   maxItems: 0,                    //{NEW} Integer: Maxmimum number of carousel items that should be visible. Items will resize fluidly when above this limit.
+   move: 0,                        //{NEW} Integer: Number of carousel items that should move on animation. If 0, slider will move all visible items.
+   allowOneSlide: true,           //{NEW} Boolean: Whether or not to allow a slider comprised of a single slide
+</PRE><PRE>   // Callback API
+   start: function(){},            //Callback: function(slider) - Fires when the slider loads the first slide
+   before: function(){},           //Callback: function(slider) - Fires asynchronously with each slider animation
+   after: function(){},            //Callback: function(slider) - Fires after each slider animation completes
+   end: function(){},              //Callback: function(slider) - Fires when the slider reaches the last slide (asynchronous)
+   added: function(){},            //{NEW} Callback: function(slider) - Fires after a slide is added
+   removed: function(){}           //{NEW} Callback: function(slider) - Fires after a slide is removed
+ }
+</PRE><PRE> //FlexSlider: Plugin Function
+ $.fn.flexslider = function(options) {
+   if (options === undefined) options = {};
+</PRE><PRE>   if (typeof options === &quot;object&quot;) {
+     return this.each(function() {
+       var $this = $(this),
+           selector = (options.selector) ? options.selector : &quot;.slides &gt; li&quot;,
+           $slides = $this.find(selector);
+</PRE><PRE>     if ( ( $slides.length === 1 &amp;&amp; options.allowOneSlide === true ) || $slides.length === 0 ) {
+         $slides.fadeIn(400);
+         if (options.start) options.start($this);
+       } else if ($this.data('flexslider') === undefined) {
+         new $.flexslider(this, options);
+       }
+     });
+   } else {
+     // Helper strings to quickly perform functions on the slider
+     var $slider = $(this).data('flexslider');
+     switch (options) {
+       case &quot;play&quot;: $slider.play(); break;
+       case &quot;pause&quot;: $slider.pause(); break;
+       case &quot;stop&quot;: $slider.stop(); break;
+       case &quot;next&quot;: $slider.flexAnimate($slider.getTarget(&quot;next&quot;), true); break;
+       case &quot;prev&quot;:
+       case &quot;previous&quot;: $slider.flexAnimate($slider.getTarget(&quot;prev&quot;), true); break;
+       default: if (typeof options === &quot;number&quot;) $slider.flexAnimate(options, true);
+     }
+   }
+ }
+</PRE><P>})(jQuery);
+</P><P>/*!
+</P><PRE>* jquery.lightbox.js
+* <A rel="nofollow" class="external free" href="https://github.com/duncanmcdougall/Responsive-Lightbox">https://github.com/duncanmcdougall/Responsive-Lightbox</A>
+* Copyright 2013 Duncan McDougall and other contributors; @license Creative Commons Attribution 2.5
+*
+* Options: 
+* margin - int - default 50. Minimum margin around the image
+* nav - bool - default true. enable navigation
+* blur - bool - default true. Blur other content when open using css filter
+* minSize - int - default 0. Min window width or height to open lightbox. Below threshold will open image in a new tab.
+*
+*/
+</PRE><P>(function ($) {
+</P><PRE>   'use strict';
+</PRE><PRE>   $.fn.lightbox = function (options) {
+</PRE><PRE>       var opts = {
+           margin: 50,
+           nav: true,
+           blur: true,
+           minSize: 0
+       };
+</PRE><PRE>       var plugin = {
+</PRE><PRE>           items: [],
+           lightbox: null,
+           image: null,
+           current: null,
+           locked: false,
+           caption: null,
+     
+           init: function (items) {
+               plugin.items = items;
+       plugin.selector = &quot;lightbox-&quot;+Math.random().toString().replace('.',<I>);</I></PRE><PRE>               if (!plugin.lightbox) {
+                   $('body').append(
+</PRE>
+                      '<DIV id="lightbox" style="display:none;">'+
+<PRE>                     '&lt;a href=&quot;#&quot; class=&quot;lightbox-close lightbox-button&quot;&gt;&lt;/a&gt;' +
+</PRE>
+                      '<DIV class="lightbox-nav">'+
+<PRE>                     '&lt;a href=&quot;#&quot; class=&quot;lightbox-previous lightbox-button&quot;&gt;&lt;/a&gt;' +
+                     '&lt;a href=&quot;#&quot; class=&quot;lightbox-next lightbox-button&quot;&gt;&lt;/a&gt;' +
+</PRE>
+                      '</DIV>' +
+                      '' +
+                      '</DIV>'
+<PRE>                   );
+</PRE><PRE>                   plugin.lightbox = $(&quot;#lightbox&quot;);
+                   plugin.caption = $('.lightbox-caption', plugin.lightbox);
+               }
+</PRE><PRE>               if (plugin.items.length &gt; 1 &amp;&amp; opts.nav) {
+                   $('.lightbox-nav', plugin.lightbox).show();
+               } else {
+                   $('.lightbox-nav', plugin.lightbox).hide();
+               }
+</PRE><PRE>               plugin.bindEvents();
+</PRE><PRE>           },
+</PRE><PRE>           loadImage: function () {
+               if(opts.blur) {
+                   $(&quot;body&quot;).addClass(&quot;blurred&quot;);
+               }
+               $(&quot;img&quot;, plugin.lightbox).remove();
+               plugin.lightbox.fadeIn('fast').append('');
+</PRE><PRE>               var img = $('&lt;img src=&quot;' + $(plugin.current).attr('href') + '&quot; draggable=&quot;false&quot;&gt;');
+</PRE><PRE>               $(img).load(function () {
+                   $('.lightbox-loading').remove();
+                   plugin.lightbox.append(img);
+                   plugin.image = $(&quot;img&quot;, plugin.lightbox).hide();
+                   plugin.resizeImage();
+                   plugin.setCaption();
+               });
+           },
+</PRE><PRE>           setCaption: function () {
+               var caption = $(plugin.current).data('caption');
+               if(!!caption &amp;&amp; caption.length &gt; 0) {
+                   plugin.caption.fadeIn();
+                   $('p', plugin.caption).text(caption);
+               }else{
+                   plugin.caption.hide();
+               }
+           },
+</PRE><PRE>           resizeImage: function () {
+               var ratio, wHeight, wWidth, iHeight, iWidth;
+               wHeight = $(window).height() - opts.margin;
+               wWidth = $(window).outerWidth(true) - opts.margin;
+               plugin.image.width(<I>).height(</I>);
+               iHeight = plugin.image.height();
+               iWidth = plugin.image.width();
+               if (iWidth &gt; wWidth) {
+                   ratio = wWidth / iWidth;
+                   iWidth = wWidth;
+                   iHeight = Math.round(iHeight * ratio);
+               }
+               if (iHeight &gt; wHeight) {
+                   ratio = wHeight / iHeight;
+                   iHeight = wHeight;
+                   iWidth = Math.round(iWidth * ratio);
+               }
+</PRE><PRE>               plugin.image.width(iWidth).height(iHeight).css({
+           'top': ($(window).height() - plugin.image.outerHeight()) / 2 + 'px',
+           'left': ($(window).width() - plugin.image.outerWidth()) / 2 + 'px'
+         }).show();
+               plugin.locked = false;
+           },
+</PRE><PRE>           getCurrentIndex: function () {
+               return $.inArray(plugin.current, plugin.items);
+           },
+</PRE><PRE>           next: function () {
+               if (plugin.locked) {
+                   return false;
+               }
+               plugin.locked = true;
+               if (plugin.getCurrentIndex() &gt;= plugin.items.length - 1) {
+                   $(plugin.items[0]).click();
+               } else {
+                   $(plugin.items[plugin.getCurrentIndex() + 1]).click();
+               }
+           },
+</PRE><PRE>           previous: function () {
+               if (plugin.locked) {
+                   return false;
+               }
+               plugin.locked = true;
+               if (plugin.getCurrentIndex() &lt;= 0) {
+                   $(plugin.items[plugin.items.length - 1]).click();
+               } else {
+                   $(plugin.items[plugin.getCurrentIndex() - 1]).click();
+               }
+           },
+</PRE><PRE>           bindEvents: function () {
+               $(plugin.items).click(function (e) {
+                   if(!$(&quot;#lightbox&quot;).is(&quot;:visible&quot;) &amp;&amp; ($(window).width() &lt; opts.minSize || $(window).height() &lt; opts.minSize)) {
+                       $(this).attr(&quot;target&quot;, &quot;_blank&quot;);
+                       return;
+                   }
+                   var self = $(this)[0];
+                   e.preventDefault();
+                   plugin.current = self;
+                   plugin.loadImage();
+</PRE><PRE>                   // Bind Keyboard Shortcuts
+                   $(document).on('keydown', function (e) {
+                       // Close lightbox with ESC
+                       if (e.keyCode === 27) {
+                           plugin.close();
+                       }
+                       // Go to next image pressing the right key
+                       if (e.keyCode === 39) {
+                           plugin.next();
+                       }
+                       // Go to previous image pressing the left key
+                       if (e.keyCode === 37) {
+                           plugin.previous();
+                       }
+                   });
+               });
+</PRE><PRE>               // Add click state on overlay background only
+               plugin.lightbox.on('click', function (e) {
+                   if (this === e.target) {
+                       plugin.close();
+                   }
+               });
+</PRE><PRE>               // Previous click
+               $(plugin.lightbox).on('click', '.lightbox-previous', function () {
+                   plugin.previous();
+                   return false;
+               });
+</PRE><PRE>               // Next click
+               $(plugin.lightbox).on('click', '.lightbox-next', function () {
+                   plugin.next();
+                   return false;
+               });
+</PRE><PRE>               // Close click
+               $(plugin.lightbox).on('click', '.lightbox-close', function () {
+                   plugin.close();
+                   return false;
+               });
+</PRE><PRE>               $(window).resize(function () {
+                   if (!plugin.image) {
+                       return;
+                   }
+                   plugin.resizeImage();
+               });
+           },
+</PRE><PRE>           close: function () {
+               $(document).off('keydown'); // Unbind all key events each time the lightbox is closed
+               $(plugin.lightbox).fadeOut('fast');
+               $('body').removeClass('blurred');
+           }
+       };
+</PRE><PRE>       $.extend(opts, options);
+</PRE><PRE>       plugin.init(this);
+   };
+</PRE>
+})(jQuery);</DIV></DIV></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

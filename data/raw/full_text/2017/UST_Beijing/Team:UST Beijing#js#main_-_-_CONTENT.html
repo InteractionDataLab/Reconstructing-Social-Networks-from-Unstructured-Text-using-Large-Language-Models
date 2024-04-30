@@ -1,0 +1,334 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_UST_Beijing_js_main skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:UST Beijing/js/main</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* 弹幕播放器核心
+* Created by acgit on 2015/7/23.
+* Copyright 2015 by Ruiko Of AcGit.cc
+* @license MIT
+*
+* 版本2.0 2015/08/12
+*/
+</PRE><P>(function ($) {
+</P><PRE>   var DanmuPlayer = function (element, options) {
+       this.$element = $(element);
+       this.options = options;
+       $(element).data(&quot;paused&quot;, 1);
+       var that = this;
+       //播放器全局样式
+       this.$element.css({
+           &quot;position&quot;: &quot;relation&quot;,
+           //&quot;left&quot;:this.options.left,
+           //&quot;top&quot;:this.options.top,
+           &quot;width&quot;: this.options.width,
+           &quot;height&quot;: this.options.height,
+           &quot;overflow&quot;: &quot;hidden&quot;
+       });
+</PRE><PRE>       //选择器规范
+       this.$element.addClass(&quot;danmu-player&quot;);
+       if (!$(element).attr(&quot;id&quot;))
+           $(element).attr(&quot;id&quot;, (Math.random() * 65535).toString());
+       this.id = &quot;#&quot; + $(element).attr(&quot;id&quot;);
+</PRE><PRE>       //弹幕层设置,使用了定制的jquery.danmu.js
+</PRE>
+        this.$element.append('');
+<PRE>       $(this.id + &quot; .danmu-div&quot;).danmu({
+           width: &quot;100%&quot;,
+           height: &quot;100%&quot;,
+           speed: options.speed,
+           opacity: options.opacity,
+           fontSizeSmall: options.fontSizeSmall,
+           FontSizeBig: options.FontSizeBig,
+           topBottonDanmuTime: options.topBottonDanmuTime,
+           SubtitleProtection: true,
+           positionOptimize: true
+       });
+</PRE><PRE>       //控件添加
+       this.$element.css(&quot;height&quot;, this.$element.height() + 40);
+       this.$element.append('&lt;video class=&quot;danmu-video&quot; src=&quot;' + options.src + '&quot; width=&quot;' + options.width + '&quot; height=&quot;' + options.height + '&quot;&gt;&lt;/video&gt;');
+</PRE>
+        this.$element.append('');
+        this.$element.append('');
+        this.$element.append('');
+<PRE>       this.$tip = $(this.id + &quot; .danmu-player-tip&quot;);
+       this.$ctrl = $(this.id + &quot; .danmu-player-ctrl&quot;);
+</PRE>
+        this.$ctrl.append('<DIV class="ctrl-progress"><DIV class="current">' +
+            '</DIV>' +
+            '</DIV>');
+        this.$ctrl.append('');
+<PRE>       this.$ctrlMain = $(this.id + &quot; .ctrl-main&quot;);
+</PRE>
+        this.$ctrlMain.append('');
+        this.$ctrlMain.append('<DIV class="current-time time-text ctrl-btn">0:00</DIV>');
+        this.$ctrlMain.append('<DIV class="slash time-text ctrl-btn">/</DIV>');
+        this.$ctrlMain.append('<DIV class="duration ctrl-btn time-text">0:00</DIV>');
+<PRE>       this.$ctrlMain.append('&lt;input class=&quot;danmu-input ctrl-btn&quot;   type=&quot;textarea&quot; id=&quot;danmu_text&quot; max=300 /&gt;'); // -&gt; button あ
+</PRE>
+        this.$ctrlMain.append('<DIV class="send-btn ctrl-btn">send &gt;</DIV>');
+        this.$ctrlMain.append('<DIV class="full-screen ctrl-btn-right"><SPAN class="">fullscreen</SPAN></DIV>');
+        this.$ctrlMain.append('<DIV class="show-danmu ctrl-btn-right ctrl-btn-right-active"><SPAN class="">close</SPAN></DIV>');
+<PRE>       //播放器状态
+       this.video = $(this.id + &quot; .danmu-video&quot;).get(0);
+       this.current = 0;  //当前播放时间
+       this.duration = this.video.duration;  //总时间
+       this.danmuPlayerFullScreen = false;
+       this.danmuShowed = true;
+       this.isLoop = false;
+       this.danmuSize = 0;
+       this.danmuColor = this.options.defaultColor;
+       this.danmuPosition = 0;
+       //等待层
+       $(this.id + &quot; .danmu-player-load&quot;).shCircleLoader({
+           keyframes: &quot;0%   {background:black}\
+        40%  {background:transparent}\
+        60%  {background:transparent}\
+        100% {background:black}&quot;
+       });
+</PRE><PRE>       //从后端获取弹幕
+       this.getDanmu = function () {
+           $.get(that.options.urlToGetDanmu, function (data, status) {
+               danmuFromSql = eval(data);
+</PRE><P>				$(that.id + ' .danmu-div').danmu(&quot;addDanmu&quot;, danmuFromSql);
+</P><PRE>           });
+       };
+</PRE><PRE>       if (options.urlToGetDanmu)
+           this.getDanmu();
+</PRE><PRE>       //发送弹幕
+       this.sendDanmu = function (e) {
+           var text = $(e.data.that.id + &quot; .danmu-input&quot;).get(0).value;
+           if (text.length == 0) {
+               return;
+           }
+           if (text.length &gt; 255){
+               alert(&quot;弹幕过长！&quot;);
+               return;
+           }
+           text = text.replace(/&amp;/g, &quot;&gt;&quot;).replace(/&lt;/g, &quot;&lt;&quot;).replace(/&gt;/g, &quot;&gt;&quot;).replace(/\&quot;/g, &quot;&quot;&quot;).replace(/\n/g, &quot;&quot;);
+           var color = e.data.that.danmuColor;
+</PRE><P>			var position = 0;
+			var size = 1;
+</P><PRE>           var time = $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;) + 3;
+           var textObj = '{ &quot;text&quot;:&quot;' + text + '&quot;,&quot;color&quot;:&quot;' + color + '&quot;,&quot;size&quot;:&quot;' + size + '&quot;,&quot;position&quot;:&quot;' + position + '&quot;,&quot;time&quot;:' + time + '}';
+           if (e.data.that.options.urlToPostDanmu)
+</PRE><P>				console.log(textObj);
+				console.log(e.data.that.options.urlToPostDanmu);
+</P><PRE>               $.post(e.data.that.options.urlToPostDanmu, {
+                   danmu: textObj
+               });
+           textObj = '{ &quot;text&quot;:&quot;' + text + '&quot;,&quot;color&quot;:&quot;' + color + '&quot;,&quot;size&quot;:&quot;' + size + '&quot;,&quot;position&quot;:&quot;' + position + '&quot;,&quot;time&quot;:' + time + ',&quot;isnew&quot;:&quot;&quot;}';
+           var newObj = eval('(' + textObj + ')');
+           $(e.data.that.id + &quot; .danmu-div&quot;).danmu(&quot;addDanmu&quot;, newObj);
+           $(e.data.that.id + &quot; .danmu-input&quot;).get(0).value = <I>;</I>
+           //触发事件
+           $(e.data.that).trigger(&quot;senddanmu&quot;);
+       };
+</PRE><PRE>       //播放暂停
+       this.playPause = function (e) {
+           if (e.data.video.paused) {
+               e.data.video.play();
+               $(e.data.that.id + &quot; .danmu-div&quot;).danmu('danmuResume');
+               $(e.data.that.id + &quot; .play-btn span&quot;).removeClass(&quot;iplay&quot;).addClass(&quot;ipause&quot;);
+           }
+           else {
+               e.data.video.pause();
+               $(e.data.that.id + &quot; .danmu-div&quot;).danmu('danmuPause');
+               $(e.data.that.id + &quot; .play-btn span&quot;).removeClass(&quot;ipause&quot;).addClass(&quot;iplay&quot;);
+           }
+       };
+</PRE><PRE>       //主计时器
+       var mainTimer = setInterval(function () {
+           //缓冲条
+           var bufTime=$(that.id + &quot; .danmu-video&quot;).get(0).buffered.end($(that.id + &quot; .danmu-video&quot;).get(0).buffered.length-1);
+</PRE><PRE>           var buffPrecent = (bufTime/that.duration) * 100;
+           $(that.id + &quot;.danmu-player .ctrl-progress .buffered &quot;).css(&quot;width&quot;, buffPrecent + &quot;%&quot;);
+          // 时间轴修正
+          // if (Math.abs($(that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;) - parseInt(that.video.currentTime)*10) &gt; 1) {
+          //     $(that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;, parseInt(that.video.currentTime)*10);
+          //     console.log(&quot;revise time：&quot;)
+          // }
+       }, 1000);
+</PRE><PRE>       var secTimer = setInterval(function () {
+          // if (Math.abs($(that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;) - parseInt(that.video.currentTime*10)) &gt; 1) {
+             //  console.log(&quot;revise time&quot;+$(that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;)+ &quot;,&quot;+that.video.currentTime*10);
+               $(that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;, parseInt(that.video.currentTime*10));
+</PRE><PRE>         //  }
+       }, 50);
+       //按键事件
+       $(document).ready(function () {
+           jQuery(&quot;body&quot;).keydown({that: that}, function (event) {
+               if (event.which == 13) {
+                   that.sendDanmu(event);
+                   return false
+               }
+</PRE><PRE>           });
+       });
+</PRE><PRE>       //播放事件
+       $(this.id + &quot; .play-btn&quot;).on(&quot;click&quot;, {video: this.video, that: that}, function (e) {
+           that.playPause(e);
+       });
+       $(this.id + &quot; .danmu-div&quot;).on(&quot;click&quot;, {video: this.video, that: that}, function (e) {
+           that.playPause(e);
+</PRE><PRE>       });
+</PRE><PRE>       //waiting事件
+       $(this.id + &quot; .danmu-video&quot;).on('waiting', {that: that}, function (e) {
+</PRE><PRE>           if ($(e.data.that.id + &quot; .danmu-video&quot;).get(0).currentTime == 0) {
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;, 0);
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;danmuPause&quot;);
+           } else {
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;, parseInt($(e.data.that.id + &quot; .danmu-video&quot;).get(0).currentTime)*10);
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;danmuPause&quot;);
+           }
+           $(e.data.that.id + &quot; .danmu-player-load&quot;).css(&quot;display&quot;,&quot;block&quot;);
+</PRE><PRE>       });
+</PRE><PRE>       //playing事件
+       $(this.id + &quot; .danmu-video&quot;).on('play playing', {that: that}, function (e) {
+</PRE><PRE>           if ($(e.data.that.id + &quot; .danmu-video&quot;).get(0).currentTime == 0) {
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;, 0);
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;danmuResume&quot;);
+           } else {
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;nowTime&quot;, parseInt($(e.data.that.id + &quot; .danmu-video&quot;).get(0).currentTime)*10);
+               $(e.data.that.id + &quot; .danmu-div&quot;).data(&quot;danmuResume&quot;);
+           }
+           $(e.data.that.id + &quot; .danmu-player-load&quot;).css(&quot;display&quot;,&quot;none&quot;);
+</PRE><PRE>       });
+</PRE><PRE>       //seeked事件
+       $(this.id + &quot; .danmu-video&quot;).on('seeked ', {that: that}, function (e) {
+           $(e.data.that.id + &quot; .danmu-div&quot;).danmu(&quot;danmuHideAll&quot;);
+       });
+</PRE><PRE>       //全屏事件
+       $(this.id + &quot; .full-screen&quot;).on(&quot;click&quot;, {video: this.video, that: that}, function (e) {
+           if (!e.data.that.danmuPlayerFullScreen) {
+               //$css({&quot;position&quot;:&quot;fixed&quot;,&quot;zindex&quot;:&quot;999&quot;,&quot;top&quot;:&quot;0&quot;,&quot;left&quot;:&quot;0&quot;,&quot;height&quot;:&quot;100vh&quot;,&quot;width&quot;:&quot;100vw&quot;});
+               $(e.data.that.id).addClass(&quot;danmu-player-full-screen&quot;);
+               e.data.that.danmuPlayerFullScreen = true;
+</PRE><P>				$(e.data.that.id + &quot; .full-screen span&quot;).html('退出全屏');
+</P><PRE>           }
+           else {
+               $(e.data.that.id).removeClass(&quot;danmu-player-full-screen&quot;);
+               e.data.that.danmuPlayerFullScreen = false;
+</PRE><P>				$(e.data.that.id + &quot; .full-screen span&quot;).html('全屏观看');
+</P><PRE>           }
+</PRE><PRE>       });
+</PRE><PRE>       //显示和隐藏弹幕按钮事件
+       $(this.id + &quot; .show-danmu&quot;).on(&quot;click&quot;, {that: that}, function (e) {
+           if (e.data.that.danmuShowed) {
+               $(e.data.that.id + &quot; .danmu-div&quot;).css(&quot;visibility&quot;, &quot;hidden&quot;);
+               e.data.that.danmuShowed = false;
+</PRE><P>				$(e.data.that.id + &quot; .show-danmu&quot;).html('open');
+</P><PRE>           }
+           else {
+               e.data.that.danmuShowed = true;
+               $(e.data.that.id + &quot; .danmu-div&quot;).css(&quot;visibility&quot;, &quot;visible&quot;);
+</PRE><P>				$(e.data.that.id + &quot; .show-danmu&quot;).html('close');
+</P><PRE>           }
+</PRE><PRE>       });
+</PRE><PRE>       //循环播放按钮事件
+       $(this.id + &quot; .loop-btn&quot;).on(&quot;click&quot;, {that: that}, function (e) {
+           if (!e.data.that.isLoop) {
+               e.data.that.video.loop = true;
+               e.data.that.isLoop = true;
+               $(e.data.that.id + &quot; .loop-btn&quot;).addClass(&quot;ctrl-btn-right-active&quot;);
+           }
+           else {
+               e.data.that.video.loop = true;
+               e.data.that.isLoop = false;
+</PRE><PRE>               $(e.data.that.id + &quot; .loop-btn&quot;).removeClass(&quot;ctrl-btn-right-active&quot;);
+           }
+       });
+</PRE><PRE>       //时间改变事件
+       $(this.id + &quot; .danmu-video&quot;).on('loadedmetadata', {video: this.video, that: that}, function (e) {
+           e.data.that.duration = e.data.video.duration;
+           var duraMin = parseInt(e.data.that.duration / 60);
+           var duraSec = parseInt(e.data.that.duration % 60) &lt; 10 ? &quot;0&quot; + parseInt(e.data.that.duration % 60) : parseInt(e.data.that.duration % 60);
+           $(e.data.that.id + &quot; .duration&quot;).text(duraMin + &quot;:&quot; + duraSec);
+           $(e.data.that.id + &quot; .danmu-video&quot;).on('timeupdate', {
+               video: e.data.video,
+               that: e.data.that
+           }, function (e) {
+               var current = e.data.that.current = e.data.video.currentTime;
+               var curMin = parseInt(current / 60);
+               var curSec = parseInt(current % 60) &lt; 10 ? &quot;0&quot; + parseInt(current % 60) : parseInt(current % 60);
+               $(e.data.that.id + &quot; .current-time&quot;).text(curMin + &quot;:&quot; + curSec);
+               var duraMin = parseInt(e.data.that.duration / 60);
+               var duraSec = parseInt(e.data.that.duration % 60) &lt; 10 ? &quot;0&quot; + parseInt(e.data.that.duration % 60) : parseInt(e.data.that.duration % 60);
+               $(e.data.that.id + &quot; .duration&quot;).text(duraMin + &quot;:&quot; + duraSec);
+               var percentage = 100 * current / e.data.that.duration;
+               $(e.data.that.id + '.danmu-player .ctrl-progress .current ').css('width', percentage + '%');
+               e.data.that.reviseFlag = e.data.that.reviseFlag + 1;
+           });
+       });
+</PRE><PRE>       //进度条事件
+       $(this.id + &quot; .ctrl-progress&quot;).on('click', {video: this.video, that: that}, function (e) {
+           var sumLen = $(e.data.that.id + &quot; .ctrl-progress&quot;).width();
+           var pos = e.pageX - $(e.data.that.id + &quot; .ctrl-progress&quot;).offset().left;
+           var percentage = pos / sumLen;
+           $(e.data.that.id + '.danmu-player .ctrl-progress .current ').css('width', percentage * 100 + '%');
+           aimTime = parseFloat(percentage * e.data.that.duration);
+           e.data.video.currentTime = aimTime;
+       });
+       var timeDrag = false;
+       $(this.id + &quot; .ctrl-progress&quot;).on('mousedown touchstart', function (e) {
+           timeDrag = true;
+       });
+       $(document).on('mouseup', function (e) {
+           if (timeDrag) timeDrag = false;
+       });
+       $(this.id + &quot; .ctrl-progress&quot;).on('mousemove touchmove', {video: this.video, that: that}, function (e) {
+           if (timeDrag) {
+               var sumLen = $(e.data.that.id + &quot; .ctrl-progress&quot;).width();
+               var pos = e.pageX - $(e.data.that.id + &quot; .ctrl-progress&quot;).offset().left;
+               var percentage = pos / sumLen;
+               if (percentage &gt; 1)
+                   percentage = 1;
+               if (percentage &lt; 0)
+                   percentage = 0;
+               aimTime = parseFloat(percentage * e.data.that.duration);
+               e.data.video.currentTime = aimTime;
+               $(e.data.that.id + '.danmu-player .ctrl-progress .current ').css('width', percentage * 100 + '%');
+           }
+       });
+</PRE><PRE>       //发送弹幕事件
+       $(this.id + &quot; .send-btn&quot;).on(&quot;click&quot;, {that: that}, function (e) {
+           e.data.that.sendDanmu(e);
+       });
+</PRE><PRE>       //用户操作控制条事件
+       $(this.id + &quot; .ctrl-progress&quot;).on(&quot;mouseup touchend&quot;, {that: that}, function (e) {
+           $(e.data.that.id + &quot; .danmaku&quot;).remove();
+       });
+</PRE><PRE>   };//danmuplayer构造函数
+</PRE><PRE>   DanmuPlayer.DEFAULTS = {
+       left: 0,
+       top: 0,
+       height: 360,
+       width: 640,
+       zindex: 100,
+       speed: 8000,
+       sumTime: 65535,
+       defaultColor: &quot;#ffffff&quot;,
+       fontSizeSmall: 16,
+       FontSizeBig: 24,
+       opacity: &quot;.8&quot;,
+       topBottonDanmuTime: 6000,
+       urlToGetDanmu: &quot;&quot;,
+       urlToPostDanmu: &quot;&quot;
+   };
+</PRE><PRE>   function Plugin(option, arg) {
+       return this.each(function () {
+           var $this = $(this);
+           var options = $.extend({}, DanmuPlayer.DEFAULTS, typeof option == 'object' &amp;&amp; option);
+           var data = $this.data('DanmuPlayer');
+           var action = typeof option == 'string' ? option : NaN;
+           if (!data) $this.data('danmu', (data = new DanmuPlayer(this, options)));
+           if (action)    data[action](arg);
+       })
+   }
+</PRE><PRE>   $.fn.DanmuPlayer = Plugin;
+   $.fn.DanmuPlayer.Constructor = DanmuPlayer;
+</PRE><P>
+})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

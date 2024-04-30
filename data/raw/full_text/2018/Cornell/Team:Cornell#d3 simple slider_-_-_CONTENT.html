@@ -1,0 +1,297 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Cornell_d3_simple_slider skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Cornell/d3 simple slider</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>// <A rel="nofollow" class="external free" href="https://github.com/johnwalley/d3-simple-slider">https://github.com/johnwalley/d3-simple-slider</A> Version 0.2.1. Copyright 2018 John Walley.
+(function (global, factory) {
+	typeof exports === 'object' &amp;&amp; typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-axis'), require('d3-dispatch'), require('d3-drag'), require('d3-ease'), require('d3-scale'), require('d3-selection')) :
+	typeof define === 'function' &amp;&amp; define.amd ? define(['exports', 'd3-array', 'd3-axis', 'd3-dispatch', 'd3-drag', 'd3-ease', 'd3-scale', 'd3-selection'], factory) :
+	(factory((global.d3 = global.d3 || {}),global.d3,global.d3,global.d3,global.d3,global.d3,global.d3,global.d3));
+}(this, (function (exports,d3Array,d3Axis,d3Dispatch,d3Drag,d3Ease,d3Scale,d3Selection) { 'use strict';
+</P><P>var UPDATE_DURATION = 200;
+</P><P>function slider() {
+</P><PRE> var value = 0;
+ var defaultValue = 0;
+ var domain = [0, 10];
+ var width = 100;
+ var displayValue = true;
+ var handle = &quot;M-5.5,-5.5v10l6,5.5l6,-5.5v-10z&quot;;
+ var step = null;
+ var tickValues = null;
+ var marks = null;
+ var tickFormat = null;
+ var ticks = null;
+</PRE><PRE> var listeners = d3Dispatch.dispatch(&quot;onchange&quot;, &quot;start&quot;, &quot;end&quot;, &quot;drag&quot;);
+</PRE><PRE> var selection = null;
+ var scale = null;
+ var identityClamped = null;
+</PRE><PRE> function slider(context) {
+   selection = context.selection ? context.selection() : context;
+</PRE><PRE>   scale = domain[0] instanceof Date ? d3Scale.scaleTime() : d3Scale.scaleLinear();
+</PRE><PRE>   scale = scale
+     .domain(domain)
+     .range([0, width])
+     .clamp(true);
+</PRE><PRE>   identityClamped = d3Scale.scaleLinear()
+     .range(scale.range())
+     .domain(scale.range())
+     .clamp(true);
+</PRE><PRE>   // Ensure value is valid
+   value = d3Scale.scaleLinear()
+     .range(domain)
+     .domain(domain)
+     .clamp(true)(value);
+</PRE><PRE>   tickFormat = tickFormat || scale.tickFormat();
+</PRE><PRE>   var axis = selection.selectAll(&quot;.axis&quot;).data([null]);
+</PRE><PRE>   axis
+     .enter()
+     .append(&quot;g&quot;)
+     .attr(&quot;transform&quot;, &quot;translate(0,7)&quot;)
+     .attr(&quot;class&quot;, &quot;axis&quot;);
+</PRE><PRE>   var slider = selection.selectAll(&quot;.slider&quot;).data([null]);
+</PRE><PRE>   var sliderEnter = slider
+     .enter()
+     .append(&quot;g&quot;)
+     .attr(&quot;class&quot;, &quot;slider&quot;)
+     .attr(&quot;cursor&quot;, &quot;ew-resize&quot;)
+     .attr(&quot;transform&quot;, &quot;translate(0,0)&quot;)
+     .call(
+       d3Drag.drag()
+         .on(&quot;start&quot;, dragstarted)
+         .on(&quot;drag&quot;, dragged)
+         .on(&quot;end&quot;, dragended)
+     );
+</PRE><PRE>   sliderEnter
+     .append(&quot;line&quot;)
+     .attr(&quot;class&quot;, &quot;track&quot;)
+     .attr(&quot;x1&quot;, 0)
+     .attr(&quot;y1&quot;, 0)
+     .attr(&quot;y2&quot;, 0)
+     .attr(&quot;stroke&quot;, &quot;#bbb&quot;)
+     .attr(&quot;stroke-width&quot;, 6)
+     .attr(&quot;stroke-linecap&quot;, &quot;round&quot;);
+</PRE><PRE>   sliderEnter
+     .append(&quot;line&quot;)
+     .attr(&quot;class&quot;, &quot;track-inset&quot;)
+     .attr(&quot;x1&quot;, 0)
+     .attr(&quot;y1&quot;, 0)
+     .attr(&quot;y2&quot;, 0)
+     .attr(&quot;stroke&quot;, &quot;#eee&quot;)
+     .attr(&quot;stroke-width&quot;, 4)
+     .attr(&quot;stroke-linecap&quot;, &quot;round&quot;);
+</PRE><PRE>   sliderEnter
+     .append(&quot;line&quot;)
+     .attr(&quot;class&quot;, &quot;track-overlay&quot;)
+     .attr(&quot;x1&quot;, 0)
+     .attr(&quot;y1&quot;, 0)
+     .attr(&quot;y2&quot;, 0)
+     .attr(&quot;stroke&quot;, &quot;transparent&quot;)
+     .attr(&quot;stroke-width&quot;, 40)
+     .attr(&quot;stroke-linecap&quot;, &quot;round&quot;)
+     .merge(slider.select(&quot;.track-overlay&quot;));
+</PRE><PRE>   var handleEnter = sliderEnter
+     .append(&quot;g&quot;)
+     .attr(&quot;class&quot;, &quot;parameter-value&quot;)
+     .attr(&quot;transform&quot;, &quot;translate(&quot; + scale(value) + &quot;,0)&quot;)
+     .attr(&quot;font-family&quot;, &quot;sans-serif&quot;)
+     .attr(&quot;text-anchor&quot;, &quot;middle&quot;);
+</PRE><PRE>   handleEnter
+     .append(&quot;path&quot;)
+     .attr(&quot;d&quot;, handle)
+     .attr(&quot;fill&quot;, &quot;white&quot;)
+     .attr(&quot;stroke&quot;, &quot;#777&quot;);
+</PRE><PRE>   if (displayValue) {
+     handleEnter
+       .append(&quot;text&quot;)
+       .attr(&quot;font-size&quot;, 10)
+       .attr(&quot;y&quot;, 27)
+       .attr(&quot;dy&quot;, &quot;.71em&quot;)
+       .text(tickFormat(value));
+   }
+</PRE><PRE>   context.select(&quot;.track&quot;).attr(&quot;x2&quot;, scale.range()[1]);
+   context.select(&quot;.track-inset&quot;).attr(&quot;x2&quot;, scale.range()[1]);
+   context.select(&quot;.track-overlay&quot;).attr(&quot;x2&quot;, scale.range()[1]);
+</PRE><PRE>   context.select(&quot;.axis&quot;).call(
+     d3Axis.axisBottom(scale)
+       .tickFormat(tickFormat)
+       .ticks(ticks)
+       .tickValues(tickValues)
+   );
+</PRE><PRE>   // <A rel="nofollow" class="external free" href="https://bl.ocks.org/mbostock/4323929">https://bl.ocks.org/mbostock/4323929</A>
+   selection
+     .select(&quot;.axis&quot;)
+     .select(&quot;.domain&quot;)
+     .remove();
+</PRE><PRE>   context.select(&quot;.axis&quot;).attr(&quot;transform&quot;, &quot;translate(0,7)&quot;);
+</PRE><PRE>   context
+     .selectAll(&quot;.axis text&quot;)
+     .attr(&quot;fill&quot;, &quot;#aaa&quot;)
+     .attr(&quot;y&quot;, 20)
+     .attr(&quot;dy&quot;, &quot;.71em&quot;)
+     .attr(&quot;text-anchor&quot;, &quot;middle&quot;);
+</PRE><PRE>   context.selectAll(&quot;.axis line&quot;).attr(&quot;stroke&quot;, &quot;#aaa&quot;);
+</PRE><PRE>   context
+     .select(&quot;.parameter-value&quot;)
+     .attr(&quot;transform&quot;, &quot;translate(&quot; + scale(value) + &quot;,0)&quot;);
+</PRE><PRE>   fadeTickText();
+</PRE><PRE>   function dragstarted() {
+     d3Selection.select(this).classed(&quot;active&quot;, true);
+     var pos = identityClamped(d3Selection.event.x);
+     var newValue = alignedValue(scale.invert(pos));
+</PRE><PRE>     updateHandle(newValue);
+     listeners.call(&quot;start&quot;, slider, newValue);
+     updateValue(newValue);
+   }
+</PRE><PRE>   function dragged() {
+     var pos = identityClamped(d3Selection.event.x);
+     var newValue = alignedValue(scale.invert(pos));
+</PRE><PRE>     updateHandle(newValue);
+     listeners.call(&quot;drag&quot;, slider, newValue);
+     updateValue(newValue);
+   }
+</PRE><PRE>   function dragended() {
+     d3Selection.select(this).classed(&quot;active&quot;, false);
+     var pos = identityClamped(d3Selection.event.x);
+     var newValue = alignedValue(scale.invert(pos));
+</PRE><PRE>     updateHandle(newValue);
+     listeners.call(&quot;end&quot;, slider, newValue);
+     updateValue(newValue);
+   }
+ }
+</PRE><PRE> function fadeTickText() {
+   if (displayValue) {
+     var distances = [];
+</PRE><PRE>     selection.selectAll(&quot;.axis .tick&quot;).each(function(d) {
+       distances.push(Math.abs(d - value));
+     });
+</PRE><PRE>     var index = d3Array.scan(distances);
+</PRE><PRE>     selection.selectAll(&quot;.axis .tick text&quot;).attr(&quot;opacity&quot;, function(d, i) {
+       return i === index ? 0 : 1;
+     });
+   }
+ }
+</PRE><PRE> function alignedValue(newValue) {
+   if (step) {
+     var valueModStep = (newValue - domain[0]) % step;
+     var alignValue = newValue - valueModStep;
+</PRE><PRE>     if (valueModStep * 2 &gt; step) {
+       alignValue += step;
+     }
+</PRE><PRE>     return newValue instanceof Date ? new Date(alignValue) : alignValue;
+   }
+</PRE><PRE>   if (marks) {
+     var index = d3Array.scan(
+       marks.map(function(d) {
+         return Math.abs(newValue - d);
+       })
+     );
+</PRE><PRE>     return marks[index];
+   }
+</PRE><PRE>   return newValue;
+ }
+</PRE><PRE> function updateValue(newValue) {
+   if (value !== newValue) {
+     value = newValue;
+     listeners.call(&quot;onchange&quot;, slider, newValue);
+     fadeTickText();
+   }
+ }
+</PRE><PRE> function updateHandle(newValue, animate) {
+   animate = typeof animate !== &quot;undefined&quot; ? animate : false;
+</PRE><PRE>   var handleSelection = selection.select(&quot;.parameter-value&quot;);
+</PRE><PRE>   if (animate) {
+     handleSelection = handleSelection
+       .transition()
+       .ease(d3Ease.easeQuadOut)
+       .duration(UPDATE_DURATION);
+   }
+</PRE><PRE>   handleSelection.attr(&quot;transform&quot;, &quot;translate(&quot; + scale(newValue) + &quot;,0)&quot;);
+</PRE><PRE>   if (displayValue) {
+     selection.select(&quot;.parameter-value text&quot;).text(tickFormat(newValue));
+   }
+ }
+</PRE><PRE> slider.min = function(_) {
+   if (!arguments.length) return domain[0];
+   domain[0] = _;
+   return slider;
+ };
+</PRE><PRE> slider.max = function(_) {
+   if (!arguments.length) return domain[1];
+   domain[1] = _;
+   return slider;
+ };
+</PRE><PRE> slider.domain = function(_) {
+   if (!arguments.length) return domain;
+   domain = _;
+   return slider;
+ };
+</PRE><PRE> slider.width = function(_) {
+   if (!arguments.length) return width;
+   width = _;
+   return slider;
+ };
+</PRE><PRE> slider.tickFormat = function(_) {
+   if (!arguments.length) return tickFormat;
+   tickFormat = _;
+   return slider;
+ };
+</PRE><PRE> slider.ticks = function(_) {
+   if (!arguments.length) return ticks;
+   ticks = _;
+   return slider;
+ };
+</PRE><PRE> slider.value = function(_) {
+   if (!arguments.length) return value;
+   var pos = identityClamped(scale(_));
+   var newValue = alignedValue(scale.invert(pos));
+</PRE><PRE>   updateHandle(newValue, true);
+   updateValue(newValue);
+</PRE><PRE>   return slider;
+ };
+</PRE><PRE> slider.default = function(_) {
+   if (!arguments.length) return defaultValue;
+   defaultValue = _;
+   value = _;
+   return slider;
+ };
+</PRE><PRE> slider.step = function(_) {
+   if (!arguments.length) return step;
+   step = _;
+   return slider;
+ };
+</PRE><PRE> slider.tickValues = function(_) {
+   if (!arguments.length) return tickValues;
+   tickValues = _;
+   return slider;
+ };
+</PRE><PRE> slider.marks = function(_) {
+   if (!arguments.length) return marks;
+   marks = _;
+   return slider;
+ };
+</PRE><PRE> slider.handle = function(_) {
+   if (!arguments.length) return handle;
+   handle = _;
+   return slider;
+ };
+</PRE><PRE> slider.displayValue = function(_) {
+   if (!arguments.length) return displayValue;
+   displayValue = _;
+   return slider;
+ };
+</PRE><PRE> slider.on = function() {
+   var value = listeners.on.apply(listeners, arguments);
+   return value === listeners ? slider : value;
+ };
+</PRE><PRE> return slider;
+</PRE><P>}
+</P><P>function sliderHorizontal() {
+</P><PRE> return slider();
+</PRE><P>}
+</P><P>exports.sliderHorizontal = sliderHorizontal;
+</P><P>Object.defineProperty(exports, '__esModule', { value: true });
+</P><P>})));
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

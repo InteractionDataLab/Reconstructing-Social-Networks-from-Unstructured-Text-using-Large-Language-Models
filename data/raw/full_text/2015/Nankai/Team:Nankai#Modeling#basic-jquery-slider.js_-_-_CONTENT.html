@@ -1,0 +1,320 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Nankai_Modeling_basic-jquery-slider_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Nankai/Modeling/basic-jquery-slider.js</SPAN></H1><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* Basic jQuery Slider plug-in v.1.1
+* 
+* <A rel="nofollow" class="external free" href="http://www.basic-slider.com">http://www.basic-slider.com</A>
+*
+* Authored by John Cobb
+* Visit my blog at <A rel="nofollow" class="external free" href="http://www.johncobb.name">http://www.johncobb.name</A>
+* Or say helo on twitter: @john0514
+*
+* Copyright 2011, John Cobb
+* Free for all to use, abuse and improve under the MIT license.
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>
+* 
+* First published: August 2011
+* Updated v1.1: September 2011
+* Updated v1.2: Janurary 2012
+* 
+*/ (function ($) {
+   $.fn.bjqs = function (options) {
+</PRE><PRE>       var settings = {},
+           defaults = {
+</PRE><P>				// Width + Height used to ensure consistency
+</P><PRE>               width: 700,
+               height: 300,
+</PRE><P>				// The type of animation (slide or fade)
+</P><PRE>               animation: 'fade',
+               // The duration in ms of the transition between slides
+               animationDuration: 450,
+               // Automatically rotate through the slides
+</PRE><P>				automatic: false,
+				// Delay in ms between auto rotation of the slides
+</P><PRE>               rotationSpeed: 4000,
+</PRE><P>				// Pause the slider when any elements receive a hover event
+</P><PRE>               hoverPause: false,
+</PRE><P>				// Show the manual slider controls
+</P><PRE>               showControls: true,
+</PRE><P>				// Center the controls vertically
+</P><PRE>               centerControls: true,
+</PRE><P>				// Text to display in next/prev buttons
+</P><PRE>               nextText: 'Next',
+               prevText: 'Prev',
+</PRE><P>				// Show positional markers
+</P><PRE>               showMarkers: true,
+</PRE><P>				// Center the positional indicators
+</P><PRE>               centerMarkers: true,
+</PRE><P>				// Allow navigation with arrow keys
+</P><PRE>               keyboardNav: true,
+</PRE><P>				// Use image title text as caption
+</P><PRE>               useCaptions: true 
+           },
+           $container = this,
+           $slider = $container.find('.bjqs'),
+           slides = $slider.children('li'),
+           slideCount = slides.length,
+           animating = false,
+           paused = false,
+           current = 0,
+           slidePosition = 1,
+           next = 0,
+           $active = slides.eq(current),
+           forward = 'forward',
+           back = 'backward';
+</PRE><PRE>       // Overwrite the defaults with the provided options (if any)
+       settings = $.extend({}, defaults, options);
+</PRE><PRE>       // Make everything consistent in size
+       // TODO: move away from px and make slider responsive
+       slides.css({
+           'height': settings.height,
+           'width': settings.width
+       });
+       $slider.css({
+           'height': settings.height,
+           'width': settings.width
+       });
+       $container.css({
+           'height': settings.height,
+           'width': settings.width
+       });
+</PRE><PRE>       // Add unique class to slide list elements to differentiate from slide content list elements
+       slides.addClass('bjqs-slide');
+</PRE><PRE>       // Phat Controller(s)
+       if (settings.showControls &amp;&amp; slideCount &gt; 1) {
+</PRE><PRE>           // Create the elements for the controls
+</PRE>
+            var $controlContainer = $(''),
+                $next = $('<LI>&lt;a href=&quot;#&quot; class=&quot;bjqs-next&quot; class=&quot;controls&quot;&gt;' + settings.nextText + '&lt;/a&gt;</LI>'),
+                $previous = $('<LI>&lt;a href=&quot;#&quot; class=&quot;bjqs-prev&quot; class=&quot;controls&quot;&gt;' + settings.prevText + '&lt;/a&gt;</LI>');
+<PRE>           // Bind click events to the controllers
+           $next.click(function (e) {
+               e.preventDefault();
+               if (!animating) {
+                   bjqsGo(forward, false);
+               }
+           });
+</PRE><PRE>           $previous.click(function (e) {
+               e.preventDefault();
+               if (!animating) {
+                   bjqsGo(back, false);
+               }
+           });
+</PRE><PRE>           // Put 'em all together and what do you get? Ding dong. Hotdog
+           $next.appendTo($controlContainer);
+           $previous.appendTo($controlContainer);
+           $controlContainer.appendTo($container);
+</PRE><PRE>           // Vertically center the controllers
+           if (settings.centerControls) {
+</PRE><PRE>               var $control = $next.children('a'),
+                   offset = ($container.height() - $control.height()) / 2;
+</PRE><PRE>               $next.children('a').css('top', offset).show();
+               $previous.children('a').css('top', offset).show();
+           }
+</PRE><PRE>       }
+</PRE><PRE>       // Let's put in some markers
+       if (settings.showMarkers &amp;&amp; slideCount &gt; 1) {
+</PRE>
+            var $markerContainer = $(''),
+<PRE>               $marker, markers, offset;
+</PRE><PRE>           //Create a marker for each banner and add append it to the wrapper
+           $.each(slides, function (key, value) {
+               if (settings.animType === 'slide') {
+                   if (key !== 0 &amp;&amp; key !== slideCount - 1) {
+</PRE>
+                        $marker = $('<LI>&lt;a href=&quot;#&quot;&gt;' + key + '&lt;/a&gt;</LI>');
+<PRE>                   }
+               } else {
+                   key++;
+</PRE>
+                    $marker = $('<LI>&lt;a href=&quot;#&quot;&gt;' + key + '&lt;/a&gt;</LI>');
+<PRE>               }
+</PRE><PRE>               $marker.click(function (e) {
+                   e.preventDefault();
+                   if (!$(this).hasClass('active-marker') &amp;&amp; !animating) {
+                       bjqsGo(false, key);
+                   }
+               });
+</PRE><PRE>               $marker.appendTo($markerContainer);
+</PRE><PRE>           });
+</PRE><PRE>           markers = $markerContainer.children('li');
+           markers.eq(current).addClass('active-marker');
+           $markerContainer.appendTo($container);
+</PRE><PRE>           if (settings.centerMarkers) {
+               offset = (settings.width - $markerContainer.width()) / 2;
+               $markerContainer.css('left', offset);
+           }
+</PRE><PRE>       }
+</PRE><PRE>       // Enable keyboard navigation
+       if (settings.keyboardNav &amp;&amp; slideCount &gt; 1) {
+</PRE><PRE>           $(document).keyup(function (event) {
+</PRE><PRE>               if (!paused) {
+                   clearInterval(bjqsInterval);
+                   paused = true;
+               }
+</PRE><PRE>               if (!animating) {
+                   if (event.keyCode === 39) {
+                       event.preventDefault();
+                       bjqsGo(forward, false);
+                   } else if (event.keyCode === 37) {
+                       event.preventDefault();
+                       bjqsGo(back, false);
+                   }
+               }
+</PRE><PRE>               if (paused &amp; settings.automatic) {
+                   bjqsInterval = setInterval(function () {
+                       bjqsGo(forward)
+                   }, settings.rotationSpeed);
+                   paused = false;
+               }
+</PRE><PRE>           });
+       }
+</PRE><PRE>       // Show captions
+       if (settings.useCaptions) {
+</PRE><PRE>           $.each(slides, function (key, value) {
+</PRE><PRE>               var $slide = $(value);
+               var $slideChild = $slide.children('img:first-child');
+               var title = $slideChild.attr('title');
+</PRE><PRE>               if (title) {
+</PRE>
+                    var $caption = $('<P class="bjqs-caption">' + title + '</P>');
+<PRE>                   $caption.appendTo($slide);
+               }
+</PRE><PRE>           });
+</PRE><PRE>       }
+</PRE><PRE>       // Run a bubble-bath and float in that m'fkr like a hovercraft. (enable hover pause)
+       if (settings.hoverPause &amp;&amp; settings.automatic) {
+</PRE><PRE>           $container.hover(function () {
+               if (!paused) {
+                   clearInterval(bjqsInterval);
+                   paused = true;
+               }
+           }, function () {
+               if (paused) {
+                   bjqsInterval = setInterval(function () {
+                       bjqsGo(forward)
+                   }, settings.rotationSpeed);
+                   paused = false;
+               }
+           });
+</PRE><PRE>       }
+</PRE><PRE>       // We have to make a few tweaks if we're sliding instead of fading
+       if (settings.animation === 'slide' &amp;&amp; slideCount &gt; 1) {
+</PRE><PRE>           $first = slides.eq(0);
+           $last = slides.eq(slideCount - 1);
+</PRE><PRE>           $first.clone().addClass('clone').removeClass('slide').appendTo($slider);
+           $last.clone().addClass('clone').removeClass('slide').prependTo($slider);
+</PRE><PRE>           slides = $slider.children('li');
+           slideCount = slides.length;
+</PRE>
+            $wrapper = $('').css({
+<PRE>               'width': settings.width,
+               'height': settings.height,
+               'overflow': 'hidden',
+               'position': 'relative'
+           });
+</PRE><PRE>           $slider.css({
+               'width': settings.width * slideCount,
+               'left': -settings.width
+           });
+</PRE><PRE>           slides.css({
+               'float': 'left',
+               'position': 'relative',
+               'display': 'list-item'
+           });
+</PRE><PRE>           $wrapper.prependTo($container);
+           $slider.appendTo($wrapper);
+</PRE><PRE>       }
+</PRE><PRE>       // Check position to see if we're at the first or last slide and update 'next' accordingly
+       var checkPosition = function (direction) {
+</PRE><PRE>               if (settings.animation === 'fade') {
+</PRE><PRE>                   if (direction === forward) {
+                       !$active.next().length ? next = 0 : next++
+                   } else if (direction === back) {
+                       !$active.prev().length ? next = slideCount - 1 : next--
+                   }
+</PRE><PRE>               }
+</PRE><PRE>               if (settings.animation === 'slide') {
+</PRE><PRE>                   if (direction === forward) {
+                       next = slidePosition + 1;
+                   }
+</PRE><PRE>                   if (direction === back) {
+                       next = slidePosition - 1;
+                   }
+               }
+</PRE><PRE>               return next;
+           }
+</PRE><PRE>           // Kick off the rotation if we're on auto pilot, but only if we have more than 1 slide (thanks Efrain!)
+       if (settings.automatic &amp;&amp; slideCount &gt; 1) {
+           var bjqsInterval = setInterval(function () {
+               bjqsGo(forward, false)
+           }, settings.rotationSpeed);
+       }
+</PRE><PRE>       // Show the first slide	
+       slides.eq(current).show();
+       $slider.show();
+</PRE><PRE>       // What comes next? Hey, Bust a move!
+       var bjqsGo = function (direction, position) {
+</PRE><PRE>               if (!animating) {
+</PRE><PRE>                   if (direction) {
+                       next = checkPosition(direction);
+                   } else if (position &amp;&amp; settings.animation === 'fade') {
+                       next = position - 1;
+                   } else {
+                       next = position;
+                   }
+</PRE><PRE>                   animating = true;
+</PRE><PRE>                   if (settings.animation === 'fade') {
+</PRE><PRE>                       if (settings.showMarkers) {
+                           markers.eq(current).removeClass('active-marker');
+                           markers.eq(next).addClass('active-marker');
+                       }
+</PRE><PRE>                       $next = slides.eq(next);
+</PRE><PRE>                       $active.fadeOut(settings.animationDuration);
+                       $next.fadeIn(settings.animationDuration, function () {
+                           $active.hide();
+                           current = next;
+                           $active = $next;
+                           animating = false;
+                       });
+</PRE><PRE>                   } else if (settings.animation === 'slide') {
+</PRE><PRE>                       if (settings.showMarkers) {
+</PRE><PRE>                           markers.eq(slidePosition - 1).removeClass('active-marker');
+</PRE><PRE>                           if (next === slideCount - 1) {
+                               markers.eq(0).addClass('active-marker');
+                           } else if (next === 0) {
+                               markers.eq(slideCount - 3).addClass('active-marker');
+                           } else {
+                               markers.eq(next - 1).addClass('active-marker');
+                           }
+</PRE><PRE>                       }
+</PRE><PRE>                       $slider.animate({
+                           'left': -next * settings.width
+                       }, settings.animationDuration, function () {
+</PRE><PRE>                           if (next === 0) {
+                               slidePosition = slideCount - 2;
+                               $slider.css({
+                                   'left': -slidePosition * settings.width
+                               });
+                           } else if (next === slideCount - 1) {
+                               slidePosition = 1;
+                               $slider.css({
+                                   'left': -settings.width
+                               });
+                           } else {
+                               slidePosition = next;
+                           }
+</PRE><PRE>                           animating = false;
+</PRE><PRE>                       });
+</PRE><PRE>                   }
+</PRE><PRE>               }
+</PRE><PRE>           }
+</PRE><PRE>       return this; // KTHXBYE
+   }
+</PRE><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></BODY></HTML>

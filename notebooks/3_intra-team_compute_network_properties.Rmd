@@ -1,0 +1,339 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+1. Load the necessary datafiles (and libraries)
+
+```{r, message=FALSE, warning=FALSE}
+
+library(igraph)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+
+source("custom_functions.R")
+
+version = "specific"
+model = "gpt-4-turbo"
+temperature_curation = "0-3"
+temperature_matching = "0-3"
+
+meta = read.csv("../data/raw/team_meta.csv", stringsAsFactors = FALSE)
+roster = read.csv("../data/raw/teams_info_members_db.tsv", sep = "\t", stringsAsFactors = FALSE)
+roster$edited_name = trimws((iconv(roster$UserName,from="UTF-8",to="ASCII//TRANSLIT")))
+
+
+```
+
+
+Load Manual Curation
+
+```{r}
+
+manual = read.csv("../data/processed/manually_curated/random_per_year_intra_team/intra-team_manual_annotated_new.csv", stringsAsFactors = FALSE)[,c("Year", "Team", "UserName", "MemberType", "activities", "category")]
+
+manual$category = lapply(manual$category, FUN = function(x) trimws(strsplit(x, ",")[[1]])) 
+manual$UserName = trimws((iconv(manual$UserName,from="UTF-8",to="ASCII//TRANSLIT")))
+
+manual = tidyr::unnest(manual, cols = "category")
+manual$activities = tolower(manual$activities)
+
+```
+
+Load for specified models
+
+```{r}
+
+model = "gpt-4-turbo"
+
+df = read.csv(paste("../data/processed/gpt_curated/intra-team/intra-team_merged_", version, "_", model, "_", temperature_matching, "_", temperature_curation, ".csv", sep = ""), stringsAsFactors = FALSE)
+  
+```
+
+Create the Networks (GPT)
+
+```{r}
+
+g_list_gpt = list()
+
+for (year in unique(df$year))
+{
+  temp_list = list()
+  
+  for (team in unique(df$team[df$year == year]))
+  {
+    t = df[df$in_gpt == TRUE & df$team == team & df$year == year,]
+    
+    v = roster[roster$Team == team & roster$Year == year, c("edited_name", "MemberType")]
+    v$type = TRUE
+    colnames(v) = c("name", "role_type", "type")
+    v = v[!duplicated(v),]
+    
+    v = rbind(v, data.frame(name = unique(t$category), role_type = "activity", type = FALSE))
+    
+    v$year = year
+    v$team = team
+    
+    g_gpt = graph_from_data_frame(t[,c("member", "category")], vertices = v, directed = FALSE)
+    
+    temp_list[[team]] = g_gpt
+  }
+  
+  g_list_gpt[[as.character(year)]] = temp_list
+}
+
+```
+
+Create the Networks (Manual)
+
+```{r}
+
+g_list_manual = list()
+
+for (year in unique(df$year))
+{
+  temp_list = list()
+  
+  for (team in unique(df$team[df$year == year]))
+  {
+    t = df[df$in_manual == TRUE & df$team == team & df$year == year,]
+    
+    v = roster[roster$Team == team & roster$Year == year, c("edited_name", "MemberType")]
+    v$type = TRUE
+    colnames(v) = c("name", "role_type", "type")
+    v = v[!duplicated(v),]
+    
+    v = rbind(v, data.frame(name = unique(t$category), role_type = "activity", type = FALSE))
+    
+    v$year = year
+    v$team = team
+    
+    g_manual = graph_from_data_frame(t[,c("member", "category")], vertices = v, directed = FALSE)
+    
+    temp_list[[team]] = g_manual
+  }
+  
+  g_list_manual[[as.character(year)]] = temp_list
+}
+
+```
+
+
+Plot of Degree Distributions
+
+```{r}
+
+ddist_users = data.frame()
+ddist_pages = data.frame()
+
+degree_gpt = data.frame()
+degree_manual = data.frame()
+
+for (year in as.character(unique(df$year)))
+{
+
+  for (team in names(g_list_gpt[[(year)]]))
+  {
+    g_gpt = g_list_gpt[[(year)]][[team]]
+    g_manual = g_list_manual[[(year)]][[team]]
+    
+    d_u = degree_distribution(g_gpt, v = V(g_gpt)[V(g_gpt)$type == TRUE], cumulative = TRUE)
+    d_p = degree_distribution(g_gpt, v = V(g_gpt)[V(g_gpt)$type == FALSE], cumulative = TRUE)
+    
+    ddist_users = rbind(ddist_users, data.frame(team = team, value = d_u, id = 0:(length(d_u)-1), year = year, type = "gpt")) 
+    
+    ddist_pages = rbind(ddist_pages, data.frame(team = team, value = d_p, id = 0:(length(d_p)-1), year = year, type = "gpt"))
+    
+    d_u = degree_distribution(g_manual, v = V(g_manual)[V(g_manual)$type == TRUE], cumulative = TRUE)
+    d_p = degree_distribution(g_manual, v = V(g_manual)[V(g_manual)$type == FALSE], cumulative = TRUE)
+    
+    ddist_users = rbind(ddist_users, data.frame(team = team, value = d_u, id = 0:(length(d_u)-1), year = year, type = "manual"))  
+    ddist_pages = rbind(ddist_pages, data.frame(team = team, value = d_p, id = 0:(length(d_p)-1), year = year, type = "manual"))
+    
+    degree_gpt = rbind(degree_gpt, data.frame(team = team, year = year, vertices = V(g_gpt)$name, degree_gpt = degree(g_gpt), type = V(g_gpt)$type))
+    
+    degree_manual = rbind(degree_manual, data.frame(team = team, year = year, vertices = V(g_manual)$name, degree_manual = degree(g_manual), type = V(g_manual)$type))
+    
+    
+  }
+}
+
+```
+
+Correlations (degree)
+
+```{r}
+
+deg = merge(degree_gpt, degree_manual, by.x = c("team", "year", "vertices", "type"), by.y = c("team", "year", "vertices", "type"), all.x = TRUE, all.y = TRUE)
+
+deg[is.na(deg)] = 0
+
+```
+
+
+Plot (Users)
+
+```{r}
+
+vir = viridis::viridis(6)
+color_palette = c("grey", vir[2:6])
+
+ddist_users$identifier = paste(ddist_users$team, ddist_users$year, sep = "-")
+
+ddist_pages$identifier = paste(ddist_pages$team, ddist_pages$year, sep = "-")
+
+plt = ggplot() + geom_line(data = ddist_users[ddist_users$type == "gpt",], aes(x = log(id, base = 10), y = log(value, base = 10), group = identifier), alpha = 0.3, color = color_palette[5])  + theme_bw(base_size = 15) + geom_line(data = ddist_users[ddist_users$type == "manual",], aes(x = log(id, base = 10), y = log(value, base = 10), group = identifier), alpha = 0.3, color = "lightgrey") + 
+```
+
+Plot (Pages)
+
+```{r}
+
+
+plt = ggplot() + geom_line(data = ddist_pages[ddist_pages$type == "gpt",], aes(x = log(id, base = 10), y = log(value, base = 10), group = identifier), alpha = 0.3, color = color_palette[5])  + theme_bw(base_size = 15) + geom_line(data = ddist_pages[ddist_pages$type == "manual",], aes(x = log(id, base = 10), y = log(value, base = 10), group = identifier), alpha = 0.3, color = "lightgrey")
+
+```
+
+Average Plot
+
+```{r}
+
+users = ddist_users %>% group_by(id, type) %>% summarise(mean = mean(log(value, base = 10)), se = se(log(value, base = 10)))
+users$side = "users"
+
+pages = ddist_pages %>% group_by(id, type) %>% summarise(mean = mean(log(value, base = 10)), se = se(log(value, base = 10)))
+pages$side = "pages"
+
+t = rbind(users, pages)
+t$identifier = paste(t$type, t$side, sep = "-")
+
+plt = ggplot(t) + geom_line(aes(x = log(id, base = 10), y = mean, color = type)) + geom_errorbar(aes(ymin = mean-se, ymax = mean+se, x = log(id, base = 10), color = type)) + theme_bw(base_size = 25) + scale_color_manual(breaks = c("gpt", "manual"), values = c(color_palette[5], "grey")) + xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none") + facet_wrap(~side)
+
+
+ggsave(plt, filename = "../figures/intra-team_cumulative_deg_dist.png", width = 10, height = 7)
+
+#plt = ggplot() + geom_line(data = users, aes(x = log(id, base = 10), y = mean, fill = type), alpha = 1) + geom_errorbar(data = users, aes(ymin = mean-se, ymax = mean+se, x = log(id, base = 10), fill = type), width = 0.0) + theme_bw(base_size = 15) + geom_line(data = pages, aes(x = log(id, base = 10), y = mean, fill = type), alpha = 1)  + geom_errorbar(data = pages, aes(ymin = mean-se, ymax = mean+se, x = log(id, base = 10), fill = type), width = 0.0) + scale_fill_manual(breaks = c("gpt", "manual"), values = (color_palette[c(4,5)])) + xlab("") + ylab("")
+
+```
+
+
+Compute Nestedness & Modularity
+
+```{r, warning=FALSE, message=FALSE}
+
+library(maxnodf)
+
+df_nestedness = data.frame()
+
+for (year in names(g_list_gpt))
+{
+ 
+  for (team in names(g_list_gpt[[year]]))
+  {
+    g = g_list_gpt[[year]][[team]]
+    #Remove isolates
+    d = degree(g)
+    g = induced_subgraph(g, vids = names(d[d>0]))
+    web_gpt = as_incidence_matrix(g, sparse = FALSE)
+    
+    g = g_list_manual[[year]][[team]]
+    #Remove isolates
+    d = degree(g)
+    g = induced_subgraph(g, vids = names(d[d>0]))
+    web_manual = as_incidence_matrix(g, sparse = FALSE)
+    
+    df_nestedness = rbind(df_nestedness, data.frame(team = team, year = year, type = "gpt", nodfc = NODFc(web_gpt), modularity = rnetcarto::netcarto(t(web_gpt), bipartite = TRUE)[[2]]))
+    
+    df_nestedness = rbind(df_nestedness, data.frame(team = team, year = year, type = "manual", nodfc = NODFc(web_manual), modularity = rnetcarto::netcarto(t(web_manual), bipartite = TRUE)[[2]]))
+    
+  }
+   
+}
+
+```
+
+Plot nestedness v modularity
+
+```{r}
+
+
+temp = reshape2::dcast(df_nestedness, formula = team+year~type, value.var = "nodfc")
+
+plt = ggplot(temp, aes(x = manual, y = gpt)) + theme_bw(base_size = 25) + geom_point(alpha = 0.5)  + geom_abline(linetype = "dashed", color = "black", alpha = 0.5) + xlab("") + ylab("") + theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank()) + theme(legend.position="none")
+
+
+ggsave(plt, filename = "../figures/nestedness_intra-team.png", height = 5, width = 5)
+
+#temp = reshape2::dcast(df_nestedness, formula = team+year~type, value.var = "modularity")
+
+#plt = ggplot(temp, aes(x = manual, y = gpt)) + theme_bw(base_size = 25) + geom_point()  + geom_abline(linetype = "dashed", color = "red")
+
+
+```
+
+
+Plot Incidence Matrices with the Nested Alignment
+
+```{r}
+
+#Function - make the alignment of the incidence matrix which maximises nestedness
+
+plot_heatmap = function(g)
+{
+  #g = graph
+  df = as_incidence_matrix(g)
+  
+  a = bipartite::nestedrank(df)
+  
+  df = as.data.frame(df)
+  
+  if (ncol(df) == 1 | nrow(df) == 1)
+    return(0)
+      
+  df = df[,c(names(sort(a$`higher level`, decreasing = TRUE)))]
+  df = df[c(names(sort(a$`lower level`, decreasing = FALSE))),]
+  
+        #colnames(df) = paste(1:ncol(df), "-m", sep = "")
+  #rownames(df) = paste(1:nrow(df), "-n", sep = "")
+  
+  df_melt = reshape2::melt(as.matrix(df))
+  colnames(df_melt) = c("page", "user", "edge")
+  
+  plt = ggplot(df_melt, aes(x = page, y = user, fill = edge)) + geom_tile(lwd = 1.5, linetype = 1) 
+  plt = plt + scale_fill_gradientn(colors = c("white", "red")) + theme_bw(base_size = 15) + xlab("Page") + ylab("")
+  plt = plt + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  
+  return(plt)
+}
+
+
+```
+
+Network Heatmaps
+
+```{r}
+
+pdf("../figures/network_heatmaps.pdf", height = 7, width = 15)
+
+for (year in names(g_list_gpt))
+{
+ 
+  for (team in names(g_list_gpt[[year]]))
+  {
+    g_gpt = g_list_gpt[[year]][[team]]
+    g_manual = g_list_manual[[year]][[team]]
+    
+    plt_gpt = plot_heatmap(g_gpt) + ggtitle("GPT")
+    plt_manual = plot_heatmap(g_manual) + ggtitle("Manual")
+    
+    print(ggpubr::ggarrange(plt_gpt, plt_manual))
+    
+  }
+  
+}
+
+dev.off()
+```

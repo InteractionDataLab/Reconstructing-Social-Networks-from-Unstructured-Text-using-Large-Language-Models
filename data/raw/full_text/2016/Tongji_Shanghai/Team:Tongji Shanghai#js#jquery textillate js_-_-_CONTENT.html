@@ -1,0 +1,228 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tongji_Shanghai_js_jquery_textillate_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tongji Shanghai/js/jquery textillate js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* textillate.js
+* <A rel="nofollow" class="external free" href="http://jschr.github.com/textillate">http://jschr.github.com/textillate</A>
+* MIT licensed
+*
+* Copyright (C) 2012-2013 Jordan Schroter
+*/
+</PRE><P>(function ($) {
+</P><PRE> &quot;use strict&quot;; 
+</PRE><PRE> function isInEffect (effect) {
+   return /In/.test(effect) || $.inArray(effect, $.fn.textillate.defaults.inEffects) &gt;= 0;
+ };
+</PRE><PRE> function isOutEffect (effect) {
+   return /Out/.test(effect) || $.inArray(effect, $.fn.textillate.defaults.outEffects) &gt;= 0;
+ };
+</PRE><PRE> // custom get data api method
+ function getData (node) {
+   var attrs = node.attributes || []
+     , data = {};
+</PRE><PRE>   if (!attrs.length) return data;
+</PRE><PRE>   $.each(attrs, function (i, attr) {
+     if (/^data-in-*/.test(attr.nodeName)) {
+       data.in = data.in || {};
+       data.in[attr.nodeName.replace(/data-in-/, <I>)] = attr.nodeValue;</I>
+     } else if (/^data-out-*/.test(attr.nodeName)) {
+       data.out = data.out || {};
+       data.out[attr.nodeName.replace(/data-out-/, <I>)] = attr.nodeValue;</I>
+     } else if (/^data-*/.test(attr.nodeName)) {
+       data[attr.nodeName] = attr.nodeValue;
+     }
+   })
+</PRE><PRE>   return data;
+ }
+</PRE><PRE> function shuffle (o) {
+     for (var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+     return o;
+ }
+</PRE><PRE> function animate ($c, effect, cb) {
+   $c.addClass('animated ' + effect)
+     .css('visibility', 'visible')
+     .show();
+</PRE><PRE>   $c.one('animationend webkitAnimationEnd oAnimationEnd', function () {
+       $c.removeClass('animated ' + effect);
+       cb &amp;&amp; cb();
+   });
+ }
+</PRE><PRE> function animateChars ($chars, options, cb) {
+   var that = this
+     , count = $chars.length;
+</PRE><PRE>   if (!count) {
+     cb &amp;&amp; cb();
+     return;
+   } 
+</PRE><PRE>   if (options.shuffle) $chars = shuffle($chars);
+   if (options.reverse) $chars = $chars.toArray().reverse();
+</PRE><PRE>   $.each($chars, function (i, c) {
+     var $char = $(c);
+     
+     function complete () {
+       if (isInEffect(options.effect)) {
+         $char.css('visibility', 'visible');
+       } else if (isOutEffect(options.effect)) {
+         $char.css('visibility', 'hidden');
+       }
+       count -= 1;
+       if (!count &amp;&amp; cb) cb();
+     }
+</PRE><PRE>     var delay = options.sync ? options.delay : options.delay * i * options.delayScale;
+</PRE><PRE>     $char.text() ? 
+       setTimeout(function () { animate($char, options.effect, complete) }, delay) :
+       complete();
+   });
+ };
+</PRE><PRE> var Textillate = function (element, options) {
+   var base = this
+     , $element = $(element);
+</PRE><PRE>   base.init = function () {
+     base.$texts = $element.find(options.selector);
+     
+     if (!base.$texts.length) {
+</PRE>
+        base.$texts = $('<UL class="texts"><LI>' + $element.html() + '</LI></UL>');
+<PRE>       $element.html(base.$texts);
+     }
+</PRE><PRE>     base.$texts.hide();
+</PRE><PRE>     base.$current = $('<SPAN>')
+       .text(base.$texts.find(':first-child').html())
+       .prependTo($element);
+</SPAN></PRE><PRE>     if (isInEffect(options.effect)) {
+       base.$current.css('visibility', 'hidden');
+     } else if (isOutEffect(options.effect)) {
+       base.$current.css('visibility', 'visible');
+     }
+</PRE><PRE>     base.setOptions(options);
+</PRE><PRE>     setTimeout(function () {
+       base.options.autoStart &amp;&amp; base.start();
+     }, base.options.initialDelay)
+   };
+</PRE><PRE>   base.setOptions = function (options) {
+     base.options = options;
+   };
+</PRE><PRE>   base.triggerEvent = function (name) {
+     var e = $.Event(name + '.tlt');
+     $element.trigger(e, base);
+     return e;
+   };
+</PRE><PRE>   base.in = function (index, cb) {
+     index = index || 0;
+      
+     var $elem = base.$texts.find(':nth-child(' + (index + 1) + ')')
+       , options = $.extend({}, base.options, getData($elem))
+       , $chars;
+</PRE><PRE>     $elem.addClass('current');
+</PRE><PRE>     base.triggerEvent('inAnimationBegin');
+</PRE><PRE>     base.$current
+       .text($elem.html())
+       .lettering('words');
+</PRE><PRE>     base.$current.find('[class^=&quot;word&quot;]')
+         .css({ 
+           'display': 'inline-block',
+           // fix for poor ios performance
+           '-webkit-transform': 'translate3d(0,0,0)',
+              '-moz-transform': 'translate3d(0,0,0)',
+                '-o-transform': 'translate3d(0,0,0)',
+                   'transform': 'translate3d(0,0,0)'
+         })
+         .each(function () { $(this).lettering() });
+</PRE><PRE>     $chars = base.$current
+       .find('[class^=&quot;char&quot;]')
+       .css('display', 'inline-block');
+</PRE><PRE>     if (isInEffect(options.in.effect)) {
+       $chars.css('visibility', 'hidden');
+     } else if (isOutEffect(options.in.effect)) {
+       $chars.css('visibility', 'visible');
+     }
+</PRE><PRE>     base.currentIndex = index;
+</PRE><PRE>     animateChars($chars, options.in, function () {
+       base.triggerEvent('inAnimationEnd');
+       if (options.in.callback) options.in.callback();
+       if (cb) cb(base);
+     });
+   };
+</PRE><PRE>   base.out = function (cb) {
+     var $elem = base.$texts.find(':nth-child(' + (base.currentIndex + 1) + ')')
+       , $chars = base.$current.find('[class^=&quot;char&quot;]')
+       , options = $.extend({}, base.options, getData($elem));
+</PRE><PRE>     base.triggerEvent('outAnimationBegin');
+</PRE><PRE>     animateChars($chars, options.out, function () {
+       $elem.removeClass('current');
+       base.triggerEvent('outAnimationEnd');
+       if (options.out.callback) options.out.callback();
+       if (cb) cb(base);
+     });
+   };
+</PRE><PRE>   base.start = function (index) {
+     base.triggerEvent('start');
+</PRE><PRE>     (function run (index) {
+       base.in(index, function () {
+         var length = base.$texts.children().length;
+</PRE><PRE>         index += 1;
+         
+         if (!base.options.loop &amp;&amp; index &gt;= length) {
+           if (base.options.callback) base.options.callback();
+           base.triggerEvent('end');
+         } else {
+           index = index % length;
+</PRE><PRE>     setTimeout(function () {
+             base.out(function () {
+               run(index)
+             });
+           }, base.options.minDisplayTime);
+         }
+       });
+     }(index || 0));
+   };
+</PRE><PRE>   base.init();
+ }
+</PRE><PRE> $.fn.textillate = function (settings, args) {
+   return this.each(function () {
+     var $this = $(this)
+       , data = $this.data('textillate')
+       , options = $.extend(true, {}, $.fn.textillate.defaults, getData(this), typeof settings == 'object' &amp;&amp; settings);
+</PRE><PRE>     if (!data) { 
+       $this.data('textillate', (data = new Textillate(this, options)));
+     } else if (typeof settings == 'string') {
+       data[settings].apply(data, [].concat(args));
+     } else {
+       data.setOptions.call(data, options);
+     }
+   })
+ };
+ 
+ $.fn.textillate.defaults = {
+   selector: '.texts',
+   loop: false,
+   minDisplayTime: 2000,
+   initialDelay: 0,
+   in: {
+     effect: 'fadeInLeftBig',
+     delayScale: 1.5,
+     delay: 50,
+     sync: false,
+     reverse: false,
+     shuffle: false,
+     callback: function () {}
+   },
+   out: {
+     effect: 'hinge',
+     delayScale: 1.5,
+     delay: 50,
+     sync: false,
+     reverse: false,
+     shuffle: false,
+     callback: function () {}
+   },
+   autoStart: true,
+   inEffects: [],
+   outEffects: [ 'hinge' ],
+   callback: function () {}
+ };
+</PRE><P>}(jQuery));</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

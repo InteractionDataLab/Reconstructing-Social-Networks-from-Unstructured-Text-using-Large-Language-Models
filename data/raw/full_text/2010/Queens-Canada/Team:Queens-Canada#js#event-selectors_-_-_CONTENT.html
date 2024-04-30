@@ -1,0 +1,193 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Queens-Canada_js_event-selectors"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Queens-Canada/js/event-selectors">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Queens-Canada/js/event-selectors&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Queens-Canada/js/event-selectors&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Queens-Canada/js/event-selectors&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Queens-Canada/js/event-selectors" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Queens-Canada/js/event-selectors</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2010.igem.org</H3><P>// EventSelectors 
+// Copyright (c) 2005-2006 Justin Palmer (<A href="http://encytemedia.com" class="external free" rel="nofollow">http://encytemedia.com</A>)
+// Examples and documentation (<A href="http://encytemedia.com/event-selectors" class="external free" rel="nofollow">http://encytemedia.com/event-selectors</A>)
+// 
+// EventSelectors allow you access to Javascript events using a CSS style syntax.
+// It goes one step beyond Javascript events to also give you :loaded, which allows 
+// you to wait until an item is loaded in the document before you begin to interact
+// with it.
+//
+// Inspired by the work of Ben Nolan's Behaviour (<A href="http://bennolan.com/behaviour" class="external free" rel="nofollow">http://bennolan.com/behaviour</A>)
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// &quot;Software&quot;), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+// 
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+</P><P>/*
+</P><UL><LI>Making it work:**
+</LI></UL><P>|You need to start the event:Selectors before they will do anything:
+</P><PRE>EventSelectors.start(Rules);
+</PRE><P>|This should either go an an onload event in the head of your document or right 
+|before the closing body tag.
+</P><UL><LI>/
+</LI></UL><P>var EventSelectors = {
+</P><PRE> version: '1.0_pre',
+ cache: [],
+ 
+ start: function(rules) {
+   this.rules = rules || {};
+   this.timer = new Array();
+   this._extendRules();
+   this.assign(this.rules);
+ },
+ 
+ assign: function(rules) {
+   var observer = null;
+   this._unloadCache();
+   rules._each(function(rule) {
+     var selectors = $A(rule.key.split(','));
+     selectors.each(function(selector) {        
+       var pair = selector.split(':');
+       var event = pair[1];
+       $$(pair[0]).each(function(element) {
+         if(pair[1] == <I> || pair.length == 1) return rule.value(element);</I>
+         if(event.toLowerCase() == 'loaded') {
+           this.timer[pair[0]] = setInterval(this._checkLoaded.bind(this, element, pair[0], rule), 15);
+         } else {
+           observer = function(event) {
+             var element = Event.element(event);
+             if (element.nodeType == 3) // Safari Bug (Fixed in Webkit)
+           		element = element.parentNode;
+             rule.value($(element), event);
+           }
+           this.cache.push([element, event, observer]);
+           Event.observe(element, event, observer);
+         }
+       }.bind(this));
+     }.bind(this));
+   }.bind(this));
+ },
+ 
+ // Scoped caches would rock.
+ _unloadCache: function() {
+   if (!this.cache) return;
+   for (var i = 0; i &lt; this.cache.length; i++) {
+     Event.stopObserving.apply(this, this.cache[i]);
+     this.cache[i][0] = null;
+   }
+   this.cache = [];
+ },
+ 
+ _checkLoaded: function(element, timer, rule) {
+   var node = $(element);
+   if(element.tagName != 'undefined') {
+     clearInterval(this.timer[timer]);
+     rule.value(node);
+   }
+ },
+ 
+ _extendRules: function() {
+   Object.extend(this.rules, {
+    _each: function(iterator) {
+      for (key in this) {
+        if(key == '_each') continue;         
+        var value = this[key];
+        var pair = [key, value];
+        pair.key = key;
+        pair.value = value;
+        iterator(pair);
+      }
+    }  
+   });
+ }
+</PRE><P>}
+</P><P>// Remove/Comment this if you do not wish to reapply Rules automatically
+// on Ajax request.
+/*
+Ajax.Responders.register({
+</P><PRE> onComplete: function() { EventSelectors.assign(Rules);}
+</PRE><P>})
+</P><UL><LI>/
+</LI></UL><P>/***************************************************************************************************************************************/
+</P><P>function hide(elements) {
+</P><PRE>   elements.each(function(a){a.hide();});
+</PRE><P>}
+function setupStyles() {
+</P><PRE> $(&quot;logo&quot;).hide();
+ $(&quot;central_top_back&quot;).hide();
+ hide(  $$('#main_menu').concat( $$('h1') ).concat( $$('h4') ).concat( $$('h5') ).concat( $$('.section') )  );
+ Element.setStyle(&quot;footer&quot;, {color:&quot;#C9CACC&quot;});
+ new Effect.Morph(&quot;footer&quot;,{
+   style:'color:#777777',
+   duration: 4
+ });
+</PRE><P>}
+</P><P>
+function chainAppear(elements){
+</P><PRE> //alert(a);
+ //elements.each(function(a){a.hide(); });
+ new Effect.DelayedChain('Appear', elements, { duration: 0.5 }, 200);
+</PRE><P>}
+function sectionSelector( callingElement, options ){
+</P><PRE> options = options || {};
+ prefix = options.withoutPrefix ? &quot;&quot; : &quot;#&quot;;
+ if (callingElement)
+   return prefix+callingElement.getAttribute('href').split('#')[1];
+ else
+   return prefix+( window.location.href.split('#')[1] || &quot;main&quot; );
+</PRE><P>}
+</P><P>
+// Probably want to remove these and create your own.
+var Rules = {
+</P><PRE> '#foobar': function(element, event) {
+   elements = $$('#main_menu').concat( $$('h1') ).concat( $$('h4') ).concat( $$('h5') )
+   section = $(sectionSelector(null, {withoutPrefix:true}))
+   if ( section &amp;&amp; section.hasClassName('section') ){
+     elements = elements.concat( section );
+     $$('h4 a').each(function(link){if (section.id == link.href.split('#')[1]) link.addClassName('active');})
+   } else {
+     elements = elements.concat( $(&quot;main&quot;) );
+   }
+   elements = [$('top'), $('central'), $('footer')].concat(elements);
+   
+   chainAppear( elements );
+   /safari/.test(navigator.userAgent.toLowerCase()) ? new Effect.SlideDown(&quot;logo&quot; , { duration: 2 } ) : $('logo').show();
+   new Effect.Appear(&quot;central_top_back&quot; , { duration: 4 } );
+   /*new Effect.Morph(&quot;central_top_back&quot;,{
+     style:'background-position:-150px 0',
+     duration: 9, queue:{scope:'subtitle' }
+   });*/
+ },
+ 
+ 'h4 a:click': function(element, event) {
+   //new Effect.ScrollTo('top');
+   $$(&quot;.section&quot;).each(function(section){
+     if ( Element.visible(section) &amp;&amp; section.id != sectionSelector(element, {withoutPrefix:true}) )
+       //new Effect.SlideUp( section.id.toString() );
+       new Effect.Fade( section.id.toString(), { queue:{scope:'sections_queue', position:'end'} });
+       //section.id.hide();
+   });
+   section = $( sectionSelector(element, {withoutPrefix:true}) )
+   if ( !Element.visible(section) ){
+     new Effect.Appear( section , { duration: 1.5, queue:{scope:'sections_queue', position:'end'} } );
+   }
+   $$('h4 a').each(function(link){link.removeClassName('active');})
+   element.addClassName('active');
+   /*Event.stop(event);*/
+ }
+</PRE><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2010.igem.org/Team:Queens-Canada/js/event-selectors">http://2010.igem.org/Team:Queens-Canada/js/event-selectors</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Queens-Canada/js/event-selectors" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Queens-Canada/js/event-selectors" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Queens-Canada/js/event-selectors&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Queens-Canada/js/event-selectors&amp;oldid=10779" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2010.igem.org:Privacy_policy" title="2010.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2010.igem.org:General_disclaimer" title="2010.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

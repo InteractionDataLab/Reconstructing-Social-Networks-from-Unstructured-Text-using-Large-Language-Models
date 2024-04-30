@@ -1,0 +1,2014 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Cornell_NY_imageviewer_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Cornell NY/imageviewer.js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*!
+</P><PRE>* Viewer.js v0.5.0
+* <A rel="nofollow" class="external free" href="https://github.com/fengyuanchen/viewerjs">https://github.com/fengyuanchen/viewerjs</A>
+*
+* Copyright (c) 2015-2016 Fengyuan Chen
+* Released under the MIT license
+*
+* Date: 2016-07-22T08:46:05.003Z
+*/
+</PRE><P>(function (global, factory) {
+</P><PRE> if (typeof module === 'object' &amp;&amp; typeof module.exports === 'object') {
+   module.exports = global.document ? factory(global, true) : function (window) {
+     if (!window.document) {
+       throw new Error('Viewer requires a window with a document');
+     }
+</PRE><PRE>     return factory(window);
+   };
+ } else {
+   factory(global);
+ }
+</PRE><P>})(typeof window !== 'undefined' ? window : this, function (window, noGlobal) {
+</P><PRE> 'use strict';
+</PRE><PRE> var document = window.document;
+ var Event = window.Event;
+</PRE><PRE> // Constants
+ var NAMESPACE = 'viewer';
+</PRE><PRE> // Classes
+ var CLASS_FIXED = NAMESPACE + '-fixed';
+ var CLASS_OPEN = NAMESPACE + '-open';
+ var CLASS_SHOW = NAMESPACE + '-show';
+ var CLASS_HIDE = NAMESPACE + '-hide';
+ var CLASS_HIDE_XS_DOWN = 'viewer-hide-xs-down';
+ var CLASS_HIDE_SM_DOWN = 'viewer-hide-sm-down';
+ var CLASS_HIDE_MD_DOWN = 'viewer-hide-md-down';
+ var CLASS_FADE = NAMESPACE + '-fade';
+ var CLASS_IN = NAMESPACE + '-in';
+ var CLASS_MOVE = NAMESPACE + '-move';
+ var CLASS_ACTIVE = NAMESPACE + '-active';
+ var CLASS_INVISIBLE = NAMESPACE + '-invisible';
+ var CLASS_TRANSITION = NAMESPACE + '-transition';
+ var CLASS_FULLSCREEN = NAMESPACE + '-fullscreen';
+ var CLASS_FULLSCREEN_EXIT = NAMESPACE + '-fullscreen-exit';
+ var CLASS_CLOSE = NAMESPACE + '-close';
+</PRE><PRE> // Events
+ var EVENT_MOUSEDOWN = 'mousedown touchstart pointerdown MSPointerDown';
+ var EVENT_MOUSEMOVE = 'mousemove touchmove pointermove MSPointerMove';
+ var EVENT_MOUSEUP = 'mouseup touchend touchcancel pointerup pointercancel MSPointerUp MSPointerCancel';
+ var EVENT_WHEEL = 'wheel mousewheel DOMMouseScroll';
+ var EVENT_TRANSITIONEND = 'transitionend';
+ var EVENT_LOAD = 'load';
+ var EVENT_KEYDOWN = 'keydown';
+ var EVENT_CLICK = 'click';
+ var EVENT_RESIZE = 'resize';
+ var EVENT_READY = 'ready';
+ var EVENT_SHOW = 'show';
+ var EVENT_SHOWN = 'shown';
+ var EVENT_HIDE = 'hide';
+ var EVENT_HIDDEN = 'hidden';
+ var EVENT_VIEW = 'view';
+ var EVENT_VIEWED = 'viewed';
+</PRE><PRE> // RegExps
+ var REGEXP_SUFFIX = /^(width|height|left|top|marginLeft|marginTop)$/;
+ var REGEXP_HYPHENATE = /([a-z\d])([A-Z])/g;
+ var REGEXP_TRIM = /^\s+(.*)\s+$/;
+ var REGEXP_SPACES = /\s+/;
+</PRE><PRE> // Supports
+ var SUPPORT_TRANSITION = typeof document.createElement(NAMESPACE).style.transition !== 'undefined';
+</PRE><PRE> // Maths
+ var min = Math.min;
+ var max = Math.max;
+ var abs = Math.abs;
+ var sqrt = Math.sqrt;
+ var round = Math.round;
+</PRE><PRE> // Utilities
+ var objectProto = Object.prototype;
+ var toString = objectProto.toString;
+ var hasOwnProperty = objectProto.hasOwnProperty;
+ var slice = Array.prototype.slice;
+</PRE><PRE> function typeOf(obj) {
+   return toString.call(obj).slice(8, -1).toLowerCase();
+ }
+</PRE><PRE> function isString(str) {
+   return typeof str === 'string';
+ }
+</PRE><PRE> function isNumber(num) {
+   return typeof num === 'number' &amp;&amp; !isNaN(num);
+ }
+</PRE><PRE> function isUndefined(obj) {
+   return typeof obj === 'undefined';
+ }
+</PRE><PRE> function isObject(obj) {
+   return typeof obj === 'object' &amp;&amp; obj !== null;
+ }
+</PRE><PRE> function isPlainObject(obj) {
+   var constructor;
+   var prototype;
+</PRE><PRE>   if (!isObject(obj)) {
+     return false;
+   }
+</PRE><PRE>   try {
+     constructor = obj.constructor;
+     prototype = constructor.prototype;
+</PRE><PRE>     return constructor &amp;&amp; prototype &amp;&amp; hasOwnProperty.call(prototype, 'isPrototypeOf');
+   } catch (e) {
+     return false;
+   }
+ }
+</PRE><PRE> function isFunction(fn) {
+   return typeOf(fn) === 'function';
+ }
+</PRE><PRE> function isArray(arr) {
+   return Array.isArray ? Array.isArray(arr) : typeOf(arr) === 'array';
+ }
+</PRE><PRE> function toArray(obj, offset) {
+   offset = offset &gt;= 0 ? offset : 0;
+</PRE><PRE>   if (Array.from) {
+     return Array.from(obj).slice(offset);
+   }
+</PRE><PRE>   return slice.call(obj, offset);
+ }
+</PRE><PRE> function inArray(value, arr) {
+   var index = -1;
+</PRE><PRE>   if (arr.indexOf) {
+     return arr.indexOf(value);
+   } else {
+     each(arr, function (n, i) {
+       if (n === value) {
+         index = i;
+         return false;
+       }
+     });
+   }
+</PRE><PRE>   return index;
+ }
+</PRE><PRE> function trim(str) {
+   if (isString(str)) {
+     str = str.trim ? str.trim() : str.replace(REGEXP_TRIM, '1');
+   }
+</PRE><PRE>   return str;
+ }
+</PRE><PRE> function each(obj, callback) {
+   var length;
+   var i;
+</PRE><PRE>   if (obj &amp;&amp; isFunction(callback)) {
+     if (isArray(obj) || isNumber(obj.length)/* array-like */) {
+       for (i = 0, length = obj.length; i &lt; length; i++) {
+         if (callback.call(obj, obj[i], i, obj) === false) {
+           break;
+         }
+       }
+     } else if (isObject(obj)) {
+       for (i in obj) {
+         if (obj.hasOwnProperty(i)) {
+           if (callback.call(obj, obj[i], i, obj) === false) {
+             break;
+           }
+         }
+       }
+     }
+   }
+</PRE><PRE>   return obj;
+ }
+</PRE><PRE> function extend(obj) {
+   var args;
+</PRE><PRE>   if (arguments.length &gt; 1) {
+     args = toArray(arguments);
+</PRE><PRE>     if (Object.assign) {
+       return Object.assign.apply(Object, args);
+     }
+</PRE><PRE>     args.shift();
+</PRE><PRE>     each(args, function (arg) {
+       each(arg, function (prop, i) {
+         obj[i] = prop;
+       });
+     });
+   }
+</PRE><PRE>   return obj;
+ }
+</PRE><PRE> function proxy(fn, context) {
+   var args = toArray(arguments, 2);
+</PRE><PRE>   return function () {
+     return fn.apply(context, args.concat(toArray(arguments)));
+   };
+ }
+</PRE><PRE> function setStyle(element, styles) {
+   var style = element.style;
+</PRE><PRE>   each(styles, function (value, property) {
+     if (REGEXP_SUFFIX.test(property) &amp;&amp; isNumber(value)) {
+       value += 'px';
+     }
+</PRE><PRE>     style[property] = value;
+   });
+ }
+</PRE><PRE> function getStyle(element) {
+   return window.getComputedStyle ?
+     window.getComputedStyle(element, null) :
+     element.currentStyle;
+ }
+</PRE><PRE> function hasClass(element, value) {
+   return element.classList ?
+     element.classList.contains(value) :
+     element.className.indexOf(value) &gt; -1;
+ }
+</PRE><PRE> function addClass(element, value) {
+   var className;
+</PRE><PRE>   if (!value) {
+     return;
+   }
+</PRE><PRE>   if (isNumber(element.length)) {
+     return each(element, function (elem) {
+       addClass(elem, value);
+     });
+   }
+</PRE><PRE>   if (element.classList) {
+     return element.classList.add(value);
+   }
+</PRE><PRE>   className = trim(element.className);
+</PRE><PRE>   if (!className) {
+     element.className = value;
+   } else if (className.indexOf(value) &lt; 0) {
+     element.className = className + ' ' + value;
+   }
+ }
+</PRE><PRE> function removeClass(element, value) {
+   if (!value) {
+     return;
+   }
+</PRE><PRE>   if (isNumber(element.length)) {
+     return each(element, function (elem) {
+       removeClass(elem, value);
+     });
+   }
+</PRE><PRE>   if (element.classList) {
+     return element.classList.remove(value);
+   }
+</PRE><PRE>   if (element.className.indexOf(value) &gt;= 0) {
+     element.className = element.className.replace(value, <I>);</I>
+   }
+ }
+</PRE><PRE> function toggleClass(element, value, added) {
+   if (isNumber(element.length)) {
+     return each(element, function (elem) {
+       toggleClass(elem, value, added);
+     });
+   }
+</PRE><PRE>   // IE10-11 doesn't support the second parameter of `classList.toggle`
+   if (added) {
+     addClass(element, value);
+   } else {
+     removeClass(element, value);
+   }
+ }
+</PRE><PRE> function hyphenate(str) {
+   return str.replace(REGEXP_HYPHENATE, '$1-$2').toLowerCase();
+ }
+</PRE><PRE> function getData(element, name) {
+   if (isObject(element[name])) {
+     return element[name];
+   } else if (element.dataset) {
+     return element.dataset[name];
+   }
+</PRE><PRE>   return element.getAttribute('data-' + hyphenate(name));
+ }
+</PRE><PRE> function setData(element, name, data) {
+   if (isObject(data)) {
+     element[name] = data;
+   } else if (element.dataset) {
+     element.dataset[name] = data;
+   } else {
+     element.setAttribute('data-' + hyphenate(name), data);
+   }
+ }
+</PRE><PRE> function removeData(element, name) {
+   if (isObject(element[name])) {
+     delete element[name];
+   } else if (element.dataset) {
+     delete element.dataset[name];
+   } else {
+     element.removeAttribute('data-' + hyphenate(name));
+   }
+ }
+</PRE><PRE> function addListener(element, type, handler, once) {
+   var types = trim(type).split(REGEXP_SPACES);
+   var originalHandler = handler;
+</PRE><PRE>   if (types.length &gt; 1) {
+     return each(types, function (type) {
+       addListener(element, type, handler);
+     });
+   }
+</PRE><PRE>   if (once) {
+     handler = function () {
+       removeListener(element, type, handler);
+</PRE><PRE>       return originalHandler.apply(element, arguments);
+     };
+   }
+</PRE><PRE>   if (element.addEventListener) {
+     element.addEventListener(type, handler, false);
+   } else if (element.attachEvent) {
+     element.attachEvent('on' + type, handler);
+   }
+ }
+</PRE><PRE> function removeListener(element, type, handler) {
+   var types = trim(type).split(REGEXP_SPACES);
+</PRE><PRE>   if (types.length &gt; 1) {
+     return each(types, function (type) {
+       removeListener(element, type, handler);
+     });
+   }
+</PRE><PRE>   if (element.removeEventListener) {
+     element.removeEventListener(type, handler, false);
+   } else if (element.detachEvent) {
+     element.detachEvent('on' + type, handler);
+   }
+ }
+</PRE><PRE> function dispatchEvent(element, type, data) {
+   var event;
+</PRE><PRE>   if (element.dispatchEvent) {
+</PRE><PRE>     // Event and CustomEvent on IE9-11 are global objects, not constructors
+     if (isFunction(Event) &amp;&amp; isFunction(CustomEvent)) {
+       if (isUndefined(data)) {
+         event = new Event(type, {
+           bubbles: true,
+           cancelable: true
+         });
+       } else {
+         event = new CustomEvent(type, {
+           detail: data,
+           bubbles: true,
+           cancelable: true
+         });
+       }
+     } else {
+       // IE9-11
+       if (isUndefined(data)) {
+         event = document.createEvent('Event');
+         event.initEvent(type, true, true);
+       } else {
+         event = document.createEvent('CustomEvent');
+         event.initCustomEvent(type, true, true, data);
+       }
+     }
+</PRE><PRE>     // IE9+
+     return element.dispatchEvent(event);
+   } else if (element.fireEvent) {
+</PRE><PRE>     // IE6-10 (native events only)
+     return element.fireEvent('on' + type);
+   }
+ }
+</PRE><PRE> function preventDefault(e) {
+   if (e.preventDefault) {
+     e.preventDefault();
+   } else {
+     e.returnValue = false;
+   }
+ }
+</PRE><PRE> function getEvent(event) {
+   var e = event || window.event;
+   var doc;
+</PRE><PRE>   // Fix target property (IE8)
+   if (!e.target) {
+     e.target = e.srcElement || document;
+   }
+</PRE><PRE>   if (!isNumber(e.pageX)) {
+     doc = document.documentElement;
+     e.pageX = e.clientX + (window.scrollX || doc &amp;&amp; doc.scrollLeft || 0) - (doc &amp;&amp; doc.clientLeft || 0);
+     e.pageY = e.clientY + (window.scrollY || doc &amp;&amp; doc.scrollTop || 0) - (doc &amp;&amp; doc.clientTop || 0);
+   }
+</PRE><PRE>   return e;
+ }
+</PRE><PRE> function getOffset(element) {
+   var doc = document.documentElement;
+   var box = element.getBoundingClientRect();
+</PRE><PRE>   return {
+     left: box.left + (window.scrollX || doc &amp;&amp; doc.scrollLeft || 0) - (doc &amp;&amp; doc.clientLeft || 0),
+     top: box.top + (window.scrollY || doc &amp;&amp; doc.scrollTop || 0) - (doc &amp;&amp; doc.clientTop || 0)
+   };
+ }
+</PRE><PRE> function getTouchesCenter(touches) {
+   var length = touches.length;
+   var pageX = 0;
+   var pageY = 0;
+</PRE><PRE>   if (length) {
+     each(touches, function (touch) {
+       pageX += touch.pageX;
+       pageY += touch.pageY;
+     });
+</PRE><PRE>     pageX /= length;
+     pageY /= length;
+   }
+</PRE><PRE>return {
+     pageX: pageX,
+     pageY: pageY
+   };
+ }
+</PRE><PRE> function getByTag(element, tagName) {
+   return element.getElementsByTagName(tagName);
+ }
+</PRE><PRE> function getByClass(element, className) {
+   return element.getElementsByClassName ?
+     element.getElementsByClassName(className) :
+     element.querySelectorAll('.' + className);
+ }
+</PRE><PRE> function appendChild(element, elem) {
+   if (elem.length) {
+     return each(elem, function (el) {
+       appendChild(element, el);
+     });
+   }
+</PRE><PRE>   element.appendChild(elem);
+ }
+</PRE><PRE> function removeChild(element) {
+   if (element.parentNode) {
+     element.parentNode.removeChild(element);
+   }
+ }
+</PRE><PRE> function empty(element) {
+   while (element.firstChild) {
+     element.removeChild(element.firstChild);
+   }
+ }
+</PRE><PRE> function setText(element, text) {
+   if (!isUndefined(element.textContent)) {
+     element.textContent = text;
+   } else {
+     element.innerText = text;
+   }
+ }
+</PRE><PRE> // Force reflow to enable CSS3 transition
+ function forceReflow(element) {
+   return element.offsetWidth;
+ }
+</PRE><PRE> // e.g.: <A rel="nofollow" class="external free" href="http://domain.com/path/to/picture.jpg?size=1280×960">http://domain.com/path/to/picture.jpg?size=1280×960</A> -&gt; picture.jpg
+ function getImageName(url) {
+   return isString(url) ? url.replace(/^.*\//, <I>).replace(/[\?&amp;#].*$/, </I>) : <I>;</I>
+ }
+</PRE><PRE> function getImageSize(image, callback) {
+   var newImage;
+</PRE><PRE>   // Modern browsers
+   if (image.naturalWidth) {
+     return callback(image.naturalWidth, image.naturalHeight);
+   }
+</PRE><PRE>   // IE8: Don't use `new Image()` here
+   newImage = document.createElement('img');
+</PRE><PRE>   newImage.onload = function () {
+     callback(this.width, this.height);
+   };
+</PRE><PRE>   newImage.src = image.src;
+ }
+</PRE><PRE> function getTransform(data) {
+   var transforms = [];
+   var rotate = data.rotate;
+   var scaleX = data.scaleX;
+   var scaleY = data.scaleY;
+</PRE><PRE>   // Rotate should come first before scale
+   if (isNumber(rotate)) {
+     transforms.push('rotate(' + rotate + 'deg)');
+   }
+</PRE><PRE>   if (isNumber(scaleX)) {
+     transforms.push('scaleX(' + scaleX + ')');
+   }
+</PRE><PRE>   if (isNumber(scaleY)) {
+     transforms.push('scaleY(' + scaleY + ')');
+   }
+</PRE><PRE>   return transforms.length ? transforms.join(' ') : 'none';
+ }
+</PRE><PRE> function getResponsiveClass(option) {
+   switch (option) {
+     case 2:
+       return CLASS_HIDE_XS_DOWN;
+</PRE><PRE>     case 3:
+       return CLASS_HIDE_SM_DOWN;
+</PRE><PRE>     case 4:
+       return CLASS_HIDE_MD_DOWN;
+   }
+ }
+</PRE><PRE> function Viewer(element, options) {
+   var _this = this;
+</PRE><PRE>   _this.element = element;
+   _this.options = extend({}, Viewer.DEFAULTS, isPlainObject(options) &amp;&amp; options);
+   _this.isImg = false;
+   _this.isBuilt = false;
+   _this.isShown = false;
+   _this.isViewed = false;
+   _this.isFulled = false;
+   _this.isPlayed = false;
+   _this.wheeling = false;
+   _this.playing = false;
+   _this.fading = false;
+   _this.tooltiping = false;
+   _this.transitioning = false;
+   _this.action = false;
+   _this.target = false;
+   _this.timeout = false;
+   _this.index = 0;
+   _this.length = 0;
+   _this.init();
+ }
+</PRE><PRE> Viewer.prototype = {
+   constructor: Viewer,
+</PRE><PRE>   init: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var isImg = element.tagName.toLowerCase() === 'img';
+     var images = isImg ? [element] : getByTag(element, 'img');
+     var length = images.length;
+     var ready = proxy(_this.ready, _this);
+</PRE><PRE>     if (getData(element, NAMESPACE)) {
+       return;
+     }
+</PRE><PRE>     setData(element, NAMESPACE, _this);
+</PRE><PRE>     if (!length) {
+       return;
+     }
+</PRE><PRE>     if (isFunction(options.ready)) {
+       addListener(element, EVENT_READY, options.ready, true);
+     }
+</PRE><PRE>     // Override `transition` option if it is not supported
+     if (!SUPPORT_TRANSITION) {
+       options.transition = false;
+     }
+</PRE><PRE>     _this.isImg = isImg;
+     _this.length = length;
+     _this.count = 0;
+     _this.images = images;
+     _this.body = document.body;
+     _this.scrollbarWidth = window.innerWidth - document.body.clientWidth;
+</PRE><PRE>     if (options.inline) {
+       addListener(element, EVENT_READY, function () {
+         _this.view();
+       }, true);
+</PRE><PRE>       each(images, function (image) {
+         if (image.complete) {
+           ready();
+         } else {
+           addListener(image, EVENT_LOAD, ready, true);
+         }
+       });
+     } else {
+       addListener(element, EVENT_CLICK, (_this._start = proxy(_this.start, _this)));
+     }
+   },
+</PRE><PRE>   ready: function () {
+     var _this = this;
+</PRE><PRE>     _this.count++;
+</PRE><PRE>     if (_this.count === _this.length) {
+       _this.build();
+     }
+   },
+</PRE><PRE>   build: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var template;
+     var parent;
+     var viewer;
+     var button;
+     var toolbar;
+     var navbar;
+     var title;
+     var rotate;
+</PRE><PRE>     if (_this.isBuilt) {
+       return;
+     }
+</PRE><PRE>     template = document.createElement('div');
+     template.innerHTML = Viewer.TEMPLATE;
+</PRE><PRE>     _this.parent = parent = element.parentNode;
+     _this.viewer = viewer = getByClass(template, 'viewer-container')[0];
+     _this.canvas = getByClass(viewer, 'viewer-canvas')[0];
+     _this.footer = getByClass(viewer, 'viewer-footer')[0];
+     _this.title = title = getByClass(viewer, 'viewer-title')[0];
+     _this.toolbar = toolbar = getByClass(viewer, 'viewer-toolbar')[0];
+     _this.navbar = navbar = getByClass(viewer, 'viewer-navbar')[0];
+     _this.button = button = getByClass(viewer, 'viewer-button')[0];
+     _this.tooltipBox = getByClass(viewer, 'viewer-tooltip')[0];
+     _this.player = getByClass(viewer, 'viewer-player')[0];
+     _this.list = getByClass(viewer, 'viewer-list')[0];
+</PRE><PRE>     addClass(title, !options.title ? CLASS_HIDE : getResponsiveClass(options.title));
+     addClass(toolbar, !options.toolbar ? CLASS_HIDE : getResponsiveClass(options.toolbar));
+     addClass(navbar, !options.navbar ? CLASS_HIDE : getResponsiveClass(options.navbar));
+     toggleClass(button, CLASS_HIDE, !options.button);
+</PRE><PRE>     toggleClass(toolbar.querySelector('.viewer-one-to-one'), CLASS_INVISIBLE, !options.zoomable);
+     toggleClass(toolbar.querySelectorAll('li[class*=&quot;zoom&quot;]'), CLASS_INVISIBLE, !options.zoomable);
+     toggleClass(toolbar.querySelectorAll('li[class*=&quot;flip&quot;]'), CLASS_INVISIBLE, !options.scalable);
+</PRE><PRE>     if (!options.rotatable) {
+       rotate = toolbar.querySelectorAll('li[class*=&quot;rotate&quot;]');
+       addClass(rotate, CLASS_INVISIBLE);
+       appendChild(toolbar, rotate);
+     }
+</PRE><PRE>     if (options.inline) {
+       addClass(button, CLASS_FULLSCREEN);
+       setStyle(viewer, {
+         zIndex: options.zIndexInline
+       });
+</PRE><PRE>       if (getStyle(parent).position === 'static') {
+         setStyle(parent, {
+           position: 'relative'
+         });
+       }
+     } else {
+       addClass(button, CLASS_CLOSE);
+       addClass(viewer, CLASS_FIXED);
+       addClass(viewer, CLASS_FADE);
+       addClass(viewer, CLASS_HIDE);
+</PRE><PRE>       setStyle(viewer, {
+         zIndex: options.zIndex
+       });
+     }
+</PRE><PRE>     // Inserts the viewer after to the current element
+     parent.insertBefore(viewer, element.nextSibling);
+</PRE><PRE>     if (options.inline) {
+       _this.render();
+       _this.bind();
+       _this.isShown = true;
+     }
+</PRE><PRE>     _this.isBuilt = true;
+</PRE><PRE>     dispatchEvent(element, EVENT_READY);
+   },
+</PRE><PRE>   unbuild: function () {
+     var _this = this;
+</PRE><PRE>     if (!_this.isBuilt) {
+       return;
+     }
+</PRE><PRE>     _this.isBuilt = false;
+     removeChild(_this.viewer);
+   },
+</PRE><PRE>   bind: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var viewer = _this.viewer;
+</PRE><PRE>     if (isFunction(options.view)) {
+       addListener(element, EVENT_VIEW, options.view);
+     }
+</PRE><PRE>     if (isFunction(options.viewed)) {
+       addListener(element, EVENT_VIEWED, options.viewed);
+     }
+</PRE><PRE>     addListener(viewer, EVENT_CLICK, (_this._click = proxy(_this.click, _this)));
+     addListener(viewer, EVENT_WHEEL, (_this._wheel = proxy(_this.wheel, _this)));
+     addListener(_this.canvas, EVENT_MOUSEDOWN, (_this._mousedown = proxy(_this.mousedown, _this)));
+     addListener(document, EVENT_MOUSEMOVE, (_this._mousemove = proxy(_this.mousemove, _this)));
+     addListener(document, EVENT_MOUSEUP, (_this._mouseup = proxy(_this.mouseup, _this)));
+     addListener(document, EVENT_KEYDOWN, (_this._keydown = proxy(_this.keydown, _this)));
+     addListener(window, EVENT_RESIZE, (_this._resize = proxy(_this.resize, _this)));
+   },
+</PRE><PRE>   unbind: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var viewer = _this.viewer;
+</PRE><PRE>     if (isFunction(options.view)) {
+       removeListener(element, EVENT_VIEW, options.view);
+     }
+</PRE><PRE>     if (isFunction(options.viewed)) {
+       removeListener(element, EVENT_VIEWED, options.viewed);
+     }
+</PRE><PRE>     removeListener(viewer, EVENT_CLICK, _this._click);
+     removeListener(viewer, EVENT_WHEEL, _this._wheel);
+     removeListener(_this.canvas, EVENT_MOUSEDOWN, _this._mousedown);
+     removeListener(document, EVENT_MOUSEMOVE, _this._mousemove);
+     removeListener(document, EVENT_MOUSEUP, _this._mouseup);
+     removeListener(document, EVENT_KEYDOWN, _this._keydown);
+     removeListener(window, EVENT_RESIZE, _this._resize);
+   },
+</PRE><PRE>   render: function () {
+     var _this = this;
+</PRE><PRE>     _this.initContainer();
+     _this.initViewer();
+     _this.initList();
+     _this.renderViewer();
+   },
+</PRE><PRE>   initContainer: function () {
+     var _this = this;
+</PRE><PRE>     _this.containerData = {
+       width: window.innerWidth,
+       height: window.innerHeight
+     };
+   },
+</PRE><PRE>   initViewer: function () {
+     var _this = this;
+     var options = _this.options;
+     var parent = _this.parent;
+     var viewerData;
+</PRE><PRE>     if (options.inline) {
+       _this.parentData = viewerData = {
+         width: max(parent.offsetWidth, options.minWidth),
+         height: max(parent.offsetHeight, options.minHeight)
+       };
+     }
+</PRE><PRE>     if (_this.isFulled || !viewerData) {
+       viewerData = _this.containerData;
+     }
+</PRE><PRE>     _this.viewerData = extend({}, viewerData);
+   },
+</PRE><PRE>   renderViewer: function () {
+     var _this = this;
+</PRE><PRE>     if (_this.options.inline &amp;&amp; !_this.isFulled) {
+       setStyle(_this.viewer, _this.viewerData);
+     }
+   },
+</PRE><PRE>   initList: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var list = _this.list;
+     var items = [];
+</PRE><PRE>     each(_this.images, function (image, i) {
+       var src = image.src;
+       var alt = image.alt || getImageName(src);
+       var url = options.url;
+</PRE><PRE>       if (!src) {
+         return;
+       }
+</PRE><PRE>       if (isString(url)) {
+         url = image.getAttribute(url);
+       } else if (isFunction(url)) {
+         url = url.call(image, image);
+       }
+</PRE><PRE>       items.push(
+</PRE>
+          '<LI>' +
+            '&lt;img' +
+              ' src=&quot;' + src + '&quot;' +
+              ' data-action=&quot;view&quot;' +
+              ' data-index=&quot;' +  i + '&quot;' +
+              ' data-original-url=&quot;' +  (url || src) + '&quot;' +
+              ' alt=&quot;' +  alt + '&quot;' +
+            '&gt;' +
+          '</LI>'
+<PRE>       );
+     });
+</PRE><PRE>     list.innerHTML = items.join(<I>);</I></PRE><PRE>     each(getByTag(list, 'img'), function (image) {
+       setData(image, 'filled', true);
+       addListener(image, EVENT_LOAD, proxy(_this.loadImage, _this), true);
+     });
+</PRE><PRE>     _this.items = getByTag(list, 'li');
+</PRE><PRE>     if (options.transition) {
+       addListener(element, EVENT_VIEWED, function () {
+         addClass(list, CLASS_TRANSITION);
+       }, true);
+     }
+   },
+</PRE><PRE>   renderList: function (index) {
+     var _this = this;
+     var i = index || _this.index;
+     var width = _this.items[i].offsetWidth || 30;
+     var outerWidth = width + 1; // 1 pixel of `margin-left` width
+</PRE><PRE>     // Place the active item in the center of the screen
+     setStyle(_this.list, {
+       width: outerWidth * _this.length,
+       marginLeft: (_this.viewerData.width - width) / 2 - outerWidth * i
+     });
+   },
+</PRE><PRE>   resetList: function () {
+     var _this = this;
+</PRE><PRE>     empty(_this.list);
+     removeClass(_this.list, CLASS_TRANSITION);
+     setStyle({
+       marginLeft: 0
+     });
+   },
+</PRE><PRE>   initImage: function (callback) {
+     var _this = this;
+     var options = _this.options;
+     var image = _this.image;
+     var viewerData = _this.viewerData;
+     var footerHeight = _this.footer.offsetHeight;
+     var viewerWidth = viewerData.width;
+     var viewerHeight = max(viewerData.height - footerHeight, footerHeight);
+     var oldImageData = _this.imageData || {};
+</PRE><PRE>     getImageSize(image, function (naturalWidth, naturalHeight) {
+       var aspectRatio = naturalWidth / naturalHeight;
+       var width = viewerWidth;
+       var height = viewerHeight;
+       var initialImageData;
+       var imageData;
+</PRE><PRE>       if (viewerHeight * aspectRatio &gt; viewerWidth) {
+         height = viewerWidth / aspectRatio;
+       } else {
+         width = viewerHeight * aspectRatio;
+       }
+</PRE><PRE>       width = min(width * 0.9, naturalWidth);
+       height = min(height * 0.9, naturalHeight);
+</PRE><PRE>       imageData = {
+         naturalWidth: naturalWidth,
+         naturalHeight: naturalHeight,
+         aspectRatio: aspectRatio,
+         ratio: width / naturalWidth,
+         width: width,
+         height: height,
+         left: (viewerWidth - width) / 2,
+         top: (viewerHeight - height) / 2
+       };
+</PRE><PRE>       initialImageData = extend({}, imageData);
+</PRE><PRE>       if (options.rotatable) {
+         imageData.rotate = oldImageData.rotate || 0;
+         initialImageData.rotate = 0;
+       }
+</PRE><PRE>       if (options.scalable) {
+         imageData.scaleX = oldImageData.scaleX || 1;
+         imageData.scaleY = oldImageData.scaleY || 1;
+         initialImageData.scaleX = 1;
+         initialImageData.scaleY = 1;
+       }
+</PRE><PRE>       _this.imageData = imageData;
+       _this.initialImageData = initialImageData;
+</PRE><PRE>       if (isFunction(callback)) {
+         callback();
+       }
+     });
+   },
+</PRE><PRE>   renderImage: function (callback) {
+     var _this = this;
+     var image = _this.image;
+     var imageData = _this.imageData;
+     var transform = getTransform(imageData);
+</PRE><PRE>     setStyle(image, {
+       width: imageData.width,
+       height: imageData.height,
+       marginLeft: imageData.left,
+       marginTop: imageData.top,
+       WebkitTransform: transform,
+       msTransform: transform,
+       transform: transform
+     });
+</PRE><PRE>     if (isFunction(callback)) {
+       if (_this.transitioning) {
+         addListener(image, EVENT_TRANSITIONEND, callback, true);
+       } else {
+         callback();
+       }
+     }
+   },
+</PRE><PRE>   resetImage: function () {
+     var _this = this;
+</PRE><PRE>     // this.image only defined after viewed
+     if (_this.image) {
+       removeChild(_this.image);
+       _this.image = null;
+     }
+   },
+</PRE><PRE>   start: function (event) {
+     var _this = this;
+     var e = getEvent(event);
+     var target = e.target;
+</PRE><PRE>     if (target.tagName.toLowerCase() === 'img') {
+       _this.target = target;
+       _this.show();
+     }
+   },
+</PRE><PRE>   click: function (event) {
+     var _this = this;
+     var e = getEvent(event);
+     var target = e.target;
+     var action = getData(target, 'action');
+     var imageData = _this.imageData;
+</PRE><PRE>     switch (action) {
+       case 'mix':
+         if (_this.isPlayed) {
+           _this.stop();
+         } else {
+           if (_this.options.inline) {
+             if (_this.isFulled) {
+               _this.exit();
+             } else {
+               _this.full();
+             }
+           } else {
+             _this.hide();
+           }
+         }
+</PRE><PRE>         break;
+</PRE><PRE>       case 'view':
+         _this.view(getData(target, 'index'));
+         break;
+</PRE><PRE>       case 'zoom-in':
+         _this.zoom(0.1, true);
+         break;
+</PRE><PRE>       case 'zoom-out':
+         _this.zoom(-0.1, true);
+         break;
+</PRE><PRE>       case 'one-to-one':
+         _this.toggle();
+         break;
+</PRE><PRE>       case 'reset':
+         _this.reset();
+         break;
+</PRE><PRE>       case 'prev':
+         _this.prev();
+         break;
+</PRE><PRE>       case 'play':
+         _this.play();
+         break;
+</PRE><PRE>       case 'next':
+         _this.next();
+         break;
+</PRE><PRE>       case 'rotate-left':
+         _this.rotate(-90);
+         break;
+</PRE><PRE>       case 'rotate-right':
+         _this.rotate(90);
+         break;
+</PRE><PRE>       case 'flip-horizontal':
+         _this.scaleX(-imageData.scaleX || -1);
+         break;
+</PRE><PRE>       case 'flip-vertical':
+         _this.scaleY(-imageData.scaleY || -1);
+         break;
+</PRE><PRE>       default:
+         if (_this.isPlayed) {
+           _this.stop();
+         }
+     }
+   },
+</PRE><PRE>   load: function () {
+     var _this = this;
+     var options = _this.options;
+     var image = _this.image;
+     var index = _this.index;
+     var viewerData = _this.viewerData;
+</PRE><PRE>     if (_this.timeout) {
+       clearTimeout(_this.timeout);
+       _this.timeout = false;
+     }
+</PRE><PRE>     removeClass(image, CLASS_INVISIBLE);
+</PRE><PRE>     image.style.cssText = (
+       'width:0;' +
+       'height:0;' +
+       'margin-left:' + viewerData.width / 2 + 'px;' +
+       'margin-top:' + viewerData.height / 2 + 'px;' +
+       'max-width:none!important;' +
+       'visibility:visible;'
+     );
+</PRE><PRE>     _this.initImage(function () {
+       toggleClass(image, CLASS_TRANSITION, options.transition);
+       toggleClass(image, CLASS_MOVE, options.movable);
+</PRE><PRE>       _this.renderImage(function () {
+         _this.isViewed = true;
+         dispatchEvent(_this.element, EVENT_VIEWED, {
+           originalImage: _this.images[index],
+           index: index,
+           image: image
+         });
+       });
+     });
+   },
+</PRE><PRE>   loadImage: function (event) {
+     var e = getEvent(event);
+     var image = e.target;
+     var parent = image.parentNode;
+     var parentWidth = parent.offsetWidth || 30;
+     var parentHeight = parent.offsetHeight || 50;
+     var filled = !!getData(image, 'filled');
+</PRE><PRE>     getImageSize(image, function (naturalWidth, naturalHeight) {
+       var aspectRatio = naturalWidth / naturalHeight;
+       var width = parentWidth;
+       var height = parentHeight;
+</PRE><PRE>       if (parentHeight * aspectRatio &gt; parentWidth) {
+         if (filled) {
+           width = parentHeight * aspectRatio;
+         } else {
+           height = parentWidth / aspectRatio;
+         }
+       } else {
+         if (filled) {
+           height = parentWidth / aspectRatio;
+         } else {
+           width = parentHeight * aspectRatio;
+         }
+       }
+</PRE><PRE>       setStyle(image, {
+         width: width,
+         height: height,
+         marginLeft: (parentWidth - width) / 2,
+         marginTop: (parentHeight - height) / 2
+       });
+     });
+   },
+</PRE><PRE>   resize: function () {
+     var _this = this;
+</PRE><PRE>     _this.initContainer();
+     _this.initViewer();
+     _this.renderViewer();
+     _this.renderList();
+</PRE><PRE>     if (_this.isViewed) {
+       _this.initImage(function () {
+         _this.renderImage();
+       });
+     }
+</PRE><PRE>     if (_this.isPlayed) {
+       each(getByTag(_this.player, 'img'), function (image) {
+         addListener(image, EVENT_LOAD, proxy(_this.loadImage, _this), true);
+         dispatchEvent(image, EVENT_LOAD);
+       });
+     }
+   },
+</PRE><PRE>   wheel: function (event) {
+     var _this = this;
+     var e = getEvent(event);
+     var ratio = Number(_this.options.zoomRatio) || 0.1;
+     var delta = 1;
+</PRE><PRE>     if (!_this.isViewed) {
+       return;
+     }
+</PRE><PRE>     preventDefault(e);
+</PRE><PRE>     // Limit wheel speed to prevent zoom too fast
+     if (_this.wheeling) {
+       return;
+     }
+</PRE><PRE>     _this.wheeling = true;
+</PRE><PRE>     setTimeout(function () {
+       _this.wheeling = false;
+     }, 50);
+</PRE><PRE>     if (e.deltaY) {
+       delta = e.deltaY &gt; 0 ? 1 : -1;
+     } else if (e.wheelDelta) {
+       delta = -e.wheelDelta / 120;
+     } else if (e.detail) {
+       delta = e.detail &gt; 0 ? 1 : -1;
+     }
+</PRE><PRE>     _this.zoom(-delta * ratio, true, e);
+   },
+</PRE><PRE>   keydown: function (event) {
+     var _this = this;
+     var e = getEvent(event);
+     var options = _this.options;
+     var key = e.keyCode || e.which || e.charCode;
+</PRE><PRE>     if (!_this.isFulled || !options.keyboard) {
+       return;
+     }
+</PRE><PRE>     switch (key) {
+</PRE><PRE>       // (Key: Esc)
+       case 27:
+         if (_this.isPlayed) {
+           _this.stop();
+         } else {
+           if (options.inline) {
+             if (_this.isFulled) {
+               _this.exit();
+             }
+           } else {
+             _this.hide();
+           }
+         }
+</PRE><PRE>         break;
+</PRE><PRE>       // (Key: Space)
+       case 32:
+         if (_this.isPlayed) {
+           _this.stop();
+         }
+</PRE><PRE>         break;
+</PRE><PRE>       // View previous (Key: ←)
+       case 37:
+         _this.prev();
+         break;
+</PRE><PRE>       // Zoom in (Key: ↑)
+       case 38:
+</PRE><PRE>         // Prevent scroll on Firefox
+         preventDefault(e);
+</PRE><PRE>         _this.zoom(options.zoomRatio, true);
+         break;
+</PRE><PRE>       // View next (Key: →)
+       case 39:
+         _this.next();
+         break;
+</PRE><PRE>       // Zoom out (Key: ↓)
+       case 40:
+</PRE><PRE>         // Prevent scroll on Firefox
+         preventDefault(e);
+</PRE><PRE>         _this.zoom(-options.zoomRatio, true);
+         break;
+</PRE><PRE>       // Zoom out to initial size (Key: Ctrl + 0)
+       case 48:
+         // Go to next
+</PRE><PRE>       // Zoom in to natural size (Key: Ctrl + 1)
+       case 49:
+         if (e.ctrlKey || e.shiftKey) {
+           preventDefault(e);
+           _this.toggle();
+         }
+</PRE><PRE>         break;
+</PRE><PRE>       // No default
+     }
+   },
+</PRE><PRE>   mousedown: function (event) {
+     var _this = this;
+     var options = _this.options;
+     var e = getEvent(event);
+     var action = options.movable ? 'move' : false;
+     var touches = e.touches;
+     var touchesLength;
+     var touch;
+</PRE><PRE>     if (!_this.isViewed) {
+       return;
+     }
+</PRE><PRE>     if (touches) {
+       touchesLength = touches.length;
+</PRE><PRE>       if (touchesLength &gt; 1) {
+         if (options.zoomable &amp;&amp; touchesLength === 2) {
+           touch = touches[1];
+           _this.startX2 = touch.pageX;
+           _this.startY2 = touch.pageY;
+           action = 'zoom';
+         } else {
+           return;
+         }
+       } else {
+         if (_this.isSwitchable()) {
+           action = 'switch';
+         }
+       }
+</PRE><PRE>       touch = touches[0];
+     }
+</PRE><PRE>     if (action) {
+       preventDefault(e);
+       _this.action = action;
+       _this.startX = touch ? touch.pageX : e.pageX;
+       _this.startY = touch ? touch.pageY : e.pageY;
+     }
+   },
+</PRE><PRE>   mousemove: function (event) {
+     var _this = this;
+     var options = _this.options;
+     var e = getEvent(event);
+     var action = _this.action;
+     var image = _this.image;
+     var touches = e.touches;
+     var touchesLength;
+     var touch;
+</PRE><PRE>     if (!_this.isViewed) {
+       return;
+     }
+</PRE><PRE>     if (touches) {
+       touchesLength = touches.length;
+</PRE><PRE>       if (touchesLength &gt; 1) {
+         if (options.zoomable &amp;&amp; touchesLength === 2) {
+           touch = touches[1];
+           _this.endX2 = touch.pageX;
+           _this.endY2 = touch.pageY;
+         } else {
+           return;
+         }
+       }
+</PRE><PRE>       touch = touches[0];
+     }
+</PRE><PRE>     if (action) {
+       preventDefault(e);
+</PRE><PRE>       if (action === 'move' &amp;&amp; options.transition &amp;&amp; hasClass(image, CLASS_TRANSITION)) {
+         removeClass(image, CLASS_TRANSITION);
+       }
+</PRE><PRE>       _this.endX = touch ? touch.pageX : e.pageX;
+       _this.endY = touch ? touch.pageY : e.pageY;
+</PRE><PRE>       _this.change(e);
+     }
+   },
+</PRE><PRE>   mouseup: function (event) {
+     var _this = this;
+     var e = getEvent(event);
+     var action = _this.action;
+</PRE><PRE>     if (action) {
+       preventDefault(e);
+</PRE><PRE>       if (action === 'move' &amp;&amp; _this.options.transition) {
+         addClass(_this.image, CLASS_TRANSITION);
+       }
+</PRE><PRE>       _this.action = false;
+     }
+   },
+</PRE><PRE>   // Show the viewer (only available in modal mode)
+   show: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var viewer;
+</PRE><PRE>     if (options.inline || _this.transitioning) {
+       return _this;
+     }
+</PRE><PRE>     if (!_this.isBuilt) {
+       _this.build();
+     }
+</PRE><PRE>     viewer = _this.viewer;
+</PRE><PRE>     if (isFunction(options.show)) {
+       addListener(element, EVENT_SHOW, options.show, true);
+     }
+</PRE><PRE>     if (dispatchEvent(element, EVENT_SHOW) === false) {
+       return _this;
+     }
+</PRE><PRE>     _this.open();
+     removeClass(viewer, CLASS_HIDE);
+</PRE><PRE>     addListener(element, EVENT_SHOWN, function () {
+       _this.view(_this.target ? inArray(_this.target, toArray(_this.images)) : _this.index);
+       _this.target = false;
+     }, true);
+</PRE><PRE>     if (options.transition) {
+       _this.transitioning = true;
+       addClass(viewer, CLASS_TRANSITION);
+       forceReflow(viewer);
+       addListener(viewer, EVENT_TRANSITIONEND, proxy(_this.shown, _this), true);
+       addClass(viewer, CLASS_IN);
+     } else {
+       addClass(viewer, CLASS_IN);
+       _this.shown();
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Hide the viewer (only available in modal mode)
+   hide: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+     var viewer = _this.viewer;
+</PRE><PRE>     if (options.inline || _this.transitioning || !_this.isShown) {
+       return _this;
+     }
+</PRE><PRE>     if (isFunction(options.hide)) {
+       addListener(element, EVENT_HIDE, options.hide, true);
+     }
+</PRE><PRE>     if (dispatchEvent(element, EVENT_HIDE) === false) {
+       return _this;
+     }
+</PRE><PRE>     if (_this.isViewed &amp;&amp; options.transition) {
+       _this.transitioning = true;
+       addListener(_this.image, EVENT_TRANSITIONEND, function () {
+         addListener(viewer, EVENT_TRANSITIONEND, proxy(_this.hidden, _this), true);
+         removeClass(viewer, CLASS_IN);
+       }, true);
+       _this.zoomTo(0, false, false, true);
+     } else {
+       removeClass(viewer, CLASS_IN);
+       _this.hidden();
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * View one of the images with image's index
+    *
+    * @param {Number} index
+    */
+   view: function (index) {
+     var _this = this;
+     var element = _this.element;
+     var title = _this.title;
+     var canvas = _this.canvas;
+     var image;
+     var item;
+     var img;
+     var url;
+     var alt;
+</PRE><PRE>     index = Number(index) || 0;
+</PRE><PRE>     if (!_this.isShown || _this.isPlayed || index &lt; 0 || index &gt;= _this.length ||
+       _this.isViewed &amp;&amp; index === _this.index) {
+       return _this;
+     }
+</PRE><PRE>     item = _this.items[index];
+     img = getByTag(item, 'img')[0];
+     url = getData(img, 'originalUrl');
+     alt = img.getAttribute('alt');
+</PRE><PRE>     image = document.createElement('img');
+     image.src = url;
+     image.alt = alt;
+</PRE><PRE>     if (dispatchEvent(element, EVENT_VIEW, {
+       originalImage: _this.images[index],
+       index: index,
+       image: image
+     }) === false) {
+       return _this;
+     }
+</PRE><PRE>     _this.image = image;
+</PRE><PRE>     if (_this.isViewed) {
+       removeClass(_this.items[_this.index], CLASS_ACTIVE);
+     }
+</PRE><PRE>     addClass(item, CLASS_ACTIVE);
+</PRE><PRE>     _this.isViewed = false;
+     _this.index = index;
+     _this.imageData = null;
+</PRE><PRE>     addClass(image, CLASS_INVISIBLE);
+     empty(canvas);
+     appendChild(canvas, image);
+</PRE><PRE>     // Center current item
+     _this.renderList();
+</PRE><PRE>     // Clear title
+     empty(title);
+</PRE><PRE>     // Generate title after viewed
+     addListener(element, EVENT_VIEWED, function () {
+       var imageData = _this.imageData;
+       var width = imageData.naturalWidth;
+       var height = imageData.naturalHeight;
+</PRE><PRE>       setText(title, alt + ' (' + width + ' × ' + height + ')');
+     }, true);
+</PRE><PRE>     if (image.complete) {
+       _this.load();
+     } else {
+       addListener(image, EVENT_LOAD, proxy(_this.load, _this), true);
+</PRE><PRE>       if (_this.timeout) {
+         clearTimeout(_this.timeout);
+       }
+</PRE><PRE>       // Make the image visible if it fails to load within 1s
+       _this.timeout = setTimeout(function () {
+         removeClass(image, CLASS_INVISIBLE);
+         _this.timeout = false;
+       }, 1000);
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // View the previous image
+   prev: function () {
+     var _this = this;
+</PRE><PRE>     _this.view(max(_this.index - 1, 0));
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // View the next image
+   next: function () {
+     var _this = this;
+</PRE><PRE>     _this.view(min(_this.index + 1, _this.length - 1));
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Move the image with relative offsets
+    *
+    * @param {Number} offsetX
+    * @param {Number} offsetY (optional)
+    */
+   move: function (offsetX, offsetY) {
+     var _this = this;
+     var imageData = _this.imageData;
+</PRE><PRE>     _this.moveTo(
+       isUndefined(offsetX) ? offsetX : imageData.left + Number(offsetX),
+       isUndefined(offsetY) ? offsetY : imageData.top + Number(offsetY)
+     );
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Move the image to an absolute point
+    *
+    * @param {Number} x
+    * @param {Number} y (optional)
+    */
+   moveTo: function (x, y) {
+     var _this = this;
+     var imageData = _this.imageData;
+     var changed = false;
+</PRE><PRE>     // If &quot;y&quot; is not present, its default value is &quot;x&quot;
+     if (isUndefined(y)) {
+       y = x;
+     }
+</PRE><PRE>     x = Number(x);
+     y = Number(y);
+</PRE><PRE>     if (_this.isViewed &amp;&amp; !_this.isPlayed &amp;&amp; _this.options.movable) {
+       if (isNumber(x)) {
+         imageData.left = x;
+         changed = true;
+       }
+</PRE><PRE>       if (isNumber(y)) {
+         imageData.top = y;
+         changed = true;
+       }
+</PRE><PRE>       if (changed) {
+         _this.renderImage();
+       }
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Zoom the image with a relative ratio
+    *
+    * @param {Number} ratio
+    * @param {Boolean} hasTooltip (optional)
+    * @param {Event} _originalEvent (private)
+    */
+   zoom: function (ratio, hasTooltip, _originalEvent) {
+     var _this = this;
+     var imageData = _this.imageData;
+</PRE><PRE>     ratio = Number(ratio);
+</PRE><PRE>     if (ratio &lt; 0) {
+       ratio =  1 / (1 - ratio);
+     } else {
+       ratio = 1 + ratio;
+     }
+</PRE><PRE>     _this.zoomTo(imageData.width * ratio / imageData.naturalWidth, hasTooltip, _originalEvent);
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Zoom the image to an absolute ratio
+    *
+    * @param {Number} ratio
+    * @param {Boolean} hasTooltip (optional)
+    * @param {Event} _originalEvent (private)
+    * @param {Boolean} _zoomable (private)
+    */
+   zoomTo: function (ratio, hasTooltip, _originalEvent, _zoomable) {
+     var _this = this;
+     var options = _this.options;
+     var minZoomRatio = 0.01;
+     var maxZoomRatio = 100;
+     var imageData = _this.imageData;
+     var newWidth;
+     var newHeight;
+     var offset;
+     var center;
+</PRE><PRE>     ratio = max(0, ratio);
+</PRE><PRE>     if (isNumber(ratio) &amp;&amp; _this.isViewed &amp;&amp; !_this.isPlayed &amp;&amp; (_zoomable || options.zoomable)) {
+       if (!_zoomable) {
+         minZoomRatio = max(minZoomRatio, options.minZoomRatio);
+         maxZoomRatio = min(maxZoomRatio, options.maxZoomRatio);
+         ratio = min(max(ratio, minZoomRatio), maxZoomRatio);
+       }
+</PRE><PRE>       if (ratio &gt; 0.95 &amp;&amp; ratio &lt; 1.05) {
+         ratio = 1;
+       }
+</PRE><PRE>       newWidth = imageData.naturalWidth * ratio;
+       newHeight = imageData.naturalHeight * ratio;
+</PRE><PRE>       if (_originalEvent) {
+         offset = getOffset(_this.viewer);
+         center = _originalEvent.touches ? getTouchesCenter(_originalEvent.touches) : {
+           pageX: _originalEvent.pageX,
+           pageY: _originalEvent.pageY
+         };
+</PRE><PRE>         // Zoom from the triggering point of the event
+         imageData.left -= (newWidth - imageData.width) * (
+           ((center.pageX - offset.left) - imageData.left) / imageData.width
+         );
+         imageData.top -= (newHeight - imageData.height) * (
+           ((center.pageY - offset.top) - imageData.top) / imageData.height
+         );
+       } else {
+</PRE><PRE>         // Zoom from the center of the image
+         imageData.left -= (newWidth - imageData.width) / 2;
+         imageData.top -= (newHeight - imageData.height) / 2;
+       }
+</PRE><PRE>       imageData.width = newWidth;
+       imageData.height = newHeight;
+       imageData.ratio = ratio;
+       _this.renderImage();
+</PRE><PRE>       if (hasTooltip) {
+         _this.tooltip();
+       }
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Rotate the image with a relative degree
+    *
+    * @param {Number} degree
+    */
+   rotate: function (degree) {
+     var _this = this;
+</PRE><PRE>     _this.rotateTo((_this.imageData.rotate || 0) + Number(degree));
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Rotate the image to an absolute degree
+    * <A rel="nofollow" class="external free" href="https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function#rotate()">https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function#rotate()</A>
+    *
+    * @param {Number} degree
+    */
+   rotateTo: function (degree) {
+     var _this = this;
+     var imageData = _this.imageData;
+</PRE><PRE>     degree = Number(degree);
+</PRE><PRE>     if (isNumber(degree) &amp;&amp; _this.isViewed &amp;&amp; !_this.isPlayed &amp;&amp; _this.options.rotatable) {
+       imageData.rotate = degree;
+       _this.renderImage();
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Scale the image
+    * <A rel="nofollow" class="external free" href="https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function#scale()">https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function#scale()</A>
+    *
+    * @param {Number} scaleX
+    * @param {Number} scaleY (optional)
+    */
+   scale: function (scaleX, scaleY) {
+     var _this = this;
+     var imageData = _this.imageData;
+     var changed = false;
+</PRE><PRE>     // If &quot;scaleY&quot; is not present, its default value is &quot;scaleX&quot;
+     if (isUndefined(scaleY)) {
+       scaleY = scaleX;
+     }
+</PRE><PRE>     scaleX = Number(scaleX);
+     scaleY = Number(scaleY);
+</PRE><PRE>     if (_this.isViewed &amp;&amp; !_this.isPlayed &amp;&amp; _this.options.scalable) {
+       if (isNumber(scaleX)) {
+         imageData.scaleX = scaleX;
+         changed = true;
+       }
+</PRE><PRE>       if (isNumber(scaleY)) {
+         imageData.scaleY = scaleY;
+         changed = true;
+       }
+</PRE><PRE>       if (changed) {
+         _this.renderImage();
+       }
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Scale the abscissa of the image
+    *
+    * @param {Number} scaleX
+    */
+   scaleX: function (scaleX) {
+     var _this = this;
+</PRE><PRE>     _this.scale(scaleX, _this.imageData.scaleY);
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   /**
+    * Scale the ordinate of the image
+    *
+    * @param {Number} scaleY
+    */
+   scaleY: function (scaleY) {
+     var _this = this;
+</PRE><PRE>     _this.scale(_this.imageData.scaleX, scaleY);
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Play the images
+   play: function () {
+     var _this = this;
+     var options = _this.options;
+     var player = _this.player;
+     var load = proxy(_this.loadImage, _this);
+     var list = [];
+     var total = 0;
+     var index = 0;
+     var playing;
+</PRE><PRE>     if (!_this.isShown || _this.isPlayed) {
+       return _this;
+     }
+</PRE><PRE>     if (options.fullscreen) {
+       _this.requestFullscreen();
+     }
+</PRE><PRE>     _this.isPlayed = true;
+     addClass(player, CLASS_SHOW);
+</PRE><PRE>     each(_this.items, function (item, i) {
+       var img = getByTag(item, 'img')[0];
+       var image = document.createElement('img');
+</PRE><PRE>       image.src = getData(img, 'originalUrl');
+       image.alt = img.getAttribute('alt');
+       total++;
+</PRE><PRE>       addClass(image, CLASS_FADE);
+       toggleClass(image, CLASS_TRANSITION, options.transition);
+</PRE><PRE>       if (hasClass(item, CLASS_ACTIVE)) {
+         addClass(image, CLASS_IN);
+         index = i;
+       }
+</PRE><PRE>       list.push(image);
+       addListener(image, EVENT_LOAD, load, true);
+       appendChild(player, image);
+     });
+</PRE><PRE>     if (isNumber(options.interval) &amp;&amp; options.interval &gt; 0) {
+       playing = function () {
+         _this.playing = setTimeout(function () {
+           removeClass(list[index], CLASS_IN);
+           index++;
+           index = index &lt; total ? index : 0;
+           addClass(list[index], CLASS_IN);
+</PRE><PRE>           playing();
+         }, options.interval);
+       };
+</PRE><PRE>       if (total &gt; 1) {
+         playing();
+       }
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Stop play
+   stop: function () {
+     var _this = this;
+     var player = _this.player;
+</PRE><PRE>     if (!_this.isPlayed) {
+       return _this;
+     }
+</PRE><PRE>     if (_this.options.fullscreen) {
+       _this.exitFullscreen();
+     }
+</PRE><PRE>     _this.isPlayed = false;
+     clearTimeout(_this.playing);
+     removeClass(player, CLASS_SHOW);
+     empty(player);
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Enter modal mode (only available in inline mode)
+   full: function () {
+     var _this = this;
+     var options = _this.options;
+     var viewer = _this.viewer;
+     var image = _this.image;
+     var list = _this.list;
+</PRE><PRE>     if (!_this.isShown || _this.isPlayed || _this.isFulled || !options.inline) {
+       return _this;
+     }
+</PRE><PRE>     _this.isFulled = true;
+     _this.open();
+     addClass(_this.button, CLASS_FULLSCREEN_EXIT);
+</PRE><PRE>     if (options.transition) {
+       removeClass(image, CLASS_TRANSITION);
+       removeClass(list, CLASS_TRANSITION);
+     }
+</PRE><PRE>     addClass(viewer, CLASS_FIXED);
+     viewer.setAttribute('style', <I>);</I>
+     setStyle(viewer, {
+       zIndex: options.zIndex
+     });
+</PRE><PRE>     _this.initContainer();
+     _this.viewerData = extend({}, _this.containerData);
+     _this.renderList();
+     _this.initImage(function () {
+       _this.renderImage(function () {
+         if (options.transition) {
+           setTimeout(function () {
+             addClass(image, CLASS_TRANSITION);
+             addClass(list, CLASS_TRANSITION);
+           }, 0);
+         }
+       });
+     });
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Exit modal mode (only available in inline mode)
+   exit: function () {
+     var _this = this;
+     var options = _this.options;
+     var viewer = _this.viewer;
+     var image = _this.image;
+     var list = _this.list;
+</PRE><PRE>     if (!_this.isFulled) {
+       return _this;
+     }
+</PRE><PRE>     _this.isFulled = false;
+     _this.close();
+     removeClass(_this.button, CLASS_FULLSCREEN_EXIT);
+</PRE><PRE>     if (options.transition) {
+       removeClass(image, CLASS_TRANSITION);
+       removeClass(list, CLASS_TRANSITION);
+     }
+</PRE><PRE>     removeClass(viewer, CLASS_FIXED);
+     setStyle(viewer, {
+       zIndex: options.zIndexInline
+     });
+</PRE><PRE>     _this.viewerData = extend({}, _this.parentData);
+     _this.renderViewer();
+     _this.renderList();
+     _this.initImage(function () {
+       _this.renderImage(function () {
+         if (options.transition) {
+           setTimeout(function () {
+             addClass(image, CLASS_TRANSITION);
+             addClass(list, CLASS_TRANSITION);
+           }, 0);
+         }
+       });
+     });
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Show the current ratio of the image with percentage
+   tooltip: function () {
+     var _this = this;
+     var options = _this.options;
+     var tooltipBox = _this.tooltipBox;
+     var imageData = _this.imageData;
+</PRE><PRE>     if (!_this.isViewed || _this.isPlayed || !options.tooltip) {
+       return _this;
+     }
+</PRE><PRE>     setText(tooltipBox, round(imageData.ratio * 100) + '%');
+</PRE><PRE>     if (!_this.tooltiping) {
+       if (options.transition) {
+         if (_this.fading) {
+           dispatchEvent(tooltipBox, EVENT_TRANSITIONEND);
+         }
+</PRE><PRE>         addClass(tooltipBox, CLASS_SHOW);
+         addClass(tooltipBox, CLASS_FADE);
+         addClass(tooltipBox, CLASS_TRANSITION);
+         forceReflow(tooltipBox);
+         addClass(tooltipBox, CLASS_IN);
+       } else {
+         addClass(tooltipBox, CLASS_SHOW);
+       }
+     } else {
+       clearTimeout(_this.tooltiping);
+     }
+</PRE><PRE>     _this.tooltiping = setTimeout(function () {
+       if (options.transition) {
+         addListener(tooltipBox, EVENT_TRANSITIONEND, function () {
+           removeClass(tooltipBox, CLASS_SHOW);
+           removeClass(tooltipBox, CLASS_FADE);
+           removeClass(tooltipBox, CLASS_TRANSITION);
+           _this.fading = false;
+         }, true);
+</PRE><PRE>         removeClass(tooltipBox, CLASS_IN);
+         _this.fading = true;
+       } else {
+         removeClass(tooltipBox, CLASS_SHOW);
+       }
+</PRE><PRE>       _this.tooltiping = false;
+     }, 1000);
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Toggle the image size between its natural size and initial size
+   toggle: function () {
+     var _this = this;
+</PRE><PRE>     if (_this.imageData.ratio === 1) {
+       _this.zoomTo(_this.initialImageData.ratio, true);
+     } else {
+       _this.zoomTo(1, true);
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Reset the image to its initial state
+   reset: function () {
+     var _this = this;
+</PRE><PRE>     if (_this.isViewed &amp;&amp; !_this.isPlayed) {
+       _this.imageData = extend({}, _this.initialImageData);
+       _this.renderImage();
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Update viewer when images changed
+   update: function () {
+     var _this = this;
+     var indexes = [];
+     var index;
+</PRE><PRE>     // Destroy viewer if the target image was deleted
+     if (_this.isImg &amp;&amp; !_this.element.parentNode) {
+       return _this.destroy();
+     }
+</PRE><PRE>     _this.length = _this.images.length;
+</PRE><PRE>     if (_this.isBuilt) {
+       each(_this.items, function (item, i) {
+         var img = getByTag(item, 'img')[0];
+         var image = _this.images[i];
+</PRE><PRE>         if (image) {
+           if (image.src !== img.src) {
+             indexes.push(i);
+           }
+         } else {
+           indexes.push(i);
+         }
+       });
+</PRE><PRE>       setStyle(_this.list, {
+         width: 'auto'
+       });
+</PRE><PRE>       _this.initList();
+</PRE><PRE>       if (_this.isShown) {
+         if (_this.length) {
+           if (_this.isViewed) {
+             index = inArray(_this.index, indexes);
+</PRE><PRE>             if (index &gt;= 0) {
+               _this.isViewed = false;
+               _this.view(max(_this.index - (index + 1), 0));
+             } else {
+               addClass(_this.items[_this.index], CLASS_ACTIVE);
+             }
+           }
+         } else {
+           _this.image = null;
+           _this.isViewed = false;
+           _this.index = 0;
+           _this.imageData = null;
+           empty(_this.canvas);
+           empty(_this.title);
+         }
+       }
+     }
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   // Destroy the viewer
+   destroy: function () {
+     var _this = this;
+     var element = _this.element;
+</PRE><PRE>     if (_this.options.inline) {
+       _this.unbind();
+     } else {
+       if (_this.isShown) {
+         _this.unbind();
+       }
+</PRE><PRE>       removeListener(element, EVENT_CLICK, _this._start);
+     }
+</PRE><PRE>     _this.unbuild();
+     removeData(element, NAMESPACE);
+</PRE><PRE>     return _this;
+   },
+</PRE><PRE>   open: function () {
+     var body = this.body;
+</PRE><PRE>     addClass(body, CLASS_OPEN);
+     body.style.paddingRight = this.scrollbarWidth + 'px';
+   },
+</PRE><PRE>   close: function () {
+     var body = this.body;
+</PRE><PRE>     removeClass(body, CLASS_OPEN);
+     body.style.paddingRight = 0;
+   },
+</PRE><PRE>   shown: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+</PRE><PRE>     _this.transitioning = false;
+     _this.isFulled = true;
+     _this.isShown = true;
+     _this.isVisible = true;
+     _this.render();
+     _this.bind();
+</PRE><PRE>     if (isFunction(options.shown)) {
+       addListener(element, EVENT_SHOWN, options.shown, true);
+     }
+</PRE><PRE>     dispatchEvent(element, EVENT_SHOWN);
+   },
+</PRE><PRE>   hidden: function () {
+     var _this = this;
+     var options = _this.options;
+     var element = _this.element;
+</PRE><PRE>     _this.transitioning = false;
+     _this.isViewed = false;
+     _this.isFulled = false;
+     _this.isShown = false;
+     _this.isVisible = false;
+     _this.unbind();
+     _this.close();
+     addClass(_this.viewer, CLASS_HIDE);
+     _this.resetList();
+     _this.resetImage();
+</PRE><PRE>     if (isFunction(options.hidden)) {
+       addListener(element, EVENT_HIDDEN, options.hidden, true);
+     }
+</PRE><PRE>     dispatchEvent(element, EVENT_HIDDEN);
+   },
+</PRE><PRE>   requestFullscreen: function () {
+     var _this = this;
+     var documentElement = document.documentElement;
+</PRE><PRE>     if (_this.isFulled &amp;&amp; !document.fullscreenElement &amp;&amp; !document.mozFullScreenElement &amp;&amp; !document.webkitFullscreenElement &amp;&amp; !document.msFullscreenElement) {
+</PRE><PRE>       if (documentElement.requestFullscreen) {
+         documentElement.requestFullscreen();
+       } else if (documentElement.msRequestFullscreen) {
+         documentElement.msRequestFullscreen();
+       } else if (documentElement.mozRequestFullScreen) {
+         documentElement.mozRequestFullScreen();
+       } else if (documentElement.webkitRequestFullscreen) {
+         documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+       }
+     }
+   },
+</PRE><PRE>   exitFullscreen: function () {
+     var _this = this;
+</PRE><PRE>     if (_this.isFulled) {
+       if (document.exitFullscreen) {
+         document.exitFullscreen();
+       } else if (document.msExitFullscreen) {
+         document.msExitFullscreen();
+       } else if (document.mozCancelFullScreen) {
+         document.mozCancelFullScreen();
+       } else if (document.webkitExitFullscreen) {
+         document.webkitExitFullscreen();
+       }
+     }
+   },
+</PRE><PRE>   change: function (originalEvent) {
+     var _this = this;
+     var offsetX = _this.endX - _this.startX;
+     var offsetY = _this.endY - _this.startY;
+</PRE><PRE>     switch (_this.action) {
+</PRE><PRE>       // Move the current image
+       case 'move':
+         _this.move(offsetX, offsetY);
+         break;
+</PRE><PRE>       // Zoom the current image
+       case 'zoom':
+         _this.zoom(function (x1, y1, x2, y2) {
+           var z1 = sqrt(x1 * x1 + y1 * y1);
+           var z2 = sqrt(x2 * x2 + y2 * y2);
+</PRE><PRE>           return (z2 - z1) / z1;
+         }(
+           abs(_this.startX - _this.startX2),
+           abs(_this.startY - _this.startY2),
+           abs(_this.endX - _this.endX2),
+           abs(_this.endY - _this.endY2)
+         ), false, originalEvent);
+</PRE><PRE>         _this.startX2 = _this.endX2;
+         _this.startY2 = _this.endY2;
+         break;
+</PRE><PRE>       case 'switch':
+         _this.action = 'switched';
+</PRE><PRE>         if (abs(offsetX) &gt; abs(offsetY)) {
+           if (offsetX &gt; 1) {
+             _this.prev();
+           } else if (offsetX &lt; -1) {
+             _this.next();
+           }
+         }
+</PRE><PRE>         break;
+</PRE><PRE>       // No default
+     }
+</PRE><PRE>     // Override
+     _this.startX = _this.endX;
+     _this.startY = _this.endY;
+   },
+</PRE><PRE>   isSwitchable: function () {
+     var _this = this;
+     var imageData = _this.imageData;
+     var viewerData = _this.viewerData;
+</PRE><PRE>     return imageData.left &gt;= 0 &amp;&amp; imageData.top &gt;= 0 &amp;&amp;
+       imageData.width &lt;= viewerData.width &amp;&amp;
+       imageData.height &lt;= viewerData.height;
+   }
+ };
+</PRE><PRE> Viewer.DEFAULTS = {
+</PRE><PRE>   // Enable inline mode
+   inline: false,
+</PRE><PRE>   // Show the button on the top-right of the viewer
+   button: true,
+</PRE><PRE>   // Show the navbar
+   navbar: true,
+</PRE><PRE>   // Show the title
+   title: true,
+</PRE><PRE>   // Show the toolbar
+   toolbar: true,
+</PRE><PRE>   // Show the tooltip with image ratio (percentage) when zoom in or zoom out
+   tooltip: true,
+</PRE><PRE>   // Enable to move the image
+   movable: true,
+</PRE><PRE>   // Enable to zoom the image
+   zoomable: true,
+</PRE><PRE>   // Enable to rotate the image
+   rotatable: true,
+</PRE><PRE>   // Enable to scale the image
+   scalable: true,
+</PRE><PRE>   // Enable CSS3 Transition for some special elements
+   transition: true,
+</PRE><PRE>   // Enable to request fullscreen when play
+   fullscreen: true,
+</PRE><PRE>   // Enable keyboard support
+   keyboard: true,
+</PRE><PRE>   // Define interval of each image when playing
+   interval: 5000,
+</PRE><PRE>   // Min width of the viewer in inline mode
+   minWidth: 200,
+</PRE><PRE>   // Min height of the viewer in inline mode
+   minHeight: 100,
+</PRE><PRE>   // Define the ratio when zoom the image by wheeling mouse
+   zoomRatio: 0.1,
+</PRE><PRE>   // Define the min ratio of the image when zoom out
+   minZoomRatio: 0.01,
+</PRE><PRE>   // Define the max ratio of the image when zoom in
+   maxZoomRatio: 100,
+</PRE><PRE>   // Define the CSS `z-index` value of viewer in modal mode.
+   zIndex: 2015,
+</PRE><PRE>   // Define the CSS `z-index` value of viewer in inline mode.
+   zIndexInline: 0,
+</PRE><PRE>   // Define where to get the original image URL for viewing
+   // Type: String (an image attribute) or Function (should return an image URL)
+   url: 'src',
+</PRE><PRE>   // Event shortcuts
+   build: null,
+   built: null,
+   show: null,
+   shown: null,
+   hide: null,
+   hidden: null,
+   view: null,
+   viewed: null
+ };
+</PRE><PRE> Viewer.TEMPLATE = (
+</PRE>
+    '<DIV class="viewer-container">' +
+      '' +
+      '<DIV class="viewer-footer">' +
+        '' +
+        '<UL class="viewer-toolbar">' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+          '' +
+        '</UL>' +
+        '<DIV class="viewer-navbar">' +
+          '' +
+        '</DIV>' +
+      '</DIV>' +
+      '' +
+      '' +
+      '' +
+    '</DIV>'
+<PRE> );
+</PRE><PRE> var _Viewer = window.Viewer;
+</PRE><PRE> Viewer.noConflict = function () {
+   window.Viewer = _Viewer;
+   return Viewer;
+ };
+</PRE><PRE> Viewer.setDefaults = function (options) {
+   extend(Viewer.DEFAULTS, options);
+ };
+</PRE><PRE> if (typeof define === 'function' &amp;&amp; define.amd) {
+   define('viewer', [], function () {
+     return Viewer;
+   });
+ }
+</PRE><PRE> if (!noGlobal) {
+   window.Viewer = Viewer;
+ }
+</PRE><PRE> return Viewer;
+</PRE><P>});
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,91 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:SDU-Denmark/core/scripts2
+From 2013.igem.org
+function isInt(n) {
+return (n + "").match(/^\d+$/);
+}
+function GetParentIndexForTour() {
+//return 0; //disabled for now ;)    var url = window.location.pathname;    var tourIndex = url.toLowerCase().indexOf('tour');    if (tourIndex > 0) {        if (isInt(url.charAt(tourIndex + 4))) {            return url.charAt(tourIndex + 4);        }    }    return 0;
+} function GetChildIndexForTour() {
+6    var url = window.location.pathname;    var tourIndex = url.toLowerCase().indexOf('tour');    if (tourIndex > 0) {        if (isInt(url.charAt(tourIndex + 5))) {            return url.charAt(tourIndex + 5);        }    }    return 0;
+}
+function IsTourSite() {
+return GetParentIndexForTour() > 0;
+}
+function handleStickyTopBar() {
+var viewportHeight = $(window).height();    var totalPageHeight = $(document).height();    if (totalPageHeight > viewportHeight) {        $(".MainLayout").css("margin-bottom", "100px");    }    else {        $(".MainLayout").css("margin-bottom", "0");    }
+var window_top = $(window).scrollTop();    var div_top = $('#sticky-anchor').offset().top;    if (window_top > div_top) {        $('.top').addClass('stick');        $('.tourBoundingBox').addClass('stick2');        if (IsTourSite()) {            $(".topMargin").css("margin-top", "179px");        }        else {            $(".topMargin").css("margin-top", "113px");        }    } else {        $('.top').removeClass('stick');        $('.tourBoundingBox').removeClass('stick2');
+$(".topMargin").css("margin-top", "25px");    }
+} function enableMenuDropdown() {
+$('#btnMenu, .menuPopup, #btnMenu2').hover(        function () {            $('.menuPopup').show();        },        function () {            $('.menuPopup').hide();        }    );
+} function styleIGEMTopMenu() {
+$('.left-menu').children().first().children().last().css('color', ); $('.left-menu').children().first().children().last().css('font-size', '10px');    $('#menubar').bind("mouseover", function () {        $(this).css("background", "transparent");        $('#menubar').css("background", "transparent");    });
+}
+function hideTestElementsOnLiveSite() {
+var pathname = window.location.pathname;    if (pathname.toLowerCase().indexOf('test') < 0) {        $('.testing').hide();    }
+}
+function HandleSelectedTourItems(allItems, selectedIndex, isClosed) {
+for (var i = 0; i < allItems.length; i++) {        var currentSelected = allItems.eq(i);        if (i < selectedIndex) {            if (i == selectedIndex - 1 && isClosed) {                currentSelected.addClass('itemLastSelected');                currentSelected.children('.tourItemLabel').first().addClass('tourItemLabelSelected'); }            else {                currentSelected.addClass('itemSelected');                currentSelected.removeClass('tourItemLabelSelected');            }        }        else {            currentSelected.removeClass('itemLastSelected');            currentSelected.removeClass('itemSelected');            currentSelected.removeClass('tourItemLabelSelected');        }    }
+}
+function ToggleTourMenu() {
+var parentIndex = GetParentIndexForTour();    var childIndex = GetChildIndexForTour();
+// Not a tour-site    if (parentIndex == 0) {        $('.tourBoundingBoxInner').hide();        $('.tourBoundingBoxInner').css('position', 'fixed');        return;    }
+// Show/Hide expand boxes    var expandBoxes = $('.tourBoundingBoxInner').children('.expandedTour');    for (var i = 0; i < expandBoxes.length; i++) {        if (i == parentIndex - 1) {            expandBoxes.eq(i).show();        }        else {            expandBoxes.eq(i).hide();        }    }
+// Handle parent items    var parents = $('.tourBoundingBoxInner').children('.parentTourItem');    HandleSelectedTourItems(parents, parentIndex, childIndex == 0);
+var selectedExpandBox = expandBoxes.eq(parentIndex - 1);    var selectedInnerExpandBox = selectedExpandBox.children('.expandedTourInner').first();    // Handle bend color    if (childIndex > 0) {        selectedExpandBox.children().first().addClass('tourBendLeftSelected');        HandleSelectedTourItems(selectedInnerExpandBox.children('.parentTourItem'), childIndex, true);    }    else {        selectedExpandBox.children().first().removeClass('tourBendLeftSelected');    }
+// Calculate Inner expandbox' width    var tourBoxElement = $('.tourBoundingBoxInner');    var spaceLeftForInnerExpand = tourBoxElement.innerWidth() - tourBoxElement.children().first().outerWidth(true) - tourBoxElement.children().last().outerWidth(true) - 2;    spaceLeftForInnerExpand -= parseInt(tourBoxElement.css('padding-left'));    spaceLeftForInnerExpand -= parseInt(tourBoxElement.css('padding-right'));    spaceLeftForInnerExpand -= selectedExpandBox.children().first().outerWidth(true);  //bendStart    spaceLeftForInnerExpand -= selectedExpandBox.children().last().outerWidth(true);  //bendEnd    tourBoxElement.children('.parentTourItem').each(function (index) {        spaceLeftForInnerExpand -= $(this).outerWidth(true);    });    selectedInnerExpandBox.width(spaceLeftForInnerExpand);
+// Calculate width of children    var childrens = selectedInnerExpandBox.children('.parentTourItem');    var childrensTotalWidth = 0;    for (var i = 0; i < childrens.length; i++) {        childrensTotalWidth = childrensTotalWidth + childrens.eq(i).outerWidth();    }    var remainingSpaceToFill = selectedInnerExpandBox.innerWidth() - childrensTotalWidth - 1;  // -1 fixes IE    var childrenHMargin = remainingSpaceToFill / childrens.length / 2;    // Ensures enough room for all paddings. If not enough room, all items will try to be centered.    if (childrenHMargin > childrens.length * 2) {        childrens.each(function () {            $(this).css('padding-left', childrenHMargin);            $(this).css('padding-right', childrenHMargin);        });    }    else if (remainingSpaceToFill > 2) {        childrens.first().css('padding-left', remainingSpaceToFill / 2);        childrens.last().css('padding-right', remainingSpaceToFill / 2);    }
+// Add links for all items    $('.tourBoundingBoxInner').children('.parentTourItem').each(function (index) {        $(this).children().first().attr('href', "Tour" + (index + 1) + "0");    });    $('.tourBoundingBoxInner').children('.expandedTour').each(function (indexP) {        $(this).children('.expandedTourInner').first().children('.parentTourItem').each(function (indexC) {            $(this).children().first().attr('href', " https://2013.igem.org/Team:SDU-Denmark/Tour " + (indexP + 1) + (indexC + 1));        });    });
+}
+function getTourTotalParents() {
+return $('.tourBoundingBoxInner').children('.parentTourItem').length;
+}
+function getCurrentTourParentsChildren(parentIndex) {
+var expandBoxes = $('.tourBoundingBoxInner').children('.expandedTour');    var selectedExpandBox = expandBoxes.eq(parentIndex - 1);    var selectedInnerExpandBox = selectedExpandBox.children('.expandedTourInner').first();    return selectedInnerExpandBox.children('.parentTourItem');
+}
+function handleMenuUnderline() {
+var pathname = window.location.pathname.toLowerCase();    if (IsTourSite()) {        $('#btnTour').addClass('SelectedMenuButton');    }    else if (pathname == '/team:sdu-denmark' || pathname == '/team:sdu-denmark/') {        $('#btnWelcome').addClass('SelectedMenuButton');    }    else {        $('#btnMenu').addClass('SelectedMenuButton');    }
+}
+function ShowFooterButton(sourceElement, targetElementName) {
+$(targetElementName).children('.footerBtnHeader').first().text(sourceElement.text());    $(targetElementName).children('.footerBtnText').first().text(sourceElement.attr("title"));    var link = sourceElement.attr('href');    $(targetElementName).attr('href', link);    $(targetElementName).hover(    function () {        sourceElement.addClass("tourItemLabelIndicator");    }, function () {        sourceElement.removeClass("tourItemLabelIndicator");    }    );    $(targetElementName).show();    return link;
+}
+function EnableNextArrowKeyNavigation(nextLink) {
+if (nextLink != ) { $(document).keydown(function (e) {            if (e.keyCode == 39) {                window.location.href = nextLink;                return false;            }        });    }
+} function handleTourFooterButtons() {
+var parentIndex = GetParentIndexForTour();
+if (parentIndex > 0) {
+var haveNextParent = parentIndex < getTourTotalParents();        var currentChildIndex = GetChildIndexForTour();        var currentParentsChildren = getCurrentTourParentsChildren(parentIndex);        var currentParentsChild = currentParentsChildren.length;        var haveNextChild = currentParentsChild > 0 && currentChildIndex < currentParentsChild;        var href = ; // Show "NEXT PARENT"-button if there is any parents left        if (haveNextParent) {            var nextParentElement = $('.tourBoundingBoxInner').children('.parentTourItem').eq(parentIndex).children('.tourItemLabel').first();            if (haveNextChild) {                href = ShowFooterButton(nextParentElement, '#btnFastForward');            }            else {                href = ShowFooterButton(nextParentElement, '#btnNextChapter');            }        }        else {            if (haveNextChild) {                var lastChild = currentParentsChildren.last().children('.tourItemLabel').first();                href = ShowFooterButton(lastChild, '#btnFastForward');            }        }
+// Show "NEXT CHILD"-button if there is any children left        if (haveNextChild) {
+var nextChildElement = currentParentsChildren.eq(currentChildIndex).children('.tourItemLabel').first();            href = ShowFooterButton(nextChildElement, '#btnDigDeeper');        }
+if (!haveNextParent && !haveNextChild) {            $('#btnTheEnd').show();        }
+// Enable left arrow key to navigate back        $(document).keydown(function (e) {            if (e.keyCode == 37) {                history.back();                return false;            }        });        // Enable Right arrow key to navigate to next page        EnableNextArrowKeyNavigation(href);    }    else {        $('#btnStartTour').show();        EnableNextArrowKeyNavigation($('#btnStartTour').attr('href'));    }
+}
+function enableTooltipAndSource() {
+$(".sourceReference").tooltip({ effect: 'slide', position: "top right", offset: [-25, -270] })      .dynamic({ right: { position: "top right", offset: [-25, 50] } });    $(".tooltipLink").tooltip({ effect: 'slide', position: "top left", offset: [-25, 270] })      .dynamic({ left: { position: "top right", offset: [-25, 270] } });
+} function enableImagesAndDialogs() {
+$("a.popupImg, a.galleryImg").fancybox({        openEffect: 'elastic',        closeEffect: 'elastic',        openEasing: 'easeOutBack',        closeEasing: 'easeInBack',        closeClick: true,        helpers: {            title: {                type: 'inside'            },            overlay: {                locked: false            }        }    });    $("a.dialogLink").fancybox({        type: 'iframe',        margin: 20,        width: '85%',        height: '95%',        scrolling: 'yes',        helpers: {            overlay: {                locked: false            }        },        iframe: {            scrolling: 'auto',            preload: false        }    });
+}
+function enableAccordions() {
+$(".accordion").tabs(".accordion div.pane",    { tabs: '.accordionTitel', effect: 'slide', initialIndex: null }  );
+}
+$(document).ready(function () {
+styleIGEMTopMenu();    $(window).scroll(handleStickyTopBar);    enableMenuDropdown();
+ToggleTourMenu();    hideTestElementsOnLiveSite();    handleMenuUnderline();    handleTourFooterButtons();    enableTooltipAndSource();    enableImagesAndDialogs();    enableAccordions();
+});
+Retrieved from " http://2013.igem.org/Team:SDU-Denmark/core/scripts2 "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

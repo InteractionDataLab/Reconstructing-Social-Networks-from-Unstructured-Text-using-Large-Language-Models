@@ -1,0 +1,53 @@
+Team:BIT-China/js/effect/coveringBad
+/*
+*  Project  : Covering Bad *  Description : A simple jQuery Plugin for cover an item by another item with dragging ability. *  Author  : Mojtaba Seyedi *  License  : MIT http://seyedi.mit-license.org
+/
+(function($) {
+$.fn.coveringBad = function(options) {
+//复制  var settings = $.extend({
+marginY : 30 ,   marginX : 30 ,   setX  : 30,   setY  : 30,   direction  : "horizontal"
+} , options);
+return this.each(function() {
+// Initialization  ////////////////////////////////
+var content_wrapper=$("#idea-content-item");   var tootip_content=$(".tooltip-content");
+var $this = $(this),     $changeable = $this.find('>.changeable'),     $handle = $this.find('>.handle'),     width  = $this.innerWidth(),     height = $this.innerHeight(),     pos_x  = null,     pos_y  = null,     startX = null,     startY = null,     min_left = settings.marginX,     max_left = width - settings.marginX,
+min_top  = settings.marginY,     max_top  = height - settings.marginY,     setX = settings.setX,     setY = settings.setY;
+$this.css('background-image', 'url('+$this.data('passive')+')');   $changeable.css('background-image', 'url('+$this.data('active')+')');   $changeable.css('background-size',width+'px '+height+'px');
+$changeable.height($this.height());
+if(setX < min_left) {    setX = min_left;   }
+if(setY < min_top) {    setY = min_top;   }
+$handle.append('<i class="fa fa-chevron-right"/></i>')   $handle.css('left', setX);   $handle.css('top', setY);
+// Direction   //////////////////////////////////
+if(settings.direction === "horizontal" ) {    $changeable.width(setX);    $changeable.css('border-right', '5px dashed rgb(248,199,0)');   }    else if(settings.direction === "vertical" ) {
+$this.height($changeable.height());                $changeable.height(setY);                $changeable.css('border-bottom', '1px dashed #FFF');      $handle.addClass('vertical');   }
+function isTouch(){    var bool = false;    (('ontouchstart' in window)||window.DocumentTouch&& document instanceof DocumentTouch)==true?     bool=true:(!!navigator.userAgent.toLowerCase()      .match(/(iphone|ipod|ipad|android|iemobile|blackberry|symbianos|windows phone|meego)/i))       ==true?bool=true:bool=false;    return bool;   }
+$.scrollTop = function(selector,adjust,time){    $(document.body).animate({     scrollTop:($(selector).offset().top+adjust)+"px"    },time);    $(document.documentElement).animate({     scrollTop:($(selector).offset().top+adjust)+"px"    },time);   };
+// Dragging Bad   //////////////////////////////////   var downflag=false;   /**    * 鼠标按下事件    */   if(isTouch())   $handle.on('touchstart',downEvent) ;   else   $handle.on('mousedown',downEvent);
+/**    * 鼠标按下或者手机点下    * @param event    */   function downEvent(event){    event.preventDefault();    $handle.addClass('draggable');
+pos_x  = parseInt($handle.css('left'));
+startX = event.pageX || event.originalEvent.touches[0].pageX ;    pos_y  = parseInt($handle.css('top'));    startY = event.pageY || event.originalEvent.touches[0].pageY;
+downflag=true;
+changeTooltip("Changing");
+$changeable.css('background-size',width+'px '+height+'px');    //$this.css('background-size',width+'px '+height+'px');    //if($(document.body).is(":animated") || $(document.documentElement).is(":animated")){    //    //}    //else $.scrollTop("#idea",-200,100);   }
+/**    * 监听鼠标抬起事件    */   if(isTouch())   {    $(document).on('touchend',upEvent);   }   else   $(document).on('mouseup' ,upEvent);
+/**    * 鼠标抬起事件或者离开触摸板    * @param event    */   function upEvent(event){
+$handle.removeClass('draggable');    //重置    resetTootip();    //$(".tooltip-shape").removeClass("draggable");    downflag=false;   }
+//绑定移动事件   if(isTouch())   $this.bind('touchmove',dragger);   else   $this.bind('mousemove', dragger);
+//拖动响应   function dragger(e) {    //过滤    if(!downflag) return;
+var eventX,eventY;    if(isTouch()){     eventX=e.originalEvent.touches[0].pageX;     eventY=e.originalEvent.touches[0].pageY;    }    else{     eventX= e.pageX;     eventY= e.pageY;    }
+var left = pos_x + (eventX - startX);    if (left < min_left) left = min_left;    else if (left > max_left) left = max_left;
+$('.draggable').css('left', left);
+var top = pos_y + (eventY - startY);    if (top < min_top) top = min_top;    else if (top > max_top) top = max_top;
+$('.draggable').css('top', top);
+if($('.draggable').length) {     changeWidth(left , top);    }
+//根据百分比改变前方文字的内容    changeContent(left/$(".covered").width());
+}
+/**    Changing width or height    * @param w    * @param h    */   function changeWidth(w , h) {    if(settings.direction === "horizontal" ) {     $changeable.width(w);    }    else if(settings.direction === "vertical" ) {     $changeable.height(h);    }   }
+var storyContent=[{title:"Begin",p1:"We all Know that normally,cell carries plasmids.But naturally they don't have too much plasmids.",    p2:"These Plasmids could be burderns on their weak life."},    {title:"Loss of Plasmid",p1:"With the process of fission,some plasmid may lost,so they need less nutrition."     ,p2:"These cells with less plasmids are easier to survive."},    {title:"Threshold",p1:"We count the value of the plasmids in a cell so we can know how many plasmids have been lost."     ,p2:"If the value is less than the threshold,the sell start the gene by itself."},    {title:"Kill the cell",p1:"The started gene will produce poisonous protein."     ,p2:"These poisonous will kill cell itself,so other cells could get enough nutrition."}];
+var changeValue = function (title, p1, p2) {    content_wrapper.children("h2").text(title);    content_wrapper.children("p").eq(0).text(p1);    content_wrapper.children("p").eq(1).text(p2);   }
+var changeContent= function (percent) {    percent=parseFloat(percent);    if(percent>0.95){     changeValue(storyContent[0].title,storyContent[0].p1,storyContent[0].p2);     changeTooltip("Safe")    }    else if(percent>0.70){     changeValue(storyContent[1].title,storyContent[1].p1,storyContent[1].p2);     changeTooltip("Not Bad")    }    else if(percent>0.50){     changeValue(storyContent[2].title,storyContent[2].p1,storyContent[2].p2);     changeTooltip("Warning")    }    else if(percent<=0.50){     changeValue(storyContent[3].title,storyContent[3].p1,storyContent[3].p2);     changeTooltip("Danger")    }   };
+var changeTooltip = function (value) {    $(tootip_content).text("");    $(tootip_content).append(value);   }
+var resetTootip = function () {    $(tootip_content).text("");    $(tootip_content).append("Drag me to change plasmids level");   }
+});
+}
+})(jQuery);

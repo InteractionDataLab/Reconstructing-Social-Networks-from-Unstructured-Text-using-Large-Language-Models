@@ -1,0 +1,112 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:EPF-Lausanne/Modeling/RunSimulation
+From 2009.igem.org
+Home
+Team
+Presentation
+School
+Team Management
+Brainstorming
+Sponsors
+Project
+Abstract
+Theory
+Strategy
+Experimental Setup
+Results
+Parts submitted to the Registry
+Future directions
+References
+Modeling
+Modeling overview
+Analysis Methods
+Results
+References
+Human practices
+Overview
+Talks
+Survey
+Media
+Safety
+Lab
+Last News
+Notebook
+Protocols used
+Contents
+1 Theory
+1.1 Initial minimization
+1.2 Heating
+1.3 First NPT
+1.4 NVT
+1.5 Second NPT
+1.6 Final NPT
+2 Launch the simulation
+2.1 On a single processor
+2.2 On a cluster
+2.3 updalpe1pc9 .epfl.ch (UPDALPE1PC9)
+2.4 updalpe1linuxsrv1 .epfl.ch (master.cluster)
+Theory
+The .pdb is generated from X-ray diffraction crystallography. This process requires a crystal of the protein, which occurs only at low temperature (~5°K). Taking this in consideration, we have to go through different steps to bring our protein to lab conditions. Please refer to the page on .conf parameters to see how to perform these steps in namd.
+Initial minimization
+We start with a few minimization rounds, to reach a minimum in the sense of potential energy.
+Heating
+When the protein is stable, we have to add heat (kinetic energy) to reach a higher temperature (~300°K). We have to take a special care not to add heat too fast, which would result in protein burst and explosion of our system.
+First NPT
+This is a relaxation step, with the number of atoms N, the pressure P and the temperature T all kept constant (NPT step). This is a kind of homogenization of the distribution of atoms inside our box.
+NVT
+This is also a relaxation step, with atom number, volume and temperature constant.
+Second NPT
+Now we perform another relaxation NPT to reach lab conditions.
+Final NPT
+This is the final NPT, which last much longer and gives us the ouput of the simulation.
+Launch the simulation
+On a single processor
+Here is a safe command. It will send the output to a file (> outpu...) and be run in the background (&).
+namd2 CONFIG_FILE.conf > output/namd_log &
+On a cluster
+This is performed using a library that will split the process between nodes.
+updalpe1pc9 .epfl.ch (UPDALPE1PC9)
+The path to the binary has to be localized using: which namd2. The option +p4 specifies how many procs we are using (don't ue more than 4 on this cluster!). The rest is similar to single processor launch. We use this computer to visualize or perform small stabilization.
+charmrun /usr/local/bin/namd2 +p4 ++local 2v0w_hydr_wb_eq_try.conf > ./output_eq2/namd_log &
+updalpe1linuxsrv1 .epfl.ch (master.cluster)
+This is the real cluster. We need to create a script to launch the job using the mpi. Here is a sample:
+#!/bin/bash
+#$ -N 2v0u_16
+#$ -S /bin/bash
+#$ -cwd
+#$ -j y
+#$ -pe mpi 64
+source /home/igem/.bashrc
+cd /home/igem/2v0u
+#iniciate mpd on every node (needed when using intel MPI)
+export MPD_CON_EXT="sge_$JOB_ID.$TASK_ID"
+sort -u < $TMPDIR/machines > $TMPDIR/mpdhosts
+mpdboot -n 8 -f $TMPDIR/mpdhosts -r ssh
+#launch job
+mpiexec -genv I_MPI_FALLBACK_DEVICE 0 -genv I_MPI_DEVICE rdssm  -machinefile $TMPDIR/machines -np 64 /opt/namd/namd2  NPT_simulation_2v0u_64.conf > ./output_sim_64/namd_log
+#terminate mpd at the end of execution
+mpdallexit
+rm -f $TMPDIR/mpdhosts
+line 1-6 are not comments, they are interpreted by the mpi. Here are the lines that have to be customized before launch:
+2.  This is the name that will be displayed for the job, precise the prot you are working on.
+6.  Number of procs you want to use. We use only power of 2 because of PME and multiple of 8 because of the architecture of the cluster.
+8.  Working directory
+12. You have to launch one mpd on each node you are using. Each node has 8 procs, so start the superior integer of #procs/8. For instance, if you want to start 27 procs (baaaaad but representative example...), you have to write mpdboot -n 4
+14. -np otions precise once again how many procs are used
+Retrieved from " http://2009.igem.org/Team:EPF-Lausanne/Modeling/RunSimulation "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

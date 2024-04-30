@@ -1,0 +1,248 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:SUSTC-Shenzhen/Modeling/matlabcode
+From 2014.igem.org
+Team SUSTC-Shenzhen
+Toggle navigation
+Home
+Project
+Notebook
+More
+Judging Form
+Attributions
+Team Profile
+Search
+Log in
+matlab code
+a simple example
+Contents
+1 main
+2 update
+main
+% This document is the main file for simulate the multi-agent interaction
+% of HIV, HSC and immune system.
+% author: Rongpeng Li, Mingmeng Geng, Fan Jiang
+% Date: September, 7, 2014
+%Version 1.0
+delete(gcf);
+%Initialize variables and their explainations.
+thymus = 0; % the stem cell generation capability.
+hiv = 0; % the hiv counting.
+high = 0; % the high-resistance T cell counting,
+low = 0; % the low-resistance T cell counting.
+interveneTime = 16000; % the intervene time of CRISPR mechanism
+method = 0; % 1 for using CRISPR mechnism, 0 for not. At the beginning, start without CRISPR mechanism.
+%Initialize parameters and their explainations.
+t = 0.01; % the simulation time step.
+T =  350; %the total time that the programs is going to simulate.
+% parameter for thymus update.
+global thymusGrowthRate; % the self-generation rate of stem cell
+global N_thymus ; % the possible total thymus counting.
+global thymusSelfPresure ; % the enviroment pressure for thymus growth in M-model.
+global hiv2thymus ; % the hiv-caused thymus counting decreasing factor.
+global highlow2thymus ; % the high and low immune cell induced increasing factor.
+% parameter for hiv update.
+global hivGrowthRate; %the self-generation rate of hiv virus.
+global hivMutation ; % the mutation factor.
+global N_hiv ; % the possible total hiv counting, can be set to be infinity.
+global hivSelfPressure  ; % Almost no self-pressure for hiv virus.
+% parameter for high update.
+global thymus2high ; %the generation rate by thymus counting.
+global highResist ; % the resistance factor, can be invicible if CRISPR is 100% effective.
+global decayHigh ; % the decay(death) rate from high resistant T cell to low ones.
+global gainLow ; % the gain rate from low resistant T cell to high ones.
+% parameter for low update.
+global thymus2low; %generation rate from thymus counting.
+global lowResist; % the resistance factor.
+global hiv2low; % the death rate caused by hiv.
+global gain4high % the gain rate by the immune decaying of high resistant T cells.
+% choose parameter sets by user.
+OK = 0;
+while OK == 0
+% set = input('Please choose the initial parameter set. 1, 2 or 3?');
+set =1 ;
+if set ==1
+[thymusGrowthRate, N_thymus,thymusSelfPresure, hiv2thymus, highlow2thymus] =deal(0.8,0.94,0.3,0.22,0.2);
+[hivGrowthRate, hivMutation, N_hiv, hivSelfPressure] = deal(8,0.15,20,0.1);
+[thymus2high, highResist, decayHigh , gainLow] = deal(0.2,0.6,0.4,0.1);
+[thymus2low, lowResist, hiv2low, gain4high] = deal(0.2,0.2,0.8,0);        [thymus, hiv, high, low]= deal(1,0.2,0.0,0.1);        OK = 1;
+elseif set ==2
+[thymusGrowthRate, N_thymus, thymusSelfPresure, hiv2thymus, highlow2thymus] =deal();
+[hivGrowthRate, hivMutation, N_hiv, hivSelfPressure] = deal();
+[thymus2high, highResist, decayHigh , gainLow] = deal();
+[thymus2low, lowResist, hiv2low, gain4high] = deal();
+[thymus, hiv, high, low]= deal();        OK = 1;
+elseif set ==3
+[thymusGrowthRate, N_thymus, thymusSelfPresure, hiv2thymus, highlow2thymus] =deal();
+[hivGrowthRate, hivMutation, N_hiv, hivSelfPressure] = deal();
+[thymus2high, highResist, decayHigh , gainLow] = deal();
+[thymus2low, lowResist, hiv2low, gain4high] = deal();        [thymus, hiv, high, low]= deal();        OK = 1;
+else
+OK = 0;
+end
+end
+% Initialize zero-filled arrays to store the data generated.
+Len  = floor(T/t);
+[Time,Thymus,HIV,High,Low] = deal(zeros(1,Len));
+%update the status
+for i = 1:Len
+if i < interveneTime
+[Time(i),Thymus(i),HIV(i),High(i),Low(i)] = deal(t*i,thymus,hiv,high,low);
+[thymus, high, low, hiv,hivMutation,highResist,lowResist ] = update(t,thymus, high, low, hiv, method );
+else
+[Time(i),Thymus(i),HIV(i),High(i),Low(i)] = deal(t*i,thymus,hiv,high,low);
+method = 1;
+[thymus, high, low, hiv, hivMutation,highResist,lowResist] = update(t,thymus, high, low, hiv, method );
+end
+%     hivMutation
+end
+% Draw pictures
+subplot(2,2,1)
+plot(Time,Thymus,'*');
+xlabel('Time')
+ylabel('Thymus counting')
+title('Thymus counting versus Time');
+grid;
+hold on;
+subplot(2,2,2)
+plot(Time,High,'+');
+xlabel('Time')
+ylabel('High-resistance T cell counting')
+title('High-resistance T cell counting versus Time');
+grid;
+hold on;
+subplot(2,2,3)
+plot(Time,Low,'<');
+xlabel('Time')
+ylabel('Low-resistance T cell counting')
+title('Low-resistance T cell counting versus Time');
+grid;
+hold on;
+subplot(2,2,4)
+plot(Time,HIV,'>');
+xlabel('Time')
+ylabel('HIV counting')
+title('HIV counting versus Time');
+grid;
+saveas(gcf,'Trend Graph','bmp');
+%delete(gcf);
+%Draw phase graph.
+update
+function [thymus, high, low, hiv,hivMutation,highResist,lowResist ] = update(t,thymus, high, low, hiv, method )
+% the function update all the status.
+% Here are the key of the program. The following function handlers decribes
+% the interaction details of the agents. You can modify them later to make
+% them more physical and realistic.
+global thymusGrowthRate; % the self-generation rate of stem cell
+global N_thymus ; % the possible total thymus counting.
+global thymusSelfPresure ; % the enviroment pressure for thymus growth in M-model.
+global hiv2thymus ; % the hiv-caused thymus counting decreasing factor.
+global highlow2thymus ; % the high and low immune cell induced increasing factor.
+% parameter for hiv update.
+global hivGrowthRate; %the self-generation rate of hiv virus.
+global hivMutation ; % the mutation factor.
+global N_hiv ; % the possible total hiv counting, can be set to be infinity.
+global hivSelfPressure  ; % Almost no self-pressure for hiv virus.
+% parameter for high update.
+global thymus2high ; %the generation rate by thymus counting.
+global highResist ; % the resistance factor, can be invicible if CRISPR is 100% effective.
+global decayHigh ; % the decay(death) rate from high resistant T cell to low ones.
+global gainLow ; % the gain rate from low resistant T cell to high ones.
+% parameter for low update.
+global thymus2low; %generation rate from thymus counting.
+global lowResist; % the resistance factor.
+global hiv2low; % the death rate caused by hiv.
+global gain4high % the gain rate by the immune decaying of high resistant T cells.
+% To avoid duplicity of variables, I ignore the means of symbol.
+f1a = @(hiv)(3*hiv); % HIV's existence,thymus counting is decreasing.
+f1b = @(hiv)(3 * hiv); % HIV's existence,thymus counting is decreasing. CRISPR exsits. following 'b' means the same logic.
+f2a = @(high,low)(0.01*high+0.01*low); % The high and low can boost the thymus increasing.
+f2b = @(high,low)(0.01* high + 0.01*low);
+f3a = @(low,high,hivMutation)((low + high) * hivMutation); % T cell as hosts can boost the increasing of HIV
+f3b = @(low,high,hivMutation)(( low+ 0.3 * high)* hivMutation);
+f4a = @(high,hiv,hivMutation)((1-hivMutation) * hiv * high );% high resistance ones can decrease HIV counting.
+% f4a = @(high,hiv,hivMut)(0);
+f4b = @(high,hiv,hivMutation)( 1.2* (1-hivMutation) * hiv * high);
+f5a = @(thymus)(0.001*thymus); %high resistance ones increase due to thymus counting
+f5b = @(thymus)(0.001*thymus);
+f6a = @(hiv)((1- 0.4 * hiv));% HIV caused the high ones increasing slower than normal
+f6b = @(hiv)(1- 0.2 * hiv);
+f7a = @(high, highResist,hiv)(0.8*high*exp(-1*highResist)*hiv);% Immune decay rate for high ones due to mutation
+f7b = @(high, highResist,hiv)(0.5*high*exp(-0.5*highResist)*hiv);
+f8a = @(low,lowResist)(0.2*low*exp(lowResist));% high ones increase due to low ones that gain immune capacity
+f8b = @(low,lowResist)(0.3*low*exp(lowResist));
+f9a = @(thymus)(0.2*thymus);% low ones increase due to thymus counting
+f9b = @(thymus)(0.2*thymus);
+f10a = @(hiv)(1- 0.5 * hiv);% HIV caused the high ones increasing slower than normal
+f10b = @(hiv)(1- 0.5 * hiv);
+f11a = @(low,lowResist,hiv)(1.5*low*exp(-1*lowResist)*hiv);% death formula for low ones due to HIV counting.
+f11b = @(low,lowResist,hiv)(1.5*low*exp(-1*lowResist)*hiv);
+f12a = @(high,decayHigh)(0);% growth rate due to decay from high ones.
+f12b = @(high,decayHigh)(0);
+if method == 1 % implement with CRISPR mechnism.
+thymus = thymus + t* (thymusGrowthRate*thymus*(1-thymusSelfPresure*thymus/N_thymus) - hiv2thymus*f1b(hiv) + highlow2thymus*f2b(high,low));        if thymus >1            thymus = 1;        elseif thymus < 0  %thymus =0.1; %thymus system should not be broken        end       hiv = hiv + t*(hivGrowthRate*hiv*(1-hivSelfPressure*hiv/N_hiv)*f3b(low,high,hivMutation) - f4b(high,hiv,hivMutation));
+if hiv >1
+hiv = 1;
+elseif hiv < 0
+hiv =0.05; % hiv can not be extinguished becasue there are hiv in other tissues.
+end        high = high + t*( thymus2high*f5b(thymus)*f6b(hiv) - decayHigh*f7b(high, highResist, hiv ) + gainLow*f8b(low,lowResist));
+if high >1
+high = 1;
+elseif high < 0
+high =0;
+end
+low = low + t* ( thymus2low*f9b(thymus)*f10b(hiv) - hiv2low*f11b(low,lowResist,hiv) + gain4high*f12b(high,decayHigh) );
+if low >1
+low = 1;
+elseif low < 0
+low =0;
+end
+highResist = 0.8 * thymus;
+hivMutation = 0.1*(high/( high + low ) + 0.3*rand(1)); % update add random elements to the mutation level
+elseif method ==0 %implement without CRISPR mechnism.
+thymus = thymus + t* (thymusGrowthRate*thymus*(1-thymusSelfPresure*thymus/N_thymus) - hiv2thymus*f1a(hiv) + highlow2thymus*f2a(high,low));
+if thymus >1
+thymus = 1;
+elseif thymus < 0
+thymus =0;
+end        hiv = hiv + t*(hivGrowthRate*hiv*(1-hivSelfPressure*hiv/N_hiv)*f3a(low,high,hivMutation) - f4a(high,hiv,hivMutation) );
+if hiv >1
+hiv = 1;
+elseif hiv < 0
+hiv =0;
+end  % high = high + t*( thymus2high*f5a(thymus)*f6a(hiv) - decayHigh*f7a(high, highResist, hiv ) + gainLow*f8a(low,lowResist));
+high = 0;
+if high >1
+high = 1;
+elseif high < 0
+high =0;
+end        low = low + t* ( thymus2low*f9a(thymus)*f10a(hiv) - hiv2low*f11a(low,lowResist,hiv) + gain4high*f12a(high,decayHigh) );
+if low >1
+low = 1;
+elseif low < 0
+low =0;
+end
+hivMutation = 0.1*(high/( high + low ) + 0.3*rand(1)); % update add random elements to the mutation level
+end
+% update some important global factors. If necessary, many other global
+% variables can be updated here.
+end
+Maintained by the iGEM team SUSTC-Shenzhen.
+Licensed under CC BY 4.0 .
+©2014 SUSTC-Shenzhen
+Retrieved from " http://2014.igem.org/Team:SUSTC-Shenzhen/Modeling/matlabcode "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

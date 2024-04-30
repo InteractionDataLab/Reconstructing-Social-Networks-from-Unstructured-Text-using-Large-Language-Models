@@ -1,0 +1,115 @@
+Team:INSA-Lyon/Software
+iGEM : Software
+ 
+Toggle navigation
+Project
+Description
+Design
+Proof of Concept
+Parts
+Notebook
+Achievements
+Wet Lab
+Protocols
+Results
+Safety
+Interlab
+Dry Lab
+Modeling
+Software
+Human Practices
+Human Practices
+Silver
+Gold
+Integrated Practices
+Public engagement
+Team
+Members
+Attributions
+Collaborations
+Why
+Applications
+A not so fast but simple and free tool
+Is it open-source?
+How does it work?
+Reliability
+Results
+References
+SOFTWARE
+Read More
+A SINGLE-STRAND DNA 3D-STRUCTURE PREDICTION TOOL
+using ViennaRNA[1] and Rosetta[2] bioinformatics software
+We found a simple method to predict the structure of aptamers, by copying the protocol to compute RNA 3D-foldings with Rosetta. The trick is to convert the aptamer to RNA, then compute its structure, re-convert to DNA and minimize the free energy to adjust atom coordinates.
+Why
+The best advantage of aptamers is their ability to be easily modified, improved, to increase their affinity or stability. This can be done by doing substitutions, insertions or deletions to the original sequence. To study the effect of the modification, you need to have the 3D structure of your aptamer. The goal of our tool is to predict the 5 most probable structures your aptamer would have in biological samples, and output them in PDB file format, from scratch with only primary sequence input.
+Applications
+Want to see what the aptamer you designed looks like?
+Want to prepare a PDB structure for docking with your target/biomarker?
+Want to see how a polymorphism in the chain influences interaction with the target?
+Then use this computation procedure. Although it is not made to give precise energy computation results, it does return the most probable 3D structures.
+A not so fast but simple and  free tool
+We are currently in the process of making the tool available online for non-commercial use. It will be hosted onto one of our school’s server so anyone will be able to use it directly online. (our team signed a custom licence of the Rosetta suite for the purpose of our web server).
+http://ia2c.heavydev.fr
+As we are not funded, our computation capacity is still limited: it may last several hours, and only 4 tasks can be treated at the same time.
+You can also download it for your local server at https://github.com/ia2c/aptamers , but you need to download Rosetta separately from rosettacommons.org. (see installation instructions)
+What did we create?  What did we take from others? Is it open-source?
+The code we typed is an automatisation of a long, complex and hard command-line procedure with several different softwares[3]. Our code is only some Python script that runs Rosetta and ViennaRNA for you correctly. It makes the modelisation easy for you.
+Our code is freely distributed, freely modifiable for any improvements, under the MIT licence ( https://opensource.org/licenses/MIT ).
+ViennaRNA and Rosetta are both softwares distributed with their source-codes, modifiable, but only for non-commercial purpose (see links below). https://github.com/ViennaRNA/ViennaRNA/blob/master/COPYING https://els.comotion.uw.edu/licenses/86
+How does it work?
+Start with your primary DNA or RNA sequence as an input.
+Step 1 (only if the input is a DNA sequence): Transcription to RNA
+Our procedure was designed for RNA sequences. Therefore, if your input is a DNA sequence, we need to transcript it into a RNA sequence first. Prediction of the structure of the nucleic acid shows minor differences whether the input sequence is DNA or RNA[4]. Corrections can be implemented further in the process.                                   Tech: We use the Biopython package to do so.
+Step 2: Prediction of the secondary structure
+If you did not provide the secondary structure of the sequence to the tool, we can compute it with the RNAFold algorithm from ViennaRNA, a dynamic algorithm of structure prediction.                                   If the secondary structure of your RNA was described in an article, you should rely on it. This step is the most uncertain part of the procedure, because it is highly dependant on the environmental conditions: ionic concentrations, temperature, etc…
+Fig. Example of a RNA secondary structure
+Important remark: we are currently unable to predict pseudoknots or G-quadruplexes, which may be frequent in aptamers. Giving your own secondary structure may be a way to explicit those structures.
+Step 3: Computation of the 3D structure from the 2D
+We use Rosetta’s rna_denovo tool on the given 2D data, with flags -ignore_zero_occupancy and -no_minimize, and let it run for 20000 cycles (by default).
+The algorithm used is Rosetta’s FARNA[5] (Fragment Assembly of RNA), a Monte-Carlo process, guided by a low-resolution knowledge-based energy function.
+Step 4: Minimization
+Rosetta will now score the structures and minimize only the 100 best ones                                   (atoms are moved in space to reach a local minimum of potential energy).
+Remark: it is a delicate step, because we selected the 100 best structures before having minimized them. This intermediate step is required in order to prevent missing out on better candidates.
+Step 5: Selection of the best ones
+We ask Rosetta to score the structures, so we can end up with the 5 best ones.                                   This time, each structure corresponds to a local minimum of potential energy, so comparing structures really makes sense.
+Step 6: Saving the results in PDB files
+Rosetta exports the atom coordinates to write a PDB file.
+Step 7 (only is the input was a DNA sequence): Retro-transcription into DNA
+Our home-made python script can be used to modify the PDB files to change uracile bases into thymines and to deoxygenate riboses. Finally, structures are re-minimized to adapt atom coordinates from RNA to DNA.
+Reliability
+The structures you get as outputs may differ from one another. That is the reason why we keep the five most probable structures in the end instead of only one.                                       Indeed, we can often observe variable domains and stable ones.
+Fig. Superposition of the 20 most probable structures of the ATP aptamer
+We also made some analysis by comparing the models we obtained with the experimental PDB structures, obtained by X-ray crystallography, for the following single-strand nucleic acids:
+ATP Aptamer[4]
+HIV Reverse-Transcriptase (RT) Aptamer[6]
+Thrombin Aptamer (contains a G-quadruplex)[7]
+Human telomerase mRNA[8]
+First, we superposed the 20 best structures to the native one.
+Fig. ATP aptamer (left), HIV-RT aptamer (right). The green structures are native PDB files from X-ray crystallography, the coloured ones are our predicted structures.
+Then we used a measure of distance between the “real” native structure and the predicted one called RMSD (Root Mean Standard Deviation), the square-root of the sum of atom distances squared. In parallel, Rosetta gave us a potential energy value in its force-field unit (Rosetta Energy Score).
+For all the obtained structures, the RMSD was under 10Å, which is the threshold between good and bad results, considering the flexibility of the single-strand nucleic acid molecules.
+We are currently not able to predict G-quadruplexes or pseudoknots in the sequences, but we tried with some atom pair constraints to force them in the structures:
+Fig. Thrombin aptamer, without and with constraints.
+Fig. Scores without (blue) and with (orange) forced constraints for pseudoknots and G-quadruplexes.
+A Student’s test with a threshold of 5% to compare the two groups’ means of RMSD returns a p-value of 0.02, meaning that forcing the constraints is a treatment that gives significantly different (better) RMSDs than not forcing them.
+Fig. Human telomerase RNA without & with forced constraints
+Fig. Scores without (blue) and with (orange) forced constraints for pseudoknots and G-quadruplexes. (Student’s p-value = 1.12 10-6).
+As shown in the two examples above, forcing bases pairing did not change the potential energy of the predicted molecule (no modification of its stability), but enabled the improvement of the models, with results closer to the reality. The user should have the possibility of using the secondary structure of his choosing (that would be well described in the literature).
+As a conclusion, our method is relevant and gives good results.
+Obviously, we cannot guarantee the accuracy of the results and we disclaim any responsability for or liability related to them.                                       You can find more info about the scoring of structures in Rosetta’s documentation.
+Results
+The structures computed by our tool look similar to PDB structures obtained by X-ray crystallography.
+The shape of the molecule is very important, because the given structures are used for docking simulations with the aptamer’s target.
+This is this procedure that helped us obtain the 3 PDB structures of the 3 aptamers against HBsAg[9].
+Fig. The 3 HBV surface-antigen known aptamers, as predicted by our method
+References
+[1] ViennaRNA software https://www.tbi.univie.ac.at/RNA/
+[2] Rosetta’s documentation http://rosettacommons.org/docs/latest/Home
+[3]     Clarence Yu Cheng, Fang-Chieh Chou, Rhiju Das. Modeling Complex RNA Tertiary Folds with Rosetta. Methods in Enzymology, 553, 35-64, 2015, ISSN 15577988
+[4]     Chin H Lin, Dinshaw J Patel. Structural basis of DNA folding and recognition in an AMP-DNA aptamer complex: distinct architectures but common recognition motifs for DNA and RNA aptamers complexed to AMP. Chemistry & biology, 4, 817-832, 1997, ISSN 10745521.
+[5] FARNA algorithm https://www.rosettacommons.org/manuals/archive/rosetta3.1_user_guide/app_RNA_denovo.html
+[6]         Miller M., Tuske S., Das K., DeStefano J. and Arnold E. (2015). Structure of HIV-1 reverse transcriptase bound to a novel 38-mer hairpin template-primer DNA aptamer. Protein Science, 25(1), pp.46-55.
+[7]         Russo Krauss I., Spiridonova V., Pica A., Napolitano V. and Sica F. (2015). Different duplex/quadruplex junctions determine the properties of anti-thrombin aptamers with mixed folding. Nucleic Acids Res, 44(2), pp.983-991.
+[8] Theimer C., Blois C. and Feigon J. (2005). Structure of the Human Telomerase RNA Pseudoknot Reveals Conserved Tertiary Interactions Essential for Function. Molecular Cell, 17(5), pp.671-682.
+[9]     Xi Z., Huang R., Li Z., et al. (2015). Selection of HBsAg-Specific DNA Aptamers Based on Carboxylated Magnetic Nanoparticles and Their Application in the Rapid and Simple Detection of Hepatitis B Virus Infection. ACS Appl. Mater. Interfaces, 7(21), pp.11215-11223.
+Designed by Team iGEM INSA-LYON

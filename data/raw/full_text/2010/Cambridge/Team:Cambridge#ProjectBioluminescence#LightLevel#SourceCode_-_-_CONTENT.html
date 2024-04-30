@@ -1,0 +1,438 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Cambridge_ProjectBioluminescence_LightLevel_SourceCode"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2010.igem.org</H3><OL><LI>include &lt;iostream&gt;</LI><LI>include &lt;vector&gt;</LI><LI>include &lt;fstream&gt;</LI><LI>include &lt;math.h&gt;</LI></OL><OL><LI>ifndef __mjdmatrix_h
+</LI><LI>define __mjdmatrix_h
+</LI><LI>include &lt;iostream&gt;</LI></OL><P>using namespace std;
+// generic object (class) definition of matrix:
+template &lt;class D&gt; class matrix{
+</P><PRE> // NOTE: maxsize determines available memory storage, but
+ // actualsize determines the actual size of the stored matrix in use
+ // at a particular time.
+ int maxsize;  // max number of rows (same as max number of columns)
+ int actualsize;  // actual size (rows, or columns) of the stored matrix
+ D* data;      // where the data contents of the matrix are stored
+ void allocate()   {
+   delete[] data;
+   data = new D [maxsize*maxsize];
+   };
+ matrix() {};                  // private ctor's
+ matrix(int newmaxsize) {matrix(newmaxsize,newmaxsize);};
+</PRE><P>
+public: 
+</P><P>void print()
+{
+	for(int i=0; i&lt;maxsize; i++){
+	for(int j=0; j&lt;maxsize; j++){
+</P><P>	cout &lt;&lt; getvalue(i,j) &lt;&lt; &quot;  &quot;;
+	}
+	cout &lt;&lt; endl;
+	}
+</P><P>};
+</P><P>
+D getvalue(int row, int column){return data[ row * maxsize + column ];};
+</P><PRE> matrix(int newmaxsize, int newactualsize)  { // the only public ctor
+   if (newmaxsize &lt;= 0) newmaxsize = 5;
+   maxsize = newmaxsize; 
+   if ((newactualsize &lt;= newmaxsize)&amp;&amp;(newactualsize&gt;0))
+     actualsize = newactualsize;
+   else 
+     actualsize = newmaxsize;
+   // since allocate() will first call delete[] on data:
+   data = 0;
+   allocate();
+   };
+ ~matrix() { delete[] data; };
+</PRE><PRE> void comparetoidentity()  {
+   int worstdiagonal = 0;
+   D maxunitydeviation = 0.0;
+   D currentunitydeviation;
+   for ( int i = 0; i &lt; actualsize; i++ )  {
+     currentunitydeviation = data[i*maxsize+i] - 1.;
+     if ( currentunitydeviation &lt; 0.0) currentunitydeviation *= -1.;
+     if ( currentunitydeviation &gt; maxunitydeviation )  {
+          maxunitydeviation = currentunitydeviation;
+          worstdiagonal = i;
+          }
+     }
+   int worstoffdiagonalrow = 0;
+   int worstoffdiagonalcolumn = 0;
+   D maxzerodeviation = 0.0;
+   D currentzerodeviation ;
+   for ( int i = 0; i &lt; actualsize; i++ )  {
+     for ( int j = 0; j &lt; actualsize; j++ )  {
+       if ( i == j ) continue;  // we look only at non-diagonal terms
+       currentzerodeviation = data[i*maxsize+j];
+       if ( currentzerodeviation &lt; 0.0) currentzerodeviation *= -1.0;
+       if ( currentzerodeviation &gt; maxzerodeviation )  {
+         maxzerodeviation = currentzerodeviation;
+         worstoffdiagonalrow = i;
+         worstoffdiagonalcolumn = j;
+         }
+</PRE><PRE>       }
+     }
+   cout &lt;&lt; &quot;Worst diagonal value deviation from unity: &quot;&lt;&lt; maxunitydeviation &lt;&lt; &quot; at row/column &quot; &lt;&lt; worstdiagonal &lt;&lt; endl;
+   cout &lt;&lt; &quot;Worst off-diagonal value deviation from zero: &quot; 
+      &lt;&lt; maxzerodeviation &lt;&lt; &quot; at row = &quot; &lt;&lt; worstoffdiagonalrow 
+      &lt;&lt; &quot;, column = &quot; &lt;&lt; worstoffdiagonalcolumn &lt;&lt; endl;
+ }
+</PRE><PRE> void settoproduct(matrix&amp; left, matrix&amp; right)  {
+   actualsize = left.getactualsize();
+   if ( maxsize &lt; left.getactualsize() )   {
+     maxsize = left.getactualsize();
+     allocate();
+     }
+   for ( int i = 0; i &lt; actualsize; i++ )
+     for ( int j = 0; j &lt; actualsize; j++ )  {
+       D sum = 0.0;
+       D leftvalue, rightvalue;
+       bool success;
+       for (int c = 0; c &lt; actualsize; c++)  {
+           left.getvalue(i,c,leftvalue,success);
+           right.getvalue(c,j,rightvalue,success);
+           sum += leftvalue * rightvalue;
+           }
+       setvalue(i,j,sum);
+       }
+   }
+</PRE><PRE> void copymatrix(matrix&amp;  source)  {
+   actualsize = source.getactualsize();
+   if ( maxsize &lt; source.getactualsize() )  {
+     maxsize = source.getactualsize();
+     allocate();
+     }
+   for ( int i = 0; i &lt; actualsize; i++ )
+     for ( int j = 0; j &lt; actualsize; j++ )  {
+       D value;
+       bool success;
+       source.getvalue(i,j,value,success);
+       data[i*maxsize+j] = value;
+       }
+   };
+</PRE><PRE> void setactualsize(int newactualsize) {
+   if ( newactualsize &gt; maxsize )
+     {
+       maxsize = newactualsize ; // * 2;  // wastes memory but saves
+                                     // time otherwise required for
+                                     // operation new[]
+       allocate();
+     }
+   if (newactualsize &gt;= 0) actualsize = newactualsize;
+   };
+</PRE><PRE> int getactualsize() { return actualsize; };
+</PRE><PRE> void getvalue(int row, int column, D&amp; returnvalue, bool&amp; success)   {
+   if ( (row&gt;=maxsize) || (column&gt;=maxsize) 
+     || (row&lt;0) || (column&lt;0) )
+     {  success = false;
+        return;    }
+   returnvalue = data[ row * maxsize + column ];
+   success = true;
+   };
+</PRE><PRE> bool setvalue(int row, int column, D newvalue)  {
+   if ( (row &gt;= maxsize) || (column &gt;= maxsize) 
+       || (row&lt;0) || (column&lt;0) ) return false;
+   data[ row * maxsize + column ] = newvalue;
+   return true;
+   };
+</PRE><PRE> void invert()  {
+   if (actualsize &lt;= 0) return;  // sanity check
+   if (actualsize == 1) return;  // must be of dimension &gt;= 2
+   for (int i=1; i &lt; actualsize; i++) data[i] /= data[0]; // normalize row 0
+   for (int i=1; i &lt; actualsize; i++)  { 
+     for (int j=i; j &lt; actualsize; j++)  { // do a column of L
+       D sum = 0.0;
+       for (int k = 0; k &lt; i; k++)  
+           sum += data[j*maxsize+k] * data[k*maxsize+i];
+       data[j*maxsize+i] -= sum;
+       }
+     if (i == actualsize-1) continue;
+     for (int j=i+1; j &lt; actualsize; j++)  {  // do a row of U
+       D sum = 0.0;
+       for (int k = 0; k &lt; i; k++)
+           sum += data[i*maxsize+k]*data[k*maxsize+j];
+       data[i*maxsize+j] = 
+          (data[i*maxsize+j]-sum) / data[i*maxsize+i];
+       }
+     }
+   for ( int i = 0; i &lt; actualsize; i++ )  // invert L
+     for ( int j = i; j &lt; actualsize; j++ )  {
+       D x = 1.0;
+       if ( i != j ) {
+         x = 0.0;
+         for ( int k = i; k &lt; j; k++ ) 
+             x -= data[j*maxsize+k]*data[k*maxsize+i];
+         }
+       data[j*maxsize+i] = x / data[j*maxsize+j];
+       }
+   for ( int i = 0; i &lt; actualsize; i++ )   // invert U
+     for ( int j = i; j &lt; actualsize; j++ )  {
+       if ( i == j ) continue;
+       D sum = 0.0;
+       for ( int k = i; k &lt; j; k++ )
+           sum += data[k*maxsize+j]*( (i==k) ? 1.0 : data[i*maxsize+k] );
+       data[i*maxsize+j] = -sum;
+       }
+   for ( int i = 0; i &lt; actualsize; i++ )   // final inversion
+     for ( int j = 0; j &lt; actualsize; j++ )  {
+       D sum = 0.0;
+       for ( int k = ((i&gt;j)?i:j); k &lt; actualsize; k++ )  
+           sum += ((j==k)?1.0:data[j*maxsize+k])*data[k*maxsize+i];
+       data[j*maxsize+i] = sum;
+       }
+   };
+</PRE><P>};
+</P><OL><LI>endif
+</LI></OL><P>using namespace std;
+</P><P>class Function
+{
+	private:
+	vector &lt;double&gt; wavelength;
+	vector &lt;double&gt; function;
+	vector &lt;double&gt; lambda;
+</P><P>	double RBF(double, double);
+	double sigma;
+	double width;
+	int SIZE;
+</P><P>	public:
+	void getData(const char*);
+	void findLambda(double);
+	void fix();
+</P><P>	double size(){return wavelength.size();}
+	double lat(int i){return lambda.at(i);}
+	double wat(int i){return wavelength.at(i);}
+	double fat(int i){return function.at(i);}
+	void wequals(int i, double value){wavelength.at(i)=value;}
+	void fequals(int i, double value){function.at(i)=value;}
+</P><P>	void eraseBeginning(int);
+	void erase(int);
+</P><P>	void print();
+	void print(double,double,double);
+	void printStore();
+</P><P>	double value(double);
+</P><P>};
+</P><P>double X(double j, double a, double h) {return a+j*h;}
+double H(double a,double b,double n) {return (b-a)/n;}
+</P><P>double integral (double a, double b, Function);
+</P><P>void runProgram(char*,char*,double,double);
+</P><P>double luminousFlux(Function, Function,double,double);
+</P><P>void sortData(char*, char*);
+void testData(char* data,double, char* output);
+</P><P>void brightness(double lux);
+</P><OL><LI>define MINI 200
+</LI><LI>define MAXI 800
+</LI><LI>define HCON 6.63e-34 
+</LI><LI>define CCON 2.99e8
+</LI><LI>define TURNOVER 0.125*2000
+</LI><LI>define CDEN 8e12
+</LI></OL><OL><LI>ifndef FILE
+</LI></OL><PRE>#define FILE &quot;foo.dat&quot;
+</PRE><OL><LI>endif
+</LI></OL><OL><LI>define N 1000
+</LI></OL><P>
+int main()
+{
+	//sortData(&quot;workingdata.dat&quot;,&quot;spectra.dat&quot;);
+	//testData(&quot;photopic.dat&quot;,0.7,&quot;output3.dat&quot;);
+	runProgram(&quot;scotopic.dat&quot;,&quot;spectra.dat&quot;,CDEN,TURNOVER);
+	return 0;
+}
+</P><P>void brightness(double lux)
+{
+	if(lux&lt;10e-5) cout &lt;&lt; &quot;invisible&quot; &lt;&lt; endl;
+	else if(lux&lt;10e-4) cout &lt;&lt; &quot;the light from Sirius, the brightest star in the night sky&quot; &lt;&lt; endl;
+	else if(lux&lt;0.002) cout &lt;&lt; &quot;total starlight with an overcast sky&quot; &lt;&lt; endl;
+	else if(lux&lt;0.01) cout &lt;&lt; &quot;a moonless clear night sky with airglow&quot; &lt;&lt; endl;
+	else if(lux&lt;0.27) cout &lt;&lt; &quot;a night sky with a quarter moon&quot; &lt;&lt; endl;
+	else if(lux&lt;1) cout &lt;&lt; &quot;a full moon on a clear night&quot; &lt;&lt; endl;
+	else if(lux&lt;3.4) cout &lt;&lt; &quot;a full moon overhead at tropical latitude&quot; &lt;&lt; endl;
+	else if(lux&lt;50) cout &lt;&lt; &quot;the dark limit of civil twilight under a clear sky&quot; &lt;&lt; endl;
+	else if(lux&lt;80) cout &lt;&lt; &quot;a family living room&quot; &lt;&lt; endl;
+	else if(lux&lt;100) cout &lt;&lt; &quot;a hallway/toilet&quot; &lt;&lt; endl;
+	else if(lux&lt;320) cout &lt;&lt; &quot;a very dark overcast day&quot; &lt;&lt; endl;
+	else if(lux&lt;1e3) cout &lt;&lt; &quot;office lighting or a sunrise/sunset&quot; &lt;&lt; endl;
+	else if(lux&lt;1e4) cout &lt;&lt; &quot;an overcast day&quot; &lt;&lt; endl;
+	else if(lux&lt;32e3) cout &lt;&lt; &quot;full daylight (not direct sun)&quot; &lt;&lt; endl;
+	else cout &lt;&lt; &quot;Direct sunlight &quot; &lt;&lt; endl;
+</P><P>}
+</P><P>void sortData(char* input, char* output)
+{
+	Function a;
+	a.getData(input);
+	double wMIN=a.wat(0), wMAX=a.fat(0), fMIN=a.wat(1), fMAX=a.fat(1);
+	a.eraseBeginning(4);
+	double xorigin=(a.wat(0)+a.wat(2))/2, yorigin=(a.fat(0)+a.fat(1))/2;
+	double xMAX=a.wat(1), yMAX=a.fat(2);
+	a.eraseBeginning(6);
+</P><P>	double yratio= (fMAX-fMIN)/(yMAX-yorigin);
+	double xratio= (wMAX-wMIN)/(xMAX-xorigin);
+</P><P>	for(int i=0; i&lt;a.size(); i++){
+	 a.wequals(i, wMIN+(a.wat(i)-xorigin)*xratio);
+	 a.fequals(i, fMIN+(a.fat(i)-yorigin)*yratio);
+	}
+</P><P>	int i;
+	a.fix();
+</P><P>	ofstream fout(output);
+</P><P>	if(!fout)
+	{cout &lt;&lt; &quot;Could not open file &quot; &lt;&lt; output &lt;&lt; &quot; program terminated.&quot; &lt;&lt; endl; fout.close(); return;}
+</P><P>	for(double i=0; i&lt;a.size() ; i++)
+	fout &lt;&lt; a.wat(i) &lt;&lt; endl &lt;&lt; a.fat(i) &lt;&lt; endl;
+</P><P>	fout.close();
+</P><P>}
+</P><P>void Function::eraseBeginning(int i)
+{
+	i/=2;
+	function.erase(function.begin(), function.begin()+i);
+	wavelength.erase(wavelength.begin(),wavelength.begin()+i);
+}
+</P><P>void runProgram(char* lumFile, char* specFile,double cden, double turnover )
+{
+	Function luminosity, spectra;
+</P><P>	cout &lt;&lt; &quot;Getting luminosity data...&quot; &lt;&lt; endl;
+	luminosity.getData(lumFile);
+	cout &lt;&lt; &quot;Calculating luminosity function...&quot; &lt;&lt; endl;
+	luminosity.findLambda(0.7);
+</P><P>	cout &lt;&lt; &quot;Getting spectral data...&quot; &lt;&lt; endl;
+	spectra.getData(specFile);
+	cout &lt;&lt; &quot;Calculating spectral function...&quot; &lt;&lt; endl;
+	spectra.findLambda(0.7);
+</P><P>	
+	cout &lt;&lt; &quot;Calculating luminous flux...&quot; &lt;&lt; endl;
+	double x=luminousFlux(luminosity,spectra,cden,turnover) ;
+</P><P>	cout 
+	&lt;&lt; &quot;Luminous Flux is:  &quot; &lt;&lt; x &lt;&lt; endl
+	&lt;&lt; &quot;This would be as bright as white paper under light conditions similar to &quot;; brightness(x);
+</P><P>	cout &lt;&lt; endl &lt;&lt; endl &lt;&lt; endl;
+}
+</P><P>
+void testData(char* data,double CONST, char* output)
+{
+	Function a;
+	a.getData(data);
+	a.findLambda(CONST);
+</P><P>	ofstream fout(output);
+</P><P>	if(!fout)
+	{cout &lt;&lt; &quot;Could not open file &quot; &lt;&lt; output &lt;&lt; &quot; program terminated.&quot; &lt;&lt; endl; fout.close(); return;}
+</P><P>	for(double i=MINI; i&lt;=MAXI ; i+=0.1)
+	fout &lt;&lt; i &lt;&lt; &quot;\t&quot; &lt;&lt; a.value(i) &lt;&lt; endl;
+</P><P>//	for(double i=0; i&lt;a.size() ; i++)
+//	cout &lt;&lt; a.wat(i) &lt;&lt; &quot;\t&quot; &lt;&lt; a.fat(i)&lt;&lt;&quot;\t&quot; &lt;&lt; a.lat(i)&lt;&lt; endl;
+</P><P>
+	fout.close();
+</P><P>}
+</P><P>
+double luminousFlux(Function x, Function y, double cden, double turnover)
+{
+	double sum1=0, sum2=0;
+	int a=350,b=750;
+	double h=H(a,b,N);
+</P><P>
+	for(double j=1; j&lt;=(N/2)-1;j++)
+	{sum1+=x.value(X(2*j,a,h))*y.value(X(2*j,a,h))/X(2*j,a,h);}
+</P><P>	for(double j=1; j&lt;=N/2; j++)
+	{sum2+=x.value(X(2*j-1,a,h))*y.value(X(2*j-1,a,h))/X(2*j-1,a,h);}
+</P><P>	return 683.002/(4*3.141)*HCON*CCON*turnover*cden*1e9*((h/3)* ( x.value(a)*y.value(a)/a+ 2*sum1 + 4*sum2 + x.value(b)*y.value(b)/b ))/integral(a,b,y);
+</P><P>
+}
+</P><P>double integral (double a, double b, Function func)
+{
+	double sum1=0, sum2=0;
+	double h=H(a,b,N);
+</P><P>	for(double j=1; j&lt;=(N/2)-1;j++)
+	{sum1+=func.value( X( 2*j , a , h ) );}
+</P><P>	for(double j=1; j&lt;=N/2; j++)
+	{sum2+=func.value( X( (2*j)-1 , a , h ) );}
+</P><P>	return (h/3)* ( func.value(a)+ 2*sum1 + 4*sum2 + func.value(b) );
+}
+</P><P>//.............................................................................................................
+</P><P>void Function::getData(const char* a)
+{
+	double num;	
+</P><P>	SIZE=200;
+</P><P>	ifstream fin(a);
+	if(!fin)
+	{cout &lt;&lt; &quot;Could not open file &quot; &lt;&lt; a &lt;&lt; &quot; program terminated.&quot; &lt;&lt; endl; fin.close(); return;}
+</P><P>	fin &gt;&gt; num;
+	for (int i=0; !fin.eof(); i++ ) 
+	{
+	if(!(i%2)){ wavelength.push_back(num); fin &gt;&gt; num;}
+	else { function.push_back(num); fin &gt;&gt; num;}
+	}
+</P><P>	fin.close();
+</P><P>	int total=wavelength.size();
+	vector &lt;double&gt; tempwavelength;
+	vector &lt;double&gt; tempfunction; 
+</P><P>	
+	if(total&gt;SIZE){
+	 for(int i=0; i&lt;wavelength.size(); i++) {
+	  if(i%(total/SIZE)==0){
+		tempwavelength.push_back(wavelength.at(i));
+		tempfunction.push_back(function.at(i));
+	}}
+	wavelength.clear(); function.clear();
+	for(int i=0; i&lt;tempwavelength.size(); i++) { 
+		wavelength.push_back(tempwavelength.at(i));
+		function.push_back(tempfunction.at(i));
+	}
+	}
+</P><P>	width=(wavelength.back()-wavelength.front())/wavelength.size();
+</P><P>}
+</P><P>void Function::print(double min, double max, double increment)
+{
+	for(double i=min; i&lt;=max ; i+=increment)
+	cout &lt;&lt; i &lt;&lt; &quot;\t&quot; &lt;&lt; value(i) &lt;&lt; endl;
+}
+</P><P>void Function::printStore()
+{
+	for(double i=0; i&lt;wavelength.size() ; i++)
+	cout &lt;&lt; wavelength.at(i) &lt;&lt; &quot;\t&quot; &lt;&lt; function.at(i) &lt;&lt; endl;
+</P><P>}
+</P><P>void Function::print()
+{
+	for(int i=0; i&lt;wavelength.size(); i++)
+	{
+		cout &lt;&lt; wavelength.at(i) &lt;&lt; &quot;\t&quot; &lt;&lt; function.at(i) &lt;&lt; endl;
+	}
+</P><P>}
+</P><P>double Function::RBF(double a, double b)
+{
+	return exp(-(a-b)*(a-b)/(2*sigma*sigma));
+	//return fabs(a-b);
+	//return 1/sqrt(1+sigma*(a-b)*(a-b));
+}
+</P><P>void Function::findLambda(double CONST)
+{	
+	sigma=width*CONST;
+</P><P>	int M=wavelength.size();
+</P><PRE> matrix &lt;double&gt; PHI(M,M);
+ matrix &lt;double&gt; lamb(M,1);
+ matrix &lt;double&gt; func(M,1);  
+</PRE><P>	for (int i=0; i&lt;M; i++) {
+	func.setvalue(i,1,function.at(i));
+	for (int j=0; j&lt;M; j++) {
+	PHI.setvalue(i,j,RBF(wavelength.at(i),wavelength.at(j)));
+</P><P>	}}
+</P><P>	PHI.invert(); lamb.settoproduct(PHI,func);
+</P><P>
+	double value;bool success;
+</P><P>	for(int i=0; i&lt;M; i++){lambda.push_back(lamb.getvalue(i,1));}
+}
+</P><P>double Function::value(double x)
+{
+	double sum=0;
+	for(int i=0; i&lt;wavelength.size(); i++) sum+=lambda.at(i)*RBF(x,wavelength.at(i));
+</P><P>	return sum;
+}
+</P><P>void Function::fix()
+{
+	for(int i=0; i&lt;wavelength.size(); i++){
+	 for(int j=0;j&lt;i; j++){
+		if(wavelength.at(i)==wavelength.at(j)) {wavelength.erase(wavelength.begin()+j); function.erase(function.begin()+j); j=j-1;}
+	}}
+</P><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2010.igem.org/Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode">http://2010.igem.org/Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Cambridge/ProjectBioluminescence/LightLevel/SourceCode&amp;oldid=39686" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2010.igem.org:Privacy_policy" title="2010.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2010.igem.org:General_disclaimer" title="2010.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

@@ -1,0 +1,123 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Tongji_Shanghai_js_jquery_appear_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Tongji Shanghai/js/jquery appear js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* jQuery.appear
+* <A rel="nofollow" class="external free" href="https://github.com/bas2k/jquery.appear/">https://github.com/bas2k/jquery.appear/</A>
+* <A rel="nofollow" class="external free" href="http://code.google.com/p/jquery-appear/">http://code.google.com/p/jquery-appear/</A>
+*
+* Copyright (c) 2009 Michael Hixson
+* Copyright (c) 2012 Alexander Brovikov
+* Licensed under the MIT license (<A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/mit-license.php">http://www.opensource.org/licenses/mit-license.php</A>)
+*/
+</PRE><P>(function($) {
+	$.fn.appear = function(fn, options) {
+</P><P>		var settings = $.extend({
+</P><P>			//arbitrary data to pass to fn
+			data: undefined,
+</P><P>			//call fn only on the first appear?
+			one: true,
+</P><P>			// X &amp; Y accuracy
+			accX: 0,
+			accY: 0
+</P><P>		}, options);
+</P><P>		return this.each(function() {
+</P><P>			var t = $(this);
+</P><P>			//whether the element is currently visible
+			t.appeared = false;
+</P><P>			if (!fn) {
+</P><P>				//trigger the custom event
+				t.trigger('appear', settings.data);
+				return;
+			}
+</P><P>			var w = $(window);
+</P><P>			//fires the appear event when appropriate
+			var check = function() {
+</P><P>				//is the element hidden?
+				if (!t.is(':visible')) {
+</P><P>					//it became hidden
+					t.appeared = false;
+					return;
+				}
+</P><P>				//is the element inside the visible window?
+				var a = w.scrollLeft();
+				var b = w.scrollTop();
+				var o = t.offset();
+				var x = o.left;
+				var y = o.top;
+</P><P>				var ax = settings.accX;
+				var ay = settings.accY;
+				var th = t.height();
+				var wh = w.height();
+				var tw = t.width();
+				var ww = w.width();
+</P><P>				if (y + th + ay &gt;= b &amp;&amp;
+					y &lt;= b + wh + ay &amp;&amp;
+					x + tw + ax &gt;= a &amp;&amp;
+					x &lt;= a + ww + ax) {
+</P><P>					//trigger the custom event
+					if (!t.appeared) t.trigger('appear', settings.data);
+</P><P>				} else {
+</P><P>					//it scrolled out of view
+					t.appeared = false;
+				}
+			};
+</P><P>			//create a modified fn with some additional logic
+			var modifiedFn = function() {
+</P><P>				//mark the element as visible
+				t.appeared = true;
+</P><P>				//is this supposed to happen only once?
+				if (settings.one) {
+</P><P>					//remove the check
+					w.unbind('scroll', check);
+					var i = $.inArray(check, $.fn.appear.checks);
+					if (i &gt;= 0) $.fn.appear.checks.splice(i, 1);
+				}
+</P><P>				//trigger the original fn
+				fn.apply(this, arguments);
+			};
+</P><P>			//bind the modified fn to the element
+			if (settings.one) t.one('appear', settings.data, modifiedFn);
+			else t.bind('appear', settings.data, modifiedFn);
+</P><P>			//check whenever the window scrolls
+			w.scroll(check);
+</P><P>			//check whenever the dom changes
+			$.fn.appear.checks.push(check);
+</P><P>			//check now
+			(check)();
+		});
+	};
+</P><P>	//keep a queue of appearance checks
+	$.extend($.fn.appear, {
+</P><P>		checks: [],
+		timeout: null,
+</P><P>		//process the queue
+		checkAll: function() {
+			var length = $.fn.appear.checks.length;
+			if (length &gt; 0) while (length--) ($.fn.appear.checks[length])();
+		},
+</P><P>		//check the queue asynchronously
+		run: function() {
+			if ($.fn.appear.timeout) clearTimeout($.fn.appear.timeout);
+			$.fn.appear.timeout = setTimeout($.fn.appear.checkAll, 20);
+		}
+	});
+</P><P>	//run checks when these methods are called
+	$.each(['append', 'prepend', 'after', 'before', 'attr',
+		'removeAttr', 'addClass', 'removeClass', 'toggleClass',
+		'remove', 'css', 'show', 'hide'], function(i, n) {
+		var old = $.fn[n];
+		if (old) {
+			$.fn[n] = function() {
+				var r = old.apply(this, arguments);
+				$.fn.appear.run();
+				return r;
+			}
+		}
+	});
+</P><P>})(jQuery);
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

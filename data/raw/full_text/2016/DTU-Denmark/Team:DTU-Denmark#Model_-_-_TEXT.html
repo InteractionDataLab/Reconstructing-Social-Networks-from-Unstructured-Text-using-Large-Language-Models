@@ -1,0 +1,246 @@
+Team:DTU-Denmark/Model
+New HTML template for the wiki
+☰
+⇦
+Jump to
+Project
+Wetlab
+Compute
+Team
+Outreach
+Description
+Proof of Concept
+Achievements
+Notebook
+Safety
+Parts
+Substrate
+Products
+Molecular Toolbox
+Interlab
+Codon Optimization
+Microfermenter
+Modeling
+Team Members
+Team Building
+Attributions
+Collaborations
+Practices
+Integrated Practices
+Biosensor
+Bootstrap Example
+Genome Scale Modeling
+What medium should I use to grow my Yarrowia? Which genes should I mutate to make it produce more beta-carotene? Let genome scale modeling(GSM) help you design your dream organism. Using a GSM of Yarrowia Lipolytica (Y.lipolytica), we explored how Y.lipolytica grows on different substrates and found out what genes need to be manipulated to optimize beta-carotene production.
+"I've always seen modeling as a stepping stone."
+Tyra Banks
+Overview
+"I've always seen modeling as a stepping stone."
+Tyra Banks
+Yarrowia lipolytica is a versatile organism. At the start of our project, there are two main production projects in the wetlab. We aimed to produce proinsulin as well as beta-carotene. The beta-carotene project was later shelved, due to problems with the biobricks and cloning. The modeling team, however, saw this as a challenge and adopted genome scale modeling to investigate Y. lipolytica.
+A genome-scale-model (GSM) is a representation of the metabolic network in a form that computers can understand and use to calculate the fluxes (rates of reactions) of the system.
+The GSM effort is motivated by future wetlab engineering promises. So if our team, or another, reinitiates the beta-carotene project, the computational support is already in place to guide the wetlab teams towards more optimal growth environment and strain design.
+We used GSM for two purposes:
+Explore how Y. lipolytica grows in different environments and identify optimal conditions for growth.
+Predict what genes can be amplified to enhance beta-carotene yield.
+Results
+We used the most recently published GSM for Y. lipolytica 5 , solved using Cameo 9 and Cobra Matlab.
+We  fulfilled purpose 1: using Phenotype Phase Planes (PHPP). We investigated different Carbon sources as substrates and identified lines of optimality (the optimal relationship between substrate and oxygen uptake rates). The simulation results are supported by the substrate screening experiments, adding the value of predicting the effect of substrate uptake rates on growth behaviour.
+We fulfilled purpose 2: using Flux Scanning based on Enforced Objective Flux (FSEOF) simulations. We identified the short list of genes that could be amplified to optimize beta-carotene production.
+The results will serve as excellent starting point and guidance for future genetic engineering efforts in the lab.
+Theory
+As annotated whole genome sequences become common, It is possible to reconstruct a genome scale representations of the metabolic network as a computational model. The GSM has information on what metabolites are in the cell, which reactions each metabolite takes part in, the stoichiometry of the reactions, reactions’ rate limits, reversabilities, charge balances, genes associations etc. Each organism has its own GSM, containing its specific metabolites, reactions and genes.
+The living organisms must abide by certain constraints or limitations, such as mass balance, limitation of nutrients in medium etc. The different types of constraints are explained in Price et al.'s paper from 2004 1 . These constraints can be modeled in GSM by setting balanced equations and limiting reaction rates (fluxes).
+Setting different constraints on the fluxes allow us to define different cultivation environments. We can set some fluxes to certain levels to simulate a specific environment, or gene manipulation, allowing us to simulate the Wild-Type’s (WT) and/or Mutant’s growth behaviour in that specific environment.
+We have algorithms from literatures which help us to perform these simulations. The algorithms are implemented in Cobrapy extension Cameo and Matlab’ Cobra toolbox, some functions are modified by our team to better suit our needs. The algorithms include FBA (flux balance analysis) based PHPP(PHenotype Phase Plane), and FSEOF (Flux scanning based on enforced objective flux). In the next sections, we will tell our story on how we used these algorithms to achieve our goals of exploring Y.lipolytica growth and predicting gene manipulations to achieve better beta-carotene yield.
+Using FBA to Calculate Steady-State Flux Distribution
+Most GSM problems are solved using the flux balance analysis (FBA).  It formulates a constraint based optimization problem from the constraints we defined for the GSM. If solved, FBA reveals the flux distribution within the metabolic network. FBA assumes the network is in steady-state, which means the concentration of metabolites are not changing and in balance. The other constraints are lower and upper bounds on feasible fluxes of various reactions. FBA is the groundstone for all the algorithms we used to conduct the GSM.
+Genome-Scale Modeling
+The following explains the mathematical basis for GSM. In short, a metabolic network can be modeled as linear equations and optimized by solving the corresponding linear program. The output is the set of reaction rates for all reactions in the network along with the set of shadow prices associated with the metabolites. Both play important roles in the subsequent phenotype phase plane analysis.
+A Simple Metabolic Network
+Consider a very simple metabolic network with two metabolites, \(A\) and \(B\), where \(A\) flows into the cell with rate \(r_1\), is converted into \(B\) with rate \(r_2\), which is then excreted from the cell with rate \(r_3\):
+$$          \begin{split} & \xrightarrow{r_1} A \\              A & \xrightarrow{r_2} B \\              B & \xrightarrow{r_3} \\          \end{split}      $$
+Under a steady-state assumption, i.e. where all metabolite levels are constant and no metabolite can be accumulated in the system, the formation and degradation rates for each metabolite must cancel each other. For the network above, this is equivalent to the following set of constraints:
+$$          \begin{split}              A:& \quad r_1 - r_2 = 0 \\              B:& \quad r_2 - r_3 = 0          \end{split}      $$
+The Linear Program
+Now, consider the full genome-scale model of Yarrowia lipolytica with \(M\) = 1683 metabolites and \(R\) = 1985 reactions.
+Let \(r = (r_1, ... , r_R)\) be the vector of the \(R\) reaction rates, and similarly let \(m = (m_1, ... ,m_M)\) be the vector of the \(M\) metabolites. The reaction of which the rate is to be maximized, for example the biomass function, is then denoted the objective function and can be expressed as,                $$           f(r) = r_{\text{obj}}       $$                Now, for \(m_i\), the equality constraint \(c_i\) can be expressed as a sum of all \(r_j\) weighted by the stoichiometric coefficients \(a_{ij}\), where \(a_{ij}\) = 0 for reactions that do not affect the concentration of the considered metabolite. Thus,                $$           c_i(r) = \sum\limits_{j=1}^R a_{ij}r_j       $$               Which is just a generalization of the constraints of the two-metabolite network presented in the previous section. In addition to the steady-state constraints on the metabolites, for each reaction rate, \(r_j\), there is a lower and an upper bound (\(l_j\) and \(u_j\)). These inequality constraints can be expressed as,            $$          \begin{split}              c_{j,l} &= r_j \geq l_j  \iff r_j - l_j \geq 0 \\              c_{j,u} &= r_j \leq u_j \iff -r_j + u_j \geq 0          \end{split}      $$            Having the objective function and the constraints well-stated, the linear program 6 can be formulated in standard form:            $$          \begin{split}              \max \quad & f(x) \\              s.t. \quad c_i &= 0 \quad \forall i \\              c_j &\geq 0 \quad \forall j          \end{split}      $$            Solving this program is equal to optimizing the genome-scale model. In order to accomplish that, it is necessary to define the so-called Lagrangian Function.
+Solution to FBA and Shadow Prices
+For each constraint \(c_i\) on the metabolite \(m_i\), let \(\lambda_i\) be the associated Lagrange multiplier 7 or shadow price, let \(\lambda = (\lambda_i,...,\lambda_M)\) and let \(c = (c_1,...,c_M, c_{M+1}...,c_{M+R})\). Now, define the Lagrangian function:              $$           \mathcal{L}(\lambda,r) = f(r) + \lambda^Tc(r)       $$              The solution to the linear program is then found by maximizing the gradient of the Lagrangian, \(\bigtriangledown \mathcal{L}(\lambda,c,r)\) , while satisfying all constraints, i.e. by solving the system,              $$           \begin{pmatrix}               \bigtriangledown \mathcal{L}(\lambda,r) \\               c(r)           \end{pmatrix}           =           \begin{pmatrix}               0 \\ 0           \end{pmatrix}       $$              Then, the output will consist of the set \((f(r),r,\lambda)\), i.e. the reaction rates (including the one corresponding to the objective function) and the shadow prices. In our case, the linear program was solved in COBRA, which uses a simplex algorithm by default. 8 The objective function and constraints were based on the most recent SBML model of Y. lipolytica. 5 REFERENCE Further mathematical details are omitted.
+Using Phenotype Phase Planes to Explore Growth and Production in Different Environments
+The Phenotype Phase Plane is a great way to explore target flux (e.g. growth rate or product secretion rate), as a function of two fluxes, in our case, carbon source uptake rate and oxygen uptake rate. This allows us to predict how Y. lipolytica grows using different Carbon(C) sources and different availability of the C source and oxygen. This kind of dual-variable (C and O2) flux investigation  is called Phenotype Phase Plane(PHPP) analysis, it predicts the growth rate (or product fluxes, depending on your goal) in different cultivation environments 2 . We can then find clues on how environment affects fluxes, and identify what conditions are favoured by Y. lipolytica. If we change the substrates in the medium to wastes, we can see how much growth behaviour changes.
+There are multiple feasible solutions to a FBA problem, Not all of these solution have a biological counterpart. However, there are regions in the solution space over which the rate of shadow prices are constant. These regions or phases have been shown to resemble real phenotypes 2 . For some uptake rate combinations, we have infeasible phenotype, this means this combination of uptake rates cannot satisfy the constraints, this maybe due to inability to satisfy ATP maintenance energy.
+We produced phenotype phase planes for Y. lipolytica using different carbon sources. This allow us to see what substrates paired with what oxygen level makes better growth.
+Adding Beta-Carotene Pathway into the GSM
+To model the insertion of the beta-carotene pathway, we introduced 2 more genes - crtYB and crtI, and they catalyze 4 new reactions. These reactions are introduced into the GSM as below: 3
+phytoeneSynthase (crtYB): 2.0 geranylgeranyl diphosphate < --> 2.0 diphosphate + 2.0 H+ + phytoene
+caroteneDesaturaseStep1 (crtI):  phytoene <--> 6.0 H+ + neurosporene
+caroteneDesturaseStep2 (crtI): neurosporene <--> lycopene + 2.0 H+
+lycopeneCyslase (crtYB): lycopene --> beta-carotene + 2.0 H+
+To be able to optimize beta-carotene product flux, we must define a sink, or demand reaction in the GSM, this is done by creating a boundary exchange reaction where beta-carotene is, in silico, secreted into extracellular space, this reaction is defined as:
+DM_bcarotene: beta-carotene →
+DM_bcarotene is then set consequently as objective function when optimizing for production flux.
+Using FSEOF to Identify Gene Amplification and Inhibition Targets to Optimize Yield
+Any organism will, by its evolutionary nature, maximize growth rate. As bioengineers however, we want a maximum of desired products while keeping a reasonable growth rate. Therefore we want an organism that is optimized for both growth rate and product yield. We do this by manipulating its genes, forcing product yield and growth rate to go hand-in-hand. In other words, we want an engineered strain that, in order to maximize its growth rate, it must also produce the desired product. This is called coupling of product yield to growth rate. In our study, we couple beta-carotene yield to growth rate, and find out what genes should be amplified, inhibited, or knocked out, to achieve this coupling. This can be done by manipulating the genes, changing the flux bounds of certain reactions, to force the overall flux distribution towards the optimal solution.
+We can also use constraints to reflect the effect of gene manipulation. As genes are defined and associated to reactions and metabolites in the GSM, we can simulate gene amplification, inhibition, and KOs, by giving the flux associated with that gene a value larger, smaller, or zero value, respectively.
+We used FSEOF to identify gene amplification targets.
+FSEOF is a technique to identify what fluxes increase, when beta-carotene flux is enforced to be a certain value. This is done, by incrementally increasing the beta-carotene production flux from zero towards its theoretical maximum, then under the constraints, optimize growth rate. As we increase the enforced production flux, and solve for the other fluxes, some of these fluxes will increase, while other will decrease. The assumption is, if we amplify the genes associated to the reactions whose fluxes increase, we can force the product and growth rate to couple. The FSEOF is introduced in Choi et al.'s paper from 2010 4 .
+Results and Discussion
+Phenotype Phase Plane
+Optimizing growth Rate on Different C sources
+This section’s phenotype phase planes (PHPPs) are produced by setting the growth rate as the objective function.  You can click on the individual graphs to enlarge them. We will compare the PHPPs for four carbon substrates, glucose, fructose, glycerol and oleic acid. The PHPPs are arranged so each column is a C substrate, and each row is a feature studied. The features, from top row to bottom, are growth rate, shadow prices regards to C substrate and shadow prices with regards to oxygen.
+Growth Rates
+Figure 1 Growth rate on Glucose
+Figure 2 Growth rate on Fructose
+Figure 3 Growth rate on Glycerol
+Figure 4 Growth rate on Oleic acid
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+Shadow Prices Regards to C Substrate
+Figure 5 shadow price on Glucose
+Figure 6 shadow price on Fructose
+Figure 7 shadow price on Glycerol
+Figure 8 shadow price on Oleic acid
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+Shadow Prices Regards to Oxygen
+Figure 9 shadow price on O2 - Glucose
+Figure 10 shadow price on O2 - Fructose
+Figure 11 shadow price on O2 - Glycerol
+Figure 12 shadow price on O2 - Oleic acid
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+The PHPP is produced for the following carbon sources: glucose, glycerol, fructose and oleic acid. Growth of Y. lipolytica is feasible on all. The results support the substrates screening experiments.
+From PHPP investigation, we propose the “line of optimal”, the best combination of C source and O2 uptake rate to support optimal growth for each substrate. This line is the brightest line through the plot, it represents the optimal oxygen  uptake rate for the given substrate uptake rate, and vice versa.
+It can be seen that Y. lipolytica grows best on simple sugars, like glucose and fructose, (Figure 1 and 2), indeed, the PHPPs for glucose and fructose are almost the same. Y. lipolytica can grow almost.anaerobically on simple sugars. Sugar substrates provide a stable PHPP, where there is a very large phase area, resisting substrate induced phenotypic change (Figure 5 and 6). We see large area on PHPP where O2 and sugar uptake rates affect the growth rate almost equally. A relatively small area where sugar level is low shows an decreased growth rate with increased O2 uptake. So if we want to keep the growth rate high, then we must not cross the line of optimality, beyond which we falls into the small region where O2 uptake rate is must be constrained by sugar uptake rate to keep growth high.
+Glycerol shows higher requirement for O2 and glycerol balance, and lessened ability to grow anaerobically (Figure 3). We see a narrower area where growth rate is affected equally by O2 and glycerol. We have more phases than simple sugar PHPP, showing phenotypic changes are more easily induced by substrate changes, the phases near the axes shows if we have either glycerol or O2 to be too quickly uptaken, we lose growth rate (Figure7 and 11). Balance of glycerol and O2 is very important for optimal growth. Indeed, the line of optimality has a higher gradient than that for simple sugar.
+Oleic acid shows very demanding media condition, where oleic acid uptake rate must be low, and O2 uptake rate must be high (Figure 4). We see a large infeasible region, and maximum growth rate in the total simulated conditions are about a half of the other C sources. However, this does means that for the PHPP regions where Carbon source is sparse, Oleic acid cna deliver a lot more growth than the other C sources, given we also have high O2 uptake rate. This property is promising and fits our vision of Yeastilizaiton, turning waste to value, conserving carbon sources (Figures 8 and 12).
+Theoretical Maximum Beta-Carotene Flux
+If we optimize beta-carotene solely, we will see no growth rate, this is infeasible in the lab, but this theoretical maximum production flux can help us decide if an organism is worth the effort to engineer it, if the theoretical maximum is too low, then we would not attempt using Y. lipolytica to produce beta-carotene at all. Luckily, it is not the case. Y. lipolytica shows excellent beta-carotene yield capacity.   These PHPPs are produced by setting the beta-carotene sink flux as the objective function.
+Beta-carotene production flux
+Figure 13 beta-carotene flux on Glucose
+Figure 14 beta-carotene flux on Fructose
+Figure 15 beta-carotene flux on Glycerol
+Figure 16 beta-carotene on Oleic acid
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+Shadow prices regards to C substrate
+Figure 17 shadow price on Glucose
+Figure 18 shadow price on Fructose
+Figure 19 shadow price on Glycerol
+Figure 20 shadow price on Oleic acid
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+Shadow prices regards to Oxygen
+Figure 21 shadow price on O2 - Glucose
+Figure 22 shadow price on O2 - Fructose
+Figure 23 shadow price on O2 - Glycerol
+Figure 24 shadow price on O2 - Oleic acid
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+×
+DESCRIPTION
+Compared to growth rate optimized PHPPs, the general changes are these: smaller optimal regions (smaller bright yellow area in Figures 13-15); more phase planes (Figures 17, 18, 21, 22) or steeper gradient of lines of optimality, leading to more equally divided areas for phase planes of opposite gradients (Figures 19, 23). The net change from growth rate optimized to production optimized PHPPs show less stability, meaning the production flux is more easily influenced by substrate uptake rates, and we have stricter requirements for oxygen and C substrate uptake rates to match up to stay on the line of optimality. We can take advantage of these trends, to design optimal chemostats or fed-batch strategies by forcing the substrate and oxygen uptake(fed rate) to stay on the line of optimality.
+The only substrate whose beta-carotene flux optimized PHPPs and growth rate optimized PHPPs remain very similar, without showing the mentioned trends, is oleic acid (Figures 16, 20, 24). Oleic acid’s stability in PHPP topology, independent of these two objective functions, implies it is a substrate that can make control of optimality simpler for both growth and beta-carotene production.
+Flux scanning based on enforced objective flux
+Using FSEOF, we simulated and found out what genes need to be amplified, using glycerol as sole C substrate. These genes are
+YALI0B16038g
+YALI0E06193g
+YALI0F05632g
+YALI0E23859g or YALI0E31064g or YALI0D08382g or YALI0A15125g or YALI0A21307g
+YALI0B08965g
+YALI0A12045g
+YALI0D17050g
+YALI0E02288g
+YALI0D25564g
+YALI0B01826g
+YALI0D06501g
+YALI0F12199g
+YALI0C01111g
+YALI0F04015g
+YALI0E05753g
+YALI0E23991g or YALI0E27874g
+YALI0A20108g
+YALI0D09867g
+YALI0B02852g
+YALI0E25652g
+YALI0E07073g
+crtI
+YALI0B22902g
+crtYB
+YALI0E14751g and YALI0D11110g
+YALI0D17930g
+YALI0B20020g or YALI0C06952g
+YALI0F12639g
+Amplifying anyone of these genes will potentially provide a significant rise in beta-carotene flux, these genes take part in the following reactions:
+phosphomevalonate kinase
+Demand beta_carotene
+isopentenyl-diphosphate D-isomerase
+lycopene cyclase
+geranyltranstransferase
+carotene desaturase step 1
+CO2 transport
+dimethylallyltranstransferase
+carotene desaturase step 2
+mevalonate pyrophoshate decarboxylase
+mevalonate kinase (UTP)
+phytoene synthase
+The next steps would be to bring the results to the wetlab, and validate their impacts.
+The code for this project can be found here .
+Attributions
+We would like to thank our supervisor Chris, and many other faculty members, researchers and PhD students for advice, trouble-shooting and tutorials. Every time we needed help, you are always there. A very special thank you goes out to Nikolaus for tirelessly tutoring us online and during Thursday's help desk sessions; Also to Julian for resolving  many puzzles of ours by fast emails; to Patrice, whose constant enthusiasm inspires us all, to you and Anders, who advised us and provided invaluable validation data. To Kristian, who helped James with GSM theories and Cameo setup; To Anne Sophie who gave us very helpful literature reviews; to Mikael who evaluated and supported our modeling strategy; to Vilhelm for introducing us to the support of BioBuilders alumni; and to the authors of our most influencing papers, Martin and Eduard, for detailedly explaining to us by emails about their work; and to all the helping people from DTU Biosustain's Slack forum, thank you very much. The modeling team would take this opportunity to also acknowledge the rest of the DTU BioBuilders, thank you for the many inspiring discussions, supporting words and actions. Thank you for making the iGEM experience much, much stronger than we could have ever modeled.
+References
+Price, N. D., Reed, J. L., & Palsson, B. O. (2004). Genome-scale models of microbial cells: Evaluating the consequences of constraints. Nature Reviews Microbiology, 2(11), 886–897. doi:10.1038/nrmicro1023
+Edwards, J. S., Ramakrishna, R., & Palsson, B. O. (2002). Characterizing the metabolic phenotype: A phenotype phase plane analysis. Biotechnology and Bioengineering, 77(1), 27–36. doi:10.1002/bit.10047
+JHU iGEM (2011). vitamin A. Retrieved from https://2011.igem.org/Team:Johns_Hopkins/Project/VitA
+Choi, H. S., Lee, S. Y., Kim, T. Y., & Woo, H. M. (2010). In silico identification of gene amplification targets for improvement of lycopene production. Applied and environmental microbiology, 76(10), 3097-3105.
+Kerkhoven, E. J., Pomraning, K. R., Baker, S. E., & Nielsen, J. (2016). Regulation of amino-acid metabolism controls flux to lipid accumulation in Yarrowia lipolytica. npj Systems Biology and Applications, 2, 16005.
+Murty, Katta G. "Linear programming." (1983).
+Mécanique Analytique sect. IV, 2 vols. Paris, 1811
+Dantzig, George (May 1987). "Origins of the simplex method"
+http://cameo.bio/
+Overview
+Theory
+Results and Discussion
+Attributions
+FIND US AT:
+DTU BIOBUILDERS
+DENMARK
+DTU - SØLTOFTS PLADS, BYGN. 221/002
+2800 KGS. LYNGBY
+E-mail:
+dtu-biobuilders-2016@googlegroups.com
+MAIN SPONSORS:

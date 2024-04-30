@@ -1,0 +1,201 @@
+Team:Tongji China/Programme
+Project
+Background
+Description
+Design
+Lab
+Wet Lab
+Experiment
+Protocol
+Notebook
+Dry Lab
+Programming
+Modeling
+Safety
+P. aeruginosa
+Light control
+Animal check in
+HP
+Education&Engagement
+Integrated
+Team
+Team members
+Collaborations
+Attributions
+Achievement
+Judging form
+Parts
+Interlab
+Capsule
+Programme
+Dry Lab
+Programming
+Phase 1. Get data from TCGA and preparation
+We get data from The Cancer Genome Atlas (TCGA)’s Genomic Data Commons (GDC) data portal which gives the information of colorectal cancer mutations.
+The Genomic Data Commons (GDC) provides the cancer research community with a unified data repository that enables data sharing across cancer genomic studies in support of precision medicine.
+Fig.Program.1 Web page of TCGA database in condition of colorectal cancer
+In the picture above, you can see a data table at the bottom right corner. The data table contains DNA changes, mutation types, consequences, affected cases in cohort, affected cases across the GDC, impact of the mutations and survival plot of overall mutations. Part of the table shows like below:
+Table.Programming.1 Part of the data table we get from the TCGA database containing information of mutations of colorectal cancer.
+The first column of the table tells us where and how the mutations (single nucleotide variations) occur. For example, "chr12:g.25245350C>T" means at the 25245350 site of chromosome 12, "C" is changed into "T" in this mutation. The second column of the table tells the types of the mutations. The types are substitution, deletion and insertion. We exclude the mutation data of intron and UTR, like the high-lighted record in the table. The third column of the table tells the consequences of the mutations. For the first line, the DNA change "chr12:g.25245350C>T" results in a missense mutation of gene "KRAS", and this mutation is already named "KRAS G12D". And the forth column of the data table, tells the rate of the certain mutation occurring among the colorectal cancer patients. For example, "60 / 537, 11.17%" means that among the 537 patients under research, 60 of them have that certain mutation (chr12:g.25245350C>T).
+We get the reference genome from Encyclopedia of DNA Elements (ENCODE) dataset, GRCh38_no_alt_analysis_set_GCA_000001405.15 in fasta format. And we also use the genome reference file ( set ENCSR425FOI ) from ENCODE dataset, containing features of genes in "Gene Transfer Format". Each line of this GTF file contains seqname, source, feature, start, end, score, strand, frame, and group of genes. A line in the GTF file shows like this: (The line is made into a table for easy looking.)
+Table.programming.2 An example line of the genome reference file in GTF format.
+We use the first column of the data table, the DNA change information of mutations, and the gene id of each mutation in the third column of the data table to find the correspondent lines in the GTF file which contain the same gene and are CDS featured, and the start and end sites of the CDS must enclose the mutation site. For example, for the DNA change “chr12:g.25245350C>T” of gene KRAS, we can find a line in the GTF file shows like below: (The line is made into a table for easy looking.)
+Table.programming.3 An example line of the genome reference file in GTF format.
+The line is for the gene KRAS and is CDs featured and its start site 25245274 is before the mutation site 25245350, and end 25245384 is after. Then we create a GFF file looking like below: (GFF format file also contains seqname, source, feature, start, end, score, strand, frame, and group of genes like GTF.)
+Table.programming.4 An example line of GFF format file we create.
+tsv2gff.py Click to see the Python script
+The first, fourth, fifth, seventh and eighth column of the GFF file separately tell the chromosome, start, end, strand and frame. And we put the information could be used later in the third (feature) column.
+Then we use the bedtools software to withdraw the DNA sequence from reference genome (GRCh38).
+Figure source: bedtools website
+We get a fasta file containing the normal DNA sequences of the CDS where occur the mutations of colorectal cancer we got from the TCGA GDC data portal by running the commands below:
+bedtools getfasta -fo ***.fasta \
+-fi GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta \
+-bed ***.gff \
+-s \
+-name
+The normal fasta file looks like below:
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+ATGACTGAATATAAACTTGT
+GGTAGTTGGAGCTGGTGGCG
+TAGGCAAGAGTGCCT TGACGA
+TACAGCTAATTCAGAATCAT
+TTTGTGGACGAATATGATCC
+AACAATAGAG
+nor2snv.py Click to see the Python script
+Phase 2. Make Peptide Windows
+Then we translate the “mutated fasta file” into amino acid sequences and make slide windows (length of 8 to 14aa) around the mutated sites.
+Fig.programming.3 making slide windows around the mutation sites length of 8aa to 14aa.
+Then we get a series of amino acid fasta files:
+Windows of the chr12:g.25245350C>T mutation of 8aa:
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+KLVVVGAD
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+LVVVGADG
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VVVGADGV
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VVGADGVG
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VGADGVGK
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+GADGVGKS
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+ADGVGKSA
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+DGVGKSAL
+......
+Windows of the chr12:g.25245350C>T mutation of 9aa:
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+YKLVVVGAD
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+KLVVVGADG
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+LVVVGADGV
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VVVGADGVG
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VVGADGVGK
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VGADGVGKS
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+GADGVGKSA
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+ADGVGKSAL
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+DGVGKSALT
+……
+Windows of the chr12:g.25245350C>T mutation of 14aa:
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+MTEYKLVVVGADGV
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+TEYKLVVVGADGVG
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+EYKLVVVGADGVGK
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+YKLVVVGADGVGKS
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+KLVVVGADGVGKSA
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+LVVVGADGVGKSAL
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VVVGADGVGKSALT
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VVGADGVGKSALTI
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+VGADGVGKSALTIQ
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+GADGVGKSALTIQL
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+ADGVGKSALTIQLI
+>chr12:g.25245350C>T|KRAS|25245274|25245384|-|0(-)
+DGVGKSALTIQLIQ
+......
+mkfrm.py Click to see the Python script
+Phase 3. Test MHC-I Affinity
+Then we use NetMHC to predict these oligopeptides for immunogenicity. We download the software of NetMHC method to run at our own site, with the same functionality of the NetMHC 4.0 Sever. We run the peptides separately by allele type and length of peptides, and one of the command lines looks like this :
+netMHC -l 8 -a HLA-A0101 aa_len8.fasta -s > len8_HLA-A0101.txt
+This line means we use the 8 aa length peptides and set the allele type as "HLA-A0101". Then we choose all the HLA supertype representatives of the allele types the netMHC Server provides to run the peptides of all lengths. The HLA supertype representatives are selected by the netMHC Sever as below :
+HLA-A0101
+HLA-A*01:01 (A1)
+HLA supertype representative
+HLA-A0201
+HLA-A*02:01 (A2)
+HLA supertype representative
+HLA-A0301
+HLA-A*03:01 (A3)
+HLA supertype representative
+HLA-A2402
+HLA-A*24:02 (A24)
+HLA supertype representative
+HLA-A2601
+HLA-A*26:01 (A26)
+HLA supertype representative
+HLA-B0702
+HLA-B*07:02 (B7)
+HLA supertype representative
+HLA-B0801
+HLA-B*08:01 (B8)
+HLA supertype representative
+HLA-B2705
+HLA-B*27:05 (B27)
+HLA supertype representative
+HLA-B3901
+HLA-B*39:01 (B39)
+HLA supertype representative
+HLA-B4001
+HLA-B*40:01 (B44)
+HLA supertype representative
+HLA-B5801
+HLA-B*58:01 (B58)
+HLA supertype representative
+HLA-B1501
+HLA-B*15:01 (B62)
+HLA supertype representative
+Allele is dependent on the source of our sequence, the race of the samples, and to which MHC-I molecule or molecules the potential antigen is mostly likely to bind. Then we submit and run. You can download our files below.
+Output files:
+length-8-wb.txt    length-9-sb.txt   length-9-wb.txt    length-10-sb.txt
+length-10-wb.txt length-11-sb.txt length-11-wb.txt length-12-sb.txt
+length-12-wb.txt length-13-sb.txt length-13-wb.txt length-14-sb.txt
+length-14-wb.txt
+We choose 4 peptides each of which is the strongest binding peptides to MHC-I molecule of 10, 11, 12, 13 aa long type:
+The strongest of 10 aa long peptides:
+The strongest of 11 aa long peptides:
+The strongest of 12 aa long peptides:
+The strongest of 13 aa long peptides:
+Here we see, the lower the number of Affinity is, the easier for the oligopeptide to bind to certain MHC-I molecule(s). And the software itself has filtered the results for us. Generally speaking, peptides marked as "SB (strong binding)" are the ones we want most, and those marked as "WB (weak binding)" are the second-best. Due to the plentifulness of our peptide source, we don't have to make do with second best and will only adopt "SB (strong binding)" ones.
+Like this, we have selected possible antigen peptides for colorectal cancer in DRY LAB to be tested in the other part of our project—the WET LAB .
+PHASE 4. Improvement
+# Further experiment proof
+However, our programming workflow is not that suitable for individual therapy. Nowadays, it's easy to test the MHC allele type of a person. Considering individual therapy, we can test the allele of a colorectal cancer patient, and get the sequencing data of the cancer cell and blood from the patient. Then we can do the sequence alignment of the two types of data to find the mutation sites of that certain patient. Using this workflow we built up, we can make multiple peptides around the mutation sites of the patient. With determining of their allele type, we can choose a certain allele suitable for that certain patient. Even more, we can use the model we built up to predict which mutation site could product the strongest biding peptide to the MHC-I molecule.
+Acknowledge:
+National Cancer Institute (NCI)
+The Cancer Genome Atlas (TCGA)
+The Genomic Data Commons (GDC) data portal
+Encyclopedia of DNA Elements (ENCODE)
+NetMHC
+Contact
+College of Life Science and Technology
+Tongji university
+No.1239, Yangpu District, Shanghai, China
+Email: tongjiigem2018@126.com
+Copyright © 2018 Tongji_China

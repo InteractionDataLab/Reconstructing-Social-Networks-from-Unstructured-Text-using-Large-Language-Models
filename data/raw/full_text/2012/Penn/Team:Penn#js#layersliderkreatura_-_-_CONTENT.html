@@ -1,0 +1,953 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Penn_js_layersliderkreatura"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Penn/js/layersliderkreatura">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Penn/js/layersliderkreatura&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Penn/js/layersliderkreatura&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Penn/js/layersliderkreatura&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Penn/js/layersliderkreatura" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Penn/js/layersliderkreatura</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>(function($) {
+</P><P>	$.fn.layerSlider = function( options ){
+</P><P>		// Initializing
+</P><P>		if( (typeof(options)).match('object|undefined') ){
+			return this.each(function(i){
+				new layerSlider(this, options);
+			});
+		}else{
+			if( options == 'data' ){
+				var lsData = $(this).data('LayerSlider');
+				if( lsData ){
+					return lsData;
+				}
+			}else{
+				return this.each(function(i){
+</P><P>					// Control functions: prev, next, start, stop &amp; change
+</P><P>					var lsData = $(this).data('LayerSlider');
+					if( lsData ){
+						if( !lsData.g.isAnimating ){
+							if( typeof(options) == 'number' ){
+								if( options &gt; 0 &amp;&amp; options &lt; lsData.g.layersNum + 1 &amp;&amp; options != lsData.g.curLayerIndex ){
+									lsData.change(options);
+								}						
+							}else{
+								switch(options){
+									case 'prev':
+										lsData.o.cbPrev();
+										lsData.prev('clicked');
+										break;
+									case 'next':
+										lsData.o.cbNext();
+										lsData.next('clicked');
+										break;
+									case 'start':
+										if( !lsData.g.autoSlideshow ){
+											lsData.o.cbStart();
+											lsData.g.originalAutoSlideshow = true;
+											lsData.start();
+										}							
+										break;
+								}
+							}
+						}
+						if( ( lsData.g.autoSlideshow || ( !lsData.g.autoSlideshow &amp;&amp; lsData.g.originalAutoSlideshow ) ) &amp;&amp; options == 'stop' ){
+							lsData.o.cbStop();
+							lsData.g.originalAutoSlideshow = false;
+							lsData.g.curLayer.find('iframe[src*=&quot;www.youtu&quot;], iframe[src*=&quot;player.vimeo&quot;]').each(function(){
+</P><P>								// Clearing videoTimeouts
+</P><P>								clearTimeout( $(this).data( 'videoTimer') );
+							});
+</P><P>							lsData.stop();
+						}
+					}
+				});				
+			}
+		}
+	};
+</P><P>	// LayerSlider methods
+</P><P>	var layerSlider = function(el, options) {
+</P><P>		var ls = this;
+		ls.$el = $(el).addClass('ls-container');
+		ls.$el.data('LayerSlider', ls);
+</P><P>		ls.init = function(){
+</P><P>			// Setting options (user settings) and global (not modificable) parameters
+</P><P>			ls.o = $.extend({},layerSlider.options, options);
+			ls.g = $.extend({},layerSlider.global);
+</P><P>			// REPLACED FEATURE: BUGFIX v1.6 if there is only ONE layer, duplicating it
+</P><P>/*			
+			if( $(el).find('.ls-layer').length == 1 ){
+				$(el).find('.ls-layer:eq(0)').clone().appendTo( $(el) );
+			}
+</P><UL><LI>/
+</LI></UL><P>			// REPLACED FEATURE v2.0 If there is only ONE layer, instead of duplicating it, turning off slideshow and loops, hiding all controls, etc.
+</P><P>			if( $(el).find('.ls-layer').length == 1 ){
+				ls.o.autoStart = false;
+				ls.o.navPrevNext = false;
+				ls.o.navStartStop = false;
+				ls.o.navButtons	 = false;
+				ls.o.loops = 0;
+				ls.o.forceLoopNum = false;
+				ls.o.autoPauseSlideshow	= true;
+				ls.o.firstLayer = 1;
+			}			
+</P><P>			// Original width
+</P><P>			ls.g.sliderOriginalWidth = $(el)[0].style.width;
+</P><P>			// Storing unique settings of layers and sublayers into object.data
+</P><P>			$(el).find('.ls-layer, *[class*=&quot;ls-s&quot;]').each(function(){
+</P><P>				if( $(this).attr('rel') || $(this).attr('style') ){
+					if( $(this).attr('rel') ){
+						var params = $(this).attr('rel').toLowerCase().split(';');
+					}else{
+						var params = $(this).attr('style').toLowerCase().split(';');						
+					}
+					for(x=0;x&lt;params.length;x++){
+						param = params[x].split(':');
+						if( param[0].indexOf('easing') != -1 ){
+							param[1] = ls.ieEasing( param[1] );
+						}
+						$(this).data( $.trim(param[0]), $.trim(param[1]) );
+					}
+				}
+</P><P>				// NEW FEATURE v1.7 making the slider responsive - we have to use style.left instead of jQuery's .css('left') function!
+</P><P>				$(this).data( 'originalLeft', $(this)[0].style.left );
+				$(this).data( 'originalTop', $(this)[0].style.top );
+			});
+</P><P>			// NEW FEATURE v2.0 linkTo
+</P><P>			$(el).find('*[class*=&quot;ls-linkto-&quot;]').each(function(){
+				var lClasses = $(this).attr('class').split(' ');
+				for( var ll=0; ll&lt;lClasses.length; ll++ ){
+					if( lClasses[ll].indexOf('ls-linkto-') != -1 ){
+						var linkTo = parseInt( lClasses[ll].split('ls-linkto-')[1] );
+						$(this).click(function(e){
+							e.preventDefault();
+							$(el).layerSlider( linkTo );
+						});
+					}
+				}
+			});
+</P><P>			// Setting variables
+</P><P>			ls.g.layersNum = $(el).find('.ls-layer').length;
+			ls.o.firstLayer = ls.o.firstLayer &lt; ls.g.layersNum + 1 ? ls.o.firstLayer : 1;
+			ls.o.firstLayer = ls.o.firstLayer &lt; 1 ? 1 : ls.o.firstLayer;
+</P><P>			// NEW FEATURE v2.0 loops
+</P><P>			ls.g.nextLoop = 1;
+</P><P>			if( ls.o.animateFirstLayer ){
+				ls.g.nextLoop = 0;
+			}
+</P><P>			// NEW FEATURE v2.0 videoPreview
+</P><P>			// Youtube videos
+</P><P>			$(el).find('iframe[src*=&quot;www.youtu&quot;]').each(function(){
+				if( $(this).parent('[class*=&quot;ls-s&quot;]') ){
+</P><P>					var iframe = $(this);
+</P><P>					// Getting thumbnail
+</P><P>					$.getJSON('<A href="http://gdata.youtube.com/feeds/api/videos/'" class="external free" rel="nofollow">http://gdata.youtube.com/feeds/api/videos/'</A> + $(this).attr('src').split('embed/')[1].split('?')[0] + '?v=2&amp;alt=json&amp;callback=?', function(data) {
+</P><P>						iframe.data( 'videoDuration', parseInt(data['entry']['media$group']['yt$duration']['seconds']) * 1000 );
+					});
+</P>
+					var vpContainer = $('<DIV>').addClass('ls-vpcontainer').appendTo( $(this).parent() );
+<P>					$('&lt;img&gt;').appendTo( vpContainer ).addClass('ls-videopreview').attr('src', '<A href="http://img.youtube.com/vi/'" class="external free" rel="nofollow">http://img.youtube.com/vi/'</A> + $(this).attr('src').split('embed/')[1].split('?')[0] + '/' + ls.o.youtubePreview );
+</P>
+					$('<DIV>').appendTo( vpContainer ).addClass('ls-playvideo');
+<P>					$(this).parent().css({
+						width : $(this).width(),
+						height : $(this).height()
+					}).click(function(){
+</P><P>						ls.g.isAnimating = true;
+</P><P>						if( ls.g.paused ){
+							if( ls.o.autoPauseSlideshow != false ){
+								ls.g.paused = false;								
+							}
+							ls.g.originalAutoSlideshow = true;
+						}else{
+							ls.g.originalAutoSlideshow = ls.g.autoSlideshow;
+						}
+</P><P>						if( ls.o.autoPauseSlideshow != false ){
+							ls.stop();
+						}
+</P><P>						ls.g.pausedByVideo = true;
+</P><P>						$(this).find('iframe').attr('src', $(this).find('iframe').data('videoSrc') );
+						$(this).find('.ls-vpcontainer').delay(ls.g.v.d).fadeOut(ls.g.v.fo, function(){							
+							if( ls.o.autoPauseSlideshow == 'auto' &amp;&amp; ls.g.originalAutoSlideshow == true ){
+								var videoTimer = setTimeout(function() {
+										ls.start();
+								}, iframe.data( 'videoDuration') - ls.g.v.d );
+								iframe.data( 'videoTimer', videoTimer );
+							}
+							ls.g.isAnimating = false;
+						});
+					});
+</P><P>					var sep = '&amp;';
+</P><P>					if( $(this).attr('src').indexOf('?') == -1 ){
+						sep = '?';
+					}
+</P><P>					$(this).data( 'videoSrc', $(this).attr('src') + sep + 'autoplay=1' );
+					$(this).attr('src',<I>);</I>
+				}
+			});
+</P><P>			// Vimeo videos
+</P><P>			$(el).find('iframe[src*=&quot;player.vimeo&quot;]').each(function(){
+				if( $(this).parent('[class*=&quot;ls-s&quot;]') ){
+</P><P>					var iframe = $(this);
+</P><P>					// Getting thumbnail
+</P>
+					var vpContainer = $('<DIV>').addClass('ls-vpcontainer').appendTo( $(this).parent() );
+<P>					$.getJSON('<A href="http://vimeo.com/api/v2/video/'+" class="external free" rel="nofollow">http://vimeo.com/api/v2/video/'+</A> ( $(this).attr('src').split('video/')[1].split('?')[0] ) +'.json?callback=?', function(data){
+</P><P>						$('&lt;img&gt;').appendTo( vpContainer ).addClass('ls-videopreview').attr('src', data[0]['thumbnail_large'] );						
+						iframe.data( 'videoDuration', parseInt( data[0]['duration'] ) * 1000 );
+</P>
+						$('<DIV>').appendTo( vpContainer ).addClass('ls-playvideo');						
+<P>					});
+</P><P>
+					$(this).parent().css({
+						width : $(this).width(),
+						height : $(this).height()
+					}).click(function(){
+</P><P>						ls.g.isAnimating = true;
+</P><P>						if( ls.g.paused ){
+							if( ls.o.autoPauseSlideshow != false ){
+								ls.g.paused = false;								
+							}
+							ls.g.originalAutoSlideshow = true;
+						}else{
+							ls.g.originalAutoSlideshow = ls.g.autoSlideshow;
+						}
+</P><P>						if( ls.o.autoPauseSlideshow != false ){
+							ls.stop();
+						}
+</P><P>						ls.g.pausedByVideo = true;
+</P><P>						$(this).find('iframe').attr('src', $(this).find('iframe').data('videoSrc') );
+						$(this).find('.ls-vpcontainer').delay(ls.g.v.d).fadeOut(ls.g.v.fo, function(){
+							if( ls.o.autoPauseSlideshow == 'auto' &amp;&amp; ls.g.originalAutoSlideshow == true ){
+								var videoTimer = setTimeout(function() {
+										ls.start();
+								}, iframe.data( 'videoDuration') - ls.g.v.d );
+								iframe.data( 'videoTimer', videoTimer );
+							}
+							ls.g.isAnimating = false;
+						});
+					});
+</P><P>					var sep = '&amp;';
+</P><P>					if( $(this).attr('src').indexOf('?') == -1 ){
+						sep = '?';
+					}
+</P><P>					$(this).data( 'videoSrc', $(this).attr('src') + sep + 'autoplay=1' );
+					$(this).attr('src',<I>);</I>
+				}
+			});
+</P><P>			// NEW FEATURE v1.7 animating first layer
+</P><P>			if( ls.o.animateFirstLayer ){
+				ls.o.firstLayer = ls.o.firstLayer - 1 == 0 ? ls.g.layersNum : ls.o.firstLayer-1;
+			}
+</P><P>			ls.g.curLayerIndex = ls.o.firstLayer;
+			ls.g.curLayer = $(el).find('.ls-layer:eq('+(ls.g.curLayerIndex-1)+')');				
+</P><P>			// NEW FEATURE v1.7 making the slider responsive
+</P><P>			ls.g.sliderWidth = function(){
+				return $(el).width();
+			}
+</P><P>			ls.g.sliderHeight = function(){
+				return $(el).height();
+			}
+</P><P>			// NEW FEATURE v1.7 added yourLogo
+</P><P>			if( ls.o.yourLogo ){
+				var yourLogo = $('&lt;img&gt;').appendTo($(el)).attr( 'src', ls.o.yourLogo ).attr('style', ls.o.yourLogoStyle );
+</P><P>				// NEW FEATURES v1.8 added yourLogoLink &amp; yourLogoTarget
+</P><P>				if( ls.o.yourLogoLink != false ){
+					$('&lt;a&gt;').appendTo($(el)).attr( 'href', ls.o.yourLogoLink ).attr('target', ls.o.yourLogoTarget ).css({
+						textDecoration : 'none',
+						outline : 'none'
+					}).append( yourLogo );
+				}
+			}
+</P><P>			// Moving all layers to .ls-inner container
+</P>
+			$(el).find('.ls-layer').wrapAll('');
+<P>			// Adding styles
+</P><P>			if( $(el).css('position') == 'static' ){
+				$(el).css('position','relative');
+			}
+</P><P>			$(el).find('.ls-inner').css({
+				backgroundColor : ls.o.globalBGColor
+			});
+</P><P>			if( ls.o.globalBGImage ){
+				$(el).find('.ls-inner').css({
+					backgroundImage : 'url('+ls.o.globalBGImage+')'
+				});
+			}
+</P><P>			$(el).find('.ls-bg').css({
+				marginLeft : - ( ls.g.sliderWidth() / 2 )+'px',
+				marginTop : - ( ls.g.sliderHeight() / 2 )+'px'
+			});
+</P><P>			// Creating navigation
+</P><P>			if( ls.o.navPrevNext ){
+</P><P>				$('&lt;a class=&quot;ls-nav-prev&quot; href=&quot;#&quot; /&gt;').click(function(e){
+					e.preventDefault();
+					$(el).layerSlider('prev');
+				}).appendTo($(el));
+</P><P>				$('&lt;a class=&quot;ls-nav-next&quot; href=&quot;#&quot; /&gt;').click(function(e){
+					e.preventDefault();
+					$(el).layerSlider('next');
+				}).appendTo($(el));					
+			}
+</P><P>			if( ls.o.navStartStop || ls.o.navButtons ){
+</P><P>				$('&lt;div class=&quot;ls-bottom-nav-wrapper&quot; /&gt;').appendTo( $(el) );
+</P><P>				if( ls.o.navButtons ){
+</P><P>					$('&lt;span class=&quot;ls-bottom-slidebuttons&quot; /&gt;').appendTo( $(el).find('.ls-bottom-nav-wrapper') );
+</P><P>					for(x=1;x&lt;ls.g.layersNum+1;x++){
+</P><P>						$('&lt;a href=&quot;#&quot;&gt;&lt;/a&gt;').appendTo( $(el).find('.ls-bottom-slidebuttons') ).click(function(e){
+							e.preventDefault();
+							$(el).layerSlider( ($(this).index() + 1) );
+						});
+					}
+					$(el).find('.ls-bottom-slidebuttons a:eq('+(ls.o.firstLayer-1)+')').addClass('ls-nav-active');
+				}
+</P><P>				if( ls.o.navStartStop ){
+</P><P>					$('&lt;a class=&quot;ls-nav-start&quot; href=&quot;#&quot; /&gt;').click(function(e){
+						e.preventDefault();
+						$(el).layerSlider('start');
+					}).prependTo( $(el).find('.ls-bottom-nav-wrapper') );
+</P><P>					$('&lt;a class=&quot;ls-nav-stop&quot; href=&quot;#&quot; /&gt;').click(function(e){
+						e.preventDefault();
+						$(el).layerSlider('stop');
+					}).appendTo( $(el).find('.ls-bottom-nav-wrapper') );
+				}else{
+</P><P>					$('&lt;span class=&quot;ls-nav-sides ls-nav-sideleft&quot; /&gt;').prependTo( $(el).find('.ls-bottom-nav-wrapper') );
+					$('&lt;span class=&quot;ls-nav-sides ls-nav-sideright&quot; /&gt;').appendTo( $(el).find('.ls-bottom-nav-wrapper') );						
+				}
+			}
+</P><P>			// Adding keyboard navigation if turned on and if number of layers &gt; 1
+</P><P>			if( ls.o.keybNav &amp;&amp; $(el).find('.ls-layer').length &gt; 1 ){
+</P><P>				$('body').bind('keydown',function(e){ 
+					if( !ls.g.isAnimating ){
+						if( e.which == 37 ){
+							ls.o.cbPrev();							
+							ls.prev('clicked');
+						}else if( e.which == 39 ){
+							ls.o.cbNext();							
+							ls.next('clicked');
+						}
+					}
+				});
+			}
+</P><P>			// Adding touch-control navigation if number of layers &gt; 1
+</P><P>			if('ontouchstart' in window &amp;&amp; $(el).find('.ls-layer').length &gt; 1 &amp;&amp; ls.o.touchNav ){
+</P><P>			   $(el).bind('touchstart', function( e ) {
+					var t = e.touches ? e.touches : e.originalEvent.touches;
+					if( t.length == 1 ){
+						ls.g.touchStartX = ls.g.touchEndX = t[0].clientX;
+					}
+			    });
+</P><P>			   $(el).bind('touchmove', function( e ) {
+					var t = e.touches ? e.touches : e.originalEvent.touches;
+					if( t.length == 1 ){
+						ls.g.touchEndX = t[0].clientX;
+					}
+					if( Math.abs( ls.g.touchStartX - ls.g.touchEndX ) &gt; 45 ){
+						e.preventDefault();							
+					}
+			    });
+</P><P>				$(el).bind('touchend',function( e ){
+					if( Math.abs( ls.g.touchStartX - ls.g.touchEndX ) &gt; 45 ){
+						if( ls.g.touchStartX - ls.g.touchEndX &gt; 0 ){
+							ls.o.cbNext();
+							$(el).layerSlider('next');
+						}else{
+							ls.o.cbPrev();
+							$(el).layerSlider('prev');
+						}
+					}
+				});
+			}
+</P><P>			// Feature: pauseOnHover (if number of layers &gt; 1)
+</P><P>			if( ls.o.pauseOnHover == true &amp;&amp; $(el).find('.ls-layer').length &gt; 1 ){
+</P><P>				// BUGFIX v1.6 stop was not working because of pause on hover
+</P><P>				$(el).find('.ls-inner').hover(
+					function(){
+</P><P>						// Calling cbPause callback function
+</P><P>						ls.o.cbPause();
+						if( ls.g.autoSlideshow ){
+							ls.stop();
+							ls.g.paused = true;
+						}
+					},
+					function(){
+						if( ls.g.paused == true ){
+							ls.start();
+							ls.g.paused = false;
+						}						
+					}
+				);
+			}
+</P><P>			// Applying skin
+</P><P>			$(el).addClass('ls-'+ls.o.skin);
+			var skinStyle = ls.o.skinsPath+ls.o.skin+'/skin?action=raw&amp;ctype=text/javascript';
+</P><P>			if (document.createStyleSheet){
+				document.createStyleSheet(skinStyle);
+			}else{
+				$('&lt;link rel=&quot;stylesheet&quot; href=&quot;'+skinStyle+'&quot; type=&quot;text/css&quot; /&gt;').appendTo( $('head') );
+			}				
+</P><P>			// NEW FEATURE v1.7 animating first layer
+</P><P>			if( ls.o.animateFirstLayer == true ){
+				if( ls.o.autoStart ){
+					ls.g.autoSlideshow = true;
+				}
+				ls.next();
+			}else{
+</P><P>				ls.imgPreload(ls.g.curLayer,function(){
+					ls.g.curLayer.fadeIn(1000, function(){
+</P><P>						$(this).addClass('ls-active');
+</P><P>						// NEW FEATURE v2.0 autoPlayVideos
+</P><P>						if( ls.o.autoPlayVideos ){
+							$(this).delay( $(this).data('delayin') + 25 ).queue(function(){
+								$(this).find('.ls-videopreview').click();
+								$(this).dequeue();
+							});							
+						}
+					});
+</P><P>					// If autoStart is true
+</P><P>					if( ls.o.autoStart ){
+						ls.start();
+					}
+				});
+			}
+</P><P>			// NEW FEATURE v1.7 added window resize function for make responsive layout better
+</P><P>			$(window).resize(function() {
+				ls.makeResponsive( ls.g.curLayer, function(){return;});
+			});			
+</P><P>			// Must be called because of Firefox, Safari and IE9 outerWidth bug
+</P><P>			$(el).delay(150).queue(function(){
+				ls.makeResponsive( ls.g.curLayer, function(){ return; }, true);
+			});
+</P><P>			// NEW FEATURE v1.7 added cbInit function
+</P><P>			ls.o.cbInit( $(el) );
+		};
+</P><P>		ls.start = function(){
+</P><P>			if( ls.g.autoSlideshow ){
+				if( ls.g.prevNext == 'prev' &amp;&amp; ls.o.twoWaySlideshow ){
+					ls.prev();
+				}else{
+					ls.next();
+				}
+			}else{
+				ls.g.autoSlideshow = true;
+				ls.timer();
+			}
+		};
+</P><P>		ls.timer = function(){
+</P><P>			var delaytime = $(el).find('.ls-active').data('slidedelay') ? parseInt( $(el).find('.ls-active').data('slidedelay') ) : ls.o.slideDelay;
+</P><P>			clearTimeout( ls.g.slideTimer );
+			ls.g.slideTimer = window.setTimeout(function(){
+				ls.start();
+			}, delaytime );
+		};
+</P><P>		ls.stop = function(){
+</P><P>			clearTimeout( ls.g.slideTimer );
+			ls.g.autoSlideshow = false;
+		};
+</P><P>		// Because of an ie7 bug, we have to check &amp; format the strings correctly
+</P><P>		ls.ieEasing = function( e ){
+</P><P>			// BUGFIX v1.6 and v1.8 some type of animations didn't work properly
+</P><P>			if( $.trim(e.toLowerCase()) == 'swing' || $.trim(e.toLowerCase()) == 'linear'){
+				return e.toLowerCase();
+			}else{
+				return e.replace('easeinout','easeInOut').replace('easein','easeIn').replace('easeout','easeOut').replace('quad','Quad').replace('quart','Quart').replace('cubic','Cubic').replace('quint','Quint').replace('sine','Sine').replace('expo','Expo').replace('circ','Circ').replace('elastic','Elastic').replace('back','Back').replace('bounce','Bounce');				
+			}
+		};
+</P><P>		// Calculating prev layer
+</P><P>		ls.prev = function(clicked){
+</P><P>			// NEW FEATURE v2.0 loops
+</P><P>			if( ls.g.curLayerIndex &lt; 2 ){
+				ls.g.nextLoop += 1;
+			}
+</P><P>			if( ( ls.g.nextLoop &gt; ls.o.loops ) &amp;&amp; ( ls.o.loops &gt; 0 ) &amp;&amp; !clicked ){
+				ls.g.nextLoop = 0;
+				ls.stop();
+				if( ls.o.forceLoopNum == false ){
+					ls.o.loops = 0;						
+				}
+			}else{
+				var prev = ls.g.curLayerIndex &lt; 2 ? ls.g.layersNum : ls.g.curLayerIndex - 1;
+				ls.g.prevNext = 'prev';
+				ls.change(prev,ls.g.prevNext);
+			}
+		};
+</P><P>		// Calculating next layer
+</P><P>		ls.next = function(clicked){
+</P><P>			// NEW FEATURE v2.0 loops
+</P><P>			if( !(ls.g.curLayerIndex &lt; ls.g.layersNum) ){
+				ls.g.nextLoop += 1;
+			}
+</P><P>			if( ( ls.g.nextLoop &gt; ls.o.loops ) &amp;&amp; ( ls.o.loops &gt; 0 ) &amp;&amp; !clicked ){
+</P><P>				ls.g.nextLoop = 0;
+				ls.stop();
+				if( ls.o.forceLoopNum == false ){
+					ls.o.loops = 0;						
+				}
+			}else{
+</P><P>				var next = ls.g.curLayerIndex &lt; ls.g.layersNum ? ls.g.curLayerIndex + 1 : 1;
+				ls.g.prevNext = 'next';
+				ls.change(next,ls.g.prevNext);
+			}
+</P><P>		};
+</P><P>		ls.change = function(num,prevnext){
+</P><P>			// NEW FEATURE v2.0 videoPreview &amp; autoPlayVideos
+</P><P>			if( ls.g.pausedByVideo == true ){
+</P><P>				ls.g.pausedByVideo = false;
+				ls.g.autoSlideshow = ls.g.originalAutoSlideshow;
+</P><P>				ls.g.curLayer.find('iframe[src*=&quot;www.youtu&quot;], iframe[src*=&quot;player.vimeo&quot;]').each(function(){
+</P><P>					$(this).parent().find('.ls-vpcontainer').fadeIn(ls.g.v.fi,function(){
+						$(this).parent().find('iframe').attr('src',<I>);						</I>
+					});
+				});
+			}
+</P><P>			$(el).find('iframe[src*=&quot;www.youtu&quot;], iframe[src*=&quot;player.vimeo&quot;]').each(function(){
+</P><P>				// Clearing videoTimeouts
+</P><P>				clearTimeout( $(this).data( 'videoTimer') );
+			});
+</P><P>			clearTimeout( ls.g.slideTimer );
+			ls.g.nextLayerIndex = num;
+			ls.g.nextLayer = $(el).find('.ls-layer:eq('+(ls.g.nextLayerIndex-1)+')');
+</P><P>			// BUGFIX v1.6 fixed wrong directions of animations if navigating by slidebuttons
+</P><P>			if( !prevnext ){
+</P><P>				if( ls.g.curLayerIndex &lt; ls.g.nextLayerIndex ){
+					ls.g.prevNext = 'next';
+				}else{
+					ls.g.prevNext = 'prev';
+				}				
+			}
+</P><P>			// Added timeOut to wait for the fade animation of videoPreview image...
+</P><P>			var timeOut = 0;
+</P><P>			if( $(el).find('iframe[src*=&quot;www.youtu&quot;], iframe[src*=&quot;player.vimeo&quot;]').length ){
+				timeOut = ls.g.v.fi;
+			}
+</P><P>			setTimeout(function() {
+				ls.imgPreload(ls.g.nextLayer,function(){
+					ls.animate();
+				});
+			}, timeOut );
+		};
+</P><P>		// Preloading images
+</P><P>		ls.imgPreload = function(layer,callback){
+</P><P>			if( ls.o.imgPreload ){				
+				var preImages = [];
+				var preloaded = 0;
+</P><P>				// NEW FEATURE v1.8 Prealoading background images of layers
+</P><P>				if( layer.css('background-image') != 'none' &amp;&amp; layer.css('background-image').indexOf('url') != -1 ){
+					var bgi = layer.css('background-image');
+					bgi = bgi.match(/url\((.*)\)/)[1].replace(/&quot;/gi, <I>);</I>
+					preImages.push(bgi);
+				}
+</P><P>				// Images inside layers
+</P><P>				layer.find('img').each(function(){
+					preImages.push($(this).attr('src'));
+				});
+</P><P>				// Background images inside layers
+</P><P>				layer.find('*').each(function(){
+</P><P>					// BUGFIX v1.7 fixed preload bug with sublayers with gradient backgrounds
+</P><P>					if( $(this).css('background-image') != 'none' &amp;&amp; $(this).css('background-image').indexOf('url') != -1 ){
+						var bgi = $(this).css('background-image');
+						bgi = bgi.match(/url\((.*)\)/)[1].replace(/&quot;/gi, <I>);</I>
+						preImages.push(bgi);
+					}
+				});
+</P><P>				// BUGFIX v1.7 if there are no images in a layer, calling the callback function
+</P><P>				if(preImages.length == 0){
+					ls.makeResponsive(layer, callback);
+				}else{
+					for(x=0;x&lt;preImages.length;x++){
+						$('&lt;img&gt;').load(function(){
+							if( ++preloaded == preImages.length ){
+								ls.makeResponsive(layer, callback);
+							}
+						}).attr('src',preImages[x]);
+					}					
+				}
+			}else{
+				ls.makeResponsive(layer, callback);
+			}
+		};
+</P><P>		// NEW FEATURE v1.7 making the slider responsive
+</P><P>		ls.makeResponsive = function(layer, callback, bugfix){
+</P><P>			// BUGFIX v2.0 Fading out in forceResponsive mode
+</P><P>			if( !bugfix ){
+				layer.css({
+					display: 'block',
+					visibility: 'hidden'
+				});
+			}
+</P><P>			ls.resizeSlider();
+</P><P>			for(var _sl=0;_sl &lt; layer.children().length;_sl++){
+</P><P>				var sl = layer.children(':eq('+_sl+')');
+				var ol = sl.data('originalLeft');
+				var ot = sl.data('originalTop');
+</P><P>				// (RE)positioning sublayer (left property)
+</P><P>				if( ol &amp;&amp; ol.indexOf('%') != -1 ){
+					sl.css({
+						left : ls.g.sliderWidth() / 100 * parseInt(ol) - sl.outerWidth() / 2
+					});
+				}
+</P><P>				// (RE)positioning sublayer (top property)
+</P><P>				if( ot &amp;&amp; ot.indexOf('%') != -1 ){
+					sl.css({
+</P><P>						// BUGFIX v2.0 fixing wrong variable
+</P><P>						top : ls.g.sliderHeight() / 100 * parseInt(ot) - sl.outerHeight() / 2
+					});
+				}
+			}
+</P><P>			// BUGFIX v2.0 Fading out in forceResponsive mode
+</P><P>			if( !bugfix ){
+				layer.css({
+					display: 'none',
+					visibility: 'visible'
+				});
+			}
+</P><P>			callback();
+</P><P>			$(this).dequeue();
+		};
+</P><P>		// Resizing the slider
+</P><P>		ls.resizeSlider = function(){
+</P><P>			if( $(el).closest('.ls-wp-forceresponsive-container').length ){
+</P><P>				$(el).closest('.ls-wp-forceresponsive-helper').css({
+					height : $(el).outerHeight(true)
+				});
+</P><P>				$(el).closest('.ls-wp-forceresponsive-container').css({
+					height : $(el).outerHeight(true)
+				});
+</P><P>				$(el).closest('.ls-wp-forceresponsive-helper').css({
+					width : $(window).width(),
+					left : - $(window).width() / 2
+				});
+</P><P>				if( ls.g.sliderOriginalWidth.split('%') != -1 ){
+</P><P>					var percentWidth = parseInt( ls.g.sliderOriginalWidth );
+					var newWidth = $('body').width() / 100 * percentWidth - ( $(el).outerWidth() - $(el).width() );
+					$(el).width( newWidth );
+				}
+			}
+</P><P>			$(el).find('.ls-inner').css({
+				width : ls.g.sliderWidth(),
+				height : ls.g.sliderHeight()
+			});
+</P><P>			// BUGFIX v2.0 fixed width problem if firstLayer is not 1
+</P><P>			if( ls.g.curLayer &amp;&amp; ls.g.nextLayer ){
+</P><P>				ls.g.curLayer.css({
+					width : ls.g.sliderWidth(),
+					height : ls.g.sliderHeight()
+				});
+</P><P>				ls.g.nextLayer.css({
+					width : ls.g.sliderWidth(),
+					height : ls.g.sliderHeight()
+				});
+			}else{
+</P><P>				$(el).find('.ls-layer').css({
+					width : ls.g.sliderWidth(),
+					height : ls.g.sliderHeight()
+				});
+			}
+</P><P>			$(el).find('.ls-bg').css({
+				marginLeft : - ( ls.g.sliderWidth() / 2 )+'px',
+				marginTop : - ( ls.g.sliderHeight() / 2 )+'px'
+			});
+		};
+</P><P>		// Animating layers and sublayers
+</P><P>		ls.animate = function(){
+</P><P>			// Calling cbAnimStart callback function
+</P><P>			ls.o.cbAnimStart();
+</P><P>			// Changing variables
+</P><P>			ls.g.isAnimating = true;
+</P><P>			// Adding .ls-animating class to next layer
+</P><P>			ls.g.nextLayer.addClass('ls-animating');
+</P><P>			// Setting position and styling of current and next layers
+</P><P>			var curLayerLeft = curLayerRight = curLayerTop = curLayerBottom = nextLayerLeft = nextLayerRight = nextLayerTop = nextLayerBottom = layerMarginLeft = layerMarginRight = layerMarginTop = layerMarginBottom = 'auto';
+			var curLayerWidth = nextLayerWidth = ls.g.sliderWidth();
+			var curLayerHeight = nextLayerHeight = ls.g.sliderHeight();
+</P><P>			// Calculating direction
+</P><P>			var prevOrNext = ls.g.prevNext == 'prev' ? ls.g.curLayer : ls.g.nextLayer;
+			var chooseDirection = prevOrNext.data('slidedirection') ? prevOrNext.data('slidedirection') : ls.o.slideDirection;
+</P><P>			// Setting the direction of sliding
+</P><P>			var slideDirection = ls.g.slideDirections[ls.g.prevNext][chooseDirection];
+</P><P>			if( slideDirection == 'left' || slideDirection == 'right' ){
+				curLayerWidth = curLayerTop = nextLayerWidth = nextLayerTop = 0;
+				layerMarginTop = 0;				
+			}
+			if( slideDirection == 'top' || slideDirection == 'bottom' ){
+				curLayerHeight = curLayerLeft = nextLayerHeight = nextLayerLeft = 0;
+				layerMarginLeft = 0;
+			}
+</P><P>			switch(slideDirection){
+				case 'left':
+					curLayerRight = nextLayerLeft = 0;
+					layerMarginLeft = -ls.g.sliderWidth();
+					break;
+				case 'right':
+					curLayerLeft = nextLayerRight = 0;
+					layerMarginLeft = ls.g.sliderWidth();
+					break;
+				case 'top':
+					curLayerBottom = nextLayerTop = 0;
+					layerMarginTop = -ls.g.sliderHeight();
+					break;
+				case 'bottom':
+					curLayerTop = nextLayerBottom = 0;
+					layerMarginTop = ls.g.sliderHeight89;
+					break;
+			}
+</P><P>			// Setting start positions and styles of layers
+</P><P>			ls.g.curLayer.css({
+				left : curLayerLeft,
+				right : curLayerRight,
+				top : curLayerTop,
+				bottom : curLayerBottom			
+			});
+			ls.g.nextLayer.css({
+				width : nextLayerWidth,
+				height : nextLayerHeight,
+				left : nextLayerLeft,
+				right : nextLayerRight,
+				top : nextLayerTop,
+				bottom : nextLayerBottom
+			});
+</P><P>			// Animating current layer
+</P><P>			// BUGFIX v1.6 fixed some wrong parameters of current layer
+			// BUGFIX v1.7 fixed using of delayout of current layer
+</P><P>			var curDelay = ls.g.curLayer.data('delayout') ? parseInt(ls.g.curLayer.data('delayout')) : ls.o.delayOut;
+			var curTime = ls.g.curLayer.data('durationout') ? parseInt(ls.g.curLayer.data('durationout')) : ls.o.durationOut;
+			var curEasing = ls.g.curLayer.data('easingout') ? ls.g.curLayer.data('easingout') : ls.o.easingOut;
+</P><P>			// BUGFIX v1.6 added an additional delaytime to current layer to fix the '1px gap' bug
+			// BUGFIX v2.0 modified from curTime / 80 to curTime / 120
+</P><P>			ls.g.curLayer.delay( curDelay + curTime / 80 ).animate({
+				width : curLayerWidth,
+				height : curLayerHeight
+			}, curTime, curEasing,function(){
+</P><P>				// Setting current layer
+</P><P>				ls.g.curLayer = ls.g.nextLayer;
+				ls.g.curLayerIndex = ls.g.nextLayerIndex;
+</P><P>				// Changing some css classes
+</P><P>				$(el).find('.ls-layer').removeClass('ls-active');
+				$(el).find('.ls-layer:eq(' + ( ls.g.curLayerIndex - 1 ) + ')').addClass('ls-active').removeClass('ls-animating');
+				$(el).find('.ls-bottom-slidebuttons a').removeClass('ls-nav-active');
+				$(el).find('.ls-bottom-slidebuttons a:eq('+( ls.g.curLayerIndex - 1 )+')').addClass('ls-nav-active');
+</P><P>				// Changing variables
+</P><P>				ls.g.isAnimating = false;
+</P><P>				// Calling cbAnimStop callback function
+</P><P>				ls.o.cbAnimStop();
+</P><P>				// Setting timer if needed
+</P><P>				if( ls.g.autoSlideshow ){
+</P><P>					ls.timer();
+				}
+			});
+</P><P>			// Animating sublayers of current layer
+</P><P>			ls.g.curLayer.find(' &gt; *[class*=&quot;ls-s&quot;]').each(function(){
+</P><P>				var curSubSlideDir = $(this).data('slidedirection') ? $(this).data('slidedirection') : slideDirection;
+				var lml, lmt;
+</P><P>				switch(curSubSlideDir){
+					case 'left':
+						lml = -ls.g.sliderWidth();
+						lmt = 0;
+						break;
+					case 'right':
+						lml = ls.g.sliderWidth();
+						lmt = 0;
+						break;
+					case 'top':
+						lmt = -ls.g.sliderHeight();
+						lml = 0;
+						break;
+					case 'bottom':
+						lmt = ls.g.sliderHeight();
+						lml = 0;
+						break;
+				}
+</P><P>				// NEW FEATURE v1.6 added slideoutdirection to sublayers
+</P><P>				var curSubSlideOutDir = $(this).data('slideoutdirection') ? $(this).data('slideoutdirection') : false;
+</P><P>				switch(curSubSlideOutDir){
+					case 'left':
+						lml = ls.g.sliderWidth();
+						lmt = 0;
+						break;
+					case 'right':
+						lml = -ls.g.sliderWidth();
+						lmt = 0;
+						break;
+					case 'top':
+						lmt = ls.g.sliderHeight();
+						lml = 0;
+						break;
+					case 'bottom':
+						lmt = -ls.g.sliderHeight();
+						lml = 0;
+						break;
+				}
+</P><P>				var curSubParMod = ls.g.curLayer.data('parallaxout') ? parseInt(ls.g.curLayer.data('parallaxout')) : ls.o.parallaxOut;
+				var curSubPar = parseInt( $(this).attr('class').split('ls-s')[1] ) * curSubParMod;
+</P><P>				var curSubDelay = $(this).data('delayout') ? parseInt($(this).data('delayout')) : ls.o.delayOut;
+				var curSubTime = $(this).data('durationout') ? parseInt($(this).data('durationout')) : ls.o.durationOut;
+				var curSubEasing = $(this).data('easingout') ? $(this).data('easingout') : ls.o.easingOut;
+</P><P>				// NEW FEATURE v1.6 added fading feature to sublayers
+</P><P>				if( curSubSlideOutDir == 'fade' || ( !curSubSlideOutDir &amp;&amp; curSubSlideDir == 'fade' )){
+</P><P>					$(this).delay( curSubDelay ).fadeOut(curSubTime, curSubEasing);					
+				}else{
+</P><P>					$(this).stop().delay( curSubDelay ).animate({
+						marginLeft : -lml * curSubPar,
+						marginTop : -lmt * curSubPar
+					}, curSubTime, curSubEasing);
+				}
+			});	
+</P><P>			// Animating next layer
+</P><P>				// Replacing global parameters with unique if need
+</P><P>				var nextDelay = ls.g.nextLayer.data('delayin') ? parseInt(ls.g.nextLayer.data('delayin')) : ls.o.delayIn;
+				var nextTime = ls.g.nextLayer.data('durationin') ? parseInt(ls.g.nextLayer.data('durationin')) : ls.o.durationIn;
+				var nextEasing = ls.g.nextLayer.data('easingin') ? ls.g.nextLayer.data('easingin') : ls.o.easingIn;
+</P><P>				ls.g.nextLayer.delay( curDelay + nextDelay ).animate({
+					width : ls.g.sliderWidth(),
+					height : ls.g.sliderHeight()
+				}, nextTime, nextEasing);
+</P><P>			// Animating sublayers of next layer
+</P><P>			ls.g.nextLayer.find(' &gt; *[class*=&quot;ls-s&quot;]').each(function(){
+</P><P>				// Replacing global parameters with unique if need
+</P><P>				var nextSubSlideDir = $(this).data('slidedirection') ? $(this).data('slidedirection') : slideDirection;
+				var lml, lmt;
+</P><P>				switch(nextSubSlideDir){
+					case 'left':
+						lml = -ls.g.sliderWidth();
+						lmt = 0;
+						break;
+					case 'right':
+						lml = ls.g.sliderWidth();
+						lmt = 0;
+						break;
+					case 'top':
+						lmt = -ls.g.sliderHeight();
+						lml = 0;
+						break;
+					case 'bottom':
+						lmt = ls.g.sliderHeight();
+						lml = 0;
+						break;
+					case 'fade':
+						lmt = 0;
+						lml = 0;
+						break;
+				}
+</P><P>				var nextSubParMod = ls.g.nextLayer.data('parallaxin') ? parseInt(ls.g.nextLayer.data('parallaxin')) : ls.o.parallaxIn;
+				var nextSubPar = parseInt( $(this).attr('class').split('ls-s')[1] ) * nextSubParMod;
+</P><P>				var nextSubDelay = $(this).data('delayin') ? parseInt($(this).data('delayin')) : ls.o.delayIn;
+				var nextSubTime = $(this).data('durationin') ? parseInt($(this).data('durationin')) : ls.o.durationIn;
+				var nextSubEasing = $(this).data('easingin') ? $(this).data('easingin') : ls.o.easingIn;
+</P><P>				// NEW FEATURE v1.6 added fading feature to sublayers
+</P><P>				if( nextSubSlideDir == 'fade' ){
+</P><P>					$(this).css({
+						display: 'none',
+						marginLeft : 0,
+						marginTop : 0
+					}).delay( curDelay + nextSubDelay ).fadeIn(nextSubTime, nextSubEasing, function(){
+</P><P>						// NEW FEATURE v2.0 autoPlayVideos
+</P><P>						if( ls.o.autoPlayVideos == true ){
+</P><P>							$(this).find('.ls-videopreview').click();
+						}					
+					});
+				}else{
+</P><P>					// BUGFIX v1.7 added display : block to sublayers that don't fade
+</P><P>					$(this).css({
+						display : 'block',
+						marginLeft : lml * nextSubPar,
+						marginTop : lmt * nextSubPar
+					}).stop().delay( curDelay + nextSubDelay ).animate({
+						marginLeft : 0,
+						marginTop : 0
+					}, nextSubTime, nextSubEasing, function(){
+</P><P>						// NEW FEATURE v2.0 autoPlayVideos
+</P><P>						if( ls.o.autoPlayVideos == true ){
+</P><P>							$(this).find('.ls-videopreview').click();
+						}					
+					});
+				}				
+			});
+		}
+</P><P>		// initializing
+		ls.init();
+	};
+</P><P>	layerSlider.options = {
+</P><P>		// User settings (can be modified)
+</P><P>		autoStart			: true,						// If true, slideshow will automatically start after loading the page.
+		firstLayer			: 1,						// LayerSlider will begin with this layer.
+		twoWaySlideshow		: true,					// If true, slideshow will go backwards if you click the prev button.
+		keybNav				: true,						// Keyboard navigation. You can navigate with the left and right arrow keys.
+</P><P>		// NEW FEATURES v2.0 touchNav
+</P><P>		touchNav			: true,						// Touch-control (on mobile devices)
+</P><P>		imgPreload			: true,						// Image preload. Preloads all images and background-images of the next layer.
+		navPrevNext			: true,						// If false, Prev and Next buttons will be invisible.
+		navStartStop		: true,						// If false, Start and Stop buttons will be invisible.
+		navButtons			: true,						// If false, slide buttons will be invisible.
+		skin				: 'lightskin',				// You can change the skin of the Slider, use 'noskin' to hide skin and buttons. (Pre-defined skins are: 'deafultskin', 'lightskin', 'darkskin', 'glass' and 'minimal'.)
+		skinsPath			: '/layerslider/skins/',	// You can change the default path of the skins folder. Note, that you must use the slash at the end of the path.
+		pauseOnHover		: true,						// SlideShow will pause when mouse pointer is over LayerSlider.
+</P><P>		// NEW FEATURES v1.6 optional globalBGColor &amp; globalBGImage
+</P><P>		globalBGColor		: 'transparent',			// Background color of LayerSlider. You can use all CSS methods, like hexa colors, rgb(r,g,b) method, color names, etc. Note, that background sublayers are covering the background.
+		globalBGImage		: false,					// Background image of LayerSlider. This will be a fixed background image of LayerSlider by default. Note, that background sublayers are covering the global background image.
+</P><P>		// NEW FEATURES v1.7 animateFirstLayer &amp; yourLogo
+</P><P>		animateFirstLayer	: false,					// If true, first layer will animate (slide in) instead of fading
+		yourLogo			: false,					// This is a fixed image that will be shown above of LayerSlider container. For example if you want to display your own logo, etc. You have to add the correct path to your image file.
+		yourLogoStyle		: 'position: absolute; z-index: 1001; left: 10px; top: 10px;', // You can style your logo. You are allowed to use any CSS properties, for example add left and top properties to place the image inside the LayerSlider container anywhere you want.
+</P><P>		// NEW FEATURES v1.8 yourLogoLink &amp; yourLogoTarget
+</P><P>		yourLogoLink		: false,					// You can add a link to your logo. Set false is you want to display only an image without a link.
+		yourLogoTarget		: '_blank',					// If '_blank', the clicked url will open in a new window.
+</P><P>		// NEW FEATURES v2.0 loops, forceLoopNum, autoPlayVideos, autoPauseSlideshow &amp; youtubePreview
+</P><P>		loops				: 0,						// Number of loops if autoStart set true (0 means infinite!)
+		forceLoopNum		: true,						// If true, the slider will always stop at the given number of loops even if the user restarts the slideshow
+		autoPlayVideos		: false,						// If true, slider will autoplay youtube / vimeo videos - you can use it with autoPauseSlideshow
+		autoPauseSlideshow	: 'auto',					// 'auto', true or false. 'auto' means, if autoPlayVideos is set to true, slideshow will stop UNTIL the video is playing and after that it continues. True means slideshow will stop and it won't continue after video is played.
+		youtubePreview		: 'maxresdefault.jpg',		// Default thumbnail picture of YouTube videos. Can be 'maxresdefault.jpg', 'hqdefault.jpg', 'mqdefault.jpg' or 'default.jpg'. Note, that 'maxresdefault.jpg' os not available to all (not HD) videos.
+</P><P>		// LayerSlider API callback functions
+</P><P>		cbInit				: function(){},				// Calling when LayerSlider loads.
+		cbStart				: function(){},				// Calling when you click the slideshow start button.
+		cbStop				: function(){},				// Calling when click the slideshow stop / pause button.
+		cbPause				: function(){},				// Calling when slideshow pauses (if pauseOnHover is true).
+		cbAnimStart			: function(){},				// Calling when animation starts.
+		cbAnimStop			: function(){},				// Calling when the animation of current layer ends, but the sublayers of this layer still may be animating.
+		cbPrev				: function(){},				// Calling when you click the previous button (or if you use keyboard or touch navigation).
+		cbNext				: function(){},				// Calling when you click the next button (or if you use keyboard or touch navigation).
+</P><P>		// The following global settings can be override separately by each layers and / or sublayers local settings (see the documentation for more information).
+</P><P>		slideDirection		: 'right',					// Slide direction. New layers will sliding FROM(!) this direction.
+		slideDelay			: 4000,						// Time before the next slide will be loading.
+		parallaxIn			: .45,						// Modifies the parallax-effect of the slide-in animation.
+		parallaxOut			: .45,						// Modifies the parallax-effect of the slide-out animation.
+		durationIn			: 1500,						// Duration of the slide-in animation.
+		durationOut			: 1500,						// Duration of the slide-out animation.
+		easingIn			: 'easeInOutQuint',			// Easing (type of transition) of the slide-in animation.
+		easingOut			: 'easeInOutQuint',			// Easing (type of transition) of the slide-out animation.
+		delayIn				: 0,						// Delay time of the slide-in animation.
+		delayOut			: 0							// Delay time of the slide-out animation.
+	};
+</P><P>	layerSlider.global = {
+</P><P>		// Global parameters (Do not change these settings!)
+</P><P>		version				: '2.0',
+</P><P>		paused				: false,
+		autoSlideshow		: false,
+		isAnimating			: false,
+		layersNum			: null,
+		prevNext			: 'next',
+		slideTimer			: null,
+		sliderWidth			: null,
+		sliderHeight		: null,
+		slideDirections		: {
+								prev : {
+									left	: 'right',
+									right	: 'left',
+									top		: 'bottom',
+									bottom	: 'top'
+								},
+								next : {
+									left	: 'left',
+									right	: 'right',
+									top		: 'top',
+									bottom	: 'bottom'
+								}
+							},
+</P><P>		// Default delay time, fadeout and fadein durations of videoPreview images
+</P><P>		v					: {
+								d	: 500,
+								fo	: 750,
+								fi	: 500	
+							}
+	};
+</P>
+})(jQuery);</DIV></DIV></DIV></DIV><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:Penn/js/layersliderkreatura">http://2012.igem.org/Team:Penn/js/layersliderkreatura</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Penn/js/layersliderkreatura" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Penn/js/layersliderkreatura" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Penn/js/layersliderkreatura&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Penn/js/layersliderkreatura&amp;oldid=121518" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

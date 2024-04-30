@@ -1,0 +1,179 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:HZAU-China/Modeling
+From 2014.igem.org
+<!DOCTYPE html>
+2014HZAU-China
+home
+Project
+-Overview
+-Background
+-Input module
+-Processing module
+-Output module
+-Application
+Wetlab
+-Overview
+-Construction
+-Characterization
+-Help each other
+-Protocol
+-Labnotes
+Modeling
+-Overview
+-Biological processes
+-Comparison between different designs
+-Simulation and sensitivity analysis
+-Design principle of rewirable circuit
+Achievements
+-Judgement
+-Parts
+Team
+-Members
+-Attributions
+-Gallery
+-Acknowledgment
+Outreach
+-Collaboration
+-Meetup
+-Humanities
+-Social Sciences
+-Public outreach
+-Safety
+-Social media
+-Other dream
+Modeling
+Home
+Modeling
+1. Overview
+Our project aims to engineer cells that can process information to adapt to the environment as we expected, so we need to yield quantitative predictions of gene behaviors. Mathematic model becomes a powerful tool here. It not only helps us predict and analyze the phenomena, but also contributes to the design of genetic circuits. Our models can be divided into several parts. Firstly, we will introduce the biological processes in our design and translate them into mathematical language. Then we will perform some comparisons to explain why we designed circuits this way. Next, we will present the simulation results and experiment evidences from wet lab. Parameter analysis will also be made here. Finally, we will talk about the design principle of the rewirable circuit using ODE sets with matrices. We hope that other researchers can get insight from the mathematic model and make the rewirable circuit widely used.
+2. Biological Processes
+In this part, we will list the important biological processes and explain how the related molecules work, and then we can describe them using equations. Because the timescales of many processes are separated, we use a quasi-steady-state approximation (QSSA) to reduce the number of dimensions in the systems in most cases. However, if we focus on some processes more than the  final steady state, we may use other approximations such as prefactor method (Bennett et al., 2007).
+2.1 Transcription and translation
+According to the Central Dogma, DNAs can be transcribed into RNAs and RNAs can be translated into proteins. These processes sometimes can be regulated by some molecules like transcription factors or non-coding RNAs. The interactions among them can be understood by chemical reactions. We use one chemical reaction to depict the interaction between transcription factor $TF$ and inducible promoter $Pro$. We don't separate the polymerisation process and the binding process for simplicity
+The equilibrium dissociation constant $K_D$ for the reaction can be calculated.  \begin{equation} K_D=\frac{k_{-1}}{k_1}=\frac{[TF]^n\cdot [Pro]}{[Pro']}. \end{equation}
+We assume that the DNA copy number is a constant n,  \begin{equation} [Pro]+[Pro']=n. \end{equation} Then the $Pro'$ proportion depends on the concentration of $TF$, and this proportion can also be regarded as the probability of the binding events. \begin{equation} P(\text{binding})=\frac{[Pro']}{n}=\frac{[TF]^n}{K_D+[TF]^n} \end{equation}
+If the transcription factor is an activator, the gene is transcribed at the maximal transcription rate $\beta_1$ when the promoter is bound by the transcription factor. If the transcription factor is a repressor, the gene is transcribed at the maximal transcription rate $\beta_1$ when the promoter is free from the transcription factor.
+In deterministic model, we use Hill function to describe the rate of production, which is $\beta_1$ times its occurring probability.
+For transcription activation, the maximal transcription rate will occur if the activator binds to the promoter, so the Hill function is \begin{equation} f(x)=\beta_1\frac{[TF]^n}{K^n+[TF]^n}. \end{equation}
+For transcription repression, the maximal transcription rate will occur if the repressor doesn't bind to the promoter, so the Hill function is \begin{equation} f(x)=\beta_1\frac{K^n}{K^n+[TF]^n}. \end{equation} $K$ is activation coefficient or repression coefficient, which equals $\sqrt[n]{K_D}$.
+In addition, many genes have a non-zero minimal expression level, namely basal expression level. It can be described by adding a term $\beta_0$. And some genes that have a constitutive promoter cannot be described by Hill function. We just set their production rate to be a constant.
+The translation and degradation processes in our model are based on following reaction:
+For translation process, the protein production rate is proportional to the corresponding mRNA concentration $K_{tl}\cdot mRNA$. $K_{tl}$ is determined by the efficiency and concentration of ribosome, the sequence of RBS and the concentration of amino acids in the cell, which can be considered identical under the experiment condition. For degradation process, the degradation rate is proportional to the substrate. The proportion for mRNA is $K_{R}$ and the proportion for protein is $K_{P}$. So we list the following equations, \begin{equation} \begin{aligned} \frac{dmRNA_{Y}}{dt}&=\beta_0+\beta_1\frac{[TF]^n}{K^n+[TF]^n}-K_{R}\cdot mRNA_{Y} \text{  (activation)}\\ \frac{dmRNA_{Y}}{dt}&=\beta_0+\beta_1\frac{K^n}{K^n+[TF]^n}-K_{R}\cdot mRNA_{Y} \text{  (repression)}\\ \frac{dY}{dt}&=K_{tl}\cdot mRNA_{Y}-K_{P}\cdot Y. \end{aligned} \end{equation}
+2.2 RNA interaction
+Different riboregulators have different regulation mechanisms to control the gene expression. Here what we used is a classical engineered riboregulator designed by Isaacs and his colleagues in 2004. This riboregulator can control the gene expression at post-transcription level. More details can be found in the input module section .
+We describe the RNA interactions by this reaction:
+which means \begin{equation} \frac{d[RNA\ duplex]}{dt}=k_2\cdot [taRNA]\cdot [crRNA]-k_{-2}\cdot [RNA\ duplex] \end{equation} This reaction is much faster than gene expression, so the equilibrium state can be reached quickly, \begin{equation} \begin{split} \frac{d[RNA\ duplex]}{dt}&=0 \\ [RNA\ duplex]_{st}&=\frac{k_2}{k_{-2}}\cdot [taRNA]\cdot [crRNA] \end{split} \end{equation}
+The total mRNA of the recombinase has two forms, $crRNA$ and $RNA\ duplex$, resulting in another equation: \begin{equation} [crRNA]+[RNA\ duplex]=[mRNA_{Cre}]. \end{equation} Then we have  \begin{equation} [RNA\ duplex]_{st}=[mRNA_{Cre}]\cdot\frac{[taRNA]}{K_m+[taRNA]}, \end{equation} where $K_m=\frac{k_{-2}}{k_2}$. So the protein production rate depends on not only the concentration of its corresponding mRNA but also the concentration of $taRNA$. This translation process with post-transcriptional control can be described by \begin{equation} \frac{d[Cre]}{dt}=K_{tl}\cdot [mRNA_{Cre}]\cdot\frac{[taRNA]}{K_m+[taRNA]}-K_{P}\cdot [Cre] \end{equation}
+2.3 Processes related to AHL
+In this section, we describe the 3OC6HSL synthesis,  degradation and regulation. 3OC6HSL, a kind of AHL, is enzymatically synthesised by LuxI proteins from some substrates. Here, we use AHL to refer to 3OC6HSL.
+For simplicity, we assumed that the amount of substrates is sufficient so that the 3OC6HSL synthesis rate is proportional to the LuxI protein concentration.  And the degradation of 3OC6HSL can be divided into two parts. With the help of the AHL-degrading enzyme, AHL-lactonase (AiiA), the AHL can be degraded at a high rate, since the complex of AiiA and AHL is more easy to be degraded. Also, the AHL itself can be degraded at a lower rate.
+Besides,  AHL can regulate gene expression by binding the protein LuxR.
+The complex can activate luxpR promoter and repress luxpL promoter.
+Although the binding events about AHL can be described by some differential equations, we apply QSSA when we focus on the gene expression process, because the timescale of these binding events is much less than the timescale of gene expression. So the change of AHL and AHL-LuxR complex over time can be described by differential equations: \begin{equation} \begin{split} &\frac{d[AHL]}{dt}=k_3\cdot [LuxI]-k_4k_5\cdot [AHL] \cdot [AiiA]-k_6\cdot [AHL]-k_7\cdot [LuxR]^2\cdot [AHL]^2\\ &\frac{d[AHL\text{-}LuxR\ complex]}{dt}=k_7\cdot [LuxR]^2\cdot [AHL]^2-K_{P}\cdot [AHL\text{-}LuxR\ complex] \end{split} \end{equation}
+2.4 DNA recombination
+Ringrose and his colleagues have developed mathematic models to describe the kinetics of Cre and Flp recombination. The site-specific recombination process can be mainly divided into four steps as the following figure depicts: DNA binding, synapsis, recombination and dissociation.
+The detailed mathematical representation can be found in previous research (Ringrose et al., 1998), so we didn't list them here. We want to explain Cre-mediated inversion using the mutated Cre/loxP system we used prefers the forward reaction. The difference between the mutated loxP site and wild type loxP site only influences the DNA binding and dissociation processes. So we focus on these two steps. A Cre monomer binds to one half of a loxP site and then an asymmetrical homodimer is formed when a second Cre molecule binds to the other half of loxP.
+Because the concentration of intermediate products $Cre\cdot lox$ is very low, and $k_9>>k_{-8}>k_{-9}$, we can apply steady-state treatment to it, \begin{equation} \frac{d[Cre\cdot lox]}{dt}=k_8\cdot [lox]\cdot [Cre]-k_{-8}[Cre\cdot lox]-k_9\cdot [Cre\cdot lox]\cdot [Cre]+k_{-9}\cdot[2Cre\cdot lox]=0, \end{equation}
+The second dissociation process is the slowest reaction within these four reactions. Hence, we ignore the last term $k_{-9}\cdot[2Cre\cdot lox]$. Then we get the steady-state of intermediate products $Cre\cdot lox$ \begin{equation} [Cre\cdot lox]_{st}=\frac{k_8\cdot [lox]\cdot [Cre]}{k_{-8}+k_9\cdot [Cre]}. \end{equation} So the reaction rate for $2Cre\cdot lox$ is  \begin{equation} r_c(2Cre\cdot lox)=\frac{k_9}{k_{-9}}\cdot[Cre]\cdot\frac{k_8\cdot [lox]\cdot [Cre]}{k_{-8}+k_9\cdot [Cre]}=\frac{k_8k_9\cdot [lox]\cdot [Cre]^2}{k_{-8}k_{-9}+k_9k_{-9}\cdot [Cre]}. \end{equation}
+3. Comparison Between Different Designs
+In this part, we want to demonstrate some advantages of our design by making quantitative comparisons. These advantages include safety, energy efficiency and stability.
+3.1 The post-transcriptional control ensures lower leakage
+Firstly, we don't expect that our designed processing modules will alter its function by some noises of environment. So we design a coherent feedforward loop to filter noise. Here we use $x$ to represent a general input signal. As we mentioned before, the dynamics of the input module with post-transcriptional control can be described by \begin{equation} \begin{aligned} \frac{d[mRNA_{Cre}]}{dt}&=\beta_0+\beta_1\frac{[x]^n}{K^n+[x]^n}-K_{R}\cdot [mRNA_{Cre}]\\ \frac{d[taRNA]}{dt}&=\beta_0+\beta_1\frac{[x]^n}{K^n+[x]^n}-K_{R}\cdot [taRNA]\\ \frac{d[Cre]}{dt}&=K_{tl}\cdot [mRNA_{Cre}]\cdot\frac{[taRNA]}{K_m+[taRNA]}-K_{P}\cdot [Cre]. \end{aligned} \end{equation}
+If there is no post-transcriptional control, this process can be described by \begin{equation} \begin{aligned} \frac{d[mRNA_{Cre}]}{dt}&=\beta_0+\beta_1\frac{[x]^n}{K^n+[x]^n}-K_{R}\cdot [mRNA_{Cre}]\\ \frac{d[Cre]}{dt}&=K_{tl}\cdot [mRNA_{Cre}]-K_{P}\cdot [Cre]. \end{aligned} \end{equation}
+We compare the expression dynamics of Cre in either case at different level of input signal $x$. This comparison reveals that the riboregulator ensures lower leakage but doesn't affect the expression at a high input level. We also design experiments to validate the model, the results are consistent with this model.
+Figure 1. Dynamic of the input module.
+Figure 2. Experimental result.
+3.2 The mutated Cre/loxP system determines the inversion direction
+Secondly, once the engineered cells receive a sure signal, they will process information as we designed but not the other way around. So we must ensure the direction of the DNA invertion. In other words, the site-specific recombination can be regarded as a unidirectional one. To this end, we choose Cre recombinase and a pair of mutant lox sites, lox66 and lox71 to rearrange DNA sequence. Here, we explain why the forward reaction rate is higher than the reverse one. The mutant site will have a lower affinity for Cre. The binding event mainly depends on the rate of  free diffusion, but the dissociation rate will be high if the binding strength is weak. According to the equation \begin{equation} r_c(2Cre\cdot lox)=\frac{k_8k_9\cdot [lox]\cdot [Cre]^2}{k_{-8}k_{-9}+k_9k_{-9}\cdot [Cre]}, \end{equation} we know that the second dissociation event is more significant than the first one. So mutant lox site like lox66 and lox71 can choose a wise way to benefit the formation of dimer. Here we assume that lox66 and lox71 will have higher $k_{-8}$. However, double mutant loxP site like lox72 will have high dissociation rate at both steps. For simplicity, we assume that the affected dissociation rate is $\epsilon$ ($\epsilon>1$) times the original one.
+After binding event, the two loxP-bound dimers associate to form a tetramer, and recombination proceeds via a Holiday Junction intermediate. Therefore, we can compare $r_c(2Cre\cdot loxP)\cdot r_c(2Cre\cdot lox72)$ with $r_c(2Cre\cdot lox66)\cdot r_c(2Cre\cdot lox71)$ to see what kind of synapsis is easy to form. \begin{equation} \begin{split} r_c(2Cre\cdot loxP)\cdot r_c(2Cre\cdot lox72)&=\frac{k_8^2k_9^2\cdot[lox]^2\cdot [Cre]^4}{({\epsilon}^2k_{-8}k_{-9}+\epsilon k_9k_{-9}[Cre])(k_{-8}k_{-9}+k_9k_{-9}[Cre])}\\ r_c(2Cre\cdot lox66)\cdot r_c(2Cre\cdot lox71)&=\frac{k_8^2k_9^2\cdot[lox]^2\cdot [Cre]^4}{({\epsilon}k_{-8}k_{-9}+k_9k_{-9}[Cre])^2} \end{split} \end{equation}
+For $\epsilon>1$,  \begin{equation} \begin{aligned} \frac{r_c(2Cre\cdot loxP)\cdot r_c(2Cre\cdot lox72)}{r_c(2Cre\cdot lox66)\cdot r_c(2Cre\cdot lox71)}&=\frac{({\epsilon}k_{-8}k_{-9}+k_9k_{-9}[Cre])^2}{({\epsilon}^2k_{-8}k_{-9}+\epsilon k_9k_{-9}[Cre])(k_{-8}k_{-9}+k_9k_{-9}[Cre])}\\ &=1-\frac{(\epsilon-1)(k_9k_{-9}[Cre]^2)+\epsilon(\epsilon-1)(k_{-8}k_9k_{-9}^2[Cre])}{({\epsilon}^2k_{-8}k_{-9}+\epsilon k_9k_{-9}[Cre])(k_{-8}k_{-9}+k_9k_{-9}[Cre])}\\ &<1 \end{aligned} \end{equation}
+Under the condition that the $Cre\cdot lox$ is much more easy to get a Cre monomer rather than lose a Cre monomer, this proportion approximately equals to $\frac{1}{\epsilon}$, because \begin{equation} \begin{aligned} r_c(2Cre\cdot lox)&=\frac{k_8k_9\cdot [lox]\cdot [Cre]^2}{k_{-8}k_{-9}+k_9k_{-9}\cdot [Cre]} &\approx\frac{k_8\cdot [lox]\cdot [Cre]}{k_{-9}} \end{aligned} \end{equation}
+Hence, $r_c($$2Cre\cdot loxP)$$\cdot r_c($$2Cre\cdot lox72)$$< r_c($$2Cre\cdot lox66)$$\cdot r_c($$2Cre\cdot lox71)$, which means the synapsis between lox66 and lox71 is easy to form.
+This explanation is based on the kinetic model proposed in 1998. However, the real system may have additional processes. We introduce another explanation using a principle called kinetic proofreading that is widely employed to achieve high precision in diverse molecular recognition systems. Inspired by the DNA binding process described in available researches (Tlusty et al., 2004; Alon, 2007), we infer that the recombinase protein Cre undergoes a modification after binding to the half of lox site, and then it can recruit other proteins Cre to bind to another half of lox site. Such a modification can help the mutant lox site like lox66 and lox71 easily jump to the next state but prevent the incorrect binding of the double mutant lox site like lox72. This modification makes the second binding event more likely to happen and the corresponding dissociation event less likely to happen. So why $k_9>k_8$ and $k_{-8}>k_{-9}$ can also be explained by this modification.
+In summary, we can explain Cre-mediated inversion using the mutated Cre/loxP system we used prefers the forward forward reaction by different mechanisms. No matter which theory we use to explain the phenomena, we emphasize that the two binding processes of one lox site are not identical. The first binding process contributes to the second one. Therefore, either the steady-state treatment of the first binding and dissociation or the kinetic proofreading by a modification is reasonable.
+3.3 The time-sharing process module reduces crosstalk and resource cost
+The greatest hallmark of our processing module is that it can enhance the utilization of resources. The processing module we designed in essence is a time-sharing system. In computer science, the time-sharing system can share computing resources among many users. The users in biology are the various environments. The time-sharing processing module allows the engineered cells to interact with multiple environments. With this module, cells can achieve different functions at different times.
+We can make some comparisons between the time-sharing system and a simultaneous processing system. The latter wastes many resources to maintain or inhibit the unnecessary functions when the cell are running other functions, if these functions don’t need to run at the same time. Such a burden to cells may even cause growth defects since competition of resources can affect normal pathway in cells. Moreover, the more regulators we put into the cell, the more likely crosstalk will occur, which will result in a faulty response to the signals.
+4. Simulation and Sensitivity Analysis
+After describing the biological processes, we wanted to characterize our designed processing modules by simulation. Before the simulation, we integrated some information about non-induced promoter strength we got from the wet lab. We found that some promoter properties did influence the cell's state directly. To take the intrinsic noise into consideration, we simulated the stochastic time course trajectories of the state of a chemical reaction network using Gillespie algorithm (Gillespie, 1977). We analyzed our two designs respectively. Before the wiki freeze deadline, we got some qualitative and quantitative results of design 2, which verified the validity of our models
+4.1 Parameters
+The parameters we used in our model of the two designs were mainly from two resources. Parameters in the processing module of design 1 were from the repressilator model in BioModels Database . And parameters used in design 2 came from parameter page collected by ETH Zurich iGEM 2013 . And we adjusted some parameters by more reasonable consideration and some promoter tests. We adjusted the protein half life from 10min to 40min and adjusted the relative strength among the promoters we used according to our experimental results (Fig. 3).
+Figure 3. The non-induced promoter strength in E. coli DH-5α.
+4.2 Design 1
+4.2.1 The effect of promoter strength
+For those people who seldom pay attention to model, it is natural to believe that the repressilator will exhibit a stable oscillation. But it is not always May. Most of the models about the repressilator retain some assumptions made by Elowitz and Leibler (Elowitz and Leibler, 2000), including \begin{equation} \begin{aligned} \beta_{1(i)}&=\beta_{1}, K_{tl(i)}=K_{tl},\\ K_{R(i)}&=K_{R}, K_{P(i)}=K_{P}. \end{aligned} \end{equation} However the three genes are not identical. Our characterization of the promoters showed that the promoter strengths for these three genes were different. For this reason, we treated them differently by using $i=1$ to index gene cI, $i=2$ to index gene tetR, $i=3$ to index gene lacI. The promoter strength of placI that drives cI was represented by $\beta_{1(1)}$; the promoter strength of pcI that drives tetR in repressilator and drives lacI in toggle switch was represented by $\beta_{1(2)}$; the promoter strength of ptet was represented by $\beta_{1(3)}$.
+Figure 4. Dynamics and phase diagrams of repressilator model in two cases. The common parameters we used were $\beta_0=0.03, K_{tl}=6.93, K_{R}=0.347, K_{P}=0.0173$. We emphasized the differences by simulating for a very long time. (A) Dynamics of repressilator model with  $\beta_1=(30,30,30)$; (B) Dynamics of repressilator model with  $\beta_1=(30,15,20)$; (C) Phase diagram of repressilator model with $\beta_1=(30,30,30)$. The  trajectory forms a limit cycle. (D) Phase diagram of repressilator model with $\beta_1=(30,15,20)$. The  trajectory converges to a fixed point. (E) Phase diagram of repressilator model with $\beta_1=(30,30,30)$ and different initial protein numbers. The behaviours are robust. (F) Phase diagram of repressilator model with $\beta_1=(30,15,20)$ and different initial protein numbers. The behaviours are sensitive to initial numbers.
+It is obvious that such a difference can influence the attractor of this system when we plotted the time response diagram and phase trajectory diagram for the three proteins ($x_1, x_2, x_3$) (Fig. 4). We presented two potential attractors: a fixed point and a limit cycle. If the attractor is a fixed point, the gene expression is easy to converge to a steady state which means the oscillations die out. If the attractor is a limit cycle, the oscillations are stable. We simulated the oscillation by scanning different initial protein numbers to further illuminate the difference between these two attractors. The oscillation behaviour is sensitive to the initial state when the attractor is a fixed point. So we cannot make sure that we will observe the oscillations in this situation. But the oscillation behaviour is robust when the attractor is a limit cycle.
+Another question arose: Whether the attractor results from the relative promoter strength or the absolute promoter strength. To find out the answer, we scanned a range of promoter strength and constructed a index named relative amplitude $A_r$, \begin{equation} A_r=\frac{2\cdot(max(x_1)-min(x_1))}{max(x_1)+min(x_1)}. \end{equation}
+This index was calculated when the simulation time approached the infinity ($t=120000\ min$). So if the relative amplitude approached 0, we concluded that the system was attracted to a fixed point.
+Figure 5. Results of parameter scanning. The left diagram and the right diagram are the same results from different point of views. The colorbar indicates the relative amplitudes of different simulation results. The blank regions reveal that there is a fixed point attractor in the parameter space. The colored regions imply that there is a limit cycle attractor in the parameter space.
+The simulation results reveal that there is a critical surface between these two limit states (Fig. 5). An attracting limit cycle emerges as the absolute promoter strengths increase, which is consistent with the previous result (Strelkowa and Barahona, 2011). They also assumed that the promoter strengths for all genes are identical and constructed a lumped parameter $c$. The parameter $c$ is the strength of the repressive coupling, which is calculated by \begin{equation} c=\frac{\beta_1\cdot K_{tl}}{K_R\cdot K_P}. \end{equation}
+They found that there is only a fixed point $p_m$ when $c$ is small enough and  the uniform solution $p_m$ becomes unstable via a Hopf bifurcation as $c$ increases, resulting in a stable limit cycle.
+Then how the promoter strength of each gene influences the final result? We tried to use average promoter strength to simplify this question. Comparing four different mean values, we found that the harmonic mean of the promoter strengths exhibited good competence in distinguishing these two cases. If the harmonic mean of these three genes' promoter strengths is large enough, a stable oscillation can be observed easily in theory. While any one of the promoter strengths is too weak, the harmonic mean will be too small to lead to a stable oscillation, because harmonic mean is easily affected by the minimal value.
+Figure 6. Distributions of average promoter strength for two cases. The red areas represent the average promoter strength distribution for those systems with a fixed point attractor. The yellow areas represent the average promoter strength distribution for those systems with a limit cycle attractor. The orange areas represent the overlapping areas of these two distributions
+The model for genetic toggle switch, by contrast, is more simple. It has been acknowledged that the relative promoter strength is more important to the steady states. If the promoter strengths are approximately equal, or, in other words, if they are in the same order, the topological structure of toggle switch creates two stable and one unstable steady states. If one promoter strength is considerably larger than the another one, only one stable steady state will be produced.
+4.2.2 Situations after rewiring
+Not only parameters but also the initial state decides the final steady state of the toggle switch. We set $\beta_1=(30,15,20)$ and constructed an index $S$ to estimate which steady state the toggle switch reaches. $S$ is calculated by \begin{equation} S=\lim_{t\to\infty}\log_{10}\frac{x_1(t)}{x_2(t)}. \end{equation}
+The simulation results indicated S had two values which represent the two stable steady states. In our design, the initial state for toggle switch depends on the phase of oscillation when the DNA sequence is inverted. We found that the oscillation with a fixed point attractor that is far from the separatrix of toggle switch was more likely to result in one steady state when the fluctuation of gene expression becomes weaker and weaker and that the oscillation with a limit cycle attractor that crosses the separatrix was more likely to form bistability in population level (Fig. 7). In deterministic model, the steady state of a single cell in design 1 depends on the time when the site-specific recombination happened (Fig. 8). And the stochastic simulation predicts similar behaviors, however it is not always consistent with the deterministic simulation, especially for those cases that oscillations stop at a phase near the separatrix of toggle switch (Fig. 9).
+Figure 7. Coupling in design 1. The red trajectory represents the gene expression dynamic in the phase space (lacI, cI). The dash line is a separatrix. The toggle switch with initial state above the separatrix will settle to one stable steady state, whereas a toggle starting below the separatrix will settle to another stable steady state. The left figure shows the situation with $\beta_1=(30,15,20)$. The right figure reveals the situation with $\beta_1=(60,30,40)$.
+Figure 8. Deterministic simulation of design 1. The state versus time is simulated by scanning the moment of rewiring from 100 min to 900 min. The interval of the transient state we set is 20 min
+Figure 9. Stochastic simulation of design 1. The parameters we used are the same as the deterministic model. The simulation is achieved by standard stochastic simulation algorithm (Direct method).
+4.3 Design 2
+In design 2, we also paid attention to some characteristics of parts. The pluxR promoter gives weak basal expression independent to the present of AHL. Such a leakage contributes to the formation of positive feedback. The weaker the basal expression of LuxI is, the longer the delay of positive feedback is. If the basal expressive of LuxI is too weak, AHL cannot accumulate in the cells leading to a very low steady state (Fig. 10). The delay may result in bistability when we observe the cells in population level.
+Figure 10. Delay of the positive feedback loop. We simulated the positive feedback situations under the different basal expression condition. The basal expression of LuxI $beta_0$ controls the delay of positive feedback loop.
+The DNA invertion can lead to a drastic change in gene expression. And the negative feedback loop structure forces the system to converge to a lower steady state. We used an explicit Tau-leaping method (Cao et al., 2006) to perform the stochastic simulation here instead of the classical stochastic simulation algorithm, since the high reaction rates made the classical algorithm ineffecient. The stochastic simulation result reveals that there is a weak oscillation in the negative feedback loop stage. And we ascribed this phenomenon to the delay of gene expression and noise in the systems. The steady states we predicted were consistent with our qualitative and quantitative results from wet lab (Fig. 11).
+Figure 11. Result of design 2. In the big picture above, the dark blue line stands for the stochastic simulation result and the red dash line stands for the deterministic simulation result. The small picture is our experiment result. The two bottom pictures are the qualitative results from the fluorescence microscope.
+5. Design Principle of Rewirable Circuit
+If you want to design your own rewirable circuit, you may need more information about how to design. Our design principle can help you to find the pattern that satisfies the specification. Our method is based on the large-scale search.
+5.1 ODE sets with matrices
+In order to implement large scale calculation, we introduce the ordinary differential equation sets with matrices. The transcription regulatory network can be abstracted into a matrix $R$. We use 1, -1, 0 to stand for three possible gene relationships: activation, repression, no regulation. The elements $r_{ij}$ in $R$ indicates that gene $i$ is regulated by gene $j$. This matrix is used to index the topological structure. For calculation, we need to decompose this matrix into two adjacent matrices to represent activation relationship $R_1$ and repression relationship $R_2$, respectively. According to the matrices, we can use the following equations to simulate the gene expression dynamics.  \begin{equation}  \begin{split} \left(     \begin{array}{c}        \frac{d{mRNA}_{x_1}}{dt}\\     \vdots\\ \frac{d{mRNA}_{x_N}}{dt}\\   \end{array} \right) &= R_1 \cdot \left(     \begin{array}{c}        \frac{\beta_1\cdot x_1^n}{K^n+x_1^n}\\       \vdots\\     \frac{\beta_N\cdot x_N^n}{K^n+x_N^n}\\   \end{array} \right) + R_2 \cdot \left(     \begin{array}{c}        \frac{\beta_{N+1}\cdot K^n}{K^n+x_1^n}\\       \vdots\\     \frac{\beta_{2N}\cdot K^n}{K^n+x_N^n}\\   \end{array} \right) - I \cdot K_{R} \cdot \left(     \begin{array}{c}        {mRNA}_{x_1}\\     \vdots\\     {mRNA}_{x_N}\\   \end{array} \right)\\ \left(     \begin{array}{c}        \frac{dx_1}{dt}\\      \vdots\\     \frac{dx_N}{dt}\\   \end{array} \right) &= K_{tl}\cdot \left(     \begin{array}{c}        {mRNA}_{x_1}\\     \vdots\\     {mRNA}_{x_N}\\   \end{array} \right) -K_{P}\cdot \left(     \begin{array}{c}        x_1\\     \vdots\\     x_N\\   \end{array} \right) \end{split} \end{equation},
+where $I$ is the identity matrix. Ignoring some detailed information, we use this coarse-grained model to perform a complete search of the topological space.
+5.2 Function-topology maps
+The rewirable circuit can be user-defined. First, we define the functions that are used to solve some problems. Be sure that these functions can be represented by some quantitative features. For each function, you should construct a fitness function based on the quantitative features. Then we enumerate the completed topological space. For each topology, a lot of parameter sets are sampled using the Latin hypercube sampling method. We calculate different fitness functions for each topology and get a function-topology table.
+5.3 Topological structure matching
+There are two criteria to decide whether two topological structure of regulation can be converted. If the index matrices $R_A$ and $R_B$ only differ in one row, which means only one gene is regulated in a different way in the genetic circuit, we can use two inducible promoters to drive this gene alternately (Fig. 12a). In this case, we conclude that the two topological structures match. Another case is that $R_A$ and $R_B$ can convert mutually by exchanging two rows. In this case, promoter transposition of two genes can swap the ways they are regulated (Fig. 12b).
+Figure 12. Sketches of matching topological structure.
+So we can use the index matrices to match topological structures that are likely to convert.
+5.4 General Steps for designing rewirable circuit
+1. List the specifications for the rewirable circuit;
+2. Design fitness functions for each function you want to realise based on the quantitative specifications;
+3. Scan the topological space to calculate the fitness functions for each topological structure;
+4. Match topological structures that can convert mutually;
+5. Select a pair of topological structures whose value of fitness function satisfies the specification.
+References
+Bennett, M. R., Volfson, D., Tsimring, L., & Hasty, J. (2007). Transient dynamics of genetic regulatory networks. Biophysical journal, 92(10), 3501-3512.
+Ringrose, L., Lounnas, V., Ehrlich, L., Buchholz, F., Wade, R., & Stewart, A. F. (1998). Comparative kinetic analysis of FLP and cre recombinases: mathematical models for DNA binding and recombination. Journal of molecular biology, 284(2), 363-384.
+Tlusty, T., Bar-Ziv, R., & Libchaber, A. (2004). High-fidelity DNA sensing by protein binding fluctuations. Physical review letters, 93(25), 258103.
+Alon, U. (2006). An introduction to systems biology: design principles of biological circuits. CRC press.
+Gillespie, D. T. (1977). Exact stochastic simulation of coupled chemical reactions. The journal of physical chemistry, 81(25), 2340-2361.
+Elowitz, M. B., & Leibler, S. (2000). A synthetic oscillatory network of transcriptional regulators. Nature, 403(6767), 335-338.
+Strelkowa, N., & Barahona, M. (2011). Transient dynamics around unstable periodic orbits in the generalized repressilator model. Chaos: An Interdisciplinary Journal of Nonlinear Science, 21(2), 023104.
+Cao, Y., Gillespie, D. T., & Petzold, L. R. (2006). Efficient step size selection for the tau-leaping simulation method. The Journal of chemical physics, 124(4), 044109.
+Ma, W., Trusina, A., El-Samad, H., Lim, W. A., & Tang, C. (2009). Defining network topologies that can achieve biochemical adaptation. Cell, 138(4), 760-773.
+© 2014 Huazhong Agricultural University iGEM Team. All rights reserved.
+Contacts
+No.1, Shizishan Street, Hongshan District
+Wuhan, Hubei Province
+430070 P.R.China
+Email : hzauigem@gmail.com
+Twitter : hzau_igem
+Wechat : hzauigem
+QQ Group : 313297095
+YouTube : hzauigem
+Retrieved from " http://2014.igem.org/Team:HZAU-China/Modeling "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

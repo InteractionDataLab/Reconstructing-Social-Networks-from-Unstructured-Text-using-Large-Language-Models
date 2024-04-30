@@ -1,0 +1,1381 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_Ciencias-UNAM_scripts_pagescript"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:Ciencias-UNAM/scripts/pagescript">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:Ciencias-UNAM/scripts/pagescript&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/pagescript&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/pagescript&amp;action=history">History               </A></LI><LI style="color:white;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:Ciencias-UNAM/scripts/pagescript" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:Ciencias-UNAM/scripts/pagescript</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2013.igem.org</H3><P>// ************************** GLOBAL VARS *********************************//
+</P><P>// A table to cache the outerHTML of the _rtf elements before the rollover
+// state is applied.
+var gv_OriginalTextCache = new Object();
+</P><P>// A table to cache the src image before the rollover
+// state is applied.
+var gv_OriginalImgSrc = new Object();
+</P><P>// A table to store all the vertical alignments of all the parents of the text
+// objects.
+var gv_vAlignTable = new Object();
+</P><P>
+// ************************************************************************//
+//stored on each browser event
+</P><P>var windowEvent;
+</P><P>//Check if IE
+var bIE = false;
+if ((index = navigator.userAgent.indexOf(&quot;MSIE&quot;)) &gt;= 0) {
+</P><PRE>   bIE = true;
+</PRE><P>}
+</P><P>var Forms = document.getElementsByTagName(&quot;FORM&quot;);
+for (var i = 0; i &lt; Forms.length; i++) {
+</P><PRE>   var Form = Forms[i];
+   Form.onclick = SuppressBubble;
+</PRE><P>}
+</P><P>function SuppressBubble(event) {
+</P><PRE>   if (bIE) {
+       window.event.cancelBubble = true;
+       window.event.returnValue = false;
+   }
+   else {
+       if (event) {
+           event.stopPropagation();
+       }
+   }
+</PRE><P>}
+</P><P>function InsertAfterBegin(dom, html) {
+</P><PRE>   if (!bIE) {
+       var phtml; var range = dom.ownerDocument.createRange();
+       range.selectNodeContents(dom);
+       range.collapse(true);
+       phtml = range.createContextualFragment(html);
+       dom.insertBefore(phtml, dom.firstChild);
+   } else {
+       dom.insertAdjacentHTML(&quot;afterBegin&quot;, html);
+   }
+</PRE><P>}
+</P><P>function InsertBeforeEnd(dom, html) {
+</P><PRE>   if (!bIE) {
+       var phtml; var range = dom.ownerDocument.createRange();
+       range.selectNodeContents(dom);
+       range.collapse(dom);
+       phtml = range.createContextualFragment(html);
+       dom.appendChild(phtml);
+   } else {
+       dom.insertAdjacentHTML(&quot;beforeEnd&quot;, html);
+   }
+</PRE><P>}
+</P><P>var MaxZIndex = 1000;
+var MinZIndex = -1000;
+</P><P>//Get the id of the Workflow Dialog belonging to element with id = id
+function Workflow(id) {
+</P><PRE>   return id + 'WF';
+</PRE><P>}
+</P><P>function BringToFront(id, skipFixed) {
+</P><PRE>   BringToFrontHelper(id);
+   if (!skipFixed) BringFixedToFront();
+</PRE><P>}
+</P><P>function BringToFrontHelper(id) {
+</P><PRE>   var target = document.getElementById(id);
+   if (target == null) return;
+   MaxZIndex = MaxZIndex + 1;
+   target.style.zIndex = MaxZIndex;
+</PRE><P>};
+</P><P>function BringFixedToFront() {
+</P><PRE>   $axure(function (diagramObject) { return diagramObject.fixedKeepInFront; }).each(function (diagramObject) {
+       $.each(diagramObject.scriptIds, function (index, item) {
+           BringToFrontHelper(item);
+       });
+   });
+</PRE><P>}
+</P><P>function SendToBack(id) {
+</P><PRE>   var target = document.getElementById(id);
+   if (target == null) return;
+   MinZIndex = MinZIndex - 1;
+   target.style.zIndex = MinZIndex;
+</PRE><P>}
+</P><P>function HideElement(id) {
+</P><PRE>   var source = document.getElementById(id);
+   source.style.visibility = &quot;hidden&quot;;
+   RefreshScreen();
+</PRE><P>}
+</P><P>function RefreshScreen() {
+</P><PRE>   var oldColor = document.body.style.backgroundColor;
+   var setColor = (oldColor == &quot;rgb(0,0,0)&quot;) ? &quot;#FFFFFF&quot; : &quot;#000000&quot;;
+   document.body.style.backgroundColor = setColor;
+   document.body.style.backgroundColor = oldColor;
+</PRE><P>}
+</P><P>function getAbsoluteLeft(node) {
+</P><PRE>   var currentNode = node;
+   var left = 0;
+   var fixed = false;
+   while (currentNode != null &amp;&amp; currentNode.tagName != &quot;BODY&quot;) {
+       left += currentNode.offsetLeft;
+       if (currentNode.id != <I>&amp;&amp; $('#' + currentNode.id).css('position') == 'fixed') fixed = true;</I>
+       currentNode = currentNode.offsetParent;
+   }
+   if (fixed) left += document.body.scrollLeft;
+   return left;
+</PRE><P>}
+</P><P>function getAbsoluteTop(node) {
+</P><PRE>   var currentNode = node;
+   var top = 0;
+   var fixed = false;
+   while (currentNode != null &amp;&amp; currentNode.tagName != &quot;BODY&quot;) {
+       top += currentNode.offsetTop;
+       if (currentNode.id != <I>&amp;&amp; $('#' + currentNode.id).css('position') == 'fixed') fixed = true;</I>
+       currentNode = currentNode.offsetParent;
+   }
+   if (fixed) top += document.body.scrollTop;
+   return top;
+</PRE><P>}
+</P><P>// ******************  Annotation and Link Functions ****************** //
+</P><P>function GetAnnotationHtml(annJson) {
+</P><PRE>   var retVal = &quot;&quot;;
+   for (var noteName in annJson) {
+       if (noteName != &quot;label&quot;) {
+</PRE>
+            retVal += &quot;<DIV class="annotationName">&quot; + noteName + &quot;</DIV>&quot;;
+            retVal += &quot;<DIV class="annotation">&quot; + annJson[noteName] + &quot;</DIV>&quot;;
+<PRE>       }
+   }
+   return retVal;
+</PRE><P>}
+</P><P>var dialogs = new Object();
+</P><P>function ToggleWorkflow(event, id, width, height, hasWorkflow) {
+</P><PRE>   if (dialogs[id]) {
+       var $dialog = dialogs[id];
+       // reset the dialog
+       dialogs[id] = undefined;
+       if ($dialog.dialog(&quot;isOpen&quot;)) {
+           $dialog.dialog(&quot;close&quot;);
+           return;
+       }
+   }
+   
+   // we'll need to save the scroll position just for stupid IE which will skip otherwise
+   var win = $(window);
+   var scrollY = win.scrollTop();
+   var scrollX = win.scrollLeft();
+</PRE><P>	var target = document.getElementById(Workflow(id));
+	var bufferH = 10;
+	var bufferV = 10;
+	var blnLeft = false;
+	var blnAbove = false;
+	var sourceTop = event.pageY - document.body.scrollTop;
+	var sourceLeft = event.pageX - document.body.scrollLeft;
+</P><P>	if (sourceLeft &gt; width + bufferH + document.body.scrollLeft) {
+		blnLeft = true;
+	}
+	if (sourceTop &gt; height + bufferV + document.body.scrollTop) {
+		blnAbove = true;
+	}
+</P><P>	var top = 0;
+	var left = 0;
+	if (blnAbove) top = sourceTop - height - 20;
+	else top = sourceTop + 10;
+	if (blnLeft) left = sourceLeft - width - 4;
+	else left = sourceLeft - 6;
+</P><PRE>   if (bIE) height += 50;
+</PRE><PRE>   MaxZIndex = MaxZIndex + 1;
+   
+   var dObj = $axure.pageData.scriptIdToObject[id];
+   var ann = dObj.annotation;
+</PRE>
+    var $dialog = $('')
+<PRE>       .appendTo('body')
+</PRE><P>		.html(GetAnnotationHtml(ann))
+		.dialog({
+		    title: dObj.label,
+		    width: width,
+		    height: height,
+		    minHeight: 150,
+		    zIndex: MaxZIndex,
+</P><PRE>           position: [left, top],
+</PRE><P>		    dialogClass: 'dialogFix'
+		});
+		dialogs[id] = $dialog;
+</P><PRE>   // scroll ... just for IE
+   window.scrollTo(scrollX, scrollY);
+</PRE><P>    
+}
+</P><P>function ToggleLinks(event, linksid) {
+</P><PRE>   var links = document.getElementById(linksid);
+   if (links.style.visibility == &quot;visible&quot;) { HideElement(linksid); }
+   else {
+       if (bIE) {
+           links.style.top = window.event.clientY + document.body.scrollTop;
+           links.style.left = window.event.clientX + document.body.scrollLeft;
+       }
+       else {
+           links.style.top = event.pageY;
+           links.style.left = event.pageX;
+       }
+       links.style.visibility = &quot;visible&quot;;
+       BringToFront(linksid, true);
+   }
+   RefreshScreen();
+</PRE><P>}
+</P><P>// ******************  Utils for Interaction Action Functions ****************** //
+</P><P>function IsTrueMouseOut(idNoSpace, e) {
+</P><PRE>   if (!e) e = window.event;
+   var target = window.event ? e.srcElement : e.target;
+</PRE><PRE>   while (target.nodeName != 'HTML') {
+       if (target.style.visibility == 'hidden') return false;
+       target = target.parentNode;
+   }
+</PRE><PRE>   return IsTrueMouseEvent(idNoSpace, e.relatedTarget || e.toElement);
+</PRE><P>}
+</P><P>function IsTrueMouseOver(idNoSpace, e) {
+</P><PRE>   if (!e) e = window.event;
+   return IsTrueMouseEvent(idNoSpace, e.relatedTarget || e.toElement);
+</PRE><P>}
+</P><P>function IsTrueMouseEvent(idNoSpace, relTarget) {
+</P><PRE>   while (relTarget != null &amp;&amp; relTarget.nodeName != 'HTML') {
+       var id = relTarget.id;
+       var index = id.indexOf('Links');
+       if (index &gt; 0 &amp;&amp; id.substring(0, index) == idNoSpace) return false;
+</PRE><PRE>       relTarget = relTarget.parentNode;
+       if (relTarget == null || relTarget.id == idNoSpace) return false;
+   }
+   return true;
+</PRE><P>}
+</P><P>// ******************  Interaction Action Functions ****************** //
+</P><P>function NewTab(hyperlink, name) {
+</P><PRE>   window.open(hyperlink, name);
+</PRE><P>}
+</P><P>function NewWindow(hyperlink, name, features, center, width, height) {
+</P><PRE>   if (center) {
+       var winl = (screen.width - width) / 2;
+       var wint = (screen.height - height) / 2;
+       features = features + ', left=' + winl + ', top=' + wint;
+   }
+   window.open(hyperlink, name, features);
+</PRE><P>}
+</P><P>function ParentWindowNeedsReload(newPageName) {
+</P><PRE>   var reload = false;
+   try {
+       var oldParentUrl = top.opener.window.location.href.split(&quot;#&quot;)[0];
+       var lastslash = oldParentUrl.lastIndexOf(&quot;/&quot;);
+       if (lastslash &gt; 0) {
+           oldParentUrl = oldParentUrl.substring(lastslash + 1, oldParentUrl.length);
+           if (oldParentUrl == encodeURI(newPageName)) {
+               reload = true;
+           }
+       }
+   } catch (e) { }
+   return reload;
+</PRE><P>}
+</P><P>function FrameWindowNeedsReload(iframe, newPageName) {
+</P><PRE>   var reload = false;
+   try {
+       var oldFrameUrl = iframe.contentWindow.location.href.split(&quot;#&quot;)[0];
+       var lastslash = oldFrameUrl.lastIndexOf(&quot;/&quot;);
+       if (lastslash &gt; 0) {
+           oldFrameUrl = oldFrameUrl.substring(lastslash + 1, oldFrameUrl.length);
+           if (oldFrameUrl == encodeURI(newPageName)) {
+               reload = true;
+           }
+       }
+   } catch (e) { }
+   return reload;
+</PRE><P>}
+</P><P>function GetScrollable(target) {
+</P><PRE>   var $target = $(target);
+   var inScrollable = false;
+   var current = $target;
+   var last = $target;
+   while (!current.is('body')) {
+       var elementId = current.attr('id');
+       var diagramObject = elementId &amp;&amp; $axure.pageData.scriptIdToObject[elementId];
+       if (diagramObject &amp;&amp; diagramObject.type == 'dynamicPanel' &amp;&amp; diagramObject.scrollbars != 'none') {
+           //returns the panel diagram div which handles scrolling
+           return document.getElementById(last.attr('id'));
+       }
+       last = current;
+       current = current.parent();
+   }
+   return document.body;
+</PRE><P>}
+</P><P>function ScrollToWidget(id, scrollX, scrollY, easing, duration) {
+</P><PRE>   var target = document.getElementById(id);
+   var scrollable = GetScrollable(target);
+   var targetLeft = getRelativeLeft(target, scrollable);
+   var targetTop = getRelativeTop(target, scrollable);
+   if (!scrollX) targetLeft = scrollable.scrollLeft;
+   if (!scrollY) targetTop = scrollable.scrollTop;
+</PRE><PRE>   if (easing == 'none') {
+       if (scrollY) scrollable.scrollTop = targetTop;
+       if (scrollX) scrollable.scrollLeft = targetLeft;
+   } else {
+       var $scrollable = $(scrollable);
+       if ($(target).is('body')) { $scrollable = $('html,body'); }
+       if (!scrollX) { $scrollable.animate({ scrollTop: targetTop }, duration, easing);
+       } else if (!scrollY) { $scrollable.animate({ scrollLeft: targetLeft }, duration, easing);
+       } else { $scrollable.animate({ scrollTop: targetTop, scrollLeft: targetLeft }, duration, easing); }
+   }    
+</PRE><P>}
+</P><P>function getRelativeLeft(node, parent) {
+</P><PRE>   var currentNode = node;
+   var left = 0;
+   while (currentNode != null &amp;&amp; currentNode.tagName != &quot;BODY&quot;) {
+       left += currentNode.offsetLeft;
+       currentNode = currentNode.offsetParent;
+       if (currentNode == parent) break;
+   }
+   return left;
+</PRE><P>}
+</P><P>function getRelativeTop(node, parent) {
+</P><PRE>   var currentNode = node;
+   var top = 0;
+   while (currentNode != null &amp;&amp; currentNode.tagName != &quot;BODY&quot;) {
+       top += currentNode.offsetTop;
+       currentNode = currentNode.offsetParent;
+       if (currentNode == parent) break;
+   }
+   return top;
+</PRE><P>}
+</P><P>// ******************  Visibility and State Functions ****************** //
+</P><P>var widgetIdToShowFunction = new Object();
+var widgetIdToHideFunction = new Object();
+</P><P>function SetPanelVisibility(dpId, value, easing, duration) {
+</P><PRE>   var dp = $('#' + dpId);
+   var dpVisibility = document.getElementById(dpId).style.visibility;
+   //cannot use dp.css('visibility') because that gets the effective visiblity
+   //i.e. won't be able to set visibility on panels inside hidden panels
+</PRE><PRE>   if (value == 'toggle') {
+       if (dpVisibility == 'hidden') {
+           value = <I>;</I>
+       } else {
+           value = 'hidden';
+       }
+   }
+</PRE><PRE>   if ((dpVisibility == 'hidden' &amp;&amp; value == 'hidden') ||
+       (dpVisibility == <I>&amp;&amp; value == </I>)) {
+       return;
+   }
+</PRE><PRE>   if (easing == 'none') {
+       dp.css('display', <I>);</I>
+       dp.css('visibility', value);
+   } else if (easing == 'fade') {
+       if (value == 'hidden') {
+           if (dpVisibility != 'hidden') {
+               dp.fadeOut(duration, function () {
+                   dp.css('visibility', 'hidden');
+               });
+           }
+       } else {
+           if (dpVisibility == 'hidden') {
+               dp.css('display', 'none');
+               dp.css('visibility', <I>);</I>
+               dp.fadeIn(duration, function () { });
+           }
+       }
+   }
+</PRE><PRE>   if (value == 'hidden') {
+       var hideFunction = widgetIdToHideFunction[dpId];
+       if (hideFunction) {
+           hideFunction();
+       }
+   } else {
+       var showFunction = widgetIdToShowFunction[dpId];
+       if (showFunction) {
+           showFunction();
+       }
+   }
+</PRE><P>}
+</P><P>var widgetIdToPanelStateChangeFunction = new Object();
+</P><P>function SetPanelState(dpId, stateid, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn) {
+</P><PRE>   var dpWasHidden = $('#' + dpId).css('visibility') == &quot;hidden&quot;;
+   if ($('#' + stateid).css('visibility') != &quot;hidden&quot; &amp;&amp; !dpWasHidden) {
+       return;
+   }
+</PRE><PRE>   var width = $('#' + dpId).width();
+   var height = $('#' + dpId).height();
+</PRE><PRE>   var oldStateId = GetPanelState(dpId);
+   if (oldStateId == <I>) {</I>
+       $('#' + dpId + '&gt; div[visibility!=hidden]').css('visibility', 'hidden');
+       $('#' + dpId + '&gt; div[visibility!=hidden]').css('display', <I>);</I>
+   } else {
+       var oldState = $('#' + oldStateId);
+</PRE><PRE>       if (easingOut == 'none') {
+           oldState.css('visibility', 'hidden');
+           oldState.css('display', <I>);</I>
+           BringPanelStateToFront(dpId, stateid);
+       } else if (easingOut == 'fade') {
+           oldState.fadeOut(durationOut, function () {
+               oldState.css('visibility', 'hidden');
+               BringPanelStateToFront(dpId, stateid);
+           });
+       } else {
+           var oldTop = oldState.css('top');
+           var oldLeft = oldState.css('left');
+</PRE><PRE>    var onComplete = function () {
+               oldState.css('visibility', 'hidden');
+               oldState.css('top', oldTop);
+               oldState.css('left', oldLeft);
+               BringPanelStateToFront(dpId, stateid);
+           };
+</PRE><PRE>           if (directionOut == &quot;right&quot;) {
+               MoveWidgetBy(oldStateId, width, 0, easingOut, durationOut, onComplete);
+           } else if (directionOut == &quot;left&quot;) {
+               MoveWidgetBy(oldStateId, -width, 0, easingOut, durationOut, onComplete);
+           } else if (directionOut == &quot;up&quot;) {
+               MoveWidgetBy(oldStateId, 0, -height, easingOut, durationOut, onComplete);
+           } else if (directionOut == &quot;down&quot;) {
+               MoveWidgetBy(oldStateId, 0, height, easingOut, durationOut, onComplete);
+           }
+</PRE><PRE>       }
+   }
+</PRE><PRE>   var dp = $('#' + dpId);
+   dp.css('display', <I>);</I>
+   dp.css('visibility', <I>);</I></PRE><PRE>   var newState = $('#' + stateid);
+   if (easingIn == 'none') {
+       newState.css('visibility', <I>);</I>
+       newState.css('display', <I>);</I>
+   } else if (easingIn == 'fade') {
+       newState.css('display','none');
+       newState.css('visibility', <I>);</I>
+       newState.fadeIn(durationIn, function () {});
+   } else {
+       var oldTop = Number(newState.css('top').replace(&quot;px&quot;, &quot;&quot;));
+       var oldLeft = Number(newState.css('left').replace(&quot;px&quot;, &quot;&quot;));
+</PRE><PRE>       if (directionIn == &quot;right&quot;) {
+           newState.css('left', oldLeft - width + 'px');
+       } else if (directionIn == &quot;left&quot;) {
+           newState.css('left', oldLeft + width + 'px');
+       } else if (directionIn == &quot;up&quot;) {
+           newState.css('top', oldTop + height + 'px');
+       } else if (directionIn == &quot;down&quot;) {
+           newState.css('top', oldTop - height + 'px');
+       }
+</PRE><PRE>       newState.css('display', <I>);</I>
+       newState.css('visibility', <I>);</I></PRE><PRE>       if (directionIn == &quot;right&quot;) {
+           MoveWidgetBy(stateid, width, 0, easingIn, durationIn);
+       } else if (directionIn == &quot;left&quot;) {
+           MoveWidgetBy(stateid, -width, 0, easingIn, durationIn);
+       } else if (directionIn == &quot;up&quot;) {
+           MoveWidgetBy(stateid, 0, -height, easingIn, durationIn);
+       } else if (directionIn == &quot;down&quot;) {
+           MoveWidgetBy(stateid, 0, height, easingIn, durationIn);
+       }
+   }
+</PRE><PRE>   var panelStateChangeFunction = widgetIdToPanelStateChangeFunction[dpId];
+   if (panelStateChangeFunction) {
+       panelStateChangeFunction();
+   }
+</PRE><PRE>   if (dpWasHidden) {
+       var showFunction = widgetIdToShowFunction[dpId];
+       if (showFunction) {
+           showFunction();
+       }
+   }
+</PRE><P>}
+</P><P>function SetPanelStateNext(dpId, loop, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn) {
+</P><PRE>   var oldStateId = GetPanelState(dpId);
+   if (oldStateId != <I>) {</I>
+       var index = Number(oldStateId.substring(2, oldStateId.indexOf('u'))) + 1;
+       if (index &gt;= $('#' + dpId).children().length) {
+           if (loop) index = 0;
+           else return;
+       }
+       var stateid = 'pd' + index + dpId;
+       SetPanelState(dpId, stateid, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn);
+   }
+</PRE><P>}
+</P><P>function SetPanelStatePrevious(dpId, loop, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn) {
+</P><PRE>   var oldStateId = GetPanelState(dpId);
+   if (oldStateId != <I>) {</I>
+       var index = Number(oldStateId.substring(2, oldStateId.indexOf('u'))) - 1;
+       if (index &lt; 0) {
+           if (loop) index = $('#' + dpId).children().length - 1;
+           else return;
+       }
+       var stateid = 'pd' + index + dpId;
+       SetPanelState(dpId, stateid, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn);
+   }
+</PRE><P>}
+</P><P>function SetPanelStateByValue(dpId, value, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn) {
+</P><PRE>   var toMatch = $.trim(value).toLowerCase();
+   var stateId;
+   $('#' + dpId).children('*[data-label]').each(function (index, element) {
+       // the || is to make sure it matches only the first one
+       if (!stateId &amp;&amp; element.getAttribute('data-label').toLowerCase() == toMatch) stateId = element.id;
+   });
+   if (stateId) {
+       SetPanelState(dpId, stateId, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn);
+   } else if (isNaN(value)) {
+       return;
+   } else {
+       var index = value - 1;
+       var stateId = 'pd' + index + dpId;
+       if ($('#' + dpId).children('[id=&quot;' + stateId + '&quot;]').length &gt; 0)
+           SetPanelState(dpId, stateId, easingOut, directionOut, durationOut, easingIn, directionIn, durationIn);
+   }
+</PRE><P>}
+</P><P>function BringPanelStateToFront(dpId, stateid) {
+</P><PRE>   $('#' + stateid).appendTo($('#' + dpId));
+</PRE><P>}
+</P><P>// ******************  Move Functions ****************** //
+var widgetIdToMoveFunction = new Object();
+var widgetMoveInfo = new Object();
+</P><P>function MoveWidgetTo(id, x, y, easing, duration) {
+</P><PRE>   var widget = $('#' + id);
+   var deltaX = x - Number(widget.css('left').replace(&quot;px&quot;, &quot;&quot;));
+   var deltaY = y - Number(widget.css('top').replace(&quot;px&quot;, &quot;&quot;));
+   MoveWidgetBy(id, deltaX, deltaY, easing, duration);
+</PRE><P>}
+</P><P>function MoveWidgetBy(id, x, y, easing, duration, animationCompleteCallback) {
+</P><PRE>   LogMovedWidgetForDrag(id);
+</PRE><PRE>   var widget = $('#' + id);
+</PRE><PRE>   var horzProp = 'left';
+   var vertProp = 'top';
+   var horzX = x;
+   var vertY = y;
+</PRE><PRE>   if (widget.css('left') == 'auto') {
+       horzProp = 'right';
+       horzX = -x;
+   } else if (widget.css('left') == '50%') {
+       horzProp = 'margin-left';
+   }
+</PRE><PRE>   if (widget.css('top') == 'auto') {
+       vertProp = 'bottom';
+       vertY = -y;
+   } else if (widget.css('top') == '50%') {
+       vertProp = 'margin-top';
+   }
+   var cssStyles = {};
+   cssStyles[horzProp] = '+=' + horzX;
+   cssStyles[vertProp] = '+=' + vertY;
+</PRE><PRE>   if (easing == 'none') {
+       $('#' + id).animate(cssStyles, 0);
+   } else {
+       $('#' + id).animate(cssStyles, duration, easing, animationCompleteCallback);
+   }
+   
+   var moveInfo = new Object();
+   moveInfo.x = x;
+   moveInfo.y = y;
+   moveInfo.easing = easing;
+   moveInfo.duration = duration;
+   widgetMoveInfo[id] = moveInfo;
+</PRE><PRE>   var moveFunction = widgetIdToMoveFunction[id];
+   if (moveFunction) {
+       moveFunction();
+   }
+</PRE><P>}
+</P><P>function MoveWidgetWithThis(id, srcId) {
+</P><PRE>   var moveInfo = widgetMoveInfo[srcId];
+   if (moveInfo) {
+       MoveWidgetBy(id, moveInfo.x, moveInfo.y, moveInfo.easing, moveInfo.duration);
+   }
+</PRE><P>}
+</P><P>function MoveWidgetToLocationBeforeDrag(id, easing, duration) {
+</P><PRE>   if (widgetDragInfo.movedWidgets[id]) {
+       var loc = widgetDragInfo.movedWidgets[id];
+       MoveWidgetTo(id, loc.x, loc.y, easing, duration);
+   }
+</PRE><P>}
+</P><P>function LogMovedWidgetForDrag(id) {
+</P><PRE>   if (widgetDragInfo.hasStarted) {
+       var widget = $('#' + id);
+       var y = Number(widget.css('top').replace(&quot;px&quot;, &quot;&quot;));
+       var x = Number(widget.css('left').replace(&quot;px&quot;, &quot;&quot;));
+       var movedWidgets = widgetDragInfo.movedWidgets;
+       if (!movedWidgets[id]) {
+           movedWidgets[id] = new Location(x, y);
+       }
+   }
+</PRE><P>}
+</P><P>// ******************  Drag Functions ****************** //
+</P><P>var widgetIdToStartDragFunction = new Object();
+var widgetIdToDragFunction = new Object();
+var widgetIdToDragDropFunction = new Object();
+var widgetIdToSwipeLeftFunction = new Object();
+var widgetIdToSwipeRightFunction = new Object();
+</P><P>var widgetDragInfo = new Object();
+</P><P>function StartDragWidget(event, id) {
+</P><PRE>   var x, y;
+   var tg;
+   if (bIE) {
+       x = window.event.clientX + document.documentElement.scrollLeft + document.body.scrollLeft;
+       y = window.event.clientY + document.documentElement.scrollTop + document.body.scrollTop;
+       tg = window.event.srcElement;
+   }
+   else {
+       if (event.changedTouches) {
+           x = event.changedTouches[0].pageX;
+           y = event.changedTouches[0].pageY;
+       } else {
+           x = event.pageX;
+           y = event.pageY;
+           event.preventDefault();
+       }
+       tg = event.target;
+   }
+   widgetDragInfo.hasStarted = false;
+   widgetDragInfo.widgetId = id;
+   widgetDragInfo.cursorStartX = x;
+   widgetDragInfo.cursorStartY = y;
+   widgetDragInfo.lastX = x;
+   widgetDragInfo.lastY = y;
+   widgetDragInfo.currentX = x;
+   widgetDragInfo.currentY = y;
+   widgetDragInfo.movedWidgets = new Object();
+   widgetDragInfo.startTime = (new Date()).getTime();
+   widgetDragInfo.targetWidget = tg;
+</PRE><PRE>   if (bIE) {
+       document.attachEvent(&quot;onmousemove&quot;, DragWidget);
+       document.attachEvent(&quot;onmouseup&quot;, StopDragWidget);
+   }
+   else {
+       document.addEventListener(&quot;mousemove&quot;, DragWidget, true);
+       document.addEventListener(&quot;mouseup&quot;, StopDragWidget, true);
+       document.addEventListener(&quot;touchmove&quot;, DragWidget, true);
+       document.addEventListener(&quot;touchend&quot;, StopDragWidget, true);
+   }
+   SuppressBubble(event);
+</PRE><P>}
+</P><P>function DragWidget(event) {
+</P><PRE>   var x, y;
+   if (bIE) {
+       x = window.event.clientX + document.documentElement.scrollLeft + document.body.scrollLeft;
+       y = window.event.clientY + document.documentElement.scrollTop + document.body.scrollTop;
+   }
+   else {
+       if (event.changedTouches) {
+           x = event.changedTouches[0].pageX;
+           y = event.changedTouches[0].pageY;
+           //allow scroll (defaults) if only swipe events have cases and delta x is less than 5px and not blocking scrolling
+           var deltaX = x - widgetDragInfo.currentX;
+           var target = document.getElementById(widgetDragInfo.widgetId);
+           if (widgetIdToDragFunction[widgetDragInfo.widgetId] || (deltaX * deltaX) &gt; 25 || ($axure.pageData.options.preventScroll &amp;&amp; GetScrollable(target) == document.body)) {
+               event.preventDefault();
+           }
+       } else {
+           x = event.pageX;
+           y = event.pageY;
+       }
+   }
+   widgetDragInfo.xDelta = x - widgetDragInfo.currentX;
+   widgetDragInfo.yDelta = y - widgetDragInfo.currentY;
+   widgetDragInfo.lastX = widgetDragInfo.currentX;
+   widgetDragInfo.lastY = widgetDragInfo.currentY;
+   widgetDragInfo.currentX = x;
+   widgetDragInfo.currentY = y;
+   widgetDragInfo.currentTime = (new Date()).getTime();
+   
+   SuppressBubble(event);
+</PRE><PRE>   if (!widgetDragInfo.hasStarted) {
+       widgetDragInfo.hasStarted = true;
+       var startFunction = widgetIdToStartDragFunction[widgetDragInfo.widgetId];
+       if (startFunction) {
+           startFunction();
+       }
+       widgetDragInfo.oldBodyCursor = document.body.style.cursor;
+       document.body.style.cursor = 'move';
+       var widget = document.getElementById(widgetDragInfo.widgetId);
+       widgetDragInfo.oldCursor = widget.style.cursor;
+       widget.style.cursor = 'move';
+   }
+</PRE><PRE>   var dragFunction = widgetIdToDragFunction[widgetDragInfo.widgetId];
+   if (dragFunction) {
+       dragFunction();
+   }
+</PRE><P>}
+</P><P>function SuppressClickAfterDrag(event) {
+</P><PRE>   if (bIE) { window.event.srcElement.detachEvent(&quot;onclick&quot;, SuppressClickAfterDrag);
+   } else { document.removeEventListener(&quot;click&quot;, SuppressClickAfterDrag, true); }
+   SuppressBubble(event);
+</PRE><P>}
+</P><P>function StopDragWidget(event) {
+</P><PRE>   var tg;
+   if (bIE) {
+       document.detachEvent(&quot;onmousemove&quot;, DragWidget);
+       document.detachEvent(&quot;onmouseup&quot;, StopDragWidget);
+       tg = window.event.srcElement;
+   }
+   else {
+       document.removeEventListener(&quot;mousemove&quot;, DragWidget, true);
+       document.removeEventListener(&quot;mouseup&quot;, StopDragWidget, true);
+       document.removeEventListener(&quot;touchmove&quot;, DragWidget, true);
+       document.removeEventListener(&quot;touchend&quot;, StopDragWidget, true);
+       tg = event.target;
+   }
+</PRE><PRE>   if (widgetDragInfo.hasStarted) {
+       widgetDragInfo.currentTime = (new Date()).getTime();
+       var dragDropFunction = widgetIdToDragDropFunction[widgetDragInfo.widgetId];
+       if (dragDropFunction) {
+           dragDropFunction();
+       }
+</PRE><PRE>       if (GetGlobalVariableValue('TotalDragX') &lt; -30 &amp;&amp; GetGlobalVariableValue('DragTime') &lt; 1000) {
+           var swipeLeftFunction = widgetIdToSwipeLeftFunction[widgetDragInfo.widgetId];
+           if (swipeLeftFunction) {
+               swipeLeftFunction();
+           }
+       }
+</PRE><PRE>       if (GetGlobalVariableValue('TotalDragX') &gt; 30 &amp;&amp; GetGlobalVariableValue('DragTime') &lt; 1000) {
+           var swipeRightFunction = widgetIdToSwipeRightFunction[widgetDragInfo.widgetId];
+           if (swipeRightFunction) {
+               swipeRightFunction();
+           }
+       }
+</PRE><PRE>       document.body.style.cursor = widgetDragInfo.oldBodyCursor;
+       var widget = document.getElementById(widgetDragInfo.widgetId);
+       widget.style.cursor=widgetDragInfo.oldCursor;
+</PRE><PRE>       if (widgetDragInfo.targetWidget == tg &amp;&amp; !event.changedTouches) {
+           // suppress the click after the drag on desktop browsers
+           if (bIE &amp;&amp; widgetDragInfo.targetWidget) { widgetDragInfo.targetWidget.attachEvent(&quot;onclick&quot;, SuppressClickAfterDrag); }
+           else { document.addEventListener(&quot;click&quot;, SuppressClickAfterDrag, true); }
+       }
+   }
+       
+   widgetDragInfo.hasStarted = false;
+   widgetDragInfo.movedWidgets=new Object();
+</PRE><PRE>   return false;
+</PRE><P>}
+</P><P>function GetDragX() {
+</P><PRE>   if (widgetDragInfo.hasStarted) return widgetDragInfo.xDelta;
+   return 0;
+</PRE><P>}
+</P><P>function GetDragY() {
+</P><PRE>   if (widgetDragInfo.hasStarted) return widgetDragInfo.yDelta;
+   return 0;
+</PRE><P>}
+</P><P>function GetTotalDragX() {
+</P><PRE>   if (widgetDragInfo.hasStarted) return widgetDragInfo.currentX - widgetDragInfo.cursorStartX;
+   return 0;
+</PRE><P>}
+</P><P>function GetTotalDragY() {
+</P><PRE>   if (widgetDragInfo.hasStarted) return widgetDragInfo.currentY - widgetDragInfo.cursorStartY;
+   return 0;
+</PRE><P>}
+</P><P>function GetDragTime() {
+</P><PRE>   if (widgetDragInfo.hasStarted) return widgetDragInfo.currentTime - widgetDragInfo.startTime;
+   return 600000;
+</PRE><P>}
+</P><P>function GetDragCursorRectangles() {
+</P><PRE>   var rects = new Object();
+   rects.lastRect = new Rectangle(widgetDragInfo.lastX, widgetDragInfo.lastY, 1, 1);
+   rects.currentRect = new Rectangle(widgetDragInfo.currentX, widgetDragInfo.currentY, 1, 1);
+   return rects;
+</PRE><P>}
+</P><P>function GetWidgetRectangles(id) {
+</P><PRE>   var widget = document.getElementById(id);
+   var rects = new Object();
+   rects.lastRect = new Rectangle(getAbsoluteLeft(widget), getAbsoluteTop(widget), Number($('#' + id).css('width').replace(&quot;px&quot;, &quot;&quot;)), Number($('#' + id).css('height').replace(&quot;px&quot;, &quot;&quot;)));
+   rects.currentRect = rects.lastRect;
+   return rects;
+</PRE><P>}
+</P><P>function IsEntering(movingRects, targetRects) {
+</P><PRE>   return !movingRects.lastRect.IntersectsWith(targetRects.currentRect) &amp;&amp; movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+</PRE><P>}
+</P><P>function IsLeaving(movingRects, targetRects) {
+</P><PRE>   return movingRects.lastRect.IntersectsWith(targetRects.currentRect) &amp;&amp; !movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+</PRE><P>}
+</P><P>function IsOver(movingRects, targetRects) {
+</P><PRE>   return movingRects.currentRect.IntersectsWith(targetRects.currentRect);
+</PRE><P>}
+</P><P>function IsNotOver(movingRects, targetRects) {
+</P><PRE>   return !IsOver(movingRects, targetRects);
+</PRE><P>}
+</P><P>function Rectangle(x, y, width, height) {
+</P><PRE>   this.x = x;
+   this.y = y;
+   this.width = width;
+   this.height = height;
+   this.right = x + width;
+   this.bottom = y + height;
+</PRE><PRE>   this.IntersectsWith = IntersectsWith;
+</PRE><PRE>   function IntersectsWith(rect) {
+       return this.x &lt; rect.right &amp;&amp; this.right &gt; rect.x &amp;&amp; this.y &lt; rect.bottom &amp;&amp; this.bottom &gt; rect.y;
+   }
+</PRE><P>}
+</P><P>function Location(x, y) {
+</P><PRE>   this.x = x;
+   this.y = y;
+</PRE><P>}
+</P><P>// ******************  String Function ****************** //
+</P><P>function ValueContains(inputString, value) {
+</P><PRE>   return inputString.indexOf(value) &gt; -1;
+</PRE><P>}
+</P><P>function ValueNotContains(inputString, value) {
+</P><PRE>   return !ValueContains(inputString, value);
+</PRE><P>}
+</P><P>// ******************  Date Functions ****************** //
+</P><P>function GetDayString(day) {
+</P><PRE>   var weekday = new Array(7);
+   weekday[0] = &quot;Sunday&quot;;
+   weekday[1] = &quot;Monday&quot;;
+   weekday[2] = &quot;Tuesday&quot;;
+   weekday[3] = &quot;Wednesday&quot;;
+   weekday[4] = &quot;Thursday&quot;;
+   weekday[5] = &quot;Friday&quot;;
+   weekday[6] = &quot;Saturday&quot;;
+</PRE><PRE>   return weekday[day];
+</PRE><P>}
+</P><P>function GetMonthString(m) {
+</P><PRE>   var month = new Array(12);
+   month[0] = &quot;January&quot;;
+   month[1] = &quot;February&quot;;
+   month[2] = &quot;March&quot;;
+   month[3] = &quot;April&quot;;
+   month[4] = &quot;May&quot;;
+   month[5] = &quot;June&quot;;
+   month[6] = &quot;July&quot;;
+   month[7] = &quot;August&quot;;
+   month[8] = &quot;September&quot;;
+   month[9] = &quot;October&quot;;
+   month[10] = &quot;November&quot;;
+   month[11] = &quot;December&quot;;
+</PRE><PRE>   return month[m];
+</PRE><P>}
+</P><P>// ******************  Sim Functions ****************** //
+function SetCheckState(id, value) {
+</P><PRE>   var boolValue = Boolean(value);
+   if (value == 'false') {
+       boolValue = false;
+   }
+   document.getElementById(id).checked = boolValue;
+</PRE><P>}
+</P><P>function SetSelectedOption(id, value) {
+</P><PRE>   document.getElementById(id).value = value;
+</PRE><P>}
+</P><P>function SetGlobalVariableValue(id, value) {
+</P><PRE>   $axure.globalVariableProvider.setVariableValue(id, value);
+</PRE><P>}
+</P><P>function SetWidgetFormText(id, value) {
+</P><PRE>   document.getElementById(id).value = value;
+</PRE><P>}
+</P><P>function SetFocusedWidgetText(value) {
+</P><PRE>   if (lastFocusedControl) {
+       lastFocusedControl.focus();
+       lastFocusedControl.value = value;
+   }
+</PRE><P>}
+</P><P>function GetRtfElementHeight(rtfElement) {
+</P><PRE>   if (rtfElement.innerHTML == <I>) rtfElement.innerHTML = ' ';</I>
+   return rtfElement.offsetHeight;
+</PRE><P>}
+</P><P>function SetWidgetRichText(id, value) {
+</P><PRE>   //use the .visibility property instead of jquery's effective visibility
+   var rtfVisibility = document.getElementById(id).style.visibility;
+   if (rtfVisibility == 'hidden') $('#' + id).css('visibility', <I>);</I></PRE><PRE>   var rtfElement = document.getElementById(id + '_rtf');
+   var oldHeight = GetRtfElementHeight(rtfElement);
+</PRE><PRE>   //Replace any newlines with line breaks
+   value = value.replace(/\n/g, '');
+   
+   rtfElement.innerHTML = value;
+   var newHeight = GetRtfElementHeight(rtfElement);
+</PRE><PRE>   var oldTop = Number($('#' + id).css('top').replace(&quot;px&quot;, &quot;&quot;));
+   var vAlign = gv_vAlignTable[id];
+</PRE><PRE>   if (vAlign == &quot;center&quot;) {
+       var newTop = oldTop - (newHeight - oldHeight) / 2;
+       $('#' + id).css('top', newTop + 'px');
+   } else if (vAlign == &quot;bottom&quot;) {
+       var newTop = oldTop - newHeight + oldHeight;
+       $('#' + id).css('top', newTop + 'px');
+   } // do nothing if the alignment is top  
+</PRE><PRE>   if (gv_OriginalTextCache[id]) {
+       CacheOriginalText(id);
+   }
+</PRE><P>}
+</P><P>function GetCheckState(id) {
+</P><PRE>   return document.getElementById(id).checked;
+</PRE><P>}
+</P><P>function GetSelectedOption(id) {
+</P><PRE>   return document.getElementById(id).value;
+</PRE><P>}
+</P><P>function GetNum(str) {
+</P><PRE>   //Setting a GlobalVariable to some blank text then setting a widget to the value of that variable would result in 0 not &quot;&quot;
+   //I have fixed this another way so commenting this should be fine now
+   //if (!str) return &quot;&quot;;
+   return isNaN(str) ? str : Number(str);
+</PRE><P>}
+</P><P>function GetGlobalVariableValue(id) {
+</P><PRE>   return $axure.globalVariableProvider.getVariableValue(id);
+</PRE><P>}
+</P><P>function GetGlobalVariableLength(id) {
+</P><PRE>   return GetGlobalVariableValue(id).length;
+</PRE><P>}
+</P><P>function GetWidgetText(id) {
+</P><PRE>   var idQuery = $('#' + id);
+   if (idQuery.is('div')) {
+       var $rtfObj = idQuery.find('div[id$=&quot;_rtf&quot;]');
+       if ($rtfObj.length == 0) return;
+</PRE><PRE>       var textOut = <I>;</I>
+       $rtfObj.children('p').each(function (index) {
+           if (index != 0) textOut += '\n';
+</PRE><PRE>           //Replace line breaks (set in SetWidgetRichText) with newlines and nbsp's with regular spaces.
+           var htmlContent = $(this).html().replace(//ig, '\n').replace(/ /ig, ' ');
+           textOut += $(htmlContent).text();
+       });
+</PRE><PRE>       return textOut;
+   } else if (idQuery.is('input') &amp;&amp;
+       (idQuery.attr('type') == 'checkbox' || idQuery.attr('type') == 'radio')) {
+       return idQuery.parent().find('label').find('div[id$=&quot;_rtf&quot;]').text();
+   } else {
+       return idQuery.val();
+   }
+</PRE><P>}
+</P><P>function GetFocusedWidgetText(id) {
+</P><PRE>   if (lastFocusedControl) {
+       return lastFocusedControl.value;
+   } else {
+       return &quot;&quot;;
+   }
+</PRE><P>}
+</P><P>function GetWidgetValueLength(id) {
+</P><PRE>   return document.getElementById(id).value.length;
+</PRE><P>}
+</P><P>function GetWidgetVisibility(id) {
+</P><PRE>   if (document.getElementById(id).style.visibility == 'hidden') {
+       return false;
+   } else { return true; }
+</PRE><P>}
+</P><P>function GetPanelState(id) {
+</P><PRE>   var el = document.getElementById(id);
+   if (el.style.visibility == 'hidden') { return <I>; }</I></PRE><PRE>   var children = el.childNodes;
+   for (var i = 0; i &lt; children.length; i++) {
+       if (children[i].style) {
+           if (children[i].style.visibility != 'hidden') {
+               return children[i].id;
+           }
+       }
+   }
+   return <I>;</I></PRE><P>}
+</P><P>// *****************  Validation Functions ***************** //
+</P><P>function IsValueAlpha(val) {
+</P><PRE>   var isAlphaRegex = new RegExp(&quot;^[a-z\\s]+$&quot;, &quot;gi&quot;);
+   return isAlphaRegex.test(val);
+</PRE><P>}
+</P><P>function IsValueNumeric(val) {
+</P><PRE>   var isNumericRegex = new RegExp(&quot;^[0-9,\\.\\s]+$&quot;, &quot;gi&quot;);
+   return isNumericRegex.test(val);
+</PRE><P>}
+</P><P>function IsValueAlphaNumeric(val) {
+</P><PRE>   var isAlphaNumericRegex = new RegExp(&quot;^[0-9a-z\\s]+$&quot;, &quot;gi&quot;);
+   return isAlphaNumericRegex.test(val);
+</PRE><P>}
+</P><P>function IsValueOneOf(val, values) {
+</P><PRE>   for (i = 0; i &lt; values.length; i++) {
+       var option = values[i];
+       if (val == option) return true;
+   }
+   // by default, return false
+   return false;
+</PRE><P>}
+</P><P>function IsValueNotAlpha(val) {
+</P><PRE>   return !IsValueAlpha(val);
+</PRE><P>}
+</P><P>function IsValueNotNumeric(val) {
+</P><PRE>   return !IsValueNumeric(val);
+</PRE><P>}
+</P><P>function IsValueNotAlphaNumeric(val) {
+</P><PRE>   return !IsValueAlphaNumeric(val);
+</PRE><P>}
+</P><P>function IsValueNotOneOf(val, values) {
+</P><PRE>   return !IsValueOneOf(val, values);
+</PRE><P>}
+</P><P>// ******************  Rollover Functions ****************** //
+</P><P>var gv_hoveredObject = <I>;</I></P><P>function HookHover(id, bringFront) {
+//    return;
+//    
+//    $('.' + id + '_container').hover(
+//		function (e) { // mouseenter
+//		    if (id == gv_hoveredObject) return;
+//		    gv_hoveredObject = id;
+//		    SetWidgetHover(id, bringFront);
+//		},
+//		function () { // mouseleave
+//		    if (id == gv_hoveredObject) gv_hoveredObject = <I>;</I>
+//		    SetWidgetNotHover(id, bringFront);
+//		}
+//	);
+}
+</P><P>function HookClick(id, bringFront) {
+//    
+//    $('.' + id + '_container')
+//		.mousedown(function () {
+//		    SetWidgetMouseDown(id, bringFront);
+//		})
+//		.mouseup(function () {
+//		    SetWidgetNotMouseDown(id, bringFront);
+//		})
+//	;
+}
+</P><P>
+function SetWidgetOriginal(id, bringFront) {
+</P><PRE>   ApplyImageAndTextJson(id, 'normal', bringFront, true);
+</PRE><P>}
+</P><P>function SetWidgetHover(id, bringFront) {
+</P><PRE>   if (IsWidgetSelected(id) || IsWidgetDisabled(id)) { return; }
+   
+   ApplyImageAndTextJson(id, 'mouseOver', bringFront, false);
+</PRE><P>}
+</P><P>function SetWidgetNotHover(id, bringFront) {
+</P><PRE>   if (IsWidgetSelected(id) || IsWidgetDisabled(id)) { return; }
+</PRE><PRE>   SetWidgetOriginal(id, bringFront);
+</PRE><P>}
+</P><P>function GetWidgetCurrentState(id) {
+</P><PRE>   if (IsWidgetDisabled(id)) return &quot;disabled&quot;;
+   if (IsWidgetSelected(id)) return &quot;selected&quot;;
+   if ($axure.eventManager.mouseOverObjectId == id ||
+       $axure.eventManager.mouseOverLinkId) return &quot;mouseOver&quot;;
+   if ($axure.eventManager.mouseDownObjectId == id ||
+       $axure.eventManager.mouseDownLinkId) return &quot;mouseDown&quot;;
+</PRE><PRE>   return &quot;normal&quot;;
+</PRE><P>}
+</P><P>function SetLinkStyle(id, parentId, styleName) {
+</P><PRE>   var style = GetStyleOverridesForState(id, parentId, styleName);
+   if ($.isEmptyObject(style)) return;
+</PRE><PRE>   var textId = GetTextIdFromLink(id);
+</PRE><PRE>   if (!gv_OriginalTextCache[textId]) { CacheOriginalText(textId); }
+   var parentObjectCache = gv_OriginalTextCache[textId].styleCache;
+</PRE><PRE>   TextTransformWithVerticalAlignment(textId, function () {
+       var cssProps = GetCssStyleProperties(style);
+       $('#' + id).find('*').andSelf().each(function (index, element) {
+           element.setAttribute('style', parentObjectCache[element.id]);
+           ApplyCssProps(element, cssProps);
+       });
+   });
+</PRE><P>}
+</P><P>function ResetLinkStyle(id) {
+</P><PRE>   var textId = GetTextIdFromLink(id);
+   var parentObjectCache = gv_OriginalTextCache[textId].styleCache;
+</PRE><PRE>   TextTransformWithVerticalAlignment(textId, function () {
+       $('#' + id).find('*').andSelf().each(function (index, element) {
+           element.style.cssText = parentObjectCache[element.id];
+       });
+   });
+   if ($axure.eventManager.mouseDownObjectId) {
+       SetWidgetMouseDown($axure.eventManager.mouseDownObjectId);
+   } else if ($axure.eventManager.mouseOverObjectId) {
+       SetWidgetHover($axure.eventManager.mouseOverObjectId);
+   }    
+</PRE><P>}
+</P><P>function SetLinkHover(id) {
+</P><PRE>   var parentId = $axure.eventManager.mouseOverObjectId;
+   SetLinkStyle(id, parentId, &quot;mouseOver&quot;);
+</PRE><P>}
+</P><P>function SetLinkNotHover(id) {
+</P><PRE>   ResetLinkStyle(id);
+</PRE><P>}
+</P><P>function SetLinkMouseDown(id) {
+</P><PRE>   var parentId = $axure.eventManager.mouseOverObjectId;
+   SetLinkStyle(id, parentId, &quot;mouseDown&quot;);
+</PRE><P>}
+</P><P>function SetLinkNotMouseDown(id) {
+</P><PRE>   ResetLinkStyle(id);
+   
+   var style = GetStyleOverridesForState(id, $axure.eventManager.mouseOverObjectId, &quot;mouseOver&quot;);
+   if(!$.isEmptyObject(style)) {
+       SetLinkHover(id);
+   } // we dont do anything here bocause the widget not mouse down has taken over here
+</PRE><P>}
+</P><P>function SetWidgetMouseDown(id, bringFront) {
+</P><PRE>   if (IsWidgetSelected(id) || IsWidgetDisabled(id)) { return; }
+   var widgetObject = $axure.pageData.scriptIdToObject[id];
+   
+   if (!(widgetObject &amp;&amp; widgetObject.style &amp;&amp; widgetObject.style.stateStyles &amp;&amp;
+       widgetObject.style.stateStyles.mouseDown)) return;
+   
+   ApplyImageAndTextJson(id, 'mouseDown', bringFront, false);
+</PRE><P>}
+</P><P>function SetWidgetNotMouseDown(id, bringFront) {
+</P><PRE>   if (IsWidgetSelected(id) || IsWidgetDisabled(id)) { return; }
+   var widgetObject = $axure.pageData.scriptIdToObject[id];
+   var hasMouseOver = widgetObject &amp;&amp; widgetObject.style &amp;&amp; widgetObject.style.stateStyles &amp;&amp; widgetObject.style.stateStyles.mouseOver;
+   if(hasMouseOver) {
+       SetWidgetHover(id, bringFront);
+   } else {
+       SetWidgetOriginal(id, bringFront);
+   }
+</PRE><P>}
+</P><P>var gv_SelectedWidgets = new Object();
+</P><P>function SetWidgetSelected(id) {
+</P><PRE>   var group = $('#' + id).attr('selectiongroup');
+   if (group) {
+       $(&quot;[selectiongroup='&quot; + group + &quot;'][visibility!='hidden']&quot;).each(function (i, obj) {
+           SetWidgetNotSelected($(obj).attr('id'));
+       });
+   }
+</PRE><PRE>   var widgetObject = $axure.pageData.scriptIdToObject[id];
+   if (widgetObject) {
+       while (widgetObject.isContained) widgetObject = widgetObject.parent;
+       var hasSelected = widgetObject &amp;&amp; widgetObject.style &amp;&amp; widgetObject.style.stateStyles &amp;&amp; widgetObject.style.stateStyles.selected;
+       if (hasSelected) ApplyImageAndTextJson(id, 'selected', false, false);
+   }
+   
+   gv_SelectedWidgets[id] = 'true';
+</PRE><P>}
+</P><P>function SetWidgetNotSelected(id) {
+</P><PRE>   var widgetObject = $axure.pageData.scriptIdToObject[id];
+   if (widgetObject) {
+       while (widgetObject.isContained) widgetObject = widgetObject.parent;
+       var hasSelected = widgetObject &amp;&amp; widgetObject.style &amp;&amp; widgetObject.style.stateStyles &amp;&amp; widgetObject.style.stateStyles.selected;
+       if (hasSelected) SetWidgetOriginal(id, false);
+   }
+   
+   gv_SelectedWidgets[id] = 'false';
+</PRE><P>}
+</P><P>function IsWidgetSelected(id) {    
+</P><PRE>   if (gv_SelectedWidgets[id] &amp;&amp; gv_SelectedWidgets[id] == 'true') { return true; }
+   return false;
+</PRE><P>}
+</P><P>var gv_DisabledWidgets = new Object();
+</P><P>function DisableImageWidget(id) {
+</P><PRE>   gv_DisabledWidgets[id] = true;
+</PRE><PRE>   ApplyImageAndTextJson(id, 'disabled', false, false);
+   $('#' + id).find('a').css('cursor', 'default');    
+</PRE><P>}
+</P><P>function EnableImageWidget(id) {
+</P><PRE>   //document.getElementById(id).style.visibility = <I>;</I>
+   gv_DisabledWidgets[id] = false;
+</PRE><PRE>   SetWidgetOriginal(id, false);
+   $('#' + id).find('a').css('cursor', 'pointer');
+</PRE><P>}
+</P><P>function IsWidgetDisabled(id) {
+</P><PRE>   return Boolean(gv_DisabledWidgets[id]);
+</PRE><P>}
+</P><P>function GetTextIdFromShape(id) {
+</P><PRE>   return $.grep(
+       $('#' + id).children().map(function (i, obj) { return obj.id; }), // all the child ids
+       function (item) { return item.indexOf(id) &lt; 0; })[0]; // that are not similar to the parent
+</PRE><P>}
+</P><P>function GetTextIdFromLink(id) {
+</P><PRE>   var rtfElementId = $('#' + id).parentsUntil('[id^=&quot;u&quot;][id$=&quot;_rtf&quot;]').last().parent().attr('id');
+   return rtfElementId ? rtfElementId.replace('_rtf', <I>) : </I>;
+</PRE><P>}
+</P><P>function GetShapeIdFromText(textId) {
+</P><PRE>   return $('#' + textId).parent().attr('id');
+</PRE><P>}
+</P><P>function ApplyImageAndTextJson(id, event, bringToFront, isOriginal) {
+</P><PRE>   var obj = document.getElementById(id);
+   if (obj &amp;&amp; obj.style.visibility == 'hidden' &amp;&amp; isOriginal) { return; }
+</PRE><PRE>   var textid = GetTextIdFromShape(id);
+   
+   ResetImagesAndTextJson(id, textid);
+</PRE><PRE>   if (event != <I>) {</I>
+       var e = $('#' + id + '_img').data('events');
+       if (e &amp;&amp; e[event]) {
+           $('#' + id + '_img').trigger(event);
+       }
+       var style = GetStyleOverridesForState(id, null, event);
+       ApplyImageStyle(id, event, style);
+       if(!$.isEmptyObject(style)) ApplyTextStyle(textid, style);
+   }
+</PRE><PRE>   if (bringToFront) { BringToFront(id + '_container'); BringToFront(id); BringToFront(id + 'ann'); }
+</PRE><P>}
+</P><P>function GetStyleOverridesForState(id, parentId, state) {
+</P><PRE>   var stateStyles = { };
+</PRE><PRE>   if(parentId) {
+       var parent = $axure.pageData.scriptIdToObject[parentId];
+       $.extend(stateStyles, parent &amp;&amp; parent.getStateStyleOverrides(state));
+   }
+</PRE><PRE>   var diagramObject = $axure.pageData.scriptIdToObject[id];
+   var isHyperlink = $('#' + id).is('a');
+   if(isHyperlink) {
+       if(state == 'mouseOver') {
+           $.extend(stateStyles, $axure.pageData.stylesheet.defaultStyles.hyperlinkMouseOver);
+           $.extend(stateStyles, diagramObject &amp;&amp; GetFullStateStyle(diagramObject.style, 'mouseOver'));
+       } else if(state == 'mouseDown') {
+           $.extend(stateStyles, $axure.pageData.stylesheet.defaultStyles.hyperlinkMouseOver);
+           $.extend(stateStyles, diagramObject &amp;&amp; GetFullStateStyle(diagramObject.style, 'mouseOver'));
+           $.extend(stateStyles, $axure.pageData.stylesheet.defaultStyles.hyperlinkMouseDown);
+           $.extend(stateStyles, diagramObject &amp;&amp; GetFullStateStyle(diagramObject.style, 'mouseDown'));
+       } else $.extend(stateStyles, diagramObject &amp;&amp; diagramObject.getStateStyleOverrides(state));
+   } else $.extend(stateStyles, diagramObject &amp;&amp; diagramObject.getStateStyleOverrides(state));
+   return stateStyles;
+</PRE><P>}
+</P><P>function GetFullStateStyle(style, state) {
+</P><PRE>   var stateStyle = style &amp;&amp; style.stateStyles &amp;&amp; style.stateStyles[state];
+   if(stateStyle) {
+       // acount for the custom style property
+       var customStyle = stateStyle.baseStyle &amp;&amp; $axure.pageData.stylesheet.stylesById[stateStyle.baseStyle];
+       return $.extend(customStyle || {}, stateStyle);
+   }
+   return { };
+</PRE><P>}
+</P><P>function ApplyImageStyle(id, event, style) {
+</P><PRE>   if (!(style &amp;&amp; event)) return;
+   CacheOriginalImgSrc(id);
+</PRE><PRE>   var diagramObject = $axure.pageData.scriptIdToObject[id];
+   var img = $('#' + id + '_img');
+   if (diagramObject.type != 'imageBox' || (style.image &amp;&amp; style.image.cssStyle)) {
+       var styleName = style.image ? style.image.cssStyle : (id + &quot;_&quot; + event);
+       img.removeClass().empty().addClass(styleName);
+   } else if (style.image &amp;&amp; style.image.url) {
+       //If this is a basic link (only for axure.com), then set the image border to none
+       //Resolves issue of blue borders around basic link images in Firefox 3.x
+       var basicLinkNoBorder = (img.parents('a.basiclink').length &gt; 0) ? &quot; style='border:none;' &quot; : &quot;&quot;;
+       
+       img.removeClass().html(&quot;&lt;IMG src='&quot; + style.image.url + &quot;'&quot; + basicLinkNoBorder + &quot; class='raw_image'&gt;&quot;);
+   }
+</PRE><P>}
+</P><P>function CacheOriginalImgSrc(id) {
+</P><PRE>   if (!gv_OriginalImgSrc[id + '_img']) {
+       var src = $('#' + id + '_img &gt; img').attr('src');
+       if (src) gv_OriginalImgSrc[id + '_img'] = src;
+       else gv_OriginalImgSrc[id + '_img'] = 'none';
+   }
+</PRE><P>}
+</P><P>function ResetImagesAndTextJson(id, textid) {
+</P><PRE>   CacheOriginalImgSrc(id);</PRE><PRE>   var img = $('#' + id + '_img'), e = img.data('events');
+   if (e &amp;&amp; e['_normal']) {
+       img.trigger('_normal');
+   } else {
+       img.removeClass().empty();
+       if (gv_OriginalImgSrc[id + '_img'] &amp;&amp; gv_OriginalImgSrc[id + '_img'] != 'none') {
+           //If this is a basic link (only for axure.com), then set the image border to none
+           //Resolves issue of blue borders around basic link images in Firefox 3.x
+           var basicLinkNoBorder = (img.parents('a.basiclink').length &gt; 0) ? &quot; style='border:none;' &quot; : &quot;&quot;;
+</PRE><PRE>           img.html(&quot;&lt;IMG src='&quot; + gv_OriginalImgSrc[id + '_img'] + &quot;'&quot; + basicLinkNoBorder + &quot; class='raw_image'&gt;&quot;);
+       } else {
+           img.addClass(id + '_normal');
+       }
+   }
+</PRE><PRE>   var cacheObject = gv_OriginalTextCache[textid];
+   if (cacheObject) {
+       var styleCache = cacheObject.styleCache;
+       $('#' + textid + &quot;_rtf&quot;).find('*').each(function (index, element) {
+           element.style.cssText = styleCache[element.id];
+       });
+       var container = document.getElementById(textid);
+       container.style.top = cacheObject.top;
+       
+   }
+</PRE><P>}
+</P><P>// Preserves the alingment for the element textid after executing transformFn
+function TextTransformWithVerticalAlignment(textId, transformFn) {
+</P><PRE>   if (!gv_OriginalTextCache[textId]) { CacheOriginalText(textId); }
+</PRE><PRE>   var rtfElement = document.getElementById(textId + '_rtf');
+   if (!rtfElement) return;
+</PRE><PRE>   var oldHeight = GetRtfElementHeight(rtfElement);
+</PRE><PRE>   transformFn();
+</PRE><PRE>   // now handle vertical alignment
+   var newHeight = GetRtfElementHeight(rtfElement);
+   var oldTop = Number($('#' + textId).css('top').replace(&quot;px&quot;, &quot;&quot;));
+   var vAlign = gv_vAlignTable[textId];
+</PRE><PRE>   if (vAlign == &quot;center&quot;) {
+       var newTop = oldTop - (newHeight - oldHeight) / 2;
+       $('#' + textId).css('top', newTop + 'px');
+   } else if (vAlign == &quot;bottom&quot;) {
+       var newTop = oldTop - newHeight + oldHeight;
+       $('#' + textId).css('top', newTop + 'px');
+   } // do nothing if the alignment is top
+</PRE><P>}
+</P><P>//-------------------------------------------------------------------------
+// ApplyTextRollover
+//
+// Applies a rollover style to a text element.
+//       id : the id of the text object to set.
+//       styleProperties : an object mapping style properties to values. eg:
+//                         { 'fontWeight' : 'bold',
+//                           'fontStyle' : 'italic' }
+//-------------------------------------------------------------------------
+function ApplyTextStyle(id, style) {
+</P><PRE>   TextTransformWithVerticalAlignment(id, function () {
+       var styleProperties = GetCssStyleProperties(style);
+       $('#' + id + &quot;_rtf&quot;).find('*').each(function (index, element) {
+           ApplyCssProps(element, styleProperties);
+       });
+   });
+</PRE><P>}
+</P><P>function ApplyCssProps(element, styleProperties) {
+</P><PRE>   var nodeName = element.nodeName.toLowerCase();
+   if(nodeName == 'p') {
+       var parProps = styleProperties.parProps;
+       for(var prop in parProps) element.style[prop] = parProps[prop];
+   } else if(nodeName != 'a') {
+       var runProps = styleProperties.runProps;
+       for(prop in runProps) element.style[prop] = runProps[prop];
+   }
+</PRE><P>}
+</P><P>function GetCssStyleProperties(style) {
+</P><PRE>   var toApply = {};
+   toApply.runProps = {};
+   toApply.parProps = {};
+</PRE><PRE>   if(style.italic !== undefined) toApply.runProps.fontStyle = style.italic ? 'italic' : 'normal';
+   if(style.bold !== undefined) toApply.runProps.fontWeight = style.bold ? 'bold' : 'normal';
+   if(style.underline !== undefined) toApply.runProps.textDecoration = style.underline ? 'underline' : 'none';
+   if(style.fontName) toApply.runProps.fontFamily = style.fontName;
+   if(style.fontSize) toApply.runProps.fontSize = style.fontSize;
+   if(style.foreGroundFill) {
+       var colorString = '00000' + style.foreGroundFill.color.toString(16);
+       toApply.runProps.color = '#' + colorString.substring(colorString.length - 6);
+   }
+</PRE><PRE>   if(style.horizontalAlignment) toApply.parProps.textAlign = style.horizontalAlignment;
+   if(style.lineSpacing) toApply.parProps.lineHeight = style.lineSpacing;
+</PRE><PRE>   return toApply;
+</PRE><P>}
+</P><P>//    //--------------------------------------------------------------------------
+//    // ApplyStyleRecursive
+//    //
+//    // Applies a style recursively to all span and div tags including elementNode
+//    // and all of its children.
+//    //
+//    //     element : the element to apply the style to
+//    //     styleName : the name of the style property to set (eg. 'font-weight')     
+//    //     styleValue : the value of the style to set (eg. 'bold')
+//    //--------------------------------------------------------------------------
+//    function ApplyStyleRecursive(element, styleName, styleValue) {
+//        var nodeName = element.nodeName.toLowerCase();
+</P><P>//        if (nodeName == 'div' || nodeName == 'span' || nodeName == 'p') {
+//            element.style[styleName] = styleValue;
+//        }
+</P><P>//        for (var i = 0; i &lt; element.childNodes.length; i++) {
+//            ApplyStyleRecursive(element.childNodes[i], styleName, styleValue);
+//        }
+//    }
+</P><P>//    //---------------------------------------------------------------------------
+//    // ApplyTextProperty
+//    //
+//    // Applies a text property to rtfElement.
+//    //
+//    //     rtfElement : the the root text element of the rtf object (this is the
+//    //                  element named &lt;id&gt;_rtf
+//    //     prop : the style property to set.
+//    //     value : the style value to set.
+//    //---------------------------------------------------------------------------
+//    function ApplyTextProperty(rtfElement, prop, value) {
+//        /*
+//        var oldHtml = rtfElement.innerHTML;
+//        if (prop == 'fontWeight') {
+//            rtfElement.innerHTML = oldHtml.replace(/&lt; *b *\/?&gt;/gi, &quot;&quot;);
+//        } else if (prop == 'fontStyle') {
+//            rtfElement.innerHTML = oldHtml.replace(/&lt; *i *\/?&gt;/gi, &quot;&quot;);
+//        } else if (prop == 'textDecoration') {
+//            rtfElement.innerHTML = oldHtml.replace(/&lt; *u *\/?&gt;/gi, &quot;&quot;);
+//        }
+//        */
+</P><P>//        for (var i = 0; i &lt; rtfElement.childNodes.length; i++) {
+//            ApplyStyleRecursive(rtfElement.childNodes[i], prop, value);
+//        }
+//    }
+//}
+</P><P>//---------------------------------------------------------------------------
+// GetAndCacheOriginalText
+//
+// Gets the html for the pre-rollover state and returns the Html representing
+// the Rich text.
+//---------------------------------------------------------------------------
+var CACHE_COUNTER = 0;
+function CacheOriginalText(id) {
+</P><PRE>   var rtfQuery = $('#' + id + &quot;_rtf&quot;);
+   if (rtfQuery.length &gt; 0) {
+</PRE><PRE>       var styleCache = {};
+       rtfQuery.find('*').each(function (index, element) {
+           var elementId = element.id;
+           if (!elementId) element.id = elementId = 'cache' + CACHE_COUNTER++;
+           styleCache[elementId] = element.style.cssText;
+       });
+       
+       var cacheObject = {
+           top: $('#' + id).css('top'),
+           styleCache:styleCache
+       };
+       
+       gv_OriginalTextCache[id] = cacheObject;        
+   }
+</PRE><P>}
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2013.igem.org/Team:Ciencias-UNAM/scripts/pagescript">http://2013.igem.org/Team:Ciencias-UNAM/scripts/pagescript</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:Ciencias-UNAM/scripts/pagescript" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:Ciencias-UNAM/scripts/pagescript" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/pagescript&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:Ciencias-UNAM/scripts/pagescript&amp;oldid=157445" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2013.igem.org:Privacy_policy" title="2013.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2013.igem.org:General_disclaimer" title="2013.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>

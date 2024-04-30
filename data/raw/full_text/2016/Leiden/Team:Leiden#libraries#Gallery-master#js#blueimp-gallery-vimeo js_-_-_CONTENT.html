@@ -1,0 +1,201 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Leiden_libraries_Gallery-master_js_blueimp-gallery-vimeo_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Leiden/libraries/Gallery-master/js/blueimp-gallery-vimeo js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/*
+</P><PRE>* blueimp Gallery Vimeo Video Factory JS
+* <A rel="nofollow" class="external free" href="https://github.com/blueimp/Gallery">https://github.com/blueimp/Gallery</A>
+*
+* Copyright 2013, Sebastian Tschan
+* <A rel="nofollow" class="external free" href="https://blueimp.net">https://blueimp.net</A>
+*
+* Licensed under the MIT license:
+* <A rel="nofollow" class="external free" href="http://www.opensource.org/licenses/MIT">http://www.opensource.org/licenses/MIT</A>
+*/
+</PRE><P>/* global define, window, document, $f */
+</P><DL><DT>(function (factory) {</DT></DL><PRE> 'use strict'
+ if (typeof define === 'function' &amp;&amp; define.amd) {
+   // Register as an anonymous AMD module:
+   define([
+     './blueimp-helper',
+     './blueimp-gallery-video'
+   ], factory)
+ } else {
+   // Browser globals:
+   factory(
+     window.blueimp.helper || window.jQuery,
+     window.blueimp.Gallery
+   )
+ }
+</PRE><P>}(function ($, Gallery) {
+</P><PRE> 'use strict'
+</PRE><PRE> if (!window.postMessage) {
+   return Gallery
+ }
+</PRE><PRE> $.extend(Gallery.prototype.options, {
+   // The list object property (or data attribute) with the Vimeo video id:
+   vimeoVideoIdProperty: 'vimeo',
+   // The URL for the Vimeo video player, can be extended with custom parameters:
+   // <A rel="nofollow" class="external free" href="https://developer.vimeo.com/player/embedding">https://developer.vimeo.com/player/embedding</A>
+   vimeoPlayerUrl: '//player.vimeo.com/video/VIDEO_ID?api=1&amp;player_id=PLAYER_ID',
+   // The prefix for the Vimeo video player ID:
+   vimeoPlayerIdPrefix: 'vimeo-player-',
+   // Require a click on the native Vimeo player for the initial playback:
+   vimeoClickToPlay: true
+ })
+</PRE><PRE> var textFactory = Gallery.prototype.textFactory ||
+                     Gallery.prototype.imageFactory
+ var VimeoPlayer = function (url, videoId, playerId, clickToPlay) {
+   this.url = url
+   this.videoId = videoId
+   this.playerId = playerId
+   this.clickToPlay = clickToPlay
+   this.element = document.createElement('div')
+   this.listeners = {}
+ }
+ var counter = 0
+</PRE><PRE> $.extend(VimeoPlayer.prototype, {
+   canPlayType: function () {
+     return true
+   },
+</PRE><PRE>   on: function (type, func) {
+     this.listeners[type] = func
+     return this
+   },
+</PRE><PRE>   loadAPI: function () {
+     var that = this
+     var apiUrl = '//f.vimeocdn.com/js/froogaloop2.min.js'
+     var scriptTags = document.getElementsByTagName('script')
+     var i = scriptTags.length
+     var scriptTag
+     var called
+     function callback () {
+       if (!called &amp;&amp; that.playOnReady) {
+         that.play()
+       }
+       called = true
+     }
+     while (i) {
+       i -= 1
+       if (scriptTags[i].src === apiUrl) {
+         scriptTag = scriptTags[i]
+         break
+       }
+     }
+     if (!scriptTag) {
+       scriptTag = document.createElement('script')
+       scriptTag.src = apiUrl
+     }
+     $(scriptTag).on('load', callback)
+     scriptTags[0].parentNode.insertBefore(scriptTag, scriptTags[0])
+     // Fix for cached scripts on IE 8:
+     if (/loaded|complete/.test(scriptTag.readyState)) {
+       callback()
+     }
+   },
+</PRE><PRE>   onReady: function () {
+     var that = this
+     this.ready = true
+     this.player.addEvent('play', function () {
+       that.hasPlayed = true
+       that.onPlaying()
+     })
+     this.player.addEvent('pause', function () {
+       that.onPause()
+     })
+     this.player.addEvent('finish', function () {
+       that.onPause()
+     })
+     if (this.playOnReady) {
+       this.play()
+     }
+   },
+</PRE><PRE>   onPlaying: function () {
+     if (this.playStatus &lt; 2) {
+       this.listeners.playing()
+       this.playStatus = 2
+     }
+   },
+</PRE><PRE>   onPause: function () {
+     this.listeners.pause()
+     delete this.playStatus
+   },
+</PRE><PRE>   insertIframe: function () {
+     var iframe = document.createElement('iframe')
+     iframe.src = this.url
+       .replace('VIDEO_ID', this.videoId)
+       .replace('PLAYER_ID', this.playerId)
+     iframe.id = this.playerId
+     this.element.parentNode.replaceChild(iframe, this.element)
+     this.element = iframe
+   },
+</PRE><PRE>   play: function () {
+     var that = this
+     if (!this.playStatus) {
+       this.listeners.play()
+       this.playStatus = 1
+     }
+     if (this.ready) {
+       if (!this.hasPlayed &amp;&amp; (this.clickToPlay || (window.navigator &amp;&amp;
+         /iP(hone|od|ad)/.test(window.navigator.platform)))) {
+         // Manually trigger the playing callback if clickToPlay
+         // is enabled and to workaround a limitation in iOS,
+         // which requires synchronous user interaction to start
+         // the video playback:
+         this.onPlaying()
+       } else {
+         this.player.api('play')
+       }
+     } else {
+       this.playOnReady = true
+       if (!window.$f) {
+         this.loadAPI()
+       } else if (!this.player) {
+         this.insertIframe()
+         this.player = $f(this.element)
+         this.player.addEvent('ready', function () {
+           that.onReady()
+         })
+       }
+     }
+   },
+</PRE><PRE>   pause: function () {
+     if (this.ready) {
+       this.player.api('pause')
+     } else if (this.playStatus) {
+       delete this.playOnReady
+       this.listeners.pause()
+       delete this.playStatus
+     }
+   }
+</PRE><PRE> })
+</PRE><PRE> $.extend(Gallery.prototype, {
+   VimeoPlayer: VimeoPlayer,
+</PRE><PRE>   textFactory: function (obj, callback) {
+     var options = this.options
+     var videoId = this.getItemProperty(obj, options.vimeoVideoIdProperty)
+     if (videoId) {
+       if (this.getItemProperty(obj, options.urlProperty) === undefined) {
+         obj[options.urlProperty] = '//vimeo.com/' + videoId
+       }
+       counter += 1
+       return this.videoFactory(
+         obj,
+         callback,
+         new VimeoPlayer(
+           options.vimeoPlayerUrl,
+           videoId,
+           options.vimeoPlayerIdPrefix + counter,
+           options.vimeoClickToPlay
+         )
+       )
+     }
+     return textFactory.call(this, obj, callback)
+   }
+</PRE><PRE> })
+</PRE><PRE> return Gallery
+</PRE><P>}))
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

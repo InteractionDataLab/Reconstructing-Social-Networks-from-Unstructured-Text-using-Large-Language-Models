@@ -1,0 +1,591 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Lund_scripts_ScrollTrigger skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Lund/scripts/ScrollTrigger</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>/**
+</P><PRE>* Written by Erik Terwan on 03/07/16.
+*
+* Erik Terwan - development + design
+* <A rel="nofollow" class="external free" href="https://erikterwan.com">https://erikterwan.com</A>
+* <A rel="nofollow" class="external free" href="https://github.com/terwanerik">https://github.com/terwanerik</A>
+*
+* MIT license.
+*/
+</PRE><P>(function (root, factory) {
+	if (typeof define === 'function' &amp;&amp; define.amd) {
+		// AMD. Register as an anonymous module.
+		define([], factory);
+	} else if (typeof module === 'object' &amp;&amp; module.exports) {
+		// Node. Does not work with strict CommonJS, but
+		// only CommonJS-like environments that support module.exports,
+		// like Node.
+		module.exports = factory();
+	} else {
+		// Browser globals (root is window)
+		root.ScrollTrigger = factory();
+	}
+}(this, function () {
+</P><P>	'use strict';
+</P><P>	return function(defaultOptions, bindTo, scrollIn) {
+		/**
+		 * Trigger object, represents a single html element with the
+		 * data-scroll tag. Stores the options given in that tag.
+		 */
+		var Trigger = function(_defaultOptions, _element) {
+			this.element = _element;
+			this.defaultOptions = _defaultOptions;
+			this.showCallback = null;
+			this.hideCallback = null;
+			this.visibleClass = 'visible';
+			this.hiddenClass = 'invisible';
+			this.addWidth = false;
+			this.addHeight = false;
+			this.once = false;
+</P><P>			var xOffset = 0;
+			var yOffset = 0;
+</P><P>			this.left = function(_this){
+				return function(){
+					return _this.element.getBoundingClientRect().left;
+				};
+			}(this);
+</P><P>			this.top = function(_this){
+				return function(){
+					return _this.element.getBoundingClientRect().top;
+				};
+			}(this);
+</P><P>			this.xOffset = function(_this){
+				return function(goingLeft){
+					var offset = xOffset;
+</P><P>					// add the full width of the element to the left position, so the
+					// visibleClass is only added after the element is completely
+					// in the viewport
+					if (_this.addWidth &amp;&amp; !goingLeft) {
+						offset += _this.width();
+					} else if (goingLeft &amp;&amp; !_this.addWidth) {
+						offset -= _this.width();
+					}
+</P><P>					return offset;
+				};
+			}(this);
+</P><P>			this.yOffset = function(_this){
+				return function(goingUp){
+					var offset = yOffset;
+</P><P>					// add the full height of the element to the top position, so the
+					// visibleClass is only added after the element is completely
+					// in the viewport
+					if (_this.addHeight &amp;&amp; !goingUp) {
+						offset += _this.height();
+					} else if (goingUp &amp;&amp; !_this.addHeight) {
+						offset -= _this.height();
+					}
+</P><P>					return offset;
+				};
+			}(this);
+</P><P>			this.width = function(_this) {
+				return function(){
+					return _this.element.offsetWidth;
+				};
+			}(this);
+</P><P>			this.height = function(_this) {
+				return function(){
+					return _this.element.offsetHeight;
+				};
+			}(this);
+</P><P>			this.reset = function(_this) {
+				return function() {
+					_this.removeClass(_this.visibleClass);
+					_this.removeClass(_this.hiddenClass);
+				};
+			}(this);
+</P><P>			this.addClass = function(_this){
+				var addClass = function(className, didAddCallback) {
+					if (!_this.element.classList.contains(className)) {
+						_this.element.classList.add(className);
+						if ( typeof didAddCallback === 'function' ) {
+							didAddCallback();
+						}
+					}
+				};
+</P><P>				var retroAddClass = function(className, didAddCallback) {
+					className = className.trim();
+					var regEx = new RegExp('(?:^|\\s)' + className + '(?:(\\s\\w)|$)', 'ig');
+					var oldClassName = _this.element.className;
+					if ( !regEx.test(oldClassName) ) {
+						_this.element.className += &quot; &quot; + className;
+						if ( typeof didAddCallback === 'function' ) {
+							didAddCallback();
+						}
+					}
+				};
+</P><P>				return _this.element.classList ? addClass : retroAddClass;
+			}(this);
+</P><P>			this.removeClass = function(_this){
+				var removeClass = function(className, didRemoveCallback) {
+					if (_this.element.classList.contains(className)) {
+						_this.element.classList.remove(className);
+						if ( typeof didRemoveCallback === 'function' ) {
+							didRemoveCallback();
+						}
+					}
+				};
+</P><P>				var retroRemoveClass = function(className, didRemoveCallback) {
+					className = className.trim();
+					var regEx = new RegExp('(?:^|\\s)' + className + '(?:(\\s\\w)|$)', 'ig');
+					var oldClassName = _this.element.className;
+					if ( regEx.test(oldClassName) ) {
+						_this.element.className = oldClassName.replace(regEx, &quot;$1&quot;).trim();
+						if ( typeof didRemoveCallback === 'function' ) {
+							didRemoveCallback();
+						}
+					}
+				};
+</P><P>				return _this.element.classList ? removeClass : retroRemoveClass;
+			}(this);
+</P><P>			this.init = function(_this){
+				return function(){
+					// set the default options
+					var options = _this.defaultOptions;
+					// parse the options given in the data-scroll attribute, if any
+					var optionString = _this.element.getAttribute('data-scroll');
+</P><P>					if (options) {
+						if (options.toggle &amp;&amp; options.toggle.visible) {
+							_this.visibleClass = options.toggle.visible;
+						}
+</P><P>						if (options.toggle &amp;&amp; options.toggle.hidden) {
+							_this.hiddenClass = options.toggle.hidden;
+						}
+</P><P>						if (options.showCallback) {
+							_this.showCallback = options.showCallback;
+						}
+</P><P>						if (options.hideCallback) {
+							_this.hideCallback = options.hideCallback;
+						}
+</P><P>						if (options.centerHorizontal === true) {
+							xOffset = _this.element.offsetWidth / 2;
+						}
+</P><P>						if (options.centerVertical === true) {
+							yOffset = _this.element.offsetHeight / 2;
+						}
+</P><P>						if (options.offset &amp;&amp; options.offset.x) {
+							xOffset+= options.offset.x;
+						}
+</P><P>						if (options.offset &amp;&amp; options.offset.y) {
+							yOffset+= options.offset.y;
+						}
+</P><P>						if (options.addWidth) {
+							_this.addWidth = options.addWidth;
+						}
+</P><P>						if (options.addHeight) {
+							_this.addHeight = options.addHeight;
+						}
+</P><P>						if (options.once) {
+							_this.once = options.once;
+						}
+					}
+</P><P>					// parse the boolean options
+					var parsedAddWidth = optionString.indexOf(&quot;addWidth&quot;) &gt; -1;
+					var parsedAddHeight = optionString.indexOf(&quot;addHeight&quot;) &gt; -1;
+					var parsedOnce = optionString.indexOf(&quot;once&quot;) &gt; -1;
+</P><P>					// check if the 'addHeight' was toggled via the data-scroll tag, that overrides the default settings object
+					if (_this.addWidth === false &amp;&amp; parsedAddWidth === true) {
+						_this.addWidth = parsedAddWidth;
+					}
+</P><P>					if (_this.addHeight === false &amp;&amp; parsedAddHeight === true) {
+						_this.addHeight = parsedAddHeight;
+					}
+</P><P>					if (_this.once === false &amp;&amp; parsedOnce === true) {
+						_this.once = parsedOnce;
+					}
+</P><P>					// parse callbacks
+					_this.showCallback = _this.element.hasAttribute('data-scroll-showCallback') ? _this.element.getAttribute('data-scroll-showCallback') : _this.showCallback;
+					_this.hideCallback = _this.element.hasAttribute('data-scroll-hideCallback') ? _this.element.getAttribute('data-scroll-hideCallback') : _this.hideCallback;
+</P><P>					// split the options on the toggle() parameter
+					var classParts = optionString.split('toggle(');
+					if (classParts.length &gt; 1) {
+						// the toggle() parameter was given, split it at ) to get the
+						// content inside the parentheses, then split them on the comma
+						var classes = classParts[1].split(')')[0].split(',');
+</P><P>						// Check if trim exists if not, add the polyfill
+						// courtesy of MDN
+						if (!String.prototype.trim) {
+							String.prototype.trim = function () {
+								return this.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, <I>);</I>
+							};
+						}
+</P><P>						// trim and remove the dot
+						_this.visibleClass = classes[0].trim().replace('.', <I>);</I>
+						_this.hiddenClass = classes[1].trim().replace('.', <I>);</I>
+					}
+</P><P>					// adds the half of the offsetWidth/Height to the x/yOffset
+					if (optionString.indexOf(&quot;centerHorizontal&quot;) &gt; -1) {
+						xOffset = _this.element.offsetWidth / 2;
+					}
+</P><P>					if (optionString.indexOf(&quot;centerVertical&quot;) &gt; -1) {
+						yOffset = _this.element.offsetHeight / 2;
+					}
+</P><P>					// split the options on the offset() parameter
+					var offsetParts = optionString.split('offset(');
+					if (offsetParts.length &gt; 1) {
+						// the offset() parameter was given, split it at ) to get the
+						// content inside the parentheses, then split them on the comma
+						var offsets = offsetParts[1].split(')')[0].split(',');
+</P><P>						// remove the px unit and parse as integer
+						xOffset += parseInt(offsets[0].replace('px', <I>));</I>
+						yOffset += parseInt(offsets[1].replace('px', <I>));</I>
+					}
+</P><P>					// return this for chaining
+					return _this;
+				};
+			}(this);
+		};
+</P><P>		// the element to detect the scroll in
+		this.scrollElement = window;
+</P><P>		// the element to get the data-scroll elements from
+		this.bindElement = document.body;
+</P><P>		// the scope to call the callbacks in, defaults to window
+		this.callScope = window;
+</P><P>		// the Trigger objects
+		var triggers = [];
+</P><P>		// attached callbacks for the requestAnimationFrame loop,
+		// this is handy for custom scroll based animation. So you
+		// don't have multiple, unnecessary loops going.
+		var attached = [];
+</P><P>		// the previous scrollTop position, to determine if a user
+		// is scrolling up or down. Set that to -1 -1 so the loop
+		// always runs at least once
+		var previousScroll = {
+			left: -1,
+			top: -1
+		};
+</P><P>		// the loop method to use, preferred window.requestAnimationFrame
+		var loop = window.requestAnimationFrame ||
+			window.webkitRequestAnimationFrame ||
+			window.mozRequestAnimationFrame ||
+			window.msRequestAnimationFrame ||
+			window.oRequestAnimationFrame ||
+			function(callback){ setTimeout(callback, 1000 / 60); };
+</P><P>		// if the requestAnimationFrame is looping
+		var isLooping = false;
+</P><P>
+		/**
+		 * Initializes the scrollTrigger
+		 */
+		var init = function(_this) {
+			return function(defaultOptions, bindTo, scrollIn) {
+				// check if bindTo is not undefined or null,
+				// otherwise use the document.body
+				if (bindTo != undefined &amp;&amp; bindTo != null) {
+					_this.bindElement = bindTo;
+				} else {
+					_this.bindElement = document.body;
+				}
+</P><P>				// check if the scrollIn is not undefined or null,
+				// otherwise use the window
+				if (scrollIn != undefined &amp;&amp; scrollIn != null) {
+					_this.scrollElement = scrollIn;
+				} else {
+					_this.scrollElement = window;
+				}
+</P><P>				// Initially bind all elements with the data-scroll attribute
+				_this.bind(_this.bindElement.querySelectorAll(&quot;[data-scroll]&quot;));
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>		/**
+		 * Binds new HTMLElement objects to the trigger array
+		 */
+		this.bind = function(_this) {
+			return function(elements) {
+				// check if an array is given
+				if (elements instanceof HTMLElement) {
+					// if it's a single HTMLElement just create an array
+					elements = [elements];
+				}
+</P><P>				// get all trigger elements, e.g. all elements with
+				// the data-scroll attribute and turn it from a NodeList
+				// into a plain old array
+				var newTriggers = [].slice.call(elements);
+</P><P>				// map all the triggers to Trigger objects, and initialize them
+				// so the options get parsed
+				newTriggers = newTriggers.map(function (element, index) {
+					var trigger = new Trigger(defaultOptions, element);
+</P><P>					return trigger.init();
+				});
+</P><P>				// add to the triggers array
+				triggers = triggers.concat(newTriggers);
+</P><P>				if (triggers.length &gt; 0 &amp;&amp; isLooping == false) {
+					isLooping = true;
+</P><P>					// start the update loop
+					update();
+				} else {
+					isLooping = false;
+				}
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>		/**
+		 * Returns a trigger object from a htmlElement object (e.g. via querySelector())
+		 */
+		this.triggerFor = function(_this) {
+			return function(htmlElement){
+				var returnTrigger = null;
+</P><P>				triggers.each(function(trigger, index) {
+					if (trigger.element == htmlElement) {
+						returnTrigger = trigger;
+					}
+				});
+</P><P>				return returnTrigger;
+			};
+		}(this);</P><P>		/**
+		 * Removes a Trigger by its HTMLElement object, e.g via querySelector()
+		 */
+		this.destroy = function(_this) {
+			return function(htmlElement) {
+				triggers.each(function(trigger, index) {
+					if (trigger.element == htmlElement) {
+						triggers.splice(index, 1);
+					}
+				});
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>		/**
+		 * Removes all Trigger objects from the Trigger array
+		 */
+		this.destroyAll = function(_this) {
+			return function() {
+				triggers = [];
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>		/**
+		 * Resets a Trigger object, removes all added classes and then removes it from the triggers array. Like nothing
+		 * ever happened..
+		 */
+		this.reset = function(_this) {
+			return function(htmlElement) {
+				var trigger = _this.triggerFor(htmlElement);
+</P><P>				if (trigger != null) {
+					trigger.reset();
+</P><P>					var index = triggers.indexOf(trigger);
+</P><P>					if (index &gt; -1) {
+						triggers.splice(index, 1);
+					}
+				}
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>		/**
+		 * Does the same as .reset() but for all triggers
+		 */
+		this.resetAll = function(_this) {
+			return function() {
+				triggers.each(function(trigger, index) {
+					trigger.reset();
+				});
+</P><P>				triggers = [];
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>		/**
+		 * Attaches a callback that get's called every time
+		 * the update method is called
+		 */
+		this.attach = function(_this) {
+			return function(callback) {
+				// add callback to array
+				attached.push(callback);
+</P><P>				if (!isLooping) {
+					isLooping = true;
+</P><P>					// start the update loop
+					update();
+				}
+</P><P>				// return 'this' for chaining
+				return _this;
+			};
+		}(this);
+</P><P>
+		/**
+		 * Detaches a callback
+		 */
+		this.detach = function(_this) {
+			return function(callback) {
+				// remove callback from array
+				var index = attached.indexOf(callback);
+</P><P>				if (index &gt; -1) {
+					attached.splice(index, 1);
+				}
+</P><P>				return _this;
+			};
+		}(this);
+</P><P>
+		// store _this for use in the update function scope (strict)
+		var _this = this;
+</P><P>
+		/**
+		 * Gets called everytime the browser is ready for it, or when the user
+		 * scrolls (on legacy browsers)
+		 */
+		function update() {
+			// FF and IE use the documentElement instead of body
+			var currentTop = !_this.bindElement.scrollTop ? document.documentElement.scrollTop : _this.bindElement.scrollTop;
+			var currentLeft = !_this.bindElement.scrollLeft ? document.documentElement.scrollLeft : _this.bindElement.scrollLeft;
+</P><P>			// if the user scrolled
+			if (previousScroll.left != currentLeft || previousScroll.top != currentTop) {
+				_this.scrollDidChange();
+			}
+</P><P>			if (triggers.length &gt; 0 || attached.length &gt; 0) {
+				isLooping = true;
+</P><P>				// and loop again
+				loop(update);
+			} else {
+				isLooping = false;
+			}
+		}
+</P><P>		this.scrollDidChange = function(_this) {
+			return function() {
+				var windowWidth = _this.scrollElement.innerWidth || _this.scrollElement.offsetWidth;
+				var windowHeight = _this.scrollElement.innerHeight || _this.scrollElement.offsetHeight;
+</P><P>				// FF and IE use the documentElement instead of body
+				var currentTop = !_this.bindElement.scrollTop ? document.documentElement.scrollTop : _this.bindElement.scrollTop;
+				var currentLeft = !_this.bindElement.scrollLeft ? document.documentElement.scrollLeft : _this.bindElement.scrollLeft;
+</P><P>				var onceTriggers = [];
+</P><P>				// loop through all triggers
+				triggers.each(function(trigger, index){
+					var triggerLeft = trigger.left();
+					var triggerTop = trigger.top();
+</P><P>					if (previousScroll.left &gt; currentLeft) {
+						// scrolling left, so we subtract the xOffset
+						triggerLeft -= trigger.xOffset(true);
+					} else if (previousScroll.left &lt; currentLeft) {
+						// scrolling right, so we add the xOffset
+						triggerLeft += trigger.xOffset(false);
+					}
+</P><P>					if (previousScroll.top &gt; currentTop) {
+						// scrolling up, so we subtract the yOffset
+						triggerTop -= trigger.yOffset(true);
+					} else if (previousScroll.top &lt; currentTop){
+						// scrolling down so then we add the yOffset
+						triggerTop += trigger.yOffset(false);
+					}
+</P><P>					// toggle the classes
+					if (triggerLeft &lt; windowWidth &amp;&amp; triggerLeft &gt;= 0 &amp;&amp;
+						triggerTop &lt; windowHeight &amp;&amp; triggerTop &gt;= 0) {
+						// the element is visible
+						trigger.addClass(trigger.visibleClass, function(){
+							if (trigger.showCallback) {
+								functionCall(trigger, trigger.showCallback);
+							}
+						});
+</P><P>						trigger.removeClass(trigger.hiddenClass);
+</P><P>						if (trigger.once) {
+							// remove trigger from triggers array
+							onceTriggers.push(trigger);
+						}
+					} else {
+						// the element is invisible
+						trigger.addClass(trigger.hiddenClass);
+						trigger.removeClass(trigger.visibleClass, function(){
+							if (trigger.hideCallback) {
+								functionCall(trigger, trigger.hideCallback);
+							}
+						});
+					}
+				});
+</P><P>				// call the attached callbacks, if any
+				attached.each(function(callback) {
+					callback.call(_this, currentLeft, currentTop, windowWidth, windowHeight);
+				});
+</P><P>				// remove the triggers that are 'once'
+				onceTriggers.each(function(trigger){
+					var index = triggers.indexOf(trigger);
+</P><P>					if (index &gt; -1) {
+						triggers.splice(index, 1);
+					}
+				});
+</P><P>				// save the current scroll position
+				previousScroll.left = currentLeft;
+				previousScroll.top = currentTop;
+			};
+		}(this);
+</P><P>		function functionCall(trigger, functionAsString) {
+			var params = functionAsString.split('(');
+			var method = params[0];
+</P><P>			if (params.length &gt; 1) {
+				params = params[1].split(')')[0]; // get the value between the parentheses
+</P><P>				// check if there are multiple attributes
+				if (params.indexOf(&quot;', '&quot;) &gt; -1) {
+					params = params.split(&quot;', '&quot;);
+				} else if (params.indexOf(&quot;','&quot;) &gt; -1) {
+					params = params.split(&quot;','&quot;);
+				} else if (params.indexOf('&quot;, &quot;') &gt; -1) {
+					params = params.split('&quot;, &quot;');
+				} else if (params.indexOf('&quot;,&quot;') &gt; -1) {
+					params = params.split('&quot;,&quot;');
+				} else {
+					// nope, just a single parameter
+					params = [params];
+				}
+			} else {
+				params = [];
+			}
+</P><P>			// remove all quotes from the parameters
+			params = params.map(function (param) {
+				return removeQuotes(param);
+			})
+</P><P>			if (typeof _this.callScope[method] == &quot;function&quot;) {
+				// function exists in the call scope so let's try to call it. Some methods don't like to have the HTMLElement
+				// passed as 'this', so retry without that if it fails.
+				try {
+					_this.callScope[method].apply(trigger.element, params);
+				} catch (e) {
+					// alright let's try again
+					try {
+						_this.callScope[method].apply(null, params);
+					} catch (e) {
+						// ah to bad.
+					}
+				}
+			}
+		}
+</P><P>		// removes quotes from a string, e.g. turns 'foo' or &quot;foo&quot; into foo
+		// typeof foo is string
+		function removeQuotes(str) {
+			str = str + &quot;&quot;; // force a string
+</P><P>			if (str[0] == '&quot;') {
+				str = str.substr(1);
+			}
+</P><P>			if (str[0] == &quot;'&quot;) {
+				str = str.substr(1);
+			}
+</P><P>			if (str[str.length - 1] == '&quot;') {
+				str = str.substr(0, str.length - 1);
+			}
+</P><P>			if (str[str.length - 1] == &quot;'&quot;) {
+				str = str.substr(0, str.length - 1);
+			}
+</P><P>			return str;
+		}
+</P><P>		// Faster than .forEach
+		Array.prototype.each = function(a) {
+			var l = this.length;
+			for(var i = 0; i &lt; l; i++) {
+				var e = this[i];
+</P><P>				if (e) {
+					a(e,i);
+				}
+			}
+		};
+</P><P>		return init(defaultOptions, bindTo, scrollIn);
+	};
+}));
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

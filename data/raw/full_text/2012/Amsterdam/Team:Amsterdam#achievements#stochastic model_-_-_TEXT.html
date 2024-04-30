@@ -1,0 +1,135 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Amsterdam/achievements/stochastic model
+From 2012.igem.org
+Home
+Team
+Members
+Advisors
+Achievements
+Project
+Molecular Design
+BioBricks
+Features and Applications
+Data
+Experimental Results
+Time Inference Model
+Background activity
+Logbook Designer
+Webtool
+Setup
+Manual
+Future Perspective
+Human Practices
+Overview
+Methods
+Results
+Conclusion
+Safety
+Questions
+Extra
+Protocols
+Lab Diary
+FAQ
+Software
+Contents
+1 Introduction
+1.1 Stochastic Differential Equations
+1.2 Comparison of SSA implementations
+2 Leakiness and background noise
+2.1 ODE Model definition
+2.2 Stochastic model definition
+2.3 Retrieving sensible parameter values
+2.3.1 Leaky expression rate
+2.3.2 Fusion protein catalysis rate
+2.3.3 Cell growth rate
+2.3.4 Other parameters
+2.4 Steady state parameter scanning
+3 Discussion
+4 References
+Here we will propose a solution to the the background noise observed in the experiments, and conclude what rates of leakiness are acceptable to the system. In this, we model the system both using both ordinary differential equations and stochastically using the Gillespie SSA algorithm.
+We will focus on the effects of two rate constants in particular on the fraction of methylated plasmids in absence of the inducing signal:
+the leaky transcription rate of the mRNA for the fusion protein (FP), denoted by $k_{c\text{MFP}}$
+the catalysis rate of the FP, or the rate with which it methylates umethylated plasmids
+Introduction
+Before starting the experiments, a lot of crucial parameters on the molecular system were still unknown.  Both the leaky expression rate of the operon and the activity of the fusion protein were hard to model because of this.  Sensible predictions on how the molecular system we were designing was going to function exactly therefore seemed impossible.  We already expected the promoter/sensor we were going to test, pLac, to show some leaky expression.  As to how much background activity this was going to cause, we couldn't predict and thus we proceeded to test out the construct in the lab.  The laboratory results seemed to suffer from two problems:
+A basal methylation activity that was always recorded even in absence of the signal.This background noise reduces the dynamic range of our system; there is no way to tell whether observed band intensities are due to the signal having passed the Cellular Logbook some time ago or simply because of the background noise. We conclude that storing a signal using the Cellular Logbook requires a transcriptional regulator that has a high repressing quality in order to diminish the background activity.
+A lack of a fully induced state for the pLac operon, but not for the later tested pBAD operon. We suspect this problem to be caused by a low uptake rate of the signalling compound (lac operon inducer IPTG) compared to the amount of repressor LacI present in the system controlling the operons. Especially for the part characterization experiments in which the pLac-MTase construct was cloned into a high copy number plasmid, this could be a problem. This problem is solved by adding the LacY-gene that codes for permease to the existing construct. Inclusion of this gene might also lead to higher background methylation percentages in the negative controls, however.
+Stochastic Differential Equations
+Little amounts of certain key proteins can have large effects on the physiological behaviour of a cell.  When trying to accurately model these small amounts of proteins the thermodynamic equilibrium assumption that characterizes ODE-models might not be valid; ordinary differnential equations are unsuited towards modelling systems with small integer amounts of the constituting species. In these cases a finer-grained modelling method is called for: the Stochastic Simulation Algorithm by Gillespie. By modelling each individual molecular reaction separately, the discreteness of this small amounts system is accounted for.  Despite the small amounts of species present in the system analyzed here, we found no qualitative differences between the ODE and stochastic versions of the model.
+Comparison of SSA implementations
+During the course of the summer we've investigated many stochastic simulation packages with implementation of the direct algorithms and some more coarse-grained optimizations thereof (e.g. the tau-leaping algorithm). Most notable are xSSA for Mathematica and StochPy for Python. The former seems a great tool, but at the time of writing seems to lack the ability to process third order reactions (reactions with three reactants). The latter has been developed at the Free University Amsterdam by Timo Maarleveld, currently PhD-student there. In using this package, we've kept in close contact with Timo and submitted a lot of bug reports, helping the software to grow. Additionally, we've also extended StochPy by writing a supplementary tool MDL2LaTeX , that eases the publishing of models developed with StochPy.
+Leakiness and background noise
+This model has as its main goal to identify how much the uninduced operon expression rate and the catalysis rate of the FP affect the methylation status of the plasmids. Each plasmid is assumed to have one bit and one operon that includes the fusion protein. Running the stochastic version of this model, we noticed that keeping the amount of equations to a minimum is paramount to success, as the computation time seems to increase exponentially with the amount of reactions in the system. Focussing on the leakiness rate instead of the repressor-operon interactions that would require a lot of equations, we will therefore make one bold assumption: all operons present in a single cell are permanently bound to a transcriptional repressor. This frees us from having to code the signal entering the cell and binding the repressing TF, granting focus to the leaky expression rate and the catalysis rate of the fusion protein.   For these models to have any forecastable value therefore, the amount of repressor molecules present in the system has to be much greater than the amount required to cover all operons.
+In order to not exclude the possible qualitative difference in model behaviour when all molecular reactions are computed individually, the system has also been modelled stochastically. To make the two systems perfectly comparable, the used rates are qualitatively identical to the ones used in the ODE system.  Furthermore, the same parameter values have been used.
+ODE Model definition
+Parameter
+Value
+Ca
+$200\ \text{or}\ 40$
+ksFP
+$30$
+lMFP
+$0.462$
+lFP
+$0.2$
+kPlas
+$0.00866434 \cdot Ca$
+lPlas
+$0.00866434$
+Parameter values used to
+plot the ODE-system
+Time trajectories of ODE-model in which the construct has been inserted in a high copy number plasmid (top, $Ca = 200$) and a low copy number plasmid (bottom, $Ca = 40$). All initial species values are set to $0$, except for the intial value of unmethylated plasmids which is equal to $Ca$. With these parameters, the dynamic range of the system is completely taken up by the background noise. No qualitative difference is observed between the high and low copy number cases
+FP-mRNA results only from leaky expression from the operons $O$ with leakiness rate $k_{\text{sMFP}}$ and is degraded with rate $\lambda_{\text{MFP}}$: $$ \frac{d\text{mFP}}{dt} = k_{\text{sMFP}} \cdot \text{O} - \lambda_{\text{MFP}} \cdot \text{MFP} $$ FP is created from mRNA and with rate $k_{\text{sFP}}$ and degraded with rate $\lambda_{\text{FP}}$: $$ \frac{d\text{FP}}{dt} = k_{\text{sFP}} \cdot \text{MFP} - \lambda_{\text{FP}} \cdot \text{FP} $$ Unmethylated plasmids are created from both unmethylated and methylated plasmids; methylation is not transferred to daughter plasmid during plasmid replication in prokaryotes. Plasmid growth continues until the plasmid copy number $Ca$ has been reached: $$ \frac{d\text{PlasU}}{dt} = k_{\text{Plas}}  (1 - \frac{(\text{PlasU} + \text{PlasM})}{Ca}) - k_{cFP} \cdot \text{FP} \cdot \text{PlasU} - \lambda_{\text{Plas}} \cdot \text{PlasU}, $$ Methylated plasmids result from the fusion protein finding an umethylated plasmid and methylating it: $$ \frac{d\text{PlasM}}{dt} = k_{c\text{FP}} \cdot \text{FP} \cdot \text{PlasU} - \lambda_{\text{PlasM}} \cdot \text{PlasM} $$ The amount of (repressed) operons is identical to the amount of plasmids currently in the system: $$ \text{O} = \text{PlasU} + \text{PlasM} $$
+Stochastic model definition
+The equations in the stochastic model are qualitatively equal to the ones in the differential equation model. The equations, parameter and initial species values can be viewed on this page . Analyzing the behaviour of this model by looking at the time-lapse plots, we see a similar trend as in the ODE-model: all plasmids are methylated within a short amount of time. The fusion protein amounts are shown to be widely varying, but this does not alter the fraction of methylated plasmids much.
+Single trajectory of stochastic model. Just as in the deterministic model, all plasmids are methylated within a short amount of time due to the leaky expression with the used values for $ k_{cat} $ and $ k_{cFP} $
+Retrieving sensible parameter values
+Leaky expression rate
+There are discrepancies between the definitions used in the literature on what leaky expression exactly is:
+The most favoured definition seems to be the that leaky operons show low expression rates even when bound by a negative transcriptional regulator. In this perspective the transcriptional regulator is regarded to be unable to completely silence gene expression. In this case the only way to get a value for leaky expression is to measure it experimentally. In this process, care should be taken to be specific about what version of the operon exactly is being used. Some repressors are known to regulate transcription by binding to DNA regions that are very distant from the controlled operon. 'Plasmid versions' of these operons might not contain these distantly located binding sites and are therefore less likely to be optimally repressed.
+Another definition is that the TF can fully silence gene expression and that leaky expression is caused by seldomly occurring dissociation events between between the TF and the DNA operator sequence.
+During these short time windows of opportunity, the RNA polymerases would then be able to quickly transcribe a small amount of RNA. Multiplying the maximal rate of transcription by the time fraction during which the polymerase is able to bind gives an indication of the leaky transcription rate defined this way.
+The following relationship must always be true: $[O_{\text{Total}}] = [O_{\text{Free}}] + [R_{2}O]$ with $R_{2}O$ denoting the operon bound by a dimerized repressor (as LacI, the repressor of the Lac operon, functions). $R_{2}O$ is defined as $\frac{[R_{2}][O]}{K_{d}}$. Solving for $O_\text{Free}$:
+$$ [O_{\text{Free}}] = [O_{\text{Total}}] (1 + \frac{[R_{2}]}{K_{d}}) $$
+We immediately see that the $[O_{\text{Free}}]$ depends on $[R_{2}]$ and $O_{\text{Total}}$. The dissociation constant of the dimerized LacI-repressor for its operator sequence has been determined to be $10^{-12} M $ and the volume of E. coli is $0.7\ \mu m^{3}$. The transcription rate in E.coli is 40-80 bp/s.
+More simply, the leaky expression rate can also be retrieved from this [ [1] ], which states a 1000-fold decrease in expression of the repressor-bound operon compared to the free operon.
+Fusion protein catalysis rate
+The catalysis rate $k_{cat}$ has not been determined for the MTase that we are using, M.ScaI.  However, for another MTase with the same EC2.1.1.113 number as M.ScaI, BamH1, the $k_{cat}$ has been determined to be $0.0175$ ( 1 ).
+Cell growth rate
+Our own experiments showed that the bacterial strain <math>DH5\alpha</math> transformed with two of our preliminary constructs had growth rates (<math>\mu</math>) between $80\ min^{-1}$ and $90\ min^{-1}$ ([Team:Amsterdam/Project/Growth_curves Experimental growth curves]). In these simulations, cellular division was assumed to be either constant at 80 for single cells models or Gaussian distributed with $\mu = 80$ and $\sigma = 2$ in the cell division model.
+Looking at the plots for both the high and the low copy number plasmids, no qualitative difference is observable. All species in the system simply reach a steady state defined as the fraction between their production and degradation rates. Most notably, in the steady state that this system reaches all plasmids are methylated. This is very undesirable of course!
+Other parameters
+Values for the mRNA degradation rate and protein synthesis have been taking from ( 2 ).
+Steady state parameter scanning
+In order to deduce what ranges of operon leaky expression and FP catalysis rates would yield acceptable leaky expression, a steady state parameter scan has been performed.
+Parameter scan to study the effects of the operon leaky expression rate $k_{s0MFP}$ and the FP catalysis rate $k_{c\text{FP}}$ on the steady state fraction of $ \frac{\text{Methylated plasmids}}{\text{Methylated} + \text{Unmethylated plasmids}}$ in the ODE-model
+Our experimental results can thus be explained by any combination of the two parameters which which has an intermediate value in plot.
+A similar parameter scan has been painstakingly performed with the stochastic model. Simulations with 20 trajectories of 200-minute simulations for each parameter combination in a two-dimensional scan for both the $k_{cat}$ and $k_{cFP}$ in the same ranges as the ODE parm-scan. Unfortunately, even for these high amount of replications the variability in the resulting methylation fractions is very high, such that no trends are discernible at all in the results (data not shown). This variability can probably be reduced by performing even longer simulations and using more trajectories. A much more efficient implementation of the SSA will have to be used to reach this goal within reasonable time scales however. We hope to finish these simulations before the Jamboree. Because the deterministic simulations show similar qualitative behaviour as the more realistic stochastic simulations in the time-lapse plots, one could argue that we will obtain similar results here as the much less computationally expensive ODE-parameter scan.
+The steady state fraction of methylation shows almost no dependence upon the leaky transcription rate in the ODE model. This is likely caused by the steady state value that the mRNA reaches fairly quickly. The parameter scan density plots shows a very weak to no influence of the background noise. The fact that the degradation rate of the mRNA is much larger than the leaky transcription rate probably causes this. On the contrary, the steady state fraction of methylated plasmids is shown to be heavily dependent upon the catalysis rate of the fusion protein. This can steer future experiments to research the effects of lowered catalysis rates.
+Discussion
+Unlike our initial expectations, the ODE-model analyzed here suggests that the catalysis rate of the FP is more important to the high background noise we have observed in the experiments than the leaky expression rate.  This yields a new hypothesis to test in the lab: will lowering the catalysis rate significantly lower the background methylation rate? This raises the question on how to lower the catalysis rate of the MTase. A few methods to do this come to mind:
+Lower the temperature during the experiments, which will slow down all reactions in the cell including the catalysis rate
+Mutate amino acid sequence of binding domain, making the affinity of the for the DNA smaller
+Mutate some other part of the protein
+Pick a different methyltransferase, one that has a lower catalysis rate
+Attach a fluorescent protein to the methyltransferase
+References
+Cheng, X., & Blumenthal, R. (1999). S-Adenosylmethionine-Dependent Methyltransferases: Structures and Functions (p. 400). World Scientific. Retrieved from http://books.google.com/books?id=oUCKHnsZuukC&pgis=1
+Stamatakis, M., & Mantzaris, N. V. (2009). Comparison of deterministic and stochastic models of the lac operon genetic network. Biophysical journal, 96(3), 887–906. doi:10.1016/j.bpj.2008.10.028
+Retrieved from " http://2012.igem.org/Team:Amsterdam/achievements/stochastic_model "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

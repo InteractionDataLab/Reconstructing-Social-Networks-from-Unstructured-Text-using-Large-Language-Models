@@ -1,0 +1,90 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:Evry/Model/phenol model
+From 2014.igem.org
+IGEM Evry 2014
+Toggle navigation
+Home
+Overview
+Project
+Achievements & Results
+Team
+Members
+Attributions
+Collaborations
+Acknowledgments
+Media
+Biology
+Parts
+Toxic compounds
+Chassis & Characterization
+Genome Assembly
+Sensors
+Transposons
+RNAseq
+Modeling
+Sponge Model
+PCB Model
+Phenol Model
+Notebook
+Cell characterization
+Transposons
+Sensing
+RNAseq
+Protocols
+Policy & Practices
+Philosophy
+Ethics
+Safety
+Interlab
+Aim & Results
+Used Devices
+Notebook
+Spon-ge-sors
+IGEM Bar
+Phenol Model
+Phenol sensor model
+Introduction
+In this section we model the phenol sensor in Kappa.  Kappa is a rule based language allowing the expression of protein-protein interactions in order to build executable models of protein networks. This project is supported by the harvard medical school and can be found in the Kappa homepage . This model is then simulated using KaSim, an open source stochastic simulator for rule-based models written in Kappa. Basically, KaSim takes one or several Kappa files as input and generates stochastic trajectories of various observables. according to literature, the phenol sensor is composed of phosphoriled Dmpr dimers forming hexamers and binding on the P0 site as described in the schemas below from David Tropel and Jan Roelof van der Meer researches[1].
+From this article and various other[2,3,4,5,6], we define a first model in Kappa.
+Phenol-Dmpr model
+In this first model, we define the hexamer needed for the phenol sensing to be composed of one Phenol complex and two none phosphoriled Dmpr dimers. We define the Phenol complex as a Dmpr dimer with a phenol binded and next phosphoriled with an ATP in order to binds other Dmpr. schematicaly it correspond to the schemas below.
+First (1) two dmpr form a dimer, next, this dimer will recruit a phenol molecule (2), then this complex phosphorize in order to change its conformation (3) finally the complex recruit free Dmpr Dimers in order to form hexamers complexes (4). This hexamer will trigger the P0 site in order to activate the GFP production.
+The resulting Kappa program describing all thosess steps is the following :
+#agents #dmpr considered as a dimer: s : binding between dimers, need to be phosphoriled, x: binding phenol %agent: dmpr(s,x) %agent: phenol(x) %agent: phComplex2(s) %agent: hexamere(b) %agent: gfp(b) %agent: pgfp(b) #rule 'assos_ph' dmpr(s,x),phenol(x) <-> dmpr(s,x!1),phenol(x!1) @ 'ass','diss' 'recr_atp' dmpr(s,x!1),phenol(x!1) -> phComplex2(s) @ 'ph' 'assos_quadr' phComplex2(s),dmpr(s,x) <-> phComplex2(s!1),dmpr(s!1,x) @ 'ass','diss' 'assos_hexa' phComplex2(s!1),dmpr(s!1,x),dmpr(s,x) <-> hexamere(b) @ 'ass', 'diss' 'gfp_bind' hexamere(b),pgfp(b) -> hexamere(b!1),pgfp(b!1) @ 'ass' 'gfp_prod' hexamere(b!1),pgfp(b!1) -> pgfp(b),gfp(b),dmpr(s,x),dmpr(s,x),dmpr(s,x) @ 0.9 'dmpr_prod' -> dmpr(s,x) @ 10 # TO VARY !!  #var  %var: 'gfp' 0 %var: 'dmpr_qt' 100 %var: 'phenol_qt' 1000 %var: 'gfp_p_qt' 100 %var: 'cell_v' 1E-15 %var: 'cell_av' 1E8 %var: 'ph' 5E-3 %var: 'ratio' 'cell_v'/(2.25E-12) %var: 'ass' (1E-5)*(1/'ratio') %var: 'diss' (1E-3)*(1/'ratio') %init: 'phenol_qt' phenol() %init: 'gfp_p_qt' pgfp() %init: 'dmpr_qt' dmpr() %mod: [Tsim] > 1800 do $STOP  #def %def: "dumpInfluenceMap" "yes" %def: "influenceMapFileName" "influenceMap"  %def: "dotSnapshots" "yes"  %mod: [true] do $FLUX "flux.dot" [true] %mod: repeat [E+]/[E]>0 do $SNAPSHOT until [true]  #obs %obs: 'gfp_produced' gfp(b) %obs: 'phenol_k' phenol(x)
+In this model, all the variables are defined according to biologicals values. For example, the cell_v correspond to E.coli volue and cell_av to the Avogadro number in E.coli. all the association and phosphorilation constants are calculated for general molecules in e.coli or extracted from articles when found. We choose to use e.coli for our model in order to correspond to the biological results
+The first rule describe the phenol binding, the second describe the phosphorilation of the complex, the two next ones correspond to the formation of the hexamer complex. The next rule correspond to the binding of the hexamer to the gfp promoter. Finally the two last rules correspond to the gfp production and the dmpr production.
+after running KaSim for differents values of Dmpr production, we obtain the two next graphics
+The first one represent the gfp concentration over time for different Dmpr production. The second represent the the phenol concentration over time for five different Dmpr production (1E2, 1E1, 1E-1, 1E-2,1E-4,1E-5). those differents curves show us that in this model we reach a level where the gfp produced become null due to the fact that all Dmpr are binded with phenol and so can't form hexamer. Indeed the Phenol complexe need two FREE dmpr in order to create an hexamer. Simply speaking, all the Dmpr try to recruit a phenol and in the slow production case, they quickly are all binded, so they can't form hexamer. In the hight speed production, all the phenol are quickly binded to Dmpr and, next all the dmpr produced are recruited in order to form hexamers.
+this model also correspond to the static influence map and flux balance map below representing all the influence and flux evolution of each rules on the others, and not far to the regulation network of the biological construction.
+Phenol Complex Hexamer
+the second model is similar to the first one, but it acess that the hexamer is constituted of three Dmpr_dimer-Phenol complex as show in the figure below.
+this model is traduced into Kappa with the code below where we define a new marker in order to follow the gfp production per second.
+#agents #dmpr is in dimer conformation  : s : binding between dimers, x: binding phenol %agent: dmpr(s,x) %agent: phenol(x) %agent: phComplex2(s) %agent: hexamere(b) %agent: gfp(b) %agent: pgfp(b)  %token: marker #rule 'dmpr_ph_bind' dmpr(x),phenol(x) <-> dmpr(x!1),phenol(x!1) @ 0.3, 0.5 'dmpr_atpase' dmpr(x!1),phenol(x!1) -> phComplex2(s) @ 0.6 'quadmere' phComplex2(s),phComplex2(s) <-> phComplex2(s!1),phComplex2(s!1) @ 0.3, 0.5 'hexamere_formation' phComplex2(s!1),phComplex2(s!1),phComplex2(s) <-> hexamere(b) @ 0.3,0.5 'gfp_bind' hexamere(b),pgfp(b) -> hexamere(b!1),pgfp(b!1) @ 0.3 'gfp_prod' hexamere(b!1),pgfp(b!1) -> pgfp(b),gfp(b),dmpr(s,x),dmpr(s,x),dmpr(s,x),phenol(x),phenol(x),phenol(x)|1:marker @ 1 'dmpr_prod' -> dmpr(s,x) @ 0.1 'phenol_leek' phenol(x) -> @ 1E-4  #var  %var: 'dmpr_qt' 500 %var: 'phenol_qt' 5000 %var: 'gfp_p_qt' 500 %init: 'phenol_qt' phenol() %init: 'gfp_p_qt' pgfp() %init: 'dmpr_qt' dmpr() %init:marker <- 0  #def %def: "dumpInfluenceMap" "yes" %def: "influenceMapFileName" "influenceMap"  %def: "dotSnapshots" "yes"  %mod: [true] do $FLUX "flux.dot" [true] %mod: repeat [E+]/[E]>0 do $SNAPSHOT until [true]  #obs %obs: 'gfp_produced' |marker|/[E+] %obs: 'gfp_p' gfp(b) %obs: 'phenol_k' phenol(x) %obs: 'unbinded_ph_complex' phComplex2(s)
+We also add a leakage of the phenol in order to corelate the biologicals results. With thos modification we obtain the following curves.
+References :
+TRANSCRIPTIONAL REGULATORS FOR AROMATIC DEGRADATION, David Tropel and Jan Roelof van der Meer, Microbiol. Mol. Biol. Rev. 2004
+Biodegradation of phenol, C. Indu Nair, K. Jayachandran and Shankar Shashidhar, African Journal of Biotechnology Vol. 7, pp. 4951-4958, 29 December, 2008
+Bacterial promoters triggering biodegradation of aromatic pollutants,Eduardo Díaz* and María A Prieto, Current Opinion in Biotechnology 2000,
+Genetics and biochemistry of phenol degradation by Pseudomonas sp. CF600, Justin Powlowski & Victoria Shingler, Biodegradation v5 1994
+Role of the DmpR-Mediated Regulatory Circuit in Bacterial Biodegradation Properties in Methylphenol-Amended Soils, Inga Sarand, Eleonore Skärfstad, Mats Forsman, Martin Romantschuk and Victoria Shingler, Appl. Environ. Microbiol, 2001
+An Effective Strategy for a Whole-Cell Biosensor Based on Putative Effector Interaction Site of the Regulatory DmpR Protein, Saurabh Gupta, Mritunjay Saxena , Neeru Saini , Mahmooduzzafar , Rita Kumar, Anil Kumar, PLoS ONE 7(8): e43527 2012
+Sensing of aromatic compounds by the DmpR transcriptional activator of phenol-catabolizing Pseudomonas sp. strain CF600, V Shingler and T Moore, J. Bacteriol. 1994
+Contacts
+igemevry@gmail.com
+Retrieved from " http://2014.igem.org/Team:Evry/Model/phenol_model "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

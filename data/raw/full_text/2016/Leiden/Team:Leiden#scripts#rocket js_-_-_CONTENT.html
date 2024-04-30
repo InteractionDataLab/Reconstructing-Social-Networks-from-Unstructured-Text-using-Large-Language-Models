@@ -1,0 +1,164 @@
+<HTML lang="en" dir="ltr" class="client-nojs">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Team_Leiden_scripts_rocket_js skin-igem action-view"><DIV id="globalWrapper"><DIV id="content" class="mw-body" role="main"><DIV id="top_title"><H1 id="firstHeading" class="firstHeading"><SPAN dir="auto">Team:Leiden/scripts/rocket js</SPAN></H1></DIV><DIV id="HQ_page"><DIV id="bodyContent"><DIV id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><P>(function(){
+</P><PRE> var rocket = {
+   init : function(){
+     rocket.init_image();
+     rocket.set_position( $(window).width() / 2, 1200 );
+</PRE><PRE>     rocket.speed_init = 4E2;
+     rocket.acc_factor = 4;
+     rocket.smoke_multiplier = 1;
+     rocket.smoke_trail_length_multiplier = 1;
+</PRE><PRE>     rocket.mouse_offset = { x : -100, y : 0 };
+</PRE><PRE>     rocket.speed = { x : 0, y : -rocket.speed_init };
+     rocket.mouse_position = { x : 300, y : 500 };
+     rocket.set_rotation(0);
+</PRE><PRE>     rocket.init_tracking();
+     rocket.init_perturbations();
+     rocket.init_smoking();
+   },
+   init_smoking : function(){
+     // Produce a cloud of smoke.
+     var cloud = $('&lt;img&gt;');
+     cloud.css('width',0);
+     cloud.css('position','absolute');
+     cloud.css('z-index', 299);
+     cloud.attr('src',  window.rocket.smoke.attr('src') );
+</PRE><PRE>     // Compute the cloud position.
+     rocket_pos = $(window.rocket.image).offset();
+</PRE><PRE>     var left = rocket_pos.left + 0.5 * $(window.rocket.image).width();
+     var top  = rocket_pos.top + 0.5 * $(window.rocket.image).width();
+</PRE><PRE>     left = left + 50 * (Math.random() - 0.5);
+     top  = top + 50 * (Math.random() - 0.5);
+</PRE><PRE>     cloud.css('left', left);
+     cloud.css('top', top);
+</PRE><PRE>     // Add it to the screen
+     $( &quot;body&quot; ).append( cloud );
+</PRE><PRE>     cloud.animate({
+       opacity : 0.5,
+       width: 50,
+       top : top + 20,
+       left : left + 20
+     }, 500 * window.rocket.smoke_trail_length_multiplier, 'linear', function(){
+       cloud.animate({
+         top : top + 50,
+         left : left + 50,
+         width : 70,
+         opacity : 0
+       }, 1000 * window.rocket.smoke_trail_length_multiplier, 'linear', function(){
+         cloud.remove();
+       });
+     });
+</PRE><PRE>     next_step = (100 + Math.random() * 100) / window.rocket.smoke_multiplier;
+     window.setTimeout( window.rocket.init_smoking, next_step);
+   },
+   track : function(){
+     var rocket = window.rocket;
+</PRE><PRE>     position_mouse = rocket.mouse_position;
+     position_rocket = rocket.rocket_position;
+</PRE><PRE>     diff_x = position_mouse.x - position_rocket.x + rocket.mouse_offset.x;
+     diff_y = position_mouse.y - position_rocket.y + rocket.mouse_offset.y;
+</PRE><PRE>     // Compute acceleration
+     v_x = rocket.speed.x;
+     v_y = rocket.speed.y;
+</PRE><PRE>     v_2 = Math.max( v_x * v_x + v_y * v_y, 1);
+     v = Math.sqrt( v_2 );
+</PRE><PRE>     v_hat_x = v_x / v;
+     v_hat_y = v_y / v;
+</PRE><PRE>     r_x = diff_x;
+     r_y = diff_y;
+</PRE><PRE>     a_x = r_x - (r_x * v_hat_x + r_y * v_hat_y ) * v_hat_x;
+     a_y = r_y - (r_x * v_hat_x + r_y * v_hat_y ) * v_hat_y;
+</PRE><PRE>     a_acc = rocket.acc_factor;
+</PRE><PRE>     acc_x = a_x * a_acc;
+     acc_y = a_y * a_acc;
+</PRE><PRE>     // var now_date = new Date();
+     // var now = now_date.getTime();
+     // var last_track = rocket.last_track;
+     // var dt = (now - last_track) / 1000;
+     var dt = 1/30.0;
+</PRE><PRE>     speed_x = rocket.speed.x + acc_x * dt;
+     speed_y = rocket.speed.y + acc_y * dt;
+</PRE><PRE>     speed = Math.sqrt( speed_x * speed_x + speed_y * speed_y );
+</PRE><PRE>     speed_x = speed_x / speed * rocket.speed_init;
+     speed_y = speed_y / speed * rocket.speed_init;
+</PRE><PRE>     angle_rad = Math.atan2( speed_y, speed_x );
+     angle_deg = angle_rad / 3.1415 * 180;
+</PRE><PRE>     rocket.set_rotation( angle_deg );
+</PRE><PRE>     rocket.speed.x = speed_x * 0.9999;
+     rocket.speed.y = speed_y * 0.9999;
+</PRE><PRE>     position_rocket.x = position_rocket.x + rocket.speed.x * dt;
+     position_rocket.y = position_rocket.y + rocket.speed.y * dt;
+</PRE><PRE>     rocket.rocket_position = position_rocket;
+</PRE><PRE>     rocket.set_position( rocket.rocket_position.x, rocket.rocket_position.y );
+</PRE><PRE>     window.rocket = rocket;
+   },
+   init_perturbations : function(){
+     window.setInterval(function(){
+       pert_x = (Math.random() - 0.5) * 100;
+       pert_y = (Math.random() - 0.5) * 100;
+</PRE><PRE>       window.rocket.mouse_offset = {
+         x : pert_x,
+         y : pert_y
+       };
+     }, 1000);
+   },
+   init_tracking : function(){
+     $( &quot;body&quot; ).mousemove(function( event ){
+       position = {
+         x : event.pageX,
+         y : event.pageY
+       };
+       window.rocket.mouse_position = position;
+     });
+</PRE><PRE>     window.setInterval(function(){
+       window.rocket.track();
+     }, 30  );
+</PRE><PRE>     //var now = new Date();
+     //window.rocket.last_track = now.getTime();
+   },
+   init_image : function(){
+     var image = $('&lt;img&gt;');
+     rocket_image_url = $('#rocket_image').attr('src');
+     image.attr('src', rocket_image_url);
+     image.css('width','50');
+     image.css('position','absolute');
+     image.css('z-index',300);
+     $( &quot;body&quot; ).append( image );
+     rocket.image = image;
+</PRE><PRE>     var smoke = $(&quot;&lt;img&gt;&quot;);
+     smoke.attr('src', $('#smoke_image').attr('src') );
+     smoke.css('display','none');
+     $( &quot;body &quot;).append( smoke );
+     rocket.smoke = smoke;
+   },
+   set_position : function(x,y){
+     window.rocket.rocket_position = {
+       x : x,
+       y : y
+     };
+</PRE><PRE>     x = x - 70;
+     y = y - 50;
+</PRE><PRE>     rocket.image.css('left',x + 'px');
+     rocket.image.css('top',y + 'px');
+   },
+   set_rotation : function( deg ){
+     deg = deg + 90;
+     var rotate = 'rotate(' + deg + 'deg)';
+     $( rocket.image ).css({
+       '-webkit-transform': rotate,
+       '-moz-transform': rotate,
+       '-o-transform': rotate,
+       '-ms-transform': rotate,
+       'transform': rotate
+     });
+   },
+ };
+ window.rocket = rocket;
+</PRE><P>})();
+</P></DIV></DIV></DIV></DIV></DIV></BODY></HTML>

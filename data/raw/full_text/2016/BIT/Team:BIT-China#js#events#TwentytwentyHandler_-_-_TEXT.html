@@ -1,0 +1,32 @@
+Team:BIT-China/js/events/TwentytwentyHandler
+(function($){
+$.fn.twentytwenty = function(options) {    var content_wrapper=options.content_wrapper;    var options = $.extend({default_offset_pct: 0.5, orientation: 'horizontal'}, options);    return this.each(function() {
+var sliderPct = options.default_offset_pct;      var container = $(this);      var sliderOrientation = options.orientation;      var beforeDirection = (sliderOrientation === 'vertical') ? 'down' : 'left';      var afterDirection = (sliderOrientation === 'vertical') ? 'up' : 'right';
+container.wrap("
+");       container.append("
+");
+//调整图片      var beforeImg = container.find("img:first");      var afterImg = container.find("img:last");      beforeImg.css({width:$(window).width(),height:$(window).height()});      afterImg.css({width:$(window).width(),height:$(window).height()});
+//添加操控手柄
+container.append("
+");
+var slider = container.find(".twentytwenty-handle");      slider.append("");      slider.append("");      //添加一些class      container.addClass("twentytwenty-container");      beforeImg.addClass("twentytwenty-before");      afterImg.addClass("twentytwenty-after");
+//增加hover层的显示      var overlay = container.find(".twentytwenty-overlay");
+overlay.append("
+");       overlay.append("
+");
+var storyContent=[{title:"Begin",p1:"We all Know that normally,cell carries plasmids.But naturally they don't have too much plasmids.",        p2:"These Plasmids could be burderns on their weak life."},        {title:"Loss of Plasmid",p1:"With the process of fission,some plasmid may lost,so they need less nutrition."          ,p2:"These cells with less plasmids are easier to survive."},        {title:"Threshold",p1:"We count the value of the plasmids in a cell so we can know how many plasmids have been lost."          ,p2:"If the value is less than the threshold,the sell start the gene by itself."},        {title:"Kill the cell",p1:"The started gene will produce poisonous protein."          ,p2:"These poisonous will kill cell itself,so other cells could get enough nutrition."}];
+var changeValue = function (title, p1, p2) {        content_wrapper.children("h2").text(title);        content_wrapper.children("p").eq(0).text(p1);        content_wrapper.children("p").eq(1).text(p2);      }
+var changeContent= function (percent) {        percent=parseFloat(percent);        if(percent>0.95){          changeValue(storyContent[0].title,storyContent[0].p1,storyContent[0].p2);        }        else if(percent>0.70){          changeValue(storyContent[1].title,storyContent[1].p1,storyContent[1].p2);        }        else if(percent>0.50){          changeValue(storyContent[2].title,storyContent[2].p1,storyContent[2].p2);        }        else if(percent<=0.50){          changeValue(storyContent[3].title,storyContent[3].p1,storyContent[3].p2);        }
+};
+/**       * 计算偏移量       * @param dimensionPct       * @returns Template:W: string, h: string, cw: string, ch: string */      var calcOffset = function(dimensionPct) {        var w = beforeImg.width();        var h = beforeImg.height();        return {          w: w+"px",          h: h+"px",          cw: (dimensionPct*w)+"px",          ch: (dimensionPct*h)+"px"        };      };
+/**       * 调整图片裁切       * @param offset       */      var adjustContainer = function(offset) {       if (sliderOrientation === 'vertical') {         beforeImg.css("clip", "rect(0,"+offset.w+","+offset.ch+",0)");       }       else {          beforeImg.css("clip", "rect(0,"+offset.cw+","+offset.h+",0)");     }        container.css("height", offset.h);      };
+/**       * 调整滑块       * @param pct       */      var adjustSlider = function(pct) {        var offset = calcOffset(pct);        slider.css((sliderOrientation==="vertical") ? "top" : "left", (sliderOrientation==="vertical") ? offset.ch : offset.cw);        adjustContainer(offset);      }
+$(window).on("resize.twentytwenty", function(e) {        adjustSlider(sliderPct);      });
+//偏移量和图片宽度      var offsetX = 0;      var imgWidth = 0;
+/**       * 移动开始       */      slider.on("movestart", function(e) {        if (((e.distX > e.distY && e.distX < -e.distY) || (e.distX < e.distY && e.distX > -e.distY)) && sliderOrientation !== 'vertical') {          e.preventDefault();        }        else if (((e.distX < e.distY && e.distX < -e.distY) || (e.distX > e.distY && e.distX > -e.distY)) && sliderOrientation === 'vertical') {          e.preventDefault();        }        container.addClass("active");        offsetX = container.offset().left;        offsetY = container.offset().top;        imgWidth = beforeImg.width();         imgHeight = beforeImg.height();                });
+/**       * 移动结束       */      slider.on("moveend", function(e) {        container.removeClass("active");      });
+/**       * 监听每一帧移动       */      slider.on("move", function(e) {        if (container.hasClass("active")) {          sliderPct = (sliderOrientation === 'vertical') ? (e.pageY-offsetY)/imgHeight : (e.pageX-offsetX)/imgWidth;          if (sliderPct < 0) {            sliderPct = 0;          }          if (sliderPct > 1) {            sliderPct = 1;          }          //console.log(sliderPct);          //sliderPct为百分比0-1          //根据百分比改变前方文字的内容          changeContent(sliderPct);
+adjustSlider(sliderPct);        }      });
+container.find("img").on("mousedown", function(event) {        event.preventDefault();      });
+$(window).trigger("resize.twentytwenty");    });  };
+})(jQuery);

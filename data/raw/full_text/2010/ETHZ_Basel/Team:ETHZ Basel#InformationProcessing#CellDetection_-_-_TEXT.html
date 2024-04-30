@@ -1,0 +1,66 @@
+"
+Page
+Discussion
+View source
+History
+teams
+Log in
+ 
+Team:ETHZ Basel/InformationProcessing/CellDetection
+From 2010.igem.org
+Introduction
+Biology & Wet Laboratory
+Mathematical Modeling
+Information Processing
+Achievements
+Team
+Overview
+Microscopy
+Information Flow
+Cell Detection
+Visualization
+Controller
+E. lemming 2D Game
+Cell Detection and Tracking
+Background
+Short movie of an ''E. coli'' cell switching between the tumbling and the directed movement modes.
+Blue dots: the detected E. coli cells. Yellow dot: the currently selected E. lemming. Yellow cone: the current swimming direction of E. lemming. Red thin line: reference direction. Yellow dotted line: the current path of the E. lemming.
+Note that the movement process is currently not under the influence of the controller.
+One important input of the controller is the current location and the swimming direction of the E. lemming that we decide to control. However, due to experimental limitations, also other E. coli cells will by chance be on the microscope image. We therefore decided to implement a cell detection algorithm which detects all cells in the current frame and combines it with a cell tracking algorithm that aligns the cells in the adjacent frames. Thus it is possible to keep track of the E. lemming without confusing it with other cells. Since the controller has to react in real-time on changes of the direction of the E. lemming, an important requirement for the development of both algorithms was a fast processing time. This requirement is fulfilled by our implementations, which together require around 0.2s of processing time on a Intel Core 2 Duo 3.16 GHz CPU with 1.95 GB RAM. Since the main steps depend on each other and thus can not be parallelized, we applied only one of the cores for Cell Detection and Tracking, and used the other core to listen to a Russian techno radio ( [1] ) to stay awake.
+Cell Detection Algorithm
+The cell detection algorithm requires most of the CPU speed, therefore it was optimized most for speed while maintaining a sufficiently high percentage of true positive and a sufficiently low percentage of false positive detected cells. However, for the controller it is worse loosing the selected cell than dealing with a reasonably high amount of false positively detected cells. In comparison to other cell detection algorithms, the emphasis of our algorithm was put on reducing the amount of true negatives.
+The algorithm is based on a two-step approach:
+Object Detection - Every compact area having a sharp increase of brightness compared to the background is detected and classified as a cell.
+Filtering - Cells having unusual properties for an E. coli cell (e.g. having too large or too small area) are filtered out, so that mainly real E. coli cells persist.
+Object Detection
+The microscope image (see Figure 1) is pre-processed for cell detection by decreasing its size to half of the size obtained by the microscope (336x256 pixels, please be aware that we already used a microscope internal binning of two). This downsizing reduces the speed of the following steps, but showed to not reduce the detection quality too much. The resized image is then filtered by a 3x3 median filter (see Figure 2) to reduce pixel noise while preserving edges, and its contrast is increased (see Figure 3). The image is then differentiated by convolution with two 3x3 pixel big horizontal, respectively vertical edges and calculating the Euclidean norm of the resulting two values for every pixel (Sobel filtering, see Figure 4). A binary image is created by setting all pixels which have gray - scale level over a user definable threshold to TRUE and all others to FALSE.
+With this approach we can detect the borders of the cells. However, these borders may still have holes, which are eliminated by dilating the borders with a horizontal and a vertical line of length 3 pixels. We have now detected the contours of each potential cell.
+Filtering
+After the interior of the cell is filled, we calculate its properties and compare them to the properties of typical cells (e.g. the typical area of a cell). If the measured properties of the potential cells deviate too much from the reference properties, the wrongly detected cells get removed (see Figure 5). For the remaining cells the centroid is calculated and passed to the cell tracking algorithm as the current position of the cell.
+Figure 1: Original image obtained from the microscope.
+Figure 2: Image after median filtering to reduce noise.
+Figure 3: Image with maximized contrast.
+Figure 4: Image after two dimensional differentiating and setting all pixels below a threshold to false (black) and all above to true (white).
+Figure 5: The final image including all the cells is obtained after dilation, filling of the holes inside the cell and sorting out false positives.
+Cell Tracking Algorithm
+The main propose of the tracking algorithm is to align cells in adjacent frames to be able to track them. This is achieved by assigning a unique identifier (UID) to every cell, which it ideally keeps over the whole duration of the measurement.
+False Positives & False Negatives
+From the cell detection algorithm (see above), the cell tracking algorithm receives the positions of all detected cells. However, not all detected cells are real E. coli cells, but some mud in the flow channel as well as dirt in the microscope apparatus can be wrongly classified as cells (false positives). Furthermore, depending on the threshold used in the cell detection algorithm, cells can be "lost" for one or several adjacent frames (false negatives). The main goal of both algorithms together is to make it possible to track a selected cell over a long period of time. This goal requires that our cell tracking algorithm has to be able to recognize cells and assign them their previous UID, even if they were "lost" over several frames. Furthermore, it must be able to not confuse a cell with false positively detected dirt, if the cell is passing nearby. The case of distinguishing two nearby passing true positively detected E. coli cells is widely omitted in the algorithm due to the complexity of such calculations and the thus unavoidable slow down of the algorithm. Instead, the experiment is set up so that the cell density is quite small. If however, by chance, two true positively detected cells are passing close to each other and their UIDs are mixed up, the user has to simply correct manually for this mistake by e.g. pressing the right button of a joystick.
+Tracking cells using cell tables
+Due to speed limitations we decided to implement a simple but robust fast algorithm for cell tracking. In the first frame, a UID is assigned to all detected cells and stored together with the position of their centroids in a the so called 'cell table'. In all adjacent frames the Euclidean distance between all detected cells and the already known cells from the previous frame is calculated using matrix arithmetic (fast in Matlab).
+Starting with the two cells in adjacent frames having the smallest distance, the UID of the cell in the previous frame is assigned to the newly detected cell and both cells (the one from the previous frame and the one in the current frame) are excluded in further assignments. This step is repeated several times until the minimal distance between two remaining cells in adjacent frames exceeds a user definable threshold, depending on the maximal speed of the given cell line in the medium, and the imaging frequency of the microscope. The cells in the last frame which were not found in the current frame are stored for some time in a so called 'lost cell table'. For cells in the current frame which don't have an UID assigned yet, an UID is searched for in the lost cell table. Only for cells which were neither found in the cell table nor in the lost cell table a new UID is generated. Both the position of the cells in the cell table as well as the cells in the lost cell table are given as an output to the control algorithm.
+Robustness
+Although this algorithm is relatively simple and fast, it has several qualitative advantages:
+First, having a lost cell table makes the whole algorithm more robust against images where, by chance, a cell is not detected. However, the limited lifetime of cells in the lost cell table ensures that the UID of a cell which was lost a long time ago will not wrongly be assigned to a yet unknown cell.
+Second, different from E. coli cells, false positively detected "dirt" in the apparatus is normally immobile. The algorithm ensures that cells and dirt are not mixed up since, due to the fixed position of the dirt, in the next frame the dirt will always be assigned to its previous frame UID. Although it may happen that a cell, when passing closely to the dirt, will be lost. However, the lost cell table here also ensures that, when the cell passed the dirt a few frames later, it will be reassigned to the correct UID.
+Third, by comparing the cells in the current frame first only to cells which were also found in the last frame and only, if they were not found there, to lost cell table, makes the algorithm more robust against all kind of high frequency noise. Namely, some of the false positively detected pseudo-cells are only detected in one frame. Giving priority to normally nearly continuously detected true positives thus lowers the chance that a detected cell is assigned to the UID of noise, which occurred already a few frames before, instead of to the UID of the same cell detected in the last frame. Finally, transmitting the positions of all cells, insignificant if in the cell or lost cell tables, eases the programming of the controller: it will always obtain at least the approximate position of the E. lemming.
+Retrieved from " http://2010.igem.org/Team:ETHZ_Basel/InformationProcessing/CellDetection "
+Recent changes
+What links here
+Related changes
+Special pages
+My preferences
+Printable version
+Permanent link
+Privacy policy
+Disclaimers

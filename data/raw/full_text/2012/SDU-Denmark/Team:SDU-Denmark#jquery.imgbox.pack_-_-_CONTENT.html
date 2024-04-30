@@ -1,0 +1,345 @@
+<HTML xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<style type="text/css">
+A:before { content:' '; } 
+A:after { content:' '; } 
+SPAN:before { content:' '; } 
+SPAN:after { content:' '; } 
+</style>
+<BODY class="mediawiki  ltr ns-0 ns-subject page-Team_SDU-Denmark_jquery_imgbox_pack"><DIV id="globalWrapper"><DIV id="top-section"><DIV id="p-logo"><A href="/Main_Page" title="Main Page">&quot;
+	    </A></DIV><DIV id="menubar" class="left-menu noprint"><UL><LI class="selected"><A href="/Team:SDU-Denmark/jquery.imgbox.pack">Page               </A></LI><LI class="new"><A href="/wiki/index.php?title=Talk:Team:SDU-Denmark/jquery.imgbox.pack&amp;action=edit&amp;redlink=1">Discussion               </A></LI><LI><A href="/wiki/index.php?title=Team:SDU-Denmark/jquery.imgbox.pack&amp;action=edit">View source               </A></LI><LI><A href="/wiki/index.php?title=Team:SDU-Denmark/jquery.imgbox.pack&amp;action=history">History               </A></LI><LI style="color:#808080;cursor:default">teams</LI></UL></DIV><DIV class="right-menu noprint" id="menubar"><UL><LI id="pt-login"><A href="/wiki/index.php?title=Special:UserLogin&amp;returnto=Team:SDU-Denmark/jquery.imgbox.pack" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</A></LI></UL></DIV><DIV id="search-controls" class="noprint"><FORM action="/Special:Search" id="searchform"> </FORM></DIV></DIV><DIV id="content"><H1 class="firstHeading">Team:SDU-Denmark/jquery.imgbox.pack</H1><DIV id="bodyContent"><H3 id="siteSub" class="noprint">From 2012.igem.org</H3><P>/*
+</P><PRE>* imgBox - jQuery Plugin
+* Yet another lightbox alternative
+*
+* Copyright (c) 2009 jQueryGlobe
+* Examples and documentation at: <A href="http://jqueryglobe.com/article/imgbox/" class="external free" rel="nofollow">http://jqueryglobe.com/article/imgbox/</A>
+* 
+* Version: 1.0.0 (21/10/2009)
+* Requires: jQuery v1.3+
+* 
+* Dual licensed under the MIT and GPL licenses:
+*   <A href="http://www.opensource.org/licenses/mit-license.php" class="external free" rel="nofollow">http://www.opensource.org/licenses/mit-license.php</A>
+*   <A href="http://www.gnu.org/licenses/gpl.html" class="external free" rel="nofollow">http://www.gnu.org/licenses/gpl.html</A>
+*/
+</PRE><DL><DT>(function($) {
+</DT></DL><P>	$.fn.fixPNG = function() {
+		return this.each(function () {
+			var image = $(this).css('backgroundImage');
+</P><P>			if (image.match(/^url\([&quot;']?(.*\.png)[&quot;']?\)$/i)) {
+				image = RegExp.$1;
+				$(this).css({
+					'backgroundImage': 'none',
+					'filter': &quot;progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled=true, sizingMethod=&quot; + ($(this).css('backgroundRepeat') == 'no-repeat' ? 'crop' : 'scale') + &quot;, src='&quot; + image + &quot;')&quot;
+				}).each(function () {
+					var position = $(this).css('position');
+					if (position != 'absolute' &amp;&amp; position != 'relative')
+						$(this).css('position', 'relative');
+				});
+			}
+		});
+	};
+</P><P>	var elem, opts, preloader, orig_pos, final_pos, busy = false, nr, zindex = 90, titleh = 0, shadow = 20, margin = 20, fx = $.extend($('&lt;div/&gt;')[0], { prop: 0 });
+</P><P>	$.fn.imgbox = function(settings) {
+		return this.unbind('click.pb').bind('click.pb', function() {
+			$.imgbox( $(this), settings );
+			return false;
+		});
+	};
+</P><P>	$.imgbox = function(e, o) {
+		if (busy) {
+			return false;
+		}
+</P><P>		elem	= e;
+		opts	= $.extend({}, $.fn.imgbox.defaults, o);
+		nr		= jQuery.data(elem[0]);
+</P><P>		if ($('#imgbox-wrap-' + nr).length) {
+		    zoomOut();
+			return false;
+		}
+</P><P>		hideActivity();
+</P><P>		if (opts.overlayShow) {
+			$('#imgbox-overlay')
+				.unbind().stop().hide()
+				.css({
+					'height'	: $(document).height(),
+					'opacity'	: opts.overlayOpacity
+				})
+				.show();
+		}
+</P><P>		preloader = new Image;
+		preloader.src = $(elem).attr('href');
+</P><P>		if (preloader.complete == false) {
+			showActivity();
+</P><P>			$(preloader).unbind().one('load', function() {
+				hideActivity();
+				zoomIn();
+			});
+</P><P>		} else {
+			zoomIn();
+		}
+	};
+</P><P>	$.fn.imgbox.defaults = {
+		padding				:	10,
+		alignment			:	'auto', // auto OR center
+		allowMultiple		:	true,
+		autoScale			:	true,
+		speedIn				:	500,
+		speedOut			:	500,
+		easingIn			:	'swing',
+		easingOut			:	'swing',
+		zoomOpacity			:	false,
+		overlayShow			:	false,
+		overlayOpacity		:	0.5,
+		hideOnOverlayClick	:	true,
+		hideOnContentClick	:	true
+	};
+</P><P>	function zoomIn() {
+		busy = true;
+</P><P>		if (opts.allowMultiple == false) {
+			$('.imgbox-wrap').remove();
+			$('.imgbox-bg-wrap').remove();
+</P><P>		} else {
+			zindex = zindex + 2;
+		}
+</P><P>		final_pos = getZoomTo();
+</P><P>		var title = $(elem).attr('title') || <I>;</I></P>
+		$('')
+<P>			.css({
+				'z-index'	:	zindex,
+				'padding'	:	opts.padding
+			})
+			.append('&lt;img class=&quot;imgbox-img&quot; id=&quot;imgbox-img-' + nr + '&quot; src=&quot;' + preloader.src + '&quot; alt=&quot;' + title + '&quot; /&gt;')
+			.appendTo('body');
+</P>
+		$('<DIV id="imgbox-bg-.27_.2B_nr_.2B_.27" class="imgbox-bg-wrap">&lt;div class=&quot;imgbox-bg imgbox-bg-n&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-ne&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-e&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-se&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-s&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-sw&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-w&quot;/&gt;&lt;div class=&quot;imgbox-bg imgbox-bg-nw&quot;/&gt;</DIV>').appendTo('body');
+<P>		if ($.browser.msie &amp;&amp; parseInt($.browser.version.substr(0, 1)) &lt; 7) {
+			$('#imgbox-bg-' + nr).find('.imgbox-bg').fixPNG();
+		}
+</P><P>		titleh = 0;
+</P><P>		if (title.length &gt; 0) {
+			$('&lt;div id=&quot;imgbox-tmp&quot; class=&quot;imgbox-title&quot; /&gt;').html(title).css('width', final_pos.width).appendTo('body');
+</P><P>			titleh = $('#imgbox-tmp').outerHeight();
+</P><P>			final_pos.height	+= titleh;
+			final_pos.top		-= titleh &gt; margin + shadow ? margin : margin * 0.5;
+</P><P>			$('#imgbox-tmp').remove();
+</P>
+			$('#imgbox-wrap-' + nr).append('<DIV class="imgbox-title">' + title + '</DIV>');
+<P>		}
+</P><P>		if (opts.speedIn &gt; 0) {
+			var pos	= getThumbPos();
+</P><P>			orig_pos = {
+				top		:	pos.top		- opts.padding,
+				left	:	pos.left	- opts.padding,
+				width	:	pos.width,
+				height	:	pos.height
+			};
+</P><P>			$('#imgbox-wrap-' + nr).css(orig_pos).show();
+			$('#imgbox-bg-' + nr).css({
+				top			: orig_pos.top,
+				left		: orig_pos.left,
+				width		: orig_pos.width	+ (opts.padding * 2),
+				height		: orig_pos.height	+ (opts.padding * 2),
+				'z-index'	: zindex - 1
+			}).show();
+</P><P>			if (opts.zoomOpacity) {
+				final_pos.opacity = 1;
+			}
+</P><P>		  	fx.prop = 0;
+</P><P>			$(fx).animate({ prop: 1 }, {
+				 duration	: opts.speedIn,
+				 easing		: opts.easingIn,
+				 step		: draw,
+				 complete	: _finish
+			});
+</P><P>		} else {
+			$('#imgbox-img-' + nr ).css('height', (final_pos.height - titleh) + 'px');
+			$('#imgbox-wrap-' + nr).css(final_pos).fadeIn('normal',  _finish );
+</P><P>			$('#imgbox-bg-' + nr).css({
+				top			: final_pos.top,
+				left		: final_pos.left,
+				width		: final_pos.width	+ (opts.padding * 2),
+				height		: final_pos.height	+ (opts.padding * 2),
+				'z-index'	: zindex - 1
+			}).fadeIn('normal');
+		}
+	};
+</P><P>	function draw(pos) {
+		var width	= Math.round(orig_pos.width		+ (final_pos.width	- orig_pos.width)	* pos);
+		var height	= Math.round(orig_pos.height	+ (final_pos.height	- orig_pos.height)	* pos);
+</P><P>		var top		= Math.round(orig_pos.top	+ (final_pos.top	- orig_pos.top)		* pos);
+		var left	= Math.round(orig_pos.left	+ (final_pos.left	- orig_pos.left)	* pos);
+</P><P>		$('#imgbox-wrap-' + nr).css({
+			'width'		: width		+ 'px',
+			'height'	: height	+ 'px',
+			'top'		: top		+ 'px',
+			'left'		: left		+ 'px'
+		});
+</P><P>		$('#imgbox-bg-' + nr).css({
+			'width'		: Math.round(width	+ opts.padding * 2 ) + 'px',
+			'height'	: Math.round(height	+ opts.padding * 2 ) + 'px',
+			'top'		: top	+ 'px',
+			'left'		: left	+ 'px'
+		});
+</P><P>		$('#imgbox-img-' + nr ).css('height',  Math.round( height - ( ( ((height - Math.min(orig_pos.height, final_pos.height)) * 100) / (Math.max(orig_pos.height - final_pos.height, final_pos.height - orig_pos.height) ) * titleh / 100))) + 'px');
+</P><P>		if (typeof final_pos.opacity !== 'undefined') {
+			var opacity = pos &lt; 0.3 ? 0.3 : pos;
+</P><P>			$('#imgbox-wrap-' + nr).css('opacity', opacity);
+</P><P>			if ($.browser.msie == false) {
+				$('#imgbox-bg-' + nr).css('opacity', opacity);
+			}
+		}
+	};
+</P><P>	function _finish() {
+		if (opts.overlayShow &amp;&amp; opts.hideOnOverlayClick) {
+			$('#imgbox-overlay').bind('click', {elem: elem, nr : nr, opts : opts, titleh : titleh}, clickHandler);
+		}
+</P><P>		$('#imgbox-wrap-' + nr)
+			.css('filter', <I>)</I>
+			.bind('click', {elem: elem, nr : nr, opts : opts, titleh : titleh}, clickHandler)
+			.append('&lt;a href=&quot;javascript:;&quot; class=&quot;imgbox-close&quot;&gt;&lt;/a&gt;')
+			.children('.imgbox-title')
+			.show();
+</P><P>		if ($.browser.msie &amp;&amp; parseInt($.browser.version.substr(0, 1)) &lt; 7) {
+			$('#imgbox-wrap-' + nr).find('.imgbox-close').fixPNG();
+		}
+</P><P>		busy = false;
+	};
+</P><P>	function clickHandler(e) {
+		e.stopPropagation();
+</P><P>		if (e.target.className == 'imgbox-close' || (e.data.opts.hideOnOverlayClick &amp;&amp; e.target.id == 'imgbox-overlay') || (e.data.opts.hideOnContentClick &amp;&amp; e.target.className == 'imgbox-img' &amp;&amp; ($(this).css('z-index') == zindex || $('.imgbox-img').length == 1))) {
+			elem	= e.data.elem;
+			nr		= e.data.nr;
+			opts	= e.data.opts;
+			titleh	= e.data.titleh;
+			zoomOut();
+</P><P>		} else if ($(this).css('z-index') &lt; zindex) {
+			$(this).next('.imgbox-bg-wrap').css('z-index', ++zindex);
+			$(this).css('z-index', ++zindex);
+		}
+	};
+</P><P>	function zoomOut() {
+		if (busy) {
+			return false;
+		}
+</P><P>		busy = true;
+</P><P>		$('#imgbox-wrap-' + nr)
+			.children('.imgbox-close, .imgbox-title')
+			.remove();
+</P><P>		if (opts.speedOut &gt; 0) {
+			var pos	= getThumbPos();
+</P><P>			orig_pos = {
+				top		:	pos.top		- opts.padding,
+				left	:	pos.left	- opts.padding,
+				width	:	pos.width,
+				height	:	pos.height
+			};
+</P><P>			var pos = $('#imgbox-wrap-' + nr).position();
+</P><P>			final_pos = {
+				top		:	pos.top ,
+				left	:	pos.left,
+				width	:	$('#imgbox-wrap-' + nr).width(),
+				height	:	$('#imgbox-wrap-' + nr).height()
+			};
+</P><P>			if (opts.zoomOpacity) {
+				final_pos.opacity = 0;
+			}
+</P><P>			setTimeout(function() {
+				$('#imgbox-wrap-' + nr).css('z-index', 90);
+				$('#imgbox-bg-' + nr).css('z-index', 90);
+		    }, opts.speedOut * 0.5);
+</P><P>		    fx.prop = 1;
+</P><P>		    $(fx).animate({ prop: 0 }, {
+				 duration	: opts.speedIn,
+				 easing		: opts.easingIn,
+				 step		: draw,
+				 complete	: _clean_up
+			});
+</P><P>		} else {
+</P><P>			if (opts.overlayShow) {
+				_clean_up();
+</P><P>			} else {
+				$('#imgbox-bg-' + nr).fadeOut('fast');
+				$('#imgbox-wrap-' + nr).fadeOut('fast', _clean_up );
+			}
+		}
+	};
+</P><P>	function _clean_up() {
+		$('#imgbox-bg-' + nr).stop().remove();
+		$('#imgbox-wrap-' + nr).remove();
+</P><PRE>       zindex = zindex &gt; 90 ? zindex - 2 : 90;
+</PRE><P>		if (opts.overlayShow) {
+			$('#imgbox-overlay').unbind().stop().fadeOut(200);
+		}
+</P><P>		busy = false;	
+	};
+</P><P>	function getZoomTo() {
+		var wiew	= getViewport();
+		var to		= {width : preloader.width, height : preloader.height};
+</P><P>		var horizontal_space	= (opts.padding + shadow + margin ) * 2;
+		var vertical_space		= (opts.padding + shadow + margin ) * 2;
+</P><P>		if (opts.autoScale &amp;&amp; (to.width &gt; (wiew[0] - horizontal_space) || to.height &gt; (wiew[1] - vertical_space))) {
+			var ratio = Math.min(Math.min( wiew[0] - horizontal_space, to.width) / to.width, Math.min( wiew[1] - vertical_space, to.height) / to.height);
+</P><P>			to.width	= Math.round(ratio * to.width);
+			to.height	= Math.round(ratio * to.height);
+		}
+</P><P>		if (opts.alignment == 'center') {
+			to.top	= wiew[3] + ((wiew[1] - to.height - opts.padding * 2) * 0.5);
+			to.left	= wiew[2] + ((wiew[0] - to.width  - opts.padding * 2) * 0.5);
+</P><P>		} else {
+			var pos	= getThumbPos();
+</P><P>			to.top	= pos.top  - ( ( to.height - pos.height  ) * 0.5) - opts.padding ;
+			to.left	= pos.left - ( ( to.width  - pos.width   ) * 0.5) - opts.padding ;
+</P><P>			to.top	= to.top 	&gt; wiew[3] + margin + shadow ? to.top	:  wiew[3] + margin + shadow; 
+			to.left	= to.left 	&gt; wiew[2] + margin + shadow ? to.left	:  wiew[2] + margin + shadow;
+</P><P>			to.top	= to.top	&gt; wiew[1] + wiew[3] - ( to.height	+ vertical_space )	? wiew[1] + wiew[3] - ( to.height	+ ( margin	+ shadow + opts.padding * 2 ) ) : to.top;
+			to.left	= to.left	&gt; wiew[0] + wiew[2] - ( to.width	+ horizontal_space )	? wiew[0] + wiew[2] - ( to.width	+ ( margin  + shadow + opts.padding * 2 ) ) : to.left;
+		}
+</P><P>		if ( opts.autoScale == false ) {
+			to.top	= to.top 	&gt; wiew[3] + shadow + margin ? to.top	:  wiew[3] + shadow + margin;
+			to.left	= to.left 	&gt; wiew[2] + shadow + margin ? to.left	:  wiew[2] + shadow + margin;
+		}
+</P><P>		to.top 	= parseInt(to.top);
+		to.left	= parseInt(to.left);
+</P><P>		return to;
+	};
+</P><P>	function getViewport() {
+		return [ $(window).width(), $(window).height(), $(document).scrollLeft(), $(document).scrollTop() ];
+	};
+</P><P>	function getThumbPos() {
+		var thumb	= $(elem).find('img').eq(0);
+		var pos		= thumb.offset();
+</P><P>		pos.top		+= parseFloat( thumb.css('paddingTop') );
+		pos.left	+= parseFloat( thumb.css('paddingLeft') );
+</P><P>		pos.top		+= parseFloat( thumb.css('border-top-width') );
+		pos.left	+= parseFloat( thumb.css('border-left-width') );
+</P><P>		pos.width	= thumb.width();
+		pos.height	= thumb.height();
+</P><P>		return pos;
+	};
+</P><P>	function showActivity() {
+		var pos	= getThumbPos( elem );
+</P><P>		$('#imgbox-loading').css(pos).show();
+	};
+</P><P>	function hideActivity() {
+		$(preloader).unbind();
+		$('#imgbox-loading').hide();
+	};
+</P><P>	function cancelLoading() {
+	    hideActivity();
+</P><P>	    if (opts.overlayShow) {
+			$('#imgbox-overlay').unbind().stop().fadeOut(200);
+		}
+	};
+</P><P>	function init() {
+</P>
+		$('').appendTo('body');
+<P>		$('#imgbox-loading')
+			.click(cancelLoading)
+			.find('div')
+			.css('opacity', 0.4);
+	};
+</P><P>	$(document).ready(function() {
+		init();
+	});
+</P><P>})(jQuery);
+</P><DIV class="printfooter">
+Retrieved from &quot;<A href="http://2012.igem.org/Team:SDU-Denmark/jquery.imgbox.pack">http://2012.igem.org/Team:SDU-Denmark/jquery.imgbox.pack</A>&quot;</DIV></DIV></DIV><DIV id="footer-box" class="noprint"><DIV id="footer"><UL id="f-list"><LI id="t-recentchanges"><A href="/Special:RecentChanges" title="Recent changes">Recent changes</A></LI><LI id="t-whatlinkshere"><A href="/Special:WhatLinksHere/Team:SDU-Denmark/jquery.imgbox.pack" title="List of all wiki pages that link here [j]" accesskey="j">What links here</A></LI><LI id="t-recentchangeslinked"><A href="/Special:RecentChangesLinked/Team:SDU-Denmark/jquery.imgbox.pack" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</A></LI><LI id="t-specialpages"><A href="/Special:SpecialPages" title="List of all special pages [q]" accesskey="q">Special pages</A></LI><LI><A href="/Special:Preferences">My preferences</A></LI></UL></DIV><DIV id="footer"><UL id="f-list"><LI id="t-print"><A href="/wiki/index.php?title=Team:SDU-Denmark/jquery.imgbox.pack&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</A></LI><LI id="t-permalink"><A href="/wiki/index.php?title=Team:SDU-Denmark/jquery.imgbox.pack&amp;oldid=122042" title="Permanent link to this revision of the page">Permanent link</A></LI><LI id="privacy"><A href="/2012.igem.org:Privacy_policy" title="2012.igem.org:Privacy policy">Privacy policy</A></LI><LI id="disclaimer"><A href="/2012.igem.org:General_disclaimer" title="2012.igem.org:General disclaimer">Disclaimers</A></LI></UL></DIV></DIV></DIV></BODY></HTML>
