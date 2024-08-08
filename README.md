@@ -1,8 +1,8 @@
-Codes and analysis for the submission to Applied Network Science - Reconstructing collaboration networks from text using Large Language Models
+Codes and analysis for the submission to Applied Network Science - **Reconstructing collaboration networks from text using Large Language Models**
 
-In this work, we use Large Language models (LLMs from OpenAI's GPT 3.5 and 4 family) to reconstruct networks of relationships from unstructured text. We use the data from online wiki lab notebooks of teams participating in the iGEM synthetic biology competition. These notebooks contain 2 types of information encoded as free text - that are of our specific interest. 
+In this work, we use Large Language models (LLMs from OpenAI's GPT 3.5 and 4 family) to reconstruct networks of relationships between entities from unstructured text. We use the data from online wiki lab notebooks of teams participating in the iGEM synthetic biology competition. These notebooks contain 2 types of information encoded as free text - that are of our specific interest. 
 
-1. Inter-team collaboration: Teams report on the wiki about which other teams they collaborated with during the competition. THey also mention the context of the collaborations.
+1. Inter-team collaboration: Teams report on the wiki about which other teams they collaborated with during the competition. They also mention the context of the collaborations.
 2. Intra-team contribitions: Teams report which member contributed to which tasks of their project.
 
 These are the two networks we reconstruct in this work. For more context and information on the iGEM competition and an overview of the data collected from teams - please refer to: Santolini et. al., 2023 (https://arxiv.org/abs/2310.19858) and Blondel et. al., 2024 (https://zenodo.org/records/11072818)
